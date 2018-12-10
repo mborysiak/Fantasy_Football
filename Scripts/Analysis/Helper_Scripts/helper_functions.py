@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# In[1]:
+# In[ ]:
 
 
 import pandas as pd
@@ -9,7 +9,71 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-# In[2]:
+# In[ ]:
+
+
+#==========
+# Dictionary for position relevant metrics
+#==========
+
+# initialize full position dictionary
+pos = {}
+
+#---------
+# RB dictionary
+#---------
+ 
+# initilize RB dictionary
+pos['RB'] = {}
+
+# total touch filter name
+pos['RB']['touch_filter'] = 'total_touches'
+
+# median feature categories
+pos['RB']['med_features'] = ['fp', 'tgt', 'receptions', 'total_touches', 'rush_yds', 'rec_yds', 
+                   'rush_yd_per_game', 'rec_yd_per_game', 'rush_td', 'games_started', 
+                   'qb_rating', 'qb_yds', 'pass_off', 'tm_rush_td', 'tm_rush_yds', 
+                   'tm_rush_att', 'adjust_line_yds', 'ms_rush_yd', 'ms_rec_yd', 'ms_rush_td',
+                   'avg_pick', 'fp_per_touch', 'team_rush_avg_att']
+
+# sum feature categories
+pos['RB']['sum_features'] = ['total_touches', 'att', 'scrimmage_yds']
+
+# max feature categories
+pos['RB']['max_features'] = ['fp', 'rush_td', 'tgt', 'rush_yds', 'rec_yds', 'scrimmage_yds']
+
+# age feature categories
+pos['RB']['age_features'] = ['fp', 'rush_yd_per_game', 'rec_yd_per_game', 'total_touches', 'receptions', 'tgt',
+                             'ms_rush_yd', 'ms_rec_yd', 'available_rush_att', 'available_tgt', 'total_touches_sum',
+                             'scrimmage_yds_sum', 'avg_pick', 'fp_per_touch', 'ms_rush_yd_per_att', 'ms_tgts']
+
+
+# In[18]:
+
+
+def calculate_fp(df, pts, pos):
+    
+    # calculate fantasy points for QB's associated with a given RB or WR
+    if pos == 'RB' or 'WR':
+        df['qb_fp'] =         pts['pass_yd_pts']*df['qb_yds'] +         pts['pass_td_pts']*df['qb_tds'] -         pts['int_pts']*df['int'] -         pts['sack_pts']*df['qb_sacks']
+    
+    # calculate fantasy points for RB's
+    if pos == 'RB':
+        df['fp'] =         pts['yd_pts']*df['rush_yds'] +         pts['yd_pts']*df['rec_yds'] +         pts['td_pts']*df['rush_td'] +         pts['td_pts']*df['rec_td'] +         pts['rec_pts']*df['receptions'] +         pts['fmb_pts']*df['fmb']
+        
+        # calculate fantasy points per touch
+        df['fp_per_touch'] = df['fp'] / df['total_touches']
+        
+        # calculate fantasy points per target
+        df['yd_per_tgt'] = df['rec_yds'] / df['tgt']
+        
+    # calculate fantasy points per game
+    df['fp_per_game'] = df['fp'] / df['games']
+    
+    return df
+
+
+# In[ ]:
 
 
 def features_target(df, year_start, year_end, median_features, sum_features, max_features, 
@@ -63,47 +127,7 @@ def features_target(df, year_start, year_end, median_features, sum_features, max
     return df_train, df_predict
 
 
-# In[4]:
-
-
-#==========
-# Dictionary for position relevant metrics
-#==========
-
-# initialize full position dictionary
-pos = {}
-
-#---------
-# RB dictionary
-#---------
- 
-# initilize RB dictionary
-pos['RB'] = {}
-
-# total touch filter name
-pos['RB']['touch_filter'] = 'total_touches'
-
-# median feature categories
-pos['RB']['med_features'] = ['fp', 'tgt', 'receptions', 'total_touches', 'rush_yds', 'rec_yds', 
-                   'rush_yd_per_game', 'rec_yd_per_game', 'rush_td', 'games_started', 
-                   'qb_rating', 'qb_yds', 'pass_off', 'tm_rush_td', 'tm_rush_yds', 
-                   'tm_rush_att', 'adjust_line_yds', 'ms_rush_yd', 'ms_rec_yd', 'ms_rush_td',
-                   'avg_pick', 'fp_per_touch', 'team_rush_avg_att']
-
-# sum feature categories
-pos['RB']['sum_features'] = ['total_touches', 'att', 'scrimmage_yds']
-
-# max feature categories
-pos['RB']['max_features'] = ['fp', 'rush_td', 'tgt', 'rush_yds', 'rec_yds', 'scrimmage_yds']
-
-# age feature categories
-pos['RB']['age_features'] = ['fp', 'rush_yd_per_game', 'rec_yd_per_game', 'total_touches', 'receptions', 'tgt',
-                             'ms_rush_yd', 'ms_rec_yd', 'available_rush_att', 'available_tgt', 'total_touches_sum',
-                             'scrimmage_yds_sum', 'avg_pick', 'fp_per_touch', 'ms_rush_yd_per_att', 'ms_tgts']
-
-
-
-# In[3]:
+# In[ ]:
 
 
 def visualize_features(df_train):
@@ -125,7 +149,95 @@ def visualize_features(df_train):
     PrettyPlot(plt);
 
 
-# In[4]:
+# In[19]:
+
+
+def corr_removal(df_train, df_predict, corr_cutoff=0.025):
+
+    corr = df_train.corr()['y_act']
+    good_cols = list(corr[abs(corr) > corr_cutoff].index)
+
+    good_cols.extend(['player', 'year'])
+    df_train = df_train[good_cols]
+    df_train.loc[:,~df_train.columns.duplicated()]
+
+    good_cols.remove('y_act')
+    df_predict = df_predict[good_cols]
+    
+    return df_train, df_predict
+
+
+# In[ ]:
+
+
+from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.preprocessing import Imputer, StandardScaler
+
+from statsmodels.stats.outliers_influence import variance_inflation_factor
+
+class ReduceVIF(BaseEstimator, TransformerMixin):
+    def __init__(self, thresh=5.0, scale=True, impute=True, impute_strategy='median', print_progress=False):
+       
+        # From looking at documentation, values between 5 and 10 are "okay".
+        # Above 10 is too high and so should be removed.
+        self.thresh = thresh
+        self.print_progress = print_progress
+       
+        # The statsmodel function will fail with NaN values, as such we have to impute them.
+        # By default we impute using the median value.
+        # This imputation could be taken out and added as part of an sklearn Pipeline.
+        if impute:
+            self.imputer = Imputer(strategy=impute_strategy)
+            
+        if scale:
+            self.scale = StandardScaler()
+ 
+    def fit(self, X, y=None):
+        print('ReduceVIF fit')
+        
+        if hasattr(self, 'imputer'):
+            self.imputer.fit(X)
+            
+        if hasattr(self, 'scale'):
+            self.scale.fit(X)
+        return self
+ 
+    def transform(self, X, y=None):
+        print('ReduceVIF transform')
+        
+        columns = X.columns.tolist()
+        
+        if hasattr(self, 'imputer'):
+            X = pd.DataFrame(self.imputer.transform(X), columns=columns)
+            
+        if hasattr(self, 'scale'):
+            X = pd.DataFrame(self.scale.transform(X), columns=columns)
+        
+        return ReduceVIF.calculate_vif(self, X, self.thresh)
+ 
+    @staticmethod
+    def calculate_vif(self, X, thresh=5.0):
+        
+        # Taken from https://stats.stackexchange.com/a/253620/53565 and modified
+        dropped=True
+        while dropped:
+            
+            variables = X.columns
+            
+            dropped = False
+            vif = [variance_inflation_factor(X[variables].values, X.columns.get_loc(var)) for var in X.columns]
+           
+            max_vif = max(vif)
+            if max_vif > thresh:
+                maxloc = vif.index(max_vif)
+                if self.print_progress:
+                    print(f'Dropping {X.columns[maxloc]} with vif={max_vif}')
+                X = X.drop([X.columns.tolist()[maxloc]], axis=1)
+                dropped=True
+        return X
+
+
+# In[ ]:
 
 
 #=============
@@ -133,19 +245,19 @@ def visualize_features(df_train):
 #=============
 
 lgbm_params = {
-    'n_estimators':[20, 25, 30, 35, 40, 50, 60],
-    'max_depth':[1, 2, 3],
-    'freature_fraction':[0.6, 0.7, 0.8, 0.9, 1],
-    'subsample': [0.6, 0.7, 0.8, 0.9, 1],
-    'min_child_weight': [5, 10, 15, 20, 25]
+    'n_estimators':[30, 40, 50, 60, 75],
+    'max_depth':[2, 3, 4, 5, 6, 7],
+    'freature_fraction':[0.5, 0.6, 0.7, 0.8, 0.9, 1],
+    'subsample': [0.5, 0.6, 0.7, 0.8, 0.9, 1],
+    'min_child_weight': [5, 10, 15, 20, 25],
 }
 
 xgb_params = {
-    'n_estimators': [20, 25, 30, 35, 40, 50, 60, 75], 
-    'max_depth': [1, 2, 3], 
-    'subsample': [0.6, 0.7, 0.8, 0.9, 1],
+    'n_estimators': [30, 40, 50, 60, 75], 
+    'max_depth': [2, 3, 4, 5, 6, 7], 
+    'subsample': [0.5, 0.6, 0.7, 0.8, 0.9, 1],
     'min_child_weight': [10, 15, 20, 25, 30],
-    'freature_fraction':[0.6, 0.7, 0.8, 0.9, 1]
+    'freature_fraction':[0.5, 0.6, 0.7, 0.8, 0.9, 1]
 }
 
 catboost_params = {
@@ -158,7 +270,7 @@ ridge_params = {
 }
 
 lasso_params = {
-    'alpha': [0.1, 0.2, 0.3, 0.4, 0.5, 0.75, 1, 1.5, 2]
+    'alpha': [0.5, 0.75, 0.8, .9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5]
 }
 
 lasso_pca_params = {
@@ -168,7 +280,7 @@ lasso_pca_params = {
 lr_params = {}
 
 
-# In[14]:
+# In[ ]:
 
 
 def get_estimator(name, params, rand=True, random_state=None):
@@ -183,7 +295,7 @@ def get_estimator(name, params, rand=True, random_state=None):
     from catboost import CatBoostRegressor
     from sklearn.linear_model import LinearRegression
     
-    state = RandomState(random_state)
+    state = random.RandomState(random_state)
     
     rnd_params = {}
     tmp_params = params[name]
@@ -194,22 +306,22 @@ def get_estimator(name, params, rand=True, random_state=None):
         rnd_params = tmp_params
     
     if name == 'lgbm':
-        estimator = LGBMRegressor(random_state=1, **rnd_params, min_data=1)
+        estimator = LGBMRegressor(random_state=1234, **rnd_params, min_data=1)
         
     if name == 'xgb':
-        estimator = XGBRegressor(random_state=1, **rnd_params)
+        estimator = XGBRegressor(random_state=1234, **rnd_params)
         
     if name == 'ridge':
-        estimator = Ridge(random_state=1, **rnd_params)
+        estimator = Ridge(random_state=1234, **rnd_params)
         
     if name == 'lasso':
-        estimator = Lasso(random_state=1, **rnd_params)
+        estimator = Lasso(random_state=1234, **rnd_params)
         
     if name == 'catboost':
-        estimator = CatBoostRegressor(random_state=1, logging_level='Silent', **rnd_params)
+        estimator = CatBoostRegressor(random_state=1234, logging_level='Silent', **rnd_params)
         
     if name == 'lasso_pca':
-        estimator = Lasso(random_state=1, **rnd_params)
+        estimator = Lasso(random_state=1234, **rnd_params)
         
     if name == 'lr_pca':
         estimator = LinearRegression()
@@ -217,7 +329,7 @@ def get_estimator(name, params, rand=True, random_state=None):
     return estimator, rnd_params
 
 
-# In[6]:
+# In[ ]:
 
 
 def X_y_split(train, val, scale=True, pca=False):
@@ -257,7 +369,7 @@ def X_y_split(train, val, scale=True, pca=False):
     return X_train, X_val, y_train, y_val
 
 
-# In[7]:
+# In[ ]:
 
 
 def calc_residuals(estimator, X_train, y_train, X_val, y_val, train_error, val_error):
@@ -274,7 +386,7 @@ def calc_residuals(estimator, X_train, y_train, X_val, y_val, train_error, val_e
     return train_error, val_error
 
 
-# In[1]:
+# In[ ]:
 
 
 def error_compare(df, year_cutoff = 1):
@@ -297,7 +409,7 @@ def error_compare(df, year_cutoff = 1):
     return [r_sq_pred, corr_pred, r_sq_avg_pick, corr_avg_pick]
 
 
-# In[9]:
+# In[ ]:
 
 
 def predict_rmse(estimator, X_train, y_train, X_val, y_val, train_rmses, val_rmses):
@@ -316,10 +428,10 @@ def predict_rmse(estimator, X_train, y_train, X_val, y_val, train_rmses, val_rms
     return train_rmses, val_rmses
 
 
-# In[10]:
+# In[ ]:
 
 
-def validation(estimators, params, df_train, iterations=50):
+def validation(estimators, params, df_train, iterations=50, random_state=None, scale=False, pca=False):
     '''
     input: training dataset, estimator
     output: out-of-sample errors and predictions for 5 timeframes
@@ -333,7 +445,11 @@ def validation(estimators, params, df_train, iterations=50):
     summary = pd.DataFrame()
     for i in range(0, iterations):
         
-        if (i+1) % 10 == 0:
+        # update random state to pull new params, but keep consistency based on starting state
+        random_state = random_state + 1
+        
+        # print update on progress
+        if (i+1) % 20 == 0:
             print(str(datetime.datetime.now())[:-7])
             print('Completed ' + str(i+1) + '/' + str(iterations) + ' iterations')
             
@@ -346,7 +462,7 @@ def validation(estimators, params, df_train, iterations=50):
         for est in estimators:
 
             # grab estimator and random parameters for estimator type
-            estimator, param_tracker[i][est] = get_estimator(est, params)
+            estimator, param_tracker[i][est] = get_estimator(est, params, rand=True, random_state=random_state)
         
             # run through all years for given estimator
             val_error = []    
@@ -361,18 +477,16 @@ def validation(estimators, params, df_train, iterations=50):
                 val_split = df_train[df_train.year == m]
         
                 # splitting in X and y
-                scale=False
                 if est == 'ridge':
                     scale = True
                 if est == 'lasso': 
                     scale = True
+                if est == 'knn': 
+                    scale = True
                     
-                pca=False
-                if est == 'lr_pca':
-                    pca=True
-                if est == 'lasso_pca':
-                    pca=True
-                    
+                if pca == True:
+                    scale = True
+                
                 X_train, X_val, y_train, y_val = X_y_split(train_split, val_split, scale, pca)
         
                 # fit training data and predict validation data
@@ -382,12 +496,11 @@ def validation(estimators, params, df_train, iterations=50):
                 # skip over the first year of predictions due to high error for xgb / lgbm
                 if m > 1:
                     val_predictions = np.append(val_predictions, val_predict, axis=0)
+                    # calculate and append training and validation errors
+                    train_error, val_error = calc_residuals(estimator, X_train, y_train, X_val, y_val, train_error, val_error)
                 else:
                     pass
                 
-                # calculate and append training and validation errors
-                train_error, val_error = calc_residuals(estimator, X_train, y_train, X_val, y_val, train_error, val_error)
-            
             # append predictions for all validation samples / models (n_samples x m_models
             # and all errors (n_years x m_models) to dataframes 
             est_predictions = pd.concat([est_predictions, pd.Series(val_predictions, name=est)], axis=1)
@@ -422,7 +535,7 @@ def validation(estimators, params, df_train, iterations=50):
     return param_tracker, summary, wt_results, est_errors
 
 
-# In[11]:
+# In[ ]:
 
 
 def generate_predictions(best_result, param_list, summary, df_train, df_predict, figsize=(6,15)):
@@ -456,7 +569,7 @@ def generate_predictions(best_result, param_list, summary, df_train, df_predict,
     return wt_predictions, models
 
 
-# In[12]:
+# In[ ]:
 
 
 def predict_roc(estimator, X_train, y_train, X_val, y_val, train_rmses, val_rmses, avg='macro'):
@@ -475,7 +588,7 @@ def predict_roc(estimator, X_train, y_train, X_val, y_val, train_rmses, val_rmse
     return train_rmses, val_rmses
 
 
-# In[13]:
+# In[ ]:
 
 
 def validation_class(df_train, estimator, df_predict, scale=True, proba=False, avg='macro', pca=False):
@@ -534,7 +647,7 @@ def validation_class(df_train, estimator, df_predict, scale=True, proba=False, a
     return estimator, train_predictions, test_predictions
 
 
-# In[14]:
+# In[ ]:
 
 
 def plot_results(results, label, asc=True, barh=True, figsize=(6,16), fontsize=12):
@@ -559,7 +672,7 @@ def plot_results(results, label, asc=True, barh=True, figsize=(6,16), fontsize=1
     return ax
 
 
-# In[15]:
+# In[ ]:
 
 
 def add_outcomes(df, outcomes, year_cutoff):
@@ -583,7 +696,7 @@ def add_outcomes(df, outcomes, year_cutoff):
     return df
 
 
-# In[16]:
+# In[ ]:
 
 
 def show_error(df, year_cutoff = 0):
@@ -606,7 +719,7 @@ def show_error(df, year_cutoff = 0):
     plt.scatter(df.pred, df.y_act);
 
 
-# In[17]:
+# In[ ]:
 
 
 from sklearn.preprocessing import MinMaxScaler
@@ -767,7 +880,7 @@ class clustering():
         return rb_sampling
 
 
-# In[18]:
+# In[ ]:
 
 
 def view_projections(data, player):
