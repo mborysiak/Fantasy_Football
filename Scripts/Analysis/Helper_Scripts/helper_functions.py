@@ -402,14 +402,14 @@ def calc_residuals(estimator, X_train, y_train, X_val, y_val, train_error, val_e
 # In[ ]:
 
 
-def error_compare(df):
+def error_compare(df, skip_years):
     
     from scipy.stats import pearsonr
     from sklearn.linear_model import LinearRegression
     import pandas as pd
     import matplotlib.pyplot as plt
 
-    df = df[df.year > df.year.min() + 2].reset_index(drop=True)
+    df = df[df.year > df.year.min() + skip_years+1].dropna().reset_index(drop=True)
 
     lr = LinearRegression().fit(df.pred.values.reshape(-1,1), df.y_act)
     r_sq_pred = round(lr.score(df.pred.values.reshape(-1,1), df.y_act), 3)
@@ -417,7 +417,7 @@ def error_compare(df):
     
     lr = LinearRegression().fit(df.avg_pick.values.reshape(-1,1), df.y_act)
     r_sq_avg_pick = round(lr.score(df.avg_pick.values.reshape(-1,1), df.y_act), 3)
-    corr_avg_pick = round(pearsonr(df.avg_pick, df.y_act)[0], 3)
+    corr_avg_pick = abs(round(pearsonr(df.avg_pick, df.y_act)[0], 3))
 
     return [r_sq_pred, corr_pred, r_sq_avg_pick, corr_avg_pick]
 
@@ -425,89 +425,80 @@ def error_compare(df):
 # In[ ]:
 
 
-def predict_rmse(estimator, X_train, y_train, X_val, y_val, train_rmses, val_rmses):
-    '''
-    input: estimator, feature set to be predicted, ground truth
-    output: RMSE value for out-of-sample predctions and list of predictions
-    '''
-    from sklearn.metrics import mean_squared_error
-        
-    predict_train = estimator.predict(X_train)
-    train_rmses.append(np.sqrt(mean_squared_error(predict_train, y_train)))
-    
-    predict_val = estimator.predict(X_val)
-    val_rmses.append(np.sqrt(mean_squared_error(predict_val, y_val)))
-    
-    return train_rmses, val_rmses
-
-
-# In[ ]:
-
-
-def validation(estimators, params, df_train, iterations=50, random_state=None, scale=False, pca=False):
+def validation(estimators, params, df_train, iterations=50, random_state=None, scale=False, pca=False, skip_years=2):
     '''
     input: training dataset, estimator
     output: out-of-sample errors and predictions for 5 timeframes
     '''
     from sklearn.metrics import mean_squared_error
+    from sklearn.metrics import mean_absolute_error
     import pandas as pd
     import numpy as np
     import datetime
     
+    # initialize a parameter tracker dictionary and summary output dataframe
     param_tracker = {}
     summary = pd.DataFrame()
+    
+    #==========
+    # Complete a Random Hyperparameter search for the given models and parameters
+    #==========
+    
     for i in range(0, iterations):
         
         # update random state to pull new params, but keep consistency based on starting state
         random_state = random_state + 1
         
         # print update on progress
-        if (i+1) % 20 == 0:
+        if (i+1) % 10 == 0:
             print(str(datetime.datetime.now())[:-7])
             print('Completed ' + str(i+1) + '/' + str(iterations) + ' iterations')
             
-        # create empty dictionary for current iteration storage
+        # create empty sub-dictionary for current iteration storage
         param_tracker[i] = {}
         
         # create empty lists to store predictions and errors for each estimator
         est_predictions=pd.DataFrame()
         est_errors=pd.DataFrame()
+        
+        #==========
+        # Loop through estimators with a running time series based training and validation method
+        #==========
+        
         for est in estimators:
 
             # grab estimator and random parameters for estimator type
             estimator, param_tracker[i][est] = get_estimator(est, params, rand=True, random_state=random_state)
         
-            # run through all years for given estimator
+            # run through all years for given estimator and save errors and predictions
             val_error = []    
             train_error = [] 
             val_predictions = np.array([]) 
             years = df_train.year.unique()[1:]
 
+            #==========
+            # Loop through years and complete a time-series validation of the given model
+            #==========
+            
             for m in years:
                 
                 # create training set for all previous years and validation set for current year
                 train_split = df_train[df_train.year < m]
                 val_split = df_train[df_train.year == m]
         
-                # splitting in X and y
-                if est == 'ridge':
+                # setting the scale parameter based on the given model
+                if est == 'ridge' or est == 'lasso' or est == 'knn' or pca == True:
                     scale = True
-                if est == 'lasso': 
-                    scale = True
-                if est == 'knn': 
-                    scale = True
-                    
-                if pca == True:
-                    scale = True
-                
+    
+                # splitting the train and validation sets into X_train, y_train, X_val and y_val
                 X_train, X_val, y_train, y_val = X_y_split(train_split, val_split, scale, pca)
         
-                # fit training data and predict validation data
+                # fit training data and creating prediction based on validation data
                 estimator.fit(X_train, y_train)
                 val_predict = estimator.predict(X_val)
                 
-                # skip over the first year of predictions due to high error for xgb / lgbm
-                if m > years.min() + 1:
+                # skip over the first two year of predictions due to high error for xgb / lgbm
+                if m > years.min() + skip_years:
                     val_predictions = np.append(val_predictions, val_predict, axis=0)
                     
                     # calculate and append training and validation errors
@@ -515,10 +506,14 @@ def validation(estimators, params, df_train, iterations=50, random_state=None, s
                 else:
                     pass
                 
-            # append predictions for all validation samples / models (n_samples x m_models
+            # append predictions for all validation samples / models (n_samples x m_models)
             # and all errors (n_years x m_models) to dataframes 
             est_predictions = pd.concat([est_predictions, pd.Series(val_predictions, name=est)], axis=1)
             est_errors = pd.concat([est_errors, pd.Series(val_error, name=est)], axis=1)
+        
+        #==========
+        # Create an ensemble model based on residual errors from each individual model
+        #==========
         
         # create weights based on the mean errors across all years for each model
         est_errors = est_errors.iloc[1:, :]
@@ -526,26 +521,45 @@ def validation(estimators, params, df_train, iterations=50, random_state=None, s
         weights = round(frac / frac.sum(), 3)          
         
         # multiply the outputs from each model by their weights and sum to get final prediction
-        wt_results = pd.concat([df_train[df_train.year > years.min() + 1].reset_index(drop=True),
+        wt_results = pd.concat([df_train[df_train.year > years.min() + skip_years].reset_index(drop=True),
                                 pd.Series((est_predictions*weights).sum(axis=1), name='pred')],
                                 axis=1)
         
-        wt_results['error'] = wt_results.y_act - wt_results.pred
+        #==========
+        # Calculate Error Metrics and Prepare Export
+        #==========
         
         # calculate r_squared and correlation for n+1 results using predictions and avg_pick
-        compare_metrics = error_compare(wt_results)
+        compare_metrics = error_compare(wt_results, skip_years)
 
-        # create a list of model weights and average RMSE for ensemble to append to df for export
-        wt_rmse = round(np.sqrt(mean_squared_error(wt_results.pred, df_train[df_train.year > years.min() + 1].reset_index(drop=True).y_act)), 3)
+        # calculate the RMSE and MAE of the ensemble predictions
+        wt_rmse = round(np.sqrt(mean_squared_error(wt_results.pred, df_train[df_train.year > years.min() + skip_years].reset_index(drop=True).y_act)), 2)
+        wt_mae = round(mean_absolute_error(wt_results.pred, df_train[df_train.year > years.min() + skip_years].reset_index(drop=True).y_act), 2)
+        
+        #--------
+        # create a list of model weights based on residuals, as well s the average RMSE & MAE 
+        # for the ensemble predictions to append to the output dataframe for export
+        #--------
+        
+        # generate a list of weights used for models
         wt_list = list(weights.values)
+        
+        # append rmse and mae metrics for a given ensemble
         wt_list.append(wt_rmse)
+        wt_list.append(wt_mae)
+        
+        # extend the results with the r2 and correlation metrics for the ensemble and adp
         wt_list.extend(compare_metrics)
         summary = summary.append([(wt_list)])
     
+    #==========
+    # Update Summary Table of Weights and Error Metric Results
+    #==========
+        
     summary = summary.reset_index(drop=True)
-    estimators.extend(['rmse', 'rsq_pred', 'corr_pred', 'rsq_adp', 'corr_adp'])
+    estimators.extend(['rmse', 'mae', 'r2_pred', 'c_pred', 'r2_adp', 'c_adp'])
     summary.columns = estimators
-    summary = summary.sort_values(by='rmse', ascending=True)
+    summary = summary.sort_values(by=['rmse', 'r2_pred'], ascending=[True, False])
     
     return param_tracker, summary, wt_results, est_errors
 
