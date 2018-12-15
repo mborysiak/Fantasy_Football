@@ -48,7 +48,7 @@ pos['RB']['age_features'] = ['fp', 'rush_yd_per_game', 'rec_yd_per_game', 'total
                              'scrimmage_yds_sum', 'avg_pick', 'fp_per_touch', 'ms_rush_yd_per_att', 'ms_tgts']
 
 
-# In[18]:
+# In[ ]:
 
 
 def calculate_fp(df, pts, pos):
@@ -121,9 +121,6 @@ def features_target(df, year_start, year_end, median_features, sum_features, max
 
     df_predict['year'] = df_predict.year.astype('int')
     
-    df_predict['year'] = df_predict.year - df_train.year.min()
-    df_train['year'] = df_train.year - df_train.year.min()
-    
     return df_train, df_predict
 
 
@@ -149,7 +146,7 @@ def visualize_features(df_train):
     PrettyPlot(plt);
 
 
-# In[19]:
+# In[ ]:
 
 
 def corr_removal(df_train, df_predict, corr_cutoff=0.025):
@@ -159,10 +156,11 @@ def corr_removal(df_train, df_predict, corr_cutoff=0.025):
 
     good_cols.extend(['player', 'year'])
     df_train = df_train[good_cols]
-    df_train.loc[:,~df_train.columns.duplicated()]
+    df_train = df_train.loc[:,~df_train.columns.duplicated()]
 
     good_cols.remove('y_act')
     df_predict = df_predict[good_cols]
+    df_predict = df_predict.loc[:,~df_predict.columns.duplicated()]
     
     return df_train, df_predict
 
@@ -193,7 +191,6 @@ class ReduceVIF(BaseEstimator, TransformerMixin):
             self.scale = StandardScaler()
  
     def fit(self, X, y=None):
-        print('ReduceVIF fit')
         
         if hasattr(self, 'imputer'):
             self.imputer.fit(X)
@@ -203,7 +200,6 @@ class ReduceVIF(BaseEstimator, TransformerMixin):
         return self
  
     def transform(self, X, y=None):
-        print('ReduceVIF transform')
         
         columns = X.columns.tolist()
         
@@ -217,6 +213,12 @@ class ReduceVIF(BaseEstimator, TransformerMixin):
  
     @staticmethod
     def calculate_vif(self, X, thresh=5.0):
+        
+        print('Running VIF Feature Reduction')
+        
+        # filter out warnings during run
+        import warnings
+        warnings.filterwarnings("ignore")
         
         # Taken from https://stats.stackexchange.com/a/253620/53565 and modified
         dropped=True
@@ -234,6 +236,7 @@ class ReduceVIF(BaseEstimator, TransformerMixin):
                     print(f'Dropping {X.columns[maxloc]} with vif={max_vif}')
                 X = X.drop([X.columns.tolist()[maxloc]], axis=1)
                 dropped=True
+                        
         return X
 
 
@@ -258,6 +261,13 @@ xgb_params = {
     'subsample': [0.5, 0.6, 0.7, 0.8, 0.9, 1],
     'min_child_weight': [10, 15, 20, 25, 30],
     'freature_fraction':[0.5, 0.6, 0.7, 0.8, 0.9, 1]
+}
+
+rf_params = {
+    'n_estimators': [30, 40, 50, 60, 75, 100, 125, 150], 
+    'max_depth': [3, 4, 5, 6, 7], 
+    'min_samples_leaf': [1, 2, 3, 5, 7, 10],
+    'max_features':[0.5, 0.6, 0.7, 0.8, 0.9, 1]
 }
 
 catboost_params = {
@@ -310,6 +320,9 @@ def get_estimator(name, params, rand=True, random_state=None):
         
     if name == 'xgb':
         estimator = XGBRegressor(random_state=1234, **rnd_params)
+        
+    if name == 'rf':
+        estimator = RandomForestRegressor(random_state=1234, **rnd_params)
         
     if name == 'ridge':
         estimator = Ridge(random_state=1234, **rnd_params)
@@ -389,21 +402,21 @@ def calc_residuals(estimator, X_train, y_train, X_val, y_val, train_error, val_e
 # In[ ]:
 
 
-def error_compare(df, year_cutoff = 1):
+def error_compare(df):
     
     from scipy.stats import pearsonr
     from sklearn.linear_model import LinearRegression
     import pandas as pd
     import matplotlib.pyplot as plt
 
-    df = df[df.year > year_cutoff].reset_index(drop=True)
+    df = df[df.year > df.year.min() + 2].reset_index(drop=True)
 
     lr = LinearRegression().fit(df.pred.values.reshape(-1,1), df.y_act)
     r_sq_pred = round(lr.score(df.pred.values.reshape(-1,1), df.y_act), 3)
     corr_pred = round(pearsonr(df.pred, df.y_act)[0], 3)
     
     lr = LinearRegression().fit(df.avg_pick.values.reshape(-1,1), df.y_act)
-    r_sq_avg_pick = lr.score(df.avg_pick.values.reshape(-1,1), df.y_act)
+    r_sq_avg_pick = round(lr.score(df.avg_pick.values.reshape(-1,1), df.y_act), 3)
     corr_avg_pick = round(pearsonr(df.avg_pick, df.y_act)[0], 3)
 
     return [r_sq_pred, corr_pred, r_sq_avg_pick, corr_avg_pick]
@@ -469,7 +482,7 @@ def validation(estimators, params, df_train, iterations=50, random_state=None, s
             train_error = [] 
             val_predictions = np.array([]) 
             years = df_train.year.unique()[1:]
-            
+
             for m in years:
                 
                 # create training set for all previous years and validation set for current year
@@ -494,8 +507,9 @@ def validation(estimators, params, df_train, iterations=50, random_state=None, s
                 val_predict = estimator.predict(X_val)
                 
                 # skip over the first year of predictions due to high error for xgb / lgbm
-                if m > 1:
+                if m > years.min() + 1:
                     val_predictions = np.append(val_predictions, val_predict, axis=0)
+                    
                     # calculate and append training and validation errors
                     train_error, val_error = calc_residuals(estimator, X_train, y_train, X_val, y_val, train_error, val_error)
                 else:
@@ -509,26 +523,27 @@ def validation(estimators, params, df_train, iterations=50, random_state=None, s
         # create weights based on the mean errors across all years for each model
         est_errors = est_errors.iloc[1:, :]
         frac = 1 - (est_errors.mean() / (est_errors.mean().sum()))
-        weights = frac / frac.sum()            
+        weights = round(frac / frac.sum(), 3)          
         
         # multiply the outputs from each model by their weights and sum to get final prediction
-        wt_results = pd.concat([df_train[df_train.year > 1].reset_index(drop=True),
+        wt_results = pd.concat([df_train[df_train.year > years.min() + 1].reset_index(drop=True),
                                 pd.Series((est_predictions*weights).sum(axis=1), name='pred')],
                                 axis=1)
+        
         wt_results['error'] = wt_results.y_act - wt_results.pred
         
         # calculate r_squared and correlation for n+1 results using predictions and avg_pick
         compare_metrics = error_compare(wt_results)
 
         # create a list of model weights and average RMSE for ensemble to append to df for export
-        wt_rmse = np.sqrt(mean_squared_error(wt_results.pred, df_train[df_train.year > 1].reset_index(drop=True).y_act))
+        wt_rmse = round(np.sqrt(mean_squared_error(wt_results.pred, df_train[df_train.year > years.min() + 1].reset_index(drop=True).y_act)), 3)
         wt_list = list(weights.values)
         wt_list.append(wt_rmse)
         wt_list.extend(compare_metrics)
         summary = summary.append([(wt_list)])
     
     summary = summary.reset_index(drop=True)
-    estimators.extend(['rmse', 'rsq_pred', 'corr_pred', 'rsq_avg_pick', 'corr_avg_pick'])
+    estimators.extend(['rmse', 'rsq_pred', 'corr_pred', 'rsq_adp', 'corr_adp'])
     summary.columns = estimators
     summary = summary.sort_values(by='rmse', ascending=True)
     
@@ -564,9 +579,9 @@ def generate_predictions(best_result, param_list, summary, df_train, df_predict,
     to_plot = wt_predictions.pred
     to_plot.index = wt_predictions.player
     to_plot.sort_values().plot.barh(figsize=figsize);
+    plt.show()
     
-    
-    return wt_predictions, models
+    return wt_predictions, models, 
 
 
 # In[ ]:
@@ -650,7 +665,7 @@ def validation_class(df_train, estimator, df_predict, scale=True, proba=False, a
 # In[ ]:
 
 
-def plot_results(results, label, asc=True, barh=True, figsize=(6,16), fontsize=12):
+def plot_results(results, col_names, asc=True, barh=True, figsize=(6,16), fontsize=12):
     '''
     Input:  The feature importance or coefficient weights from a trained model.
     Return: A plot of the ordered weights, demonstrating relative importance of each feature.
@@ -660,7 +675,7 @@ def plot_results(results, label, asc=True, barh=True, figsize=(6,16), fontsize=1
     import matplotlib.pyplot as plt
 
     #cols = df_predict.select_dtypes(include=['float', 'int', 'uint8']).columns
-    series = pd.Series(results, index=label).sort_values(ascending=asc)
+    series = pd.Series(results, index=col_names).sort_values(ascending=asc)
     
     if barh == True:
         ax = series.plot.barh(figsize=figsize, fontsize=fontsize)
