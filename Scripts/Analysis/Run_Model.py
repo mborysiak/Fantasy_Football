@@ -6,11 +6,20 @@
 # In[1]:
 
 
+#==========
+# General Setting
+#==========
+
 # set core path
 path = '/Users/Mark/Documents/Github/Fantasy_Football/'
 
 # set to position to analyze: 'RB', 'WR', 'QB', or 'TE'
 set_position = 'RB'
+
+
+#==========
+# Data Filtering
+#==========
 
 # set year to analyze
 set_year = 2018
@@ -19,6 +28,11 @@ earliest_year = 2002
 # set required touches (or pass thrown) and games for consideration
 req_games = 8
 req_touch = 50
+
+
+#==========
+# Fantasy Point Values
+#==========
 
 # settings for fantasy points
 pts = {}
@@ -31,11 +45,28 @@ pts['fmb_pts'] = -2.0
 pts['int_pts'] = -2
 pts['sack_pts'] = -1
 
+# metrics to be predicted for fantasy point generation
+metrics = ['rush_yd_per_game', 'rec_yd_per_game', 'rec_per_game', 'td_per_game']
+
+# create the points list corresponding to metrics calculated
+pts_list = [pts['yd_pts'], pts['yd_pts'], pts['rec_pts'], pts['td_pts']]
+
+
+#==========
+# Model Settings
+#==========
+
 # VIF threshold to include a feature
-vif_thresh = 1000
+vif_thresh = 10000
 
 # number of hypersearch rounds for training ensemble
-iter_rounds = 50
+iter_rounds = 5
+
+# number of time to repeat predictions when generation prior distributions
+prior_repeats=5
+
+# whether or not to plot bayes outputs
+plot_importance = False
 
 
 # # Load Libraries
@@ -80,7 +111,7 @@ from helper_functions import *;
 
 
 # load prepared data
-df = pd.read_csv(path + 'Data/' + str(set_year) + '/' + set_position + '_Input.csv').iloc[:, 1:]
+df = pd.read_csv(path + 'Data/' + set_position + '_Input.csv').iloc[:, 1:]
 
 ######
 ### tmp--need to add td per game to data generation ###
@@ -109,14 +140,13 @@ df_test_results = pd.DataFrame([this_year.player]).T
 df = calculate_fp(df, pts, pos='RB')
 
 
-# In[6]:
+# In[5]:
 
 
 #==========
 # Loop to create statistical predictions
 #==========
 
-metrics = ['rush_yd_per_game', 'rec_yd_per_game', 'rec_per_game', 'td_per_game']
 output = {}
 
 for metric in metrics:
@@ -228,19 +258,21 @@ df_train, df_predict = features_target(df, earliest_year, set_year-1,
                                            target_feature='fp_per_game')
 
 
-# In[ ]:
+# In[6]:
 
 
 #==========
 # If desired, plot feature importances for a given metric / model
 #==========
 
-metric = 'td_per_game'
-i = 2
-try:
-    plot_results(output[metric]['models'][i].feature_importances_, col_names=output[metric]['cols']);
-except:
-    plot_results(output[metric]['models'][i].coef_, col_names=output[metric]['cols']);
+if plot_importance == True:
+    
+    metric = 'td_per_game'
+    i = 2
+    try:
+        plot_results(output[metric]['models'][i].feature_importances_, col_names=output[metric]['cols']);
+    except:
+        plot_results(output[metric]['models'][i].coef_, col_names=output[metric]['cols']);
 
 
 # In[7]:
@@ -250,338 +282,71 @@ except:
 # Calculate fantasy points based on predictions and point values
 #==========
 
-# create list of fantasy point metrics for each stat category
-pts_list = [pts['yd_pts'], pts['yd_pts'], pts['rec_pts'], pts['td_pts']]
-
-# calculate fantasy points for the train set
-df_train_results.iloc[:, 2:] = df_train_results.iloc[:, 2:] * pts_list
-df_train_results.loc[:, 'pred'] = df_train_results.iloc[:, 2:].sum(axis=1)
-
-# calculate fantasy points for the test set
-df_test_results.iloc[:, 1:] = df_test_results.iloc[:, 1:] * pts_list
-df_test_results.loc[:, 'pred'] = df_test_results.iloc[:, 1:].sum(axis=1)
-
-# calculate projected FP per game based on individual statistcal predictions
-df = calculate_fp(df, pts, pos='RB')
-
-# add actual results and adp to the train df
-df_train_results = pd.merge(df_train_results, df_train[['player', 'year', 'avg_pick', 'y_act']],
-                           how='inner', left_on=['player', 'year'], right_on=['player', 'year'])
-
-# add adp to the test df
-df_test_results = pd.merge(df_test_results, df_predict[['player', 'avg_pick']],
-                           how='inner', left_on='player', right_on='player')
-
-# calculate the residual between the predictions and results
-df_train_results['error'] = df_train_results.pred - df_train_results.y_act
+df_train_results, df_test_results = format_results(df_train_results, df_test_results, 
+                                                   df_train, df_predict, pts_list)
 
 
 # In[8]:
 
 
-# plot the predictions in descending order
+#==========
+# Plot Predictions for Each Player
+#==========
+
 df_test_results.sort_values('pred').plot.barh(x='player', y='pred', figsize=(5,15));
 
 
 # # Clustering Players into Tiers
 
-# In[19]:
+# In[9]:
 
 
-from sklearn.preprocessing import MinMaxScaler
+#==========
+# Group Players into Clusters Using Decision Tree
+#==========
 
-class clustering():
-
-    def __init__(self, df_train, df_test):
-    
-        from sklearn.preprocessing import StandardScaler
-        from sklearn.preprocessing import MinMaxScaler
-        import pandas as pd
-        import matplotlib.pyplot as plt
-        
-        # create self versions of train and test
-        self.df_train = df_train
-        self.df_test = df_test
-    
-        # create df for clustering by selecting numeric values and dropping y_act
-        self.X_train = df_train.select_dtypes(include=['float', 'int', 'uint8']).drop(['y_act', 'avg_pick', 'error'], axis=1)
-        self.X_test = df_test.select_dtypes(include=['float', 'int', 'uint8']).drop(['avg_pick'], axis=1)
-        
-    def explore_k(self, k=15):
-        
-        from scipy.spatial.distance import cdist
-        from sklearn.cluster import KMeans
-        from sklearn import metrics
-
-        # k means determine k
-        X_train = self.X_train
-        distortions = []
-        silhouettes = []
-        K = range(2,k)
-        for k in K:
-            kmeanModel = KMeans(n_clusters=k, random_state=1).fit(X_train)
-            kmeanModel.fit(X_train);
-            distortions.append(sum(np.min(cdist(X_train, kmeanModel.cluster_centers_, 'euclidean'), axis=1)) / X_train.shape[0]);
-            
-            silhouettes.append(metrics.silhouette_score(X_train, kmeanModel.labels_))
-                               
-        # create elbow plot
-        fig = plt.figure()
-        ax1 = fig.add_subplot(121)
-        ax1.plot(K, distortions, 'bx-')
-        ax1.set_title("Distortion");
-        
-        ax2 = fig.add_subplot(122)
-        ax2.plot(K, silhouettes, 'x-')
-        ax2.set_title("Silhouette Score");
-        
-        
-    def fit_and_predict(self, k=10):
-        
-        from sklearn.cluster import KMeans
-
-        # retrain with optimal cluster 
-        self.k = k
-        self.kmeans = KMeans(n_clusters=k, random_state=1).fit(self.X_train)
-        self.train_results = self.kmeans.predict(self.X_train)
-        self.test_results = self.kmeans.predict(self.X_test) 
-    
-    
-    def add_clusters(self):
-        
-        from sklearn.linear_model import LinearRegression
-        from sklearn.model_selection import cross_val_score
-        
-        # add cluster results to the df_train and df_test
-        self.df_train['cluster'] = self.train_results
-        self.df_test['cluster'] = self.test_results
-        
-        final_train = pd.DataFrame()
-        final_test = pd.DataFrame()
-        
-        for j in range(0, self.k):
-        
-            test = self.df_test[self.df_test.cluster == j]
-            train = self.df_train[self.df_train.cluster==j]
-        
-            # create a linear regression instance
-            lr = LinearRegression()
-            X=train.pred.values.reshape(-1,1)
-            y=train.y_act
-        
-            # calculate rmse of predicted values vs. actual score
-            scores = cross_val_score(lr, X, y, scoring='neg_mean_absolute_error', cv=X.shape[0])
-            mae = np.mean(abs(scores))
-        
-            # update predictions based on actual score
-            lr.fit(X, y)
-            X_test = test.pred.values.reshape(-1,1)
-            predictions = lr.predict(X_test)
-            predictions_train = lr.predict(X)
-
-            # output accuracy metrics and predictions
-            rsq = round(lr.score(X,y), 3)
-            test['cluster_pred'] = predictions
-            test['rsq'] = rsq
-            test['mae'] = mae
-            
-            rsq = round(lr.score(X,y), 3)
-            train['cluster_pred'] = predictions_train
-            train['rsq'] = rsq
-            train['mae'] = mae
-            
-            final_test = pd.concat([final_test, test], axis=0)
-            final_train = pd.concat([final_train, train], axis=0)
-            
-        self.df_test = final_test
-        self.df_train = final_train
-        
-        return self.df_train, self.df_test
-            
-    
-    def show_results(self, j):
-        from scipy.stats import pearsonr
-        from sklearn.linear_model import LinearRegression
-        
-        test = self.df_test[self.df_test.cluster == j]
-        train = self.df_train[self.df_train.cluster==j]
-        
-        # calculate and print all percentiles for players in group
-        percentile = np.percentile(self.df_train[self.df_train.cluster == j].y_act, q=[5, 25, 50, 75, 95])
-        print('Fantasy PPG for Various Percentiles')
-        print('-----------------------------------')
-        print('5th percentile: ', round(percentile[0], 2))
-        print('25th percentile:', round(percentile[1], 2))
-        print('50th percentile:', round(percentile[2], 2))
-        print('75th percentile:', round(percentile[3], 2))
-        print('95th percentile:', round(percentile[4], 2))
-    
-        # show plot of historical actual results for cluster
-        ax = train.y_act.plot.hist()
-        ax.set_xlabel('Fantasy PPG Actual')
-    
-        # show plot of predicted vs actual points for cluster
-        ax = train.plot.scatter('pred', 'y_act')
-        ax.set_xlabel('Predicted Fantasy PPG')
-        ax.set_ylabel('Actual Fantasy PPG')
-        
-        # show correlation coefficient between actual and predicted points for cluster
-        print('')
-        print('Pred to Actual Correlation')
-        print(train.rsq.mean())
-        
-        # show examples of past players in cluster
-        current = test.sort_values(by='pred', ascending=False)[['player', 'pred', 'cluster_pred']]
-        
-        return current
-    
-    
-    def create_distributions(self, wt=2.5):
-        from scipy.stats import skewnorm
-        from scipy.stats import pearsonr
-        import numpy as np
-        
-        #==========
-        # Calculate Global Mean and Stand Deviation for Actual Results
-        #==========
-        
-        # historical standard deviation and mean for actual results
-        hist_std = df_train_results.groupby('player').agg('std').dropna()
-        hist_mean = df_train_results.groupby('player').agg('mean').dropna()
-        
-        # merge historicaly mean and standard deviations
-        hist_mean_std = pd.merge(hist_std, hist_mean, how='inner', left_index=True, right_index=True)
-        
-        # calculate global coefficient of variance for players that don't have enough historical results
-        global_cv = (hist_mean_std.y_act_x / hist_mean_std.y_act_y).mean()
-        
-        #==========
-        # Calculate Global Mean and Stand Deviation for Actual Results
-        #==========
-        
-        return rb_sampling
-
-
-# In[20]:
-
-
+# initialize cluster with train and test results
 cluster = clustering(df_train_results, df_test_results)
-cluster.explore_k(k=15)
+
+# fit decision tree and apply nodes to players
+cluster.fit_and_predict_tree()
+
+# add linear regression of predicted vs actual for cluster predictions
+c_train, c_test = cluster.add_fit_metrics()
 
 
-# In[21]:
-
-
-cluster.fit_and_predict(k=8)
-c_train, c_test = cluster.add_clusters()
-
-
-# # Tier 1
-
-# In[29]:
-
-
-cluster.show_results(j=6)
-
-
-# In[30]:
-
-
-# historical standard deviation and mean for actual results
-hist_std = df_train_results.groupby('player').agg('std').dropna()
-hist_mean = df_train_results.groupby('player').agg('mean').dropna()
-        
-# merge historicaly mean and standard deviations
-hist_mean_std = pd.merge(hist_std, hist_mean, how='inner', left_index=True, right_index=True)
-        
-# calculate global coefficient of variance for players that don't have enough historical results
-global_cv = (hist_mean_std.y_act_x / hist_mean_std.y_act_y).mean()
-
-
-# In[62]:
+# In[10]:
 
 
 #==========
-# Loop to Create Prior and Posterior Distributions
+# Create Graph of Decision Tree Logic
 #==========
 
-prior_repeats = 5
-
-for player in df_test_results.player[0:]:
-    
-    # set seed
-    np.random.seed(1234)
-    
-    #==========
-    # Pull Out Predictions and Actual Results for Given Player to Create Prior
-    #==========
-    
-    #--------
-    # Extract this year's results and multiply by prior_repeats
-    #--------
-    
-    # extract predictions from ensemble and updated predictions based on cluster fit
-    ty = c_test.loc[c_test.player == player, ['player', 'pred']]
-    ty_c = c_test.loc[c_test.player == player, ['player', 'cluster_pred']]
-    
-    # replicate the predictions to increase n_0 for the prior
-    ty = pd.concat([ty]*prior_repeats, ignore_index=True)
-    ty_c = pd.concat([ty_c]*prior_repeats, ignore_index=True)
-    
-    # rename the prediction columns to 'points'
-    ty = ty.rename(columns={'pred': 'points'})
-    ty_c = ty_c.rename(columns={'cluster_pred': 'points'})
-    
-    #--------
-    # Extract previous year's results, if available
-    #--------
-    
-    py = c_train.loc[c_train.player == player, ['player', 'y_act']].reset_index(drop=True)[0:5]
-    py = py.rename(columns={'y_act': 'points'})
-    priors = pd.concat([ty, ty_c, py], axis=0)
-    
-    m_0 = priors.points.mean()
-    if py.shape[0] >= 3:
-        s2_0 = ((py.shape[0]*py.points.std()**2) + (2*prior_repeats*(m_0 * global_cv)**2)) / (py.shape[0] + 2*prior_repeats)
-    else:
-        s2_0 = (m_0 * global_cv)**2
-    n_0 = priors.shape[0]
-    v_0 = n_0 - 1
-    
-    
-    ty_cluster = df_test_results[df_test_results.player ==player].cluster.values[0]
-    update_data = df_train_results[df_train_results.cluster == ty_cluster].y_act
-    ybar = update_data.mean()
-    s2 = ((np.percentile(update_data, q=95)-np.percentile(update_data, q=5)) / 4.0)**2
-    n = len(update_data)
-    
-    # posterior hyperparamters 
-    n_n = n_0 + n 
-    m_n = (n*ybar + n_0*m_0) / n_n 
-    v_n = v_0 + n 
-   
-    s2_n = ((n-1)*s2 + v_0*s2_0 + (n_0*n*(m_0 - ybar)**2)/n_n)/v_n
-    
-    phi = np.random.gamma(shape=v_n/2, scale=2/(s2_n*v_n), size=10000)
-    sigma = 1/np.sqrt(phi)
-    post_mu = np.random.normal(loc=m_n, scale=sigma/(np.sqrt(n_n)), size=10000)
-    
-    prior_y = np.random.normal(loc=m_0, scale=np.sqrt(s2_0), size=10000)
-    pred_y =  np.random.normal(loc=post_mu, scale=sigma, size=10000)
-    
-    print(player)
-    print(s2_0)
-    print(s2_n)
-    pd.Series(prior_y, name='Prior').plot.hist(alpha=0.5, color='grey', bins=20, legend=True, xlim=[0, 30])
-    plt.axvline(x=prior_y.mean(), alpha=0.7, linestyle='--', color='grey')
-    pd.Series(pred_y, name='Posterior').plot.hist(alpha=0.4, color='teal', bins=20, legend=True)
-    plt.axvline(x=pred_y.mean(), alpha=0.5, linestyle='--', color='teal')
-
-    plt.show();
+cluster.tree_plot()
 
 
-# In[ ]:
+# In[11]:
 
 
-rb_sampling.to_csv('/Users/Mark/Desktop/Jupyter Projects/Fantasy Football/Projections/rb_sampling.csv')
+#==========
+# Show the Results for Each Cluster
+#==========
+
+cluster.show_results(j=14)
+
+
+# In[12]:
+
+
+#==========
+# Create the Distributions and Plot Prior / Posterior Results
+#==========
+
+rb_distributions = cluster.create_distributions(prior_repeats=5)
+
+
+# In[14]:
+
+
+rb_distributions.to_csv(path + 'Results/' + str(set_year) + '/RB_Distributions.csv', index=False)
 
