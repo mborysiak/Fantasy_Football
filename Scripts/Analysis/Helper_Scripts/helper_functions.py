@@ -29,12 +29,15 @@ pos['RB'] = {}
 # total touch filter name
 pos['RB']['touch_filter'] = 'total_touches'
 
+# metrics to be predicted for fantasy point generation
+pos['RB']['metrics'] = ['rush_yd_per_game', 'rec_yd_per_game', 'rec_per_game', 'td_per_game']
+
 # median feature categories
 pos['RB']['med_features'] = ['fp', 'tgt', 'receptions', 'total_touches', 'rush_yds', 'rec_yds', 
-                   'rush_yd_per_game', 'rec_yd_per_game', 'rush_td', 'games_started', 
-                   'qb_rating', 'qb_yds', 'pass_off', 'tm_rush_td', 'tm_rush_yds', 
-                   'tm_rush_att', 'adjust_line_yds', 'ms_rush_yd', 'ms_rec_yd', 'ms_rush_td',
-                   'avg_pick', 'fp_per_touch', 'team_rush_avg_att']
+                           'rush_yd_per_game', 'rec_yd_per_game', 'rush_td', 'games_started', 
+                           'qb_rating', 'qb_yds', 'pass_off', 'tm_rush_td', 'tm_rush_yds', 
+                           'tm_rush_att', 'adjust_line_yds', 'ms_rush_yd', 'ms_rec_yd', 'ms_rush_td',
+                           'avg_pick', 'fp_per_touch', 'team_rush_avg_att']
 
 # sum feature categories
 pos['RB']['sum_features'] = ['total_touches', 'att', 'scrimmage_yds']
@@ -55,6 +58,41 @@ pos['RB']['tree_params'] = {
     'splitter': ['best', 'random']
 }
 
+#---------
+# WR dictionary
+#---------
+ 
+# initilize RB dictionary
+pos['WR'] = {}
+
+# total touch filter name
+pos['WR']['touch_filter'] = 'tgt'
+
+# metrics to calculate stats for
+pos['WR']['metrics'] = ['yd_per_game', 'rec_per_game', 'td_per_game']
+
+# median feature categories
+pos['WR']['med_features'] = ['fp', 'tgt', 'receptions', 'yds', 'yd_per_game', 'td', 'games_started', 
+                             'qb_rating', 'qb_yds', 'pass_off', 'ms_tgts', 'ms_rec_yd', 
+                             'tm_net_pass_yds', 'avg_pick']
+# sum feature categories
+pos['WR']['sum_features'] = ['receptions', 'yds', 'tgt']
+
+# max feature categories
+pos['WR']['max_features'] = ['fp', 'td', 'tgt', 'ms_tgts', 'ms_rec_yd']
+
+# age feature categories
+pos['WR']['age_features'] = ['fp', 'yd_per_game', 'receptions', 'tgt', 'ms_tgts', 'ms_rec_yd', 
+                             'avg_pick', 'ms_yds_per_tgts']
+
+# set the random search parameters for tree clustering
+pos['WR']['tree_params'] = {
+    'max_depth': [2, 3, 4, 5, 6, 7, 8, 9, 10],
+    'min_samples_split': [2, 3, 4, 5, 6],
+    'min_samples_leaf': [18, 20, 22, 25, 28, 30, 32, 35],
+    'splitter': ['best', 'random']
+}
+
 
 # In[ ]:
 
@@ -67,18 +105,32 @@ def calculate_fp(df, pts, pos):
     
     # calculate fantasy points for RB's
     if pos == 'RB':
+        
+        # create the points list corresponding to metrics calculated
+        pts_list = [pts['yd_pts'], pts['yd_pts'], pts['rec_pts'], pts['td_pts']]
+        
         df['fp'] =         pts['yd_pts']*df['rush_yds'] +         pts['yd_pts']*df['rec_yds'] +         pts['td_pts']*df['rush_td'] +         pts['td_pts']*df['rec_td'] +         pts['rec_pts']*df['receptions'] +         pts['fmb_pts']*df['fmb']
         
         # calculate fantasy points per touch
         df['fp_per_touch'] = df['fp'] / df['total_touches']
         
         # calculate fantasy points per target
-        df['yd_per_tgt'] = df['rec_yds'] / df['tgt']
+        df['fp_per_tgt'] = df['fp'] / df['tgt']
+    
+    if pos == 'WR':
+        
+        # create the points list corresponding to metrics calculated
+        pts_list = [pts['yd_pts'], pts['rec_pts'], pts['td_pts']]
+        
+        df['fp'] =         pts['yd_pts']*df['yds'] +         pts['td_pts']*df['td'] +         pts['rec_pts']*df['receptions']
+        
+        # calculate fantasy points per touch
+        df['fp_per_tgt'] = df['fp'] / df['tgt']
         
     # calculate fantasy points per game
     df['fp_per_game'] = df['fp'] / df['games']
     
-    return df
+    return df, pts_list
 
 
 # In[ ]:
@@ -891,7 +943,7 @@ class clustering():
         # show correlation coefficient between actual and predicted points for cluster
         print('')
         print('Pred to Actual Correlation')
-        print(round(train.rsq.mean()), 3)
+        print(round(train.rsq.mean(), 3))
         
         # show examples of past players in cluster
         current = test.sort_values(by='pred', ascending=False)[['player', 'pred', 'cluster_pred']]
@@ -1040,7 +1092,7 @@ class clustering():
 
                 # create a plot of the prior distribution and a line for the mean
                 pd.Series(prior_y*16, name='Prior').plot.hist(alpha=0.4, color='grey', bins=bins, legend=True, 
-                                                              xlim=[0, 500])
+                                                              xlim=[0, self.df_test.pred.max()*16*1.75])
                 plt.axvline(x=prior_y.mean()*16, alpha=0.8, linestyle='--', color='grey')
 
                 # create a plot of the posterior distribution and a line for the mean

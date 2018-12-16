@@ -3,7 +3,7 @@
 
 # # User Inputs
 
-# In[1]:
+# In[ ]:
 
 
 #==========
@@ -14,7 +14,7 @@
 path = '/Users/Mark/Documents/Github/Fantasy_Football/'
 
 # set to position to analyze: 'RB', 'WR', 'QB', or 'TE'
-set_position = 'RB'
+set_pos = 'WR'
 
 
 #==========
@@ -45,12 +45,6 @@ pts['fmb_pts'] = -2.0
 pts['int_pts'] = -2
 pts['sack_pts'] = -1
 
-# metrics to be predicted for fantasy point generation
-metrics = ['rush_yd_per_game', 'rec_yd_per_game', 'rec_per_game', 'td_per_game']
-
-# create the points list corresponding to metrics calculated
-pts_list = [pts['yd_pts'], pts['yd_pts'], pts['rec_pts'], pts['td_pts']]
-
 
 #==========
 # Model Settings
@@ -60,7 +54,7 @@ pts_list = [pts['yd_pts'], pts['yd_pts'], pts['rec_pts'], pts['td_pts']]
 vif_thresh = 10000
 
 # number of hypersearch rounds for training ensemble
-iter_rounds = 5
+iter_rounds = 50
 
 # number of time to repeat predictions when generation prior distributions
 prior_repeats=5
@@ -71,7 +65,7 @@ plot_importance = False
 
 # # Load Libraries
 
-# In[2]:
+# In[ ]:
 
 
 # core packages
@@ -91,7 +85,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 
-# In[3]:
+# In[ ]:
 
 
 # change directory temporarily to helper scripts
@@ -107,26 +101,29 @@ from helper_functions import *;
 
 # # Merge and Clean Data Files
 
-# In[4]:
+# In[ ]:
 
 
 # load prepared data
-df = pd.read_csv(path + 'Data/' + set_position + '_Input.csv').iloc[:, 1:]
+df = pd.read_csv(path + 'Data/' + set_pos + '_Input.csv').iloc[:, 1:]
 
 ######
 ### tmp--need to add td per game to data generation ###
-df['td_per_game'] = (df.rush_td + df.rec_td) / df.games
-jeff_fisher = df[(df.player == 'Todd Gurley') & (df.year == 2016.0)].index
-df = df.drop(jeff_fisher, axis=0).reset_index(drop=True)
 
-df.loc[:, 'avg_pick'] = np.log(df.avg_pick)
-df.loc[:, 'age'] = np.log(df.age)
+df['td_per_game'] = df.td / df.games 
+
+#df['td_per_game'] = (df.rush_td + df.rec_td) / df.games
+#jeff_fisher = df[(df.player == 'Todd Gurley') & (df.year == 2016.0)].index
+#df = df.drop(jeff_fisher, axis=0).reset_index(drop=True)
+
+#df.loc[:, 'avg_pick'] = np.log(df.avg_pick)
+#df.loc[:, 'age'] = np.log(df.age)
 ######
 
 
 # split old and new to filter past years based on touches.
 # leave all new players in to ensure everyone gets a prediction
-old = df[(df[pos['RB']['touch_filter']] > req_touch) & (df.games > req_games) & (df.year < set_year-1)].reset_index(drop=True)
+old = df[(df[pos[set_pos]['touch_filter']] > req_touch) & (df.games > req_games) & (df.year < set_year-1)].reset_index(drop=True)
 this_year = df[df.year==set_year-1]
 
 # merge old and new back together after filtering
@@ -137,10 +134,10 @@ df_train_results = pd.DataFrame([old.player, old.year]).T
 df_test_results = pd.DataFrame([this_year.player]).T
 
 # calculate FP
-df = calculate_fp(df, pts, pos='RB')
+df, pts_list = calculate_fp(df, pts, pos=set_pos)
 
 
-# In[5]:
+# In[ ]:
 
 
 #==========
@@ -149,7 +146,7 @@ df = calculate_fp(df, pts, pos='RB')
 
 output = {}
 
-for metric in metrics:
+for metric in pos[set_pos]['metrics']:
     
     print('Running Models for ' + metric)
     print('----------------------------------')
@@ -159,10 +156,10 @@ for metric in metrics:
     #--------
     df_train, df_predict = features_target(df, 
                                            earliest_year, set_year-1, 
-                                           pos['RB']['med_features'], 
-                                           pos['RB']['sum_features'],
-                                           pos['RB']['max_features'], 
-                                           pos['RB']['age_features'],
+                                           pos[set_pos]['med_features'], 
+                                           pos[set_pos]['sum_features'],
+                                           pos[set_pos]['max_features'], 
+                                           pos[set_pos]['age_features'],
                                            target_feature=metric)
 
     df_train = df_train.dropna(subset=['y_act']).reset_index(drop=True)
@@ -251,14 +248,14 @@ for metric in metrics:
     
 # after loop, set the df_train to have the y_act as fp_per_game
 df_train, df_predict = features_target(df, earliest_year, set_year-1, 
-                                           pos['RB']['med_features'], 
-                                           pos['RB']['sum_features'],
-                                           pos['RB']['max_features'], 
-                                           pos['RB']['age_features'],
+                                           pos[set_pos]['med_features'], 
+                                           pos[set_pos]['sum_features'],
+                                           pos[set_pos]['max_features'], 
+                                           pos[set_pos]['age_features'],
                                            target_feature='fp_per_game')
 
 
-# In[6]:
+# In[ ]:
 
 
 #==========
@@ -267,15 +264,15 @@ df_train, df_predict = features_target(df, earliest_year, set_year-1,
 
 if plot_importance == True:
     
-    metric = 'td_per_game'
-    i = 2
+    metric = 'yd_per_game'
+    i = 1
     try:
         plot_results(output[metric]['models'][i].feature_importances_, col_names=output[metric]['cols']);
     except:
         plot_results(output[metric]['models'][i].coef_, col_names=output[metric]['cols']);
 
 
-# In[7]:
+# In[ ]:
 
 
 #==========
@@ -286,7 +283,7 @@ df_train_results, df_test_results = format_results(df_train_results, df_test_res
                                                    df_train, df_predict, pts_list)
 
 
-# In[8]:
+# In[ ]:
 
 
 #==========
@@ -298,7 +295,7 @@ df_test_results.sort_values('pred').plot.barh(x='player', y='pred', figsize=(5,1
 
 # # Clustering Players into Tiers
 
-# In[9]:
+# In[ ]:
 
 
 #==========
@@ -315,7 +312,7 @@ cluster.fit_and_predict_tree()
 c_train, c_test = cluster.add_fit_metrics()
 
 
-# In[10]:
+# In[ ]:
 
 
 #==========
@@ -325,28 +322,28 @@ c_train, c_test = cluster.add_fit_metrics()
 cluster.tree_plot()
 
 
-# In[11]:
+# In[ ]:
 
 
 #==========
 # Show the Results for Each Cluster
 #==========
 
-cluster.show_results(j=14)
+cluster.show_results(j=28)
 
 
-# In[12]:
+# In[ ]:
 
 
 #==========
 # Create the Distributions and Plot Prior / Posterior Results
 #==========
 
-rb_distributions = cluster.create_distributions(prior_repeats=5)
+distributions = cluster.create_distributions(prior_repeats=5)
 
 
-# In[14]:
+# In[ ]:
 
 
-rb_distributions.to_csv(path + 'Results/' + str(set_year) + '/RB_Distributions.csv', index=False)
+distributions.to_csv(path + 'Results/' + str(set_year) + '/' + set_pos + '_Distributions.csv', index=False)
 
