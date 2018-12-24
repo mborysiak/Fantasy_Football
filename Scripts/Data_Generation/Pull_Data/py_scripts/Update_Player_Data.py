@@ -73,19 +73,17 @@ data_player_rec['year'] = year
 #--------
 
 # cleaning up the rush columns
-data_player_rush.columns = data_player_rush.iloc[0,:]
-df_player_rush = data_player_rush.iloc[1:, 1:]
+df_player_rush = data_player_rush.iloc[:, 1:]
 df_player_rush = df_player_rush.T.reset_index(drop=True).T
 
 # cleaning up the receiving columns
-data_player_rec.columns = data_player_rec.iloc[0,:]
-df_player_rec = data_player_rec.iloc[1:, 1:]
+df_player_rec = data_player_rec.iloc[:, 1:]
 df_player_rec = df_player_rec.T.reset_index(drop=True).T
 
 # setting the column names for rushing data
 colnames_player_rush = {
-    0: 'player', 
-    1: 'team', 
+    0: 'player',
+    1: 'team',
     2: 'age',
     3: 'pos',
     4: 'games',
@@ -103,7 +101,7 @@ colnames_player_rush = {
 # setting the column names for receiving data
 colnames_player_rec = {
     0: 'player',
-    1: 'team', 
+    1: 'team',
     2: 'age',
     3: 'pos',
     4: 'games',
@@ -111,7 +109,7 @@ colnames_player_rec = {
     6: 'tgt',
     7: 'receptions',
     8: 'catch_pct',
-    9: 'rec_yds', 
+    9: 'rec_yds',
     10: 'yd_per_rec',
     11: 'rec_td',
     12: 'long_rec',
@@ -147,7 +145,7 @@ for df in [df_player_rush, df_player_rec]:
 #--------
 
 # merge together rushing and receiving stats, while removing duplicates
-df_player = pd.merge(df_player_rush, df_player_rec.drop(['team', 'age', 'pos', 'games', 'games_started', 'fmb'], axis=1), 
+df_player = pd.merge(df_player_rush, df_player_rec.drop(['team', 'age', 'pos', 'games', 'games_started', 'fmb'], axis=1),
                      how='inner', left_on=['player', 'year'], right_on=['player', 'year'])
 
 # add in new metrics based on rushing and receiving totals
@@ -168,7 +166,7 @@ df_player['rush_att_per_game'] = df_player.rush_att / df_player.games
 
 '''
 Cleaning the ADP data by selecting relevant features, and extracting the name and team
-from the combined string column. Note that the year is not shifted back because the 
+from the combined string column. Note that the year is not shifted back because the
 stats will be used to calculate FP/G for the rookie in that season, but will be removed
 prior to training. Thus, the ADP should match the year from the stats.
 '''
@@ -181,7 +179,7 @@ data_adp['year'] = year
 
 # set column names to what they are after pulling
 data_adp = data_adp.iloc[1:, 1:].rename(columns={
-    1: 'Player', 
+    1: 'Player',
     2: 'Avg. Pick',
     3: 'Min. Pick',
     4: 'Max. Pick',
@@ -228,7 +226,7 @@ df_adp.loc[(df_adp.player=='Kareem Hunt') & (df_adp.year==2017), 'team'] = 'KCC'
 
 '''
 Join the statistical and adp data into a single, merged dataframe. Update the teams
-to have a consistent abbreviation for later joining. Also, select only relevant columns, 
+to have a consistent abbreviation for later joining. Also, select only relevant columns,
 as well as convert all numerical features to float.
 '''
 
@@ -237,7 +235,7 @@ df_merged = pd.merge(df_player, df_adp, how = 'inner', left_on = ['player', 'yea
 
 # ensure all teams have same abbreviations for matching
 adp_to_player_teams = {
-    
+
     'ARI': 'ARI',
     'ATL': 'ATL',
     'BAL': 'BAL',
@@ -291,7 +289,7 @@ df_merged['team_y'] = df_merged.team_y.fillna('FA')
 df_merged['new_team'] = df_merged['team_x'] != df_merged['team_y']
 df_merged['new_team'] = df_merged.new_team.map({True: 1, False: 0})
 
-# keep current team 
+# keep current team
 df_merged = df_merged.drop('team_x', axis=1)
 df_merged = df_merged.rename(columns = {'team_y': 'team'})
 
@@ -357,7 +355,7 @@ data_adp = pd.read_html(url_adp)[1]
 
 '''
 Cleaning the ADP data by selecting relevant features, and extracting the name and team
-from the combined string column. Note that the year is not shifted back because the 
+from the combined string column. Note that the year is not shifted back because the
 stats will be used to calculate FP/G for the rookie in that season, but will be removed
 prior to training. Thus, the ADP should match the year from the stats.
 '''
@@ -370,7 +368,7 @@ data_adp['year'] = year
 
 # set column names to what they are after pulling
 data_adp = data_adp.iloc[1:, 1:].rename(columns={
-    1: 'Player', 
+    1: 'Player',
     2: 'Avg. Pick',
     3: 'Min. Pick',
     4: 'Max. Pick',
@@ -410,7 +408,7 @@ df_adp = df_adp.rename(columns=colnames_adp)
 
 '''
 Join the statistical and adp data into a single, merged dataframe. Update the teams
-to have a consistent abbreviation for later joining. Also, select only relevant columns, 
+to have a consistent abbreviation for later joining. Also, select only relevant columns,
 as well as convert all numerical features to float.
 '''
 
@@ -419,7 +417,7 @@ df_merged = pd.merge(df_player_rec, df_adp, how = 'inner', left_on = ['player', 
 
 # ensure all teams have same abbreviations for matching
 adp_to_player_teams = {
-    
+
     'ARI': 'ARI',
     'ATL': 'ATL',
     'BAL': 'BAL',
@@ -473,7 +471,7 @@ df_merged['team_y'] = df_merged.team_y.fillna('FA')
 df_merged['new_team'] = df_merged['team_x'] != df_merged['team_y']
 df_merged['new_team'] = df_merged.new_team.map({True: 1, False: 0})
 
-# keep current team 
+# keep current team
 df_merged = df_merged.drop('team_x', axis=1)
 df_merged = df_merged.rename(columns = {'team_y': 'team'})
 
@@ -502,7 +500,7 @@ df_merged['td_per_game'] = df_merged.rec_td / df_merged.games
 df_merged = df_merged[['player', 'pos', 'team', 'year', 'age', 'avg_pick',
                        'new_team', 'tgt', 'receptions', 'rec_yds', 'rec_td', 'td_per_rec',
                        'catch_pct', 'games', 'games_started', 'long_rec', 'rec_per_game',
-                       'rec_yd_per_game', 'tgt_per_game', 'td_per_game', 'yd_per_rec', 
+                       'rec_yd_per_game', 'tgt_per_game', 'td_per_game', 'yd_per_rec',
                        'yd_per_tgt', 'fmb']]
 
 # make all columns numeric

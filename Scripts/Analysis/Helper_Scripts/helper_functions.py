@@ -40,15 +40,15 @@ pos['RB']['med_features'] = ['fp', 'tgt', 'receptions', 'total_touches', 'rush_y
                            'avg_pick', 'fp_per_touch', 'team_rush_avg_att']
 
 # sum feature categories
-pos['RB']['sum_features'] = ['total_touches', 'att', 'scrimmage_yds']
+pos['RB']['sum_features'] = ['total_touches', 'att', 'total_yds']
 
 # max feature categories
-pos['RB']['max_features'] = ['fp', 'rush_td', 'tgt', 'rush_yds', 'rec_yds', 'scrimmage_yds']
+pos['RB']['max_features'] = ['fp', 'rush_td', 'tgt', 'rush_yds', 'rec_yds', 'total_yds']
 
 # age feature categories
 pos['RB']['age_features'] = ['fp', 'rush_yd_per_game', 'rec_yd_per_game', 'total_touches', 'receptions', 'tgt',
                              'ms_rush_yd', 'ms_rec_yd', 'available_rush_att', 'available_tgt', 'total_touches_sum',
-                             'scrimmage_yds_sum', 'avg_pick', 'fp_per_touch', 'ms_rush_yd_per_att', 'ms_tgts']
+                             'total_yds_sum', 'avg_pick', 'fp_per_touch', 'ms_rush_yd_per_att', 'ms_tgts']
 
 # set the random search parameters for tree clustering
 pos['RB']['tree_params'] = {
