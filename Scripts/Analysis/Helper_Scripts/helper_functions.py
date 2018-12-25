@@ -69,20 +69,20 @@ pos['WR'] = {}
 pos['WR']['touch_filter'] = 'tgt'
 
 # metrics to calculate stats for
-pos['WR']['metrics'] = ['yd_per_game', 'rec_per_game', 'td_per_game']
+pos['WR']['metrics'] = ['rec_yd_per_game', 'rec_per_game', 'td_per_game']
 
 # median feature categories
-pos['WR']['med_features'] = ['fp', 'tgt', 'receptions', 'yds', 'yd_per_game', 'td', 'games_started', 
+pos['WR']['med_features'] = ['fp', 'tgt', 'receptions', 'rec_yds', 'rec_yd_per_game', 'rec_td', 'games_started', 
                              'qb_rating', 'qb_yds', 'pass_off', 'ms_tgts', 'ms_rec_yd', 
                              'tm_net_pass_yds', 'avg_pick']
 # sum feature categories
-pos['WR']['sum_features'] = ['receptions', 'yds', 'tgt']
+pos['WR']['sum_features'] = ['receptions', 'rec_yds', 'tgt']
 
 # max feature categories
-pos['WR']['max_features'] = ['fp', 'td', 'tgt', 'ms_tgts', 'ms_rec_yd']
+pos['WR']['max_features'] = ['fp', 'rec_td', 'tgt', 'ms_tgts', 'ms_rec_yd']
 
 # age feature categories
-pos['WR']['age_features'] = ['fp', 'yd_per_game', 'receptions', 'tgt', 'ms_tgts', 'ms_rec_yd', 
+pos['WR']['age_features'] = ['fp', 'rec_yd_per_game', 'receptions', 'tgt', 'ms_tgts', 'ms_rec_yd', 
                              'avg_pick', 'ms_yds_per_tgts']
 
 # set the random search parameters for tree clustering
@@ -122,7 +122,7 @@ def calculate_fp(df, pts, pos):
         # create the points list corresponding to metrics calculated
         pts_list = [pts['yd_pts'], pts['rec_pts'], pts['td_pts']]
         
-        df['fp'] =         pts['yd_pts']*df['yds'] +         pts['td_pts']*df['td'] +         pts['rec_pts']*df['receptions']
+        df['fp'] =         pts['yd_pts']*df['rec_yds'] +         pts['td_pts']*df['rec_td'] +         pts['rec_pts']*df['receptions']
         
         # calculate fantasy points per touch
         df['fp_per_tgt'] = df['fp'] / df['tgt']
