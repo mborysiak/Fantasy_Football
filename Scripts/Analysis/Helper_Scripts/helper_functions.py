@@ -310,7 +310,7 @@ class ReduceVIF(BaseEstimator, TransformerMixin):
 lgbm_params = {
     'n_estimators':[30, 40, 50, 60, 75],
     'max_depth':[2, 3, 4, 5, 6, 7],
-    'freature_fraction':[0.5, 0.6, 0.7, 0.8, 0.9, 1],
+    'feature_fraction':[0.5, 0.6, 0.7, 0.8, 0.9, 1],
     'subsample': [0.5, 0.6, 0.7, 0.8, 0.9, 1],
     'min_child_weight': [5, 10, 15, 20, 25],
 }
@@ -320,7 +320,7 @@ xgb_params = {
     'max_depth': [2, 3, 4, 5, 6, 7], 
     'subsample': [0.5, 0.6, 0.7, 0.8, 0.9, 1],
     'min_child_weight': [10, 15, 20, 25, 30],
-    'freature_fraction':[0.5, 0.6, 0.7, 0.8, 0.9, 1]
+    'feature_fraction':[0.5, 0.6, 0.7, 0.8, 0.9, 1]
 }
 
 rf_params = {
@@ -377,7 +377,7 @@ def get_estimator(name, params, rand=True, random_state=None):
         rnd_params = tmp_params
     
     if name == 'lgbm':
-        estimator = LGBMRegressor(random_state=1234, **rnd_params, min_data=1)
+        estimator = LGBMRegressor(random_state=1234, **rnd_params, min_data=11)
         
     if name == 'xgb':
         estimator = XGBRegressor(random_state=1234, **rnd_params)
