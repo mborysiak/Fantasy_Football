@@ -9,6 +9,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
+# # Initializing Parameters
+
 # In[ ]:
 
 
@@ -54,7 +56,7 @@ pos['RB']['age_features'] = ['fp', 'rush_yd_per_game', 'rec_yd_per_game', 'total
 pos['RB']['tree_params'] = {
     'max_depth': [2, 3, 4, 5, 6, 7, 8, 9, 10],
     'min_samples_split': [2, 3, 4, 5, 6],
-    'min_samples_leaf': [18, 20, 22, 25, 28, 30, 32, 35],
+    'min_samples_leaf': [15, 18, 20, 22, 25, 28, 30, 32, 35],
     'splitter': ['best', 'random']
 }
 
@@ -89,10 +91,12 @@ pos['WR']['age_features'] = ['fp', 'rec_yd_per_game', 'receptions', 'tgt', 'ms_t
 pos['WR']['tree_params'] = {
     'max_depth': [2, 3, 4, 5, 6, 7, 8, 9, 10],
     'min_samples_split': [2, 3, 4, 5, 6],
-    'min_samples_leaf': [18, 20, 22, 25, 28, 30, 32, 35],
+    'min_samples_leaf': [15, 18, 20, 22, 25, 28, 30, 32, 35],
     'splitter': ['best', 'random']
 }
 
+
+# # Calculating Fantasy Points
 
 # In[ ]:
 
@@ -184,6 +188,8 @@ def features_target(df, year_start, year_end, median_features, sum_features, max
     return df_train, df_predict
 
 
+# # Visualization
+
 # In[ ]:
 
 
@@ -209,18 +215,49 @@ def visualize_features(df_train):
 # In[ ]:
 
 
-def corr_removal(df_train, df_predict, corr_cutoff=0.025):
+def plot_results(results, col_names, asc=True, barh=True, figsize=(6,16), fontsize=12):
+    '''
+    Input:  The feature importance or coefficient weights from a trained model.
+    Return: A plot of the ordered weights, demonstrating relative importance of each feature.
+    '''
+    
+    import pandas as pd
+    import matplotlib.pyplot as plt
 
+    #cols = df_predict.select_dtypes(include=['float', 'int', 'uint8']).columns
+    series = pd.Series(results, index=col_names).sort_values(ascending=asc)
+    
+    if barh == True:
+        ax = series.plot.barh(figsize=figsize, fontsize=fontsize)
+        #ax.set_xlabel(label, fontsize=fontsize+1)
+    else:
+        ax = series.plot.bar(figsize=figsize, fontsize=fontsize)
+        #ax.set_ylabel(label, fontsize=fontsize+1)
+        
+    return ax
+
+
+# # Pre-Model Feature Engineering
+
+# In[ ]:
+
+
+def corr_removal(df_train, df_predict, corr_cutoff=0.025):
+    
+    init_features = df_train.shape[1]
+    
     corr = df_train.corr()['y_act']
     good_cols = list(corr[abs(corr) > corr_cutoff].index)
 
-    good_cols.extend(['player', 'year'])
+    good_cols.extend(['player', 'avg_pick', 'year'])
     df_train = df_train[good_cols]
     df_train = df_train.loc[:,~df_train.columns.duplicated()]
 
     good_cols.remove('y_act')
     df_predict = df_predict[good_cols]
     df_predict = df_predict.loc[:,~df_predict.columns.duplicated()]
+    
+    print('Corr removed ', init_features - df_train.shape[1], '/', init_features, ' features')
     
     return df_train, df_predict
 
@@ -280,6 +317,8 @@ class ReduceVIF(BaseEstimator, TransformerMixin):
         import warnings
         warnings.filterwarnings("ignore")
         
+        num_cols = X.shape[1]
+        
         # Taken from https://stats.stackexchange.com/a/253620/53565 and modified
         dropped=True
         while dropped:
@@ -296,9 +335,13 @@ class ReduceVIF(BaseEstimator, TransformerMixin):
                     print(f'Dropping {X.columns[maxloc]} with vif={max_vif}')
                 X = X.drop([X.columns.tolist()[maxloc]], axis=1)
                 dropped=True
+                
+        print('Dropped ', num_cols - X.shape[1], '/', num_cols, ' columns')
                         
         return X
 
+
+# # Ensemble Model
 
 # In[ ]:
 
@@ -377,7 +420,7 @@ def get_estimator(name, params, rand=True, random_state=None):
         rnd_params = tmp_params
     
     if name == 'lgbm':
-        estimator = LGBMRegressor(random_state=1234, **rnd_params, min_data=11)
+        estimator = LGBMRegressor(random_state=1234, **rnd_params, min_data=1)
         
     if name == 'xgb':
         estimator = XGBRegressor(random_state=1234, **rnd_params)
@@ -625,7 +668,7 @@ def validation(estimators, params, df_train, iterations=50, random_state=None, s
     return param_tracker, summary, wt_results, est_errors
 
 
-# In[ ]:
+# In[1]:
 
 
 def generate_predictions(best_result, param_list, summary, df_train, df_predict, figsize=(6,15)):
@@ -653,36 +696,14 @@ def generate_predictions(best_result, param_list, summary, df_train, df_predict,
     
     to_plot = wt_predictions.pred
     to_plot.index = wt_predictions.player
-    to_plot.sort_values().plot.barh(figsize=figsize);
+    figsize_length = int(round(len(to_plot) / 5, 0))
+    to_plot.sort_values().plot.barh(figsize=(5, figsize_length));
     plt.show()
     
     return wt_predictions, models, 
 
 
-# In[ ]:
-
-
-def plot_results(results, col_names, asc=True, barh=True, figsize=(6,16), fontsize=12):
-    '''
-    Input:  The feature importance or coefficient weights from a trained model.
-    Return: A plot of the ordered weights, demonstrating relative importance of each feature.
-    '''
-    
-    import pandas as pd
-    import matplotlib.pyplot as plt
-
-    #cols = df_predict.select_dtypes(include=['float', 'int', 'uint8']).columns
-    series = pd.Series(results, index=col_names).sort_values(ascending=asc)
-    
-    if barh == True:
-        ax = series.plot.barh(figsize=figsize, fontsize=fontsize)
-        #ax.set_xlabel(label, fontsize=fontsize+1)
-    else:
-        ax = series.plot.bar(figsize=figsize, fontsize=fontsize)
-        #ax.set_ylabel(label, fontsize=fontsize+1)
-        
-    return ax
-
+# # Post-Model and Clustering
 
 # In[ ]:
 
@@ -702,11 +723,11 @@ def format_results(df_train_results, df_test_results, df_train, df_predict, pts_
     df_test_results.loc[:, 'pred'] = df_test_results.iloc[:, 1:].sum(axis=1)
 
     # add actual results and adp to the train df
-    df_train_results = pd.merge(df_train_results, df_train[['player', 'year', 'avg_pick', 'y_act']],
+    df_train_results = pd.merge(df_train_results, df_train[['player', 'year', 'age', 'avg_pick', 'y_act']],
                                how='inner', left_on=['player', 'year'], right_on=['player', 'year'])
 
     # add adp to the test df
-    df_test_results = pd.merge(df_test_results, df_predict[['player', 'avg_pick']],
+    df_test_results = pd.merge(df_test_results, df_predict[['player', 'age', 'avg_pick']],
                                how='inner', left_on='player', right_on='player')
 
     # calculate the residual between the predictions and results
@@ -747,6 +768,8 @@ def searching(est, params, X_grid, y_grid, n_jobs=3):
        
     return est
 
+
+# # Clustering Functions
 
 # In[ ]:
 
