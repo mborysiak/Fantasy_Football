@@ -89,9 +89,37 @@ pos['WR']['age_features'] = ['fp', 'rec_yd_per_game', 'receptions', 'tgt', 'ms_t
 
 # set the random search parameters for tree clustering
 pos['WR']['tree_params'] = {
+    'max_depth': [3, 4, 5, 6, 7, 8, 9, 10],
+    'min_samples_split': [2, 3, 4, 5, 6],
+    'min_samples_leaf': [10, 15, 18, 20, 22, 25, 28, 30, 32, 35],
+    'splitter': ['best', 'random']
+}
+
+#---------
+# QB dictionary
+#---------
+ 
+# initilize RB dictionary
+pos['QB'] = {}
+
+# total touch filter name
+pos['QB']['touch_filter'] = 'qb_att'
+
+# metrics to calculate stats for
+pos['QB']['metrics'] = ['qb_yd_per_game', 'pass_td_per_game','rush_yd_per_game', 
+                        'rush_td_per_game' ,'int_per_game', 'sacks_per_game' ]
+
+pos['QB']['med_features'] = ['fp', 'qb_tds','qb_rating', 'qb_yds', 'pass_off', 'qb_complete_pct', 'qb_td_pct', 
+                                'sack_pct', 'avg_pick', 'sacks_allowed']
+pos['QB']['max_features'] = ['fp', 'qb_rating', 'qb_yds', 'qb_tds']
+pos['QB']['age_features'] = ['fp', 'qb_rating', 'qb_yds', 'qb_complete_pct', 'qb_td_pct', 'sack_pct', 'avg_pick']
+pos['QB']['sum_features'] = ['qb_tds', 'qb_yds']
+
+# set the random search parameters for tree clustering
+pos['QB']['tree_params'] = {
     'max_depth': [2, 3, 4, 5, 6, 7, 8, 9, 10],
     'min_samples_split': [2, 3, 4, 5, 6],
-    'min_samples_leaf': [15, 18, 20, 22, 25, 28, 30, 32, 35],
+    'min_samples_leaf': [12, 15, 18, 20, 22, 25, 28, 30, 32, 35],
     'splitter': ['best', 'random']
 }
 
@@ -105,7 +133,7 @@ def calculate_fp(df, pts, pos):
     
     # calculate fantasy points for QB's associated with a given RB or WR
     if pos == 'RB' or 'WR':
-        df['qb_fp'] =         pts['pass_yd_pts']*df['qb_yds'] +         pts['pass_td_pts']*df['qb_tds'] -         pts['int_pts']*df['int'] -         pts['sack_pts']*df['qb_sacks']
+        df['qb_fp'] =         pts['pass_yd_pts']*df['qb_yds'] +         pts['pass_td_pts']*df['qb_tds'] +         pts['int_pts']*df['int'] +         pts['sack_pts']*df['qb_sacks']
     
     # calculate fantasy points for RB's
     if pos == 'RB':
@@ -130,6 +158,14 @@ def calculate_fp(df, pts, pos):
         
         # calculate fantasy points per touch
         df['fp_per_tgt'] = df['fp'] / df['tgt']
+        
+    if pos == 'QB':
+        
+        # create the points list corresponding to metrics calculated
+        pts_list = [pts['pass_yd_pts'], pts['pass_td_pts'], pts['yd_pts'],
+                    pts['td_pts'], pts['int_pts'], pts['sack_pts']]
+        
+        df['fp'] =         pts['pass_yd_pts']*df['qb_yds'] +         pts['pass_td_pts']*df['qb_tds'] +         pts['yd_pts']*df['rush_yds'] +         pts['td_pts']*df['rush_td'] +         pts['int_pts']*df['int'] +         pts['sack_pts']*df['qb_sacks']
         
     # calculate fantasy points per game
     df['fp_per_game'] = df['fp'] / df['games']
@@ -243,7 +279,7 @@ def plot_results(results, col_names, asc=True, barh=True, figsize=(6,16), fontsi
 
 
 def corr_removal(df_train, df_predict, corr_cutoff=0.025):
-    
+
     init_features = df_train.shape[1]
     
     corr = df_train.corr()['y_act']
@@ -668,7 +704,7 @@ def validation(estimators, params, df_train, iterations=50, random_state=None, s
     return param_tracker, summary, wt_results, est_errors
 
 
-# In[1]:
+# In[ ]:
 
 
 def generate_predictions(best_result, param_list, summary, df_train, df_predict, figsize=(6,15)):
