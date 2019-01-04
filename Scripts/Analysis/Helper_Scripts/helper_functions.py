@@ -89,9 +89,9 @@ pos['WR']['age_features'] = ['fp', 'rec_yd_per_game', 'receptions', 'tgt', 'ms_t
 
 # set the random search parameters for tree clustering
 pos['WR']['tree_params'] = {
-    'max_depth': [3, 4, 5, 6, 7, 8, 9, 10],
+    'max_depth': [2, 3, 4, 5, 6, 7, 8, 9, 10],
     'min_samples_split': [2, 3, 4, 5, 6],
-    'min_samples_leaf': [10, 15, 18, 20, 22, 25, 28, 30, 32, 35],
+    'min_samples_leaf': [15, 18, 20, 22, 25, 28, 30, 32, 35],
     'splitter': ['best', 'random']
 }
 
@@ -117,6 +117,39 @@ pos['QB']['sum_features'] = ['qb_tds', 'qb_yds']
 
 # set the random search parameters for tree clustering
 pos['QB']['tree_params'] = {
+    'max_depth': [2, 3, 4, 5, 6, 7, 8, 9, 10],
+    'min_samples_split': [2, 3, 4, 5, 6],
+    'min_samples_leaf': [12, 15, 18, 20, 22, 25, 28, 30, 32, 35],
+    'splitter': ['best', 'random']
+}
+
+#---------
+# WR dictionary
+#---------
+ 
+# initilize RB dictionary
+pos['TE'] = {}
+
+# total touch filter name
+pos['TE']['touch_filter'] = 'tgt'
+
+# metrics to calculate stats for
+pos['TE']['metrics'] = ['rec_yd_per_game', 'rec_per_game', 'td_per_game']
+
+# median feature categories
+pos['TE']['med_features'] = ['fp', 'tgt', 'receptions', 'rec_yds', 'rec_yd_per_game', 'rec_td', 'games_started', 
+                             'qb_rating', 'qb_yds', 'pass_off', 'tm_net_pass_yds', 'avg_pick']
+# sum feature categories
+pos['TE']['sum_features'] = ['receptions', 'rec_yds', 'tgt']
+
+# max feature categories
+pos['TE']['max_features'] = ['fp', 'rec_td', 'tgt']
+
+# age feature categories
+pos['TE']['age_features'] = ['fp', 'rec_yd_per_game', 'receptions', 'tgt', 'avg_pick']
+
+# set the random search parameters for tree clustering
+pos['TE']['tree_params'] = {
     'max_depth': [2, 3, 4, 5, 6, 7, 8, 9, 10],
     'min_samples_split': [2, 3, 4, 5, 6],
     'min_samples_leaf': [12, 15, 18, 20, 22, 25, 28, 30, 32, 35],
@@ -150,6 +183,16 @@ def calculate_fp(df, pts, pos):
         df['fp_per_tgt'] = df['fp'] / df['tgt']
     
     if pos == 'WR':
+        
+        # create the points list corresponding to metrics calculated
+        pts_list = [pts['yd_pts'], pts['rec_pts'], pts['td_pts']]
+        
+        df['fp'] =         pts['yd_pts']*df['rec_yds'] +         pts['td_pts']*df['rec_td'] +         pts['rec_pts']*df['receptions']
+        
+        # calculate fantasy points per touch
+        df['fp_per_tgt'] = df['fp'] / df['tgt']
+        
+    if pos == 'TE':
         
         # create the points list corresponding to metrics calculated
         pts_list = [pts['yd_pts'], pts['rec_pts'], pts['td_pts']]
@@ -251,7 +294,7 @@ def visualize_features(df_train):
 # In[ ]:
 
 
-def plot_results(results, col_names, asc=True, barh=True, figsize=(6,16), fontsize=12):
+def plot_results(results, col_names, asc=True, barh=True, fontsize=12):
     '''
     Input:  The feature importance or coefficient weights from a trained model.
     Return: A plot of the ordered weights, demonstrating relative importance of each feature.
@@ -260,14 +303,21 @@ def plot_results(results, col_names, asc=True, barh=True, figsize=(6,16), fontsi
     import pandas as pd
     import matplotlib.pyplot as plt
 
-    #cols = df_predict.select_dtypes(include=['float', 'int', 'uint8']).columns
-    series = pd.Series(results, index=col_names).sort_values(ascending=asc)
+    # create series for plotting feature importance
+    series = pd.Series(results, index=col_names, name='feature_rank').sort_values(ascending=asc)
+    
+    # find the max value and filter out any coefficients that less than 10% of the max
+    max_val = abs(series).max()
+    series = series[abs(series) > max_val*0.1]
+    
+    # auto determine the proper length of the figure
+    figsize_length = int(round(len(series) / 5, 0))
     
     if barh == True:
-        ax = series.plot.barh(figsize=figsize, fontsize=fontsize)
+        ax = series.plot.barh(figsize=(6, figsize_length), fontsize=fontsize)
         #ax.set_xlabel(label, fontsize=fontsize+1)
     else:
-        ax = series.plot.bar(figsize=figsize, fontsize=fontsize)
+        ax = series.plot.bar(figsize=(6, figsize_length), fontsize=fontsize)
         #ax.set_ylabel(label, fontsize=fontsize+1)
         
     return ax
@@ -1163,4 +1213,47 @@ class clustering():
                 plt.show();
 
         return results.reset_index(drop=True)
+
+
+# In[ ]:
+
+
+#===========
+# Function to append distributions results to the database
+#===========
+
+def append_to_db(df, db_name='Season_Stats.sqlite3', table_name='NA', if_exist='append'):
+
+    import sqlite3
+    import os
+    
+    #--------
+    # Append pandas df to database in Github
+    #--------
+
+    os.chdir('/Users/Mark/Documents/Github/Fantasy_Football/Data/')
+
+    conn = sqlite3.connect(db_name)
+
+    df.to_sql(
+    name=table_name,
+    con=conn,
+    if_exists=if_exist,
+    index=False
+    )
+
+    #--------
+    # Append pandas df to database in Dropbox
+    #--------
+
+    os.chdir('/Users/Mark/Dropbox/FF/')
+
+    conn = sqlite3.connect(db_name)
+
+    df.to_sql(
+    name=table_name,
+    con=conn,
+    if_exists=if_exist,
+    index=False
+    )
 
