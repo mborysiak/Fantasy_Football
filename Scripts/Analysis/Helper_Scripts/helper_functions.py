@@ -1,7 +1,7 @@
 
 # coding: utf-8
 
-# In[ ]:
+# In[1]:
 
 
 import pandas as pd
@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 
 # # Initializing Parameters
 
-# In[ ]:
+# In[2]:
 
 
 #==========
@@ -52,14 +52,6 @@ pos['RB']['age_features'] = ['fp', 'rush_yd_per_game', 'rec_yd_per_game', 'total
                              'ms_rush_yd', 'ms_rec_yd', 'available_rush_att', 'available_tgt', 'total_touches_sum',
                              'total_yds_sum', 'avg_pick', 'fp_per_touch', 'ms_rush_yd_per_att', 'ms_tgts']
 
-# set the random search parameters for tree clustering
-pos['RB']['tree_params'] = {
-    'max_depth': [2, 3, 4, 5, 6, 7, 8, 9, 10],
-    'min_samples_split': [2, 3, 4, 5, 6],
-    'min_samples_leaf': [15, 18, 20, 22, 25, 28, 30, 32, 35],
-    'splitter': ['best', 'random']
-}
-
 #---------
 # WR dictionary
 #---------
@@ -87,13 +79,6 @@ pos['WR']['max_features'] = ['fp', 'rec_td', 'tgt', 'ms_tgts', 'ms_rec_yd']
 pos['WR']['age_features'] = ['fp', 'rec_yd_per_game', 'receptions', 'tgt', 'ms_tgts', 'ms_rec_yd', 
                              'avg_pick', 'ms_yds_per_tgts']
 
-# set the random search parameters for tree clustering
-pos['WR']['tree_params'] = {
-    'max_depth': [2, 3, 4, 5, 6, 7, 8, 9, 10],
-    'min_samples_split': [2, 3, 4, 5, 6],
-    'min_samples_leaf': [15, 18, 20, 22, 25, 28, 30, 32, 35],
-    'splitter': ['best', 'random']
-}
 
 #---------
 # QB dictionary
@@ -114,14 +99,6 @@ pos['QB']['med_features'] = ['fp', 'qb_tds','qb_rating', 'qb_yds', 'pass_off', '
 pos['QB']['max_features'] = ['fp', 'qb_rating', 'qb_yds', 'qb_tds']
 pos['QB']['age_features'] = ['fp', 'qb_rating', 'qb_yds', 'qb_complete_pct', 'qb_td_pct', 'sack_pct', 'avg_pick']
 pos['QB']['sum_features'] = ['qb_tds', 'qb_yds']
-
-# set the random search parameters for tree clustering
-pos['QB']['tree_params'] = {
-    'max_depth': [2, 3, 4, 5, 6, 7, 8, 9, 10],
-    'min_samples_split': [2, 3, 4, 5, 6],
-    'min_samples_leaf': [12, 15, 18, 20, 22, 25, 28, 30, 32, 35],
-    'splitter': ['best', 'random']
-}
 
 #---------
 # WR dictionary
@@ -148,12 +125,41 @@ pos['TE']['max_features'] = ['fp', 'rec_td', 'tgt']
 # age feature categories
 pos['TE']['age_features'] = ['fp', 'rec_yd_per_game', 'receptions', 'tgt', 'avg_pick']
 
-# set the random search parameters for tree clustering
+
+# In[ ]:
+
+
+#=========
+# Set the RF search params for each position
+#=========
+
+pos['QB']['tree_params'] = {
+    'max_depth': [3, 4, 5, 6, 7],
+    'min_samples_split': [2],
+    'min_samples_leaf': [15, 18, 21, 25, 30],
+    'splitter': ['random']
+}
+
+pos['RB']['tree_params'] = {
+    'max_depth': [4, 5, 6, 7, 8, 9, 10],
+    'min_samples_split': [2],
+    'min_samples_leaf': [15, 18, 21, 25],
+    'splitter': ['random']
+}
+
+pos['WR']['tree_params'] = {
+    'max_depth': [4, 5, 6, 7, 8],
+    'min_samples_split': [2],
+    'min_samples_leaf': [15, 20, 25, 30, 35],
+    'splitter': ['random']
+}
+
+
 pos['TE']['tree_params'] = {
-    'max_depth': [2, 3, 4, 5, 6, 7, 8, 9, 10],
-    'min_samples_split': [2, 3, 4, 5, 6],
-    'min_samples_leaf': [12, 15, 18, 20, 22, 25, 28, 30, 32, 35],
-    'splitter': ['best', 'random']
+    'max_depth': [3, 4, 5, 6, 7],
+    'min_samples_split': [2],
+    'min_samples_leaf': [15, 18, 22, 25, 30],
+    'splitter': ['random']
 }
 
 
@@ -825,7 +831,7 @@ def format_results(df_train_results, df_test_results, df_train, df_predict, pts_
 # In[ ]:
 
 
-def searching(est, params, X_grid, y_grid, n_jobs=3):
+def searching(est, params, X_grid, y_grid, n_jobs=3, print_results=True):
     '''
     Function to perform GridSearchCV and return the test RMSE, as well as the 
     optimized and fitted model
@@ -837,18 +843,21 @@ def searching(est, params, X_grid, y_grid, n_jobs=3):
                           param_grid=params,
                           scoring='neg_mean_squared_error',
                           n_jobs=n_jobs,
-                          return_train_score=True)
+                          cv=5,
+                          return_train_score=True,
+                          iid=False)
    
     search_results = Search.fit(X_grid, y_grid)
    
     best_params = search_results.cv_results_['params'][search_results.best_index_]
-   
     est.set_params(**best_params)
     
     test_rmse = cross_val_score(est, X_grid, y_grid, scoring='neg_mean_squared_error', cv=5)
     test_rmse = np.mean(np.sqrt(np.abs(test_rmse)))
     
-    print('Best RMSE: ', round(test_rmse, 3))
+    if print_results==True:
+        print(best_params)
+        print('Best RMSE: ', round(test_rmse, 3))
    
     est.fit(X_grid, y_grid)
        
@@ -860,7 +869,7 @@ def searching(est, params, X_grid, y_grid, n_jobs=3):
 # In[ ]:
 
 
-class clustering():
+class Clustering():
 
     def __init__(self, df_train, df_test):
     
@@ -876,55 +885,12 @@ class clustering():
         self.X_test = df_test.select_dtypes(include=['float', 'int', 'uint8']).drop([], axis=1)
         self.y = df_train.y_act
         
-    def explore_k(self, k=15):
-        
-        from scipy.spatial.distance import cdist
-        from sklearn.cluster import KMeans
-        from sklearn import metrics
-
-        # k means determine k
-        X_train = self.X_train
-        distortions = []
-        silhouettes = []
-        K = range(2,k)
-        for k in K:
-            kmeanModel = KMeans(n_clusters=k, random_state=1).fit(X_train)
-            kmeanModel.fit(X_train);
-            distortions.append(sum(np.min(cdist(X_train, kmeanModel.cluster_centers_, 'euclidean'), axis=1)) / X_train.shape[0]);
-            
-            silhouettes.append(metrics.silhouette_score(X_train, kmeanModel.labels_))
-                               
-        # create elbow plot
-        fig = plt.figure()
-        ax1 = fig.add_subplot(121)
-        ax1.plot(K, distortions, 'bx-')
-        ax1.set_title("Distortion");
-        
-        ax2 = fig.add_subplot(122)
-        ax2.plot(K, silhouettes, 'x-')
-        ax2.set_title("Silhouette Score");
-        
-        
-    def fit_and_predict(self, k=10):
-        
-        from sklearn.cluster import KMeans
-
-        # retrain with optimal cluster 
-        self.k = k
-        self.kmeans = KMeans(n_clusters=k, random_state=1).fit(self.X_train)
-        self.train_results = self.kmeans.predict(self.X_train)
-        self.test_results = self.kmeans.predict(self.X_test) 
-    
-        # add cluster results to the df_train and df_test
-        self.df_train['cluster'] = self.train_results
-        self.df_test['cluster'] = self.test_results
-
-        
-    def fit_and_predict_tree(self):
+    def fit_and_predict_tree(self, print_results=True):
         
         from sklearn.tree import DecisionTreeRegressor
         
-        self.tree = searching(DecisionTreeRegressor(random_state=1), pos['RB']['tree_params'], self.X_train, self.y)
+        self.tree = searching(DecisionTreeRegressor(random_state=1), pos['RB']['tree_params'], 
+                              self.X_train, self.y, print_results=print_results)
         
         self.df_train = pd.merge(self.df_train, pd.DataFrame(self.tree.apply(self.X_train), columns=['cluster']), 
                                     how='inner', left_index=True, right_index=True)
@@ -932,8 +898,8 @@ class clustering():
         self.df_test = pd.merge(self.df_test, pd.DataFrame(self.tree.apply(self.X_test), columns=['cluster']),
                                 how='inner', left_index=True, right_index=True)
         
-        
-        print('Cluster List: ', list(self.df_test.cluster.unique()))
+        if print_results == True:
+            print('Cluster List: ', list(self.df_test.cluster.unique()))
         
         
     def tree_plot(self):
@@ -1060,7 +1026,7 @@ class clustering():
         return current
     
     
-    def create_distributions(self, prior_repeats=5, show_plots=True):
+    def create_distributions(self, prior_repeats=15, show_plots=True):
         
         # historical standard deviation and mean for actual results
         hist_std = self.df_train.groupby('player').agg('std').dropna()
@@ -1098,15 +1064,15 @@ class clustering():
 
             # extract predictions from ensemble and updated predictions based on cluster fit
             ty = self.df_test.loc[self.df_test.player == player, ['player', 'pred']]
-            ty_c = self.df_test.loc[self.df_test.player == player, ['player', 'cluster_pred']]
+            #ty_c = self.df_test.loc[self.df_test.player == player, ['player', 'cluster_pred']]
 
             # replicate the predictions to increase n_0 for the prior
             ty = pd.concat([ty]*prior_repeats, ignore_index=True)
-            ty_c = pd.concat([ty_c]*prior_repeats, ignore_index=True)
+            #ty_c = pd.concat([ty_c]*prior_repeats, ignore_index=True)
 
             # rename the prediction columns to 'points'
             ty = ty.rename(columns={'pred': 'points'})
-            ty_c = ty_c.rename(columns={'cluster_pred': 'points'})
+            #ty_c = ty_c.rename(columns={'cluster_pred': 'points'})
 
             #--------
             # Extract previous year's results, if available
@@ -1123,7 +1089,7 @@ class clustering():
             #--------
 
             # combine this year's prediction, the cluster prediction, and previous year actual, if available
-            priors = pd.concat([ty, ty_c, py], axis=0)
+            priors = pd.concat([ty, py], axis=0)
 
             # set m_0 to the priors mean
             m_0 = priors.points.mean()
@@ -1213,6 +1179,69 @@ class clustering():
                 plt.show();
 
         return results.reset_index(drop=True)
+
+
+# In[ ]:
+
+
+class KMeansClustering():
+
+    def __init__(self, df_train, df_test):
+    
+        import pandas as pd
+        import matplotlib.pyplot as plt
+        
+        # create self versions of train and test
+        self.df_train = df_train
+        self.df_test = df_test
+    
+        # create df for clustering by selecting numeric values and dropping y_act
+        self.X_train = df_train.select_dtypes(include=['float', 'int', 'uint8']).drop(['y_act', 'error'], axis=1)
+        self.X_test = df_test.select_dtypes(include=['float', 'int', 'uint8']).drop([], axis=1)
+        self.y = df_train.y_act
+        
+    def explore_k(self, k=15):
+        
+        from scipy.spatial.distance import cdist
+        from sklearn.cluster import KMeans
+        from sklearn import metrics
+
+        # k means determine k
+        X_train = self.X_train
+        distortions = []
+        silhouettes = []
+        K = range(2,k)
+        for k in K:
+            kmeanModel = KMeans(n_clusters=k, random_state=1).fit(X_train)
+            kmeanModel.fit(X_train);
+            distortions.append(sum(np.min(cdist(X_train, kmeanModel.cluster_centers_, 'euclidean'), axis=1)) / X_train.shape[0]);
+            
+            silhouettes.append(metrics.silhouette_score(X_train, kmeanModel.labels_))
+                               
+        # create elbow plot
+        fig = plt.figure()
+        ax1 = fig.add_subplot(121)
+        ax1.plot(K, distortions, 'bx-')
+        ax1.set_title("Distortion");
+        
+        ax2 = fig.add_subplot(122)
+        ax2.plot(K, silhouettes, 'x-')
+        ax2.set_title("Silhouette Score");
+        
+        
+    def fit_and_predict(self, k=10):
+        
+        from sklearn.cluster import KMeans
+
+        # retrain with optimal cluster 
+        self.k = k
+        self.kmeans = KMeans(n_clusters=k, random_state=1).fit(self.X_train)
+        self.train_results = self.kmeans.predict(self.X_train)
+        self.test_results = self.kmeans.predict(self.X_test) 
+    
+        # add cluster results to the df_train and df_test
+        self.df_train['cluster'] = self.train_results
+        self.df_test['cluster'] = self.test_results
 
 
 # In[ ]:
