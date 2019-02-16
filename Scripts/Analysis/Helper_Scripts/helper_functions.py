@@ -497,7 +497,6 @@ def get_estimator(name, params, rand=True, random_state=None):
     from sklearn.linear_model import Lasso
     from sklearn.linear_model import Ridge
     from sklearn.ensemble import RandomForestRegressor
-    from catboost import CatBoostRegressor
     from sklearn.linear_model import LinearRegression
     from sklearn.tree import DecisionTreeRegressor
     
@@ -525,9 +524,6 @@ def get_estimator(name, params, rand=True, random_state=None):
         
     if name == 'lasso':
         estimator = Lasso(random_state=1234, **rnd_params)
-        
-    if name == 'catboost':
-        estimator = CatBoostRegressor(random_state=1234, logging_level='Silent', **rnd_params)
         
     if name == 'lasso_pca':
         estimator = Lasso(random_state=1234, **rnd_params)
