@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python
 # coding: utf-8
 
 # In[1]:
@@ -148,7 +148,7 @@ pos['RB']['tree_params'] = {
 }
 
 pos['WR']['tree_params'] = {
-    'max_depth': [4, 5, 6, 7, 8],
+    'max_depth': [3, 4, 5, 6, 7, 8],
     'min_samples_split': [2],
     'min_samples_leaf': [15, 20, 25, 30, 35],
     'splitter': ['random']
@@ -791,6 +791,12 @@ def generate_predictions(best_result, param_list, summary, df_train, df_predict,
     return wt_predictions, models, 
 
 
+# In[ ]:
+
+
+
+
+
 # # Post-Model and Clustering
 
 # In[ ]:
@@ -984,6 +990,8 @@ class Clustering():
         
         return self.df_train, self.df_test
             
+    def return_data(self):
+        return self.df_train
     
     def show_results(self, j):
         from scipy.stats import pearsonr
