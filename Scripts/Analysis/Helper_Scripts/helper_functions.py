@@ -1259,6 +1259,7 @@ def append_to_db(df, db_name='Season_Stats.sqlite3', table_name='NA', if_exist='
 
     import sqlite3
     import os
+    import datetime as dt
     
     #--------
     # Append pandas df to database in Github
@@ -1276,15 +1277,17 @@ def append_to_db(df, db_name='Season_Stats.sqlite3', table_name='NA', if_exist='
     )
 
     #--------
-    # Append pandas df to database in Dropbox
+    # Append pandas df to database in OneDrive
     #--------
 
-    os.chdir('/Users/Mark/Dropbox/FF/')
+    os.chdir('/Users/Mark/OneDrive/FF/DataBase/')
 
     conn = sqlite3.connect(db_name)
+    
+    today = dt.datetime.today().strftime('%Y%m%d%H%M')
 
     df.to_sql(
-    name=table_name,
+    name=table_name + '_' + today,
     con=conn,
     if_exists=if_exist,
     index=False

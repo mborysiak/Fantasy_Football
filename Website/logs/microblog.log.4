@@ -1,0 +1,118 @@
+2019-04-09 21:13:01,133 ERROR: Exception on /user/kathy [GET] [in /Users/Mark/anaconda3/lib/python3.6/site-packages/flask/app.py:1761]
+Traceback (most recent call last):
+  File "/Users/Mark/anaconda3/lib/python3.6/site-packages/flask/app.py", line 2292, in wsgi_app
+    response = self.full_dispatch_request()
+  File "/Users/Mark/anaconda3/lib/python3.6/site-packages/flask/app.py", line 1815, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "/Users/Mark/anaconda3/lib/python3.6/site-packages/flask/app.py", line 1718, in handle_user_exception
+    reraise(exc_type, exc_value, tb)
+  File "/Users/Mark/anaconda3/lib/python3.6/site-packages/flask/_compat.py", line 35, in reraise
+    raise value
+  File "/Users/Mark/anaconda3/lib/python3.6/site-packages/flask/app.py", line 1813, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "/Users/Mark/anaconda3/lib/python3.6/site-packages/flask/app.py", line 1799, in dispatch_request
+    return self.view_functions[rule.endpoint](**req.view_args)
+  File "/Users/Mark/anaconda3/lib/python3.6/site-packages/flask_login/utils.py", line 261, in decorated_view
+    return func(*args, **kwargs)
+  File "/Users/Mark/Documents/GitHub/Fantasy_Football/Website/app/routes.py", line 71, in user
+    posts = user.posts.order_by(Post.timestamp.desc()).paginate(
+AttributeError: 'User' object has no attribute 'posts'
+2019-04-09 21:13:01,518 ERROR: Exception on / [GET] [in /Users/Mark/anaconda3/lib/python3.6/site-packages/flask/app.py:1761]
+Traceback (most recent call last):
+  File "/Users/Mark/anaconda3/lib/python3.6/site-packages/flask/app.py", line 2292, in wsgi_app
+    response = self.full_dispatch_request()
+  File "/Users/Mark/anaconda3/lib/python3.6/site-packages/flask/app.py", line 1815, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "/Users/Mark/anaconda3/lib/python3.6/site-packages/flask/app.py", line 1718, in handle_user_exception
+    reraise(exc_type, exc_value, tb)
+  File "/Users/Mark/anaconda3/lib/python3.6/site-packages/flask/_compat.py", line 35, in reraise
+    raise value
+  File "/Users/Mark/anaconda3/lib/python3.6/site-packages/flask/app.py", line 1813, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "/Users/Mark/anaconda3/lib/python3.6/site-packages/flask/app.py", line 1799, in dispatch_request
+    return self.view_functions[rule.endpoint](**req.view_args)
+  File "/Users/Mark/anaconda3/lib/python3.6/site-packages/flask_login/utils.py", line 261, in decorated_view
+    return func(*args, **kwargs)
+  File "/Users/Mark/Documents/GitHub/Fantasy_Football/Website/app/routes.py", line 18, in index
+    return render_template('index.html', title='Home', form=form,
+NameError: name 'form' is not defined
+2019-04-09 21:13:01,867 ERROR: Exception on /index [GET] [in /Users/Mark/anaconda3/lib/python3.6/site-packages/flask/app.py:1761]
+Traceback (most recent call last):
+  File "/Users/Mark/anaconda3/lib/python3.6/site-packages/flask/app.py", line 2292, in wsgi_app
+    response = self.full_dispatch_request()
+  File "/Users/Mark/anaconda3/lib/python3.6/site-packages/flask/app.py", line 1815, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "/Users/Mark/anaconda3/lib/python3.6/site-packages/flask/app.py", line 1718, in handle_user_exception
+    reraise(exc_type, exc_value, tb)
+  File "/Users/Mark/anaconda3/lib/python3.6/site-packages/flask/_compat.py", line 35, in reraise
+    raise value
+  File "/Users/Mark/anaconda3/lib/python3.6/site-packages/flask/app.py", line 1813, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "/Users/Mark/anaconda3/lib/python3.6/site-packages/flask/app.py", line 1799, in dispatch_request
+    return self.view_functions[rule.endpoint](**req.view_args)
+  File "/Users/Mark/anaconda3/lib/python3.6/site-packages/flask_login/utils.py", line 261, in decorated_view
+    return func(*args, **kwargs)
+  File "/Users/Mark/Documents/GitHub/Fantasy_Football/Website/app/routes.py", line 18, in index
+    return render_template('index.html', title='Home', form=form,
+NameError: name 'form' is not defined
+2019-04-09 21:13:01,893 ERROR: Exception on /index [GET] [in /Users/Mark/anaconda3/lib/python3.6/site-packages/flask/app.py:1761]
+Traceback (most recent call last):
+  File "/Users/Mark/anaconda3/lib/python3.6/site-packages/flask/app.py", line 2292, in wsgi_app
+    response = self.full_dispatch_request()
+  File "/Users/Mark/anaconda3/lib/python3.6/site-packages/flask/app.py", line 1815, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "/Users/Mark/anaconda3/lib/python3.6/site-packages/flask/app.py", line 1718, in handle_user_exception
+    reraise(exc_type, exc_value, tb)
+  File "/Users/Mark/anaconda3/lib/python3.6/site-packages/flask/_compat.py", line 35, in reraise
+    raise value
+  File "/Users/Mark/anaconda3/lib/python3.6/site-packages/flask/app.py", line 1813, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "/Users/Mark/anaconda3/lib/python3.6/site-packages/flask/app.py", line 1799, in dispatch_request
+    return self.view_functions[rule.endpoint](**req.view_args)
+  File "/Users/Mark/anaconda3/lib/python3.6/site-packages/flask_login/utils.py", line 261, in decorated_view
+    return func(*args, **kwargs)
+  File "/Users/Mark/Documents/GitHub/Fantasy_Football/Website/app/routes.py", line 18, in index
+    return render_template('index.html', title='Home', form=form,
+NameError: name 'form' is not defined
+2019-04-09 21:21:50,631 INFO: Microblog startup [in /Users/Mark/Documents/GitHub/Fantasy_Football/Website/app/__init__.py:49]
+2019-04-09 21:22:10,758 INFO: Microblog startup [in /Users/Mark/Documents/GitHub/Fantasy_Football/Website/app/__init__.py:49]
+2019-04-09 21:22:13,883 ERROR: Exception on /index [GET] [in /Users/Mark/anaconda3/lib/python3.6/site-packages/flask/app.py:1761]
+Traceback (most recent call last):
+  File "/Users/Mark/anaconda3/lib/python3.6/site-packages/flask/app.py", line 2292, in wsgi_app
+    response = self.full_dispatch_request()
+  File "/Users/Mark/anaconda3/lib/python3.6/site-packages/flask/app.py", line 1815, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "/Users/Mark/anaconda3/lib/python3.6/site-packages/flask/app.py", line 1718, in handle_user_exception
+    reraise(exc_type, exc_value, tb)
+  File "/Users/Mark/anaconda3/lib/python3.6/site-packages/flask/_compat.py", line 35, in reraise
+    raise value
+  File "/Users/Mark/anaconda3/lib/python3.6/site-packages/flask/app.py", line 1813, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "/Users/Mark/anaconda3/lib/python3.6/site-packages/flask/app.py", line 1799, in dispatch_request
+    return self.view_functions[rule.endpoint](**req.view_args)
+  File "/Users/Mark/anaconda3/lib/python3.6/site-packages/flask_login/utils.py", line 261, in decorated_view
+    return func(*args, **kwargs)
+  File "/Users/Mark/Documents/GitHub/Fantasy_Football/Website/app/routes.py", line 17, in index
+    form = InputData()
+NameError: name 'InputData' is not defined
+2019-04-09 21:22:50,507 INFO: Microblog startup [in /Users/Mark/Documents/GitHub/Fantasy_Football/Website/app/__init__.py:49]
+2019-04-09 21:22:58,903 ERROR: Exception on /user/email_test [GET] [in /Users/Mark/anaconda3/lib/python3.6/site-packages/flask/app.py:1761]
+Traceback (most recent call last):
+  File "/Users/Mark/anaconda3/lib/python3.6/site-packages/flask/app.py", line 2292, in wsgi_app
+    response = self.full_dispatch_request()
+  File "/Users/Mark/anaconda3/lib/python3.6/site-packages/flask/app.py", line 1815, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+  File "/Users/Mark/anaconda3/lib/python3.6/site-packages/flask/app.py", line 1718, in handle_user_exception
+    reraise(exc_type, exc_value, tb)
+  File "/Users/Mark/anaconda3/lib/python3.6/site-packages/flask/_compat.py", line 35, in reraise
+    raise value
+  File "/Users/Mark/anaconda3/lib/python3.6/site-packages/flask/app.py", line 1813, in full_dispatch_request
+    rv = self.dispatch_request()
+  File "/Users/Mark/anaconda3/lib/python3.6/site-packages/flask/app.py", line 1799, in dispatch_request
+    return self.view_functions[rule.endpoint](**req.view_args)
+  File "/Users/Mark/anaconda3/lib/python3.6/site-packages/flask_login/utils.py", line 261, in decorated_view
+    return func(*args, **kwargs)
+  File "/Users/Mark/Documents/GitHub/Fantasy_Football/Website/app/routes.py", line 78, in user
+    posts = user.posts.order_by(Post.timestamp.desc()).paginate(
+AttributeError: 'User' object has no attribute 'posts'
+2019-04-09 21:25:29,736 INFO: Microblog startup [in /Users/Mark/Documents/GitHub/Fantasy_Football/Website/app/__init__.py:49]
