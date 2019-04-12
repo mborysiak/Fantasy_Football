@@ -9,9 +9,6 @@ class Config(object):
     # get the secret key for running web forms
     SECRET_KEY = os.environ.get('SECRET_KEY') or 'you-will-never-guess'
 
-    # number of posts per page
-    POSTS_PER_PAGE=10
-
     # set up the database url
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
         'sqlite:///' + os.path.join(basedir, 'app.db')

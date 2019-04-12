@@ -6,7 +6,8 @@ from app.models import User
 from werkzeug.urls import url_parse
 from datetime import datetime
 from app.email import send_password_reset_email
-
+from app.helper_functions import *
+from app.simulation import FF_Simulation
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -16,14 +17,27 @@ def index():
 
     form = InputData()
     if form.validate_on_submit():
-        input = form.topred.data
-        multip = 10 * input
-        pred = ml_model.fit_model(input)
-        flash('Your prediction is {}'.format(pred))
+        #input = form.topred.data
+        #pred = random_forest.fit_model(input)
+        #flash('Your prediction is {}'.format(pred))
+
+        pts_dict = {}
+        pts_dict['QB'] = [0.04, 4, 0.1, 6, 0, 0]
+        pts_dict['RB'] = [0.3, 0.1, 0.5, 6]
+        pts_dict['WR'] = [0.1, 0.5, 6]
+        pts_dict['TE'] = [0.1, 0.5, 6]
+
+        FF_Simulation(db_name='app.db', set_year=2018, pts_dict=pts_dict)
+
+        flash('Your data is pulled')
         return redirect(url_for('index'))
 
     # return the index template with the PostForm and items of pagination
     return render_template('index.html', title='Home', form=form)
+
+
+
+
 
 
 #==========
