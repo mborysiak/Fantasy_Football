@@ -53,7 +53,7 @@ class FF_Simulation():
             cluster.fit_and_predict_tree(print_results=False)
 
             # add linear regression of predicted vs actual for cluster predictions
-            c_train, c_test = cluster.add_fit_metrics()
+            #c_train, c_test = cluster.add_fit_metrics()
             
             #--------
             # Use Bayesian Updating to Create Points Distributions
@@ -239,6 +239,7 @@ class FF_Simulation():
         
         # update the salary for your team to subtract out drafted player's salaries
         league_info['salary_cap'] = float(league_info['salary_cap'] - add_act_salary)
+        
         
         to_add['points'] = -1.0*(add_data.drop(['pos', 'salary'],axis=1).mean(axis=1).values)
         

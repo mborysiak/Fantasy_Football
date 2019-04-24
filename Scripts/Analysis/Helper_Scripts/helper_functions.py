@@ -1030,7 +1030,7 @@ class Clustering():
         return current
     
     
-    def create_distributions(self, prior_repeats=15, show_plots=True):
+    def create_distributions(self, prior_repeats=15, dist_size=1000, show_plots=False):
         
         # historical standard deviation and mean for actual results
         hist_std = self.df_train.groupby('player').agg('std').dropna()
@@ -1111,7 +1111,7 @@ class Clustering():
             v_0 = n_0 - 1
 
             # calculate the prior distribution
-            prior_y = np.random.normal(loc=m_0, scale=np.sqrt(s2_0), size=10000)
+            prior_y = np.random.normal(loc=m_0, scale=np.sqrt(s2_0), size=dist_size)
 
             #--------
             # Create the Data and Data Hyperparameters
@@ -1149,14 +1149,14 @@ class Clustering():
             s2_n = ((n-1)*s2 + v_0*s2_0 + (n_0*n*(m_0 - ybar)**2)/n_n)/v_n
 
             # calculate the gamma distribution and convert to sigma
-            phi = np.random.gamma(shape=v_n/2, scale=2/(s2_n*v_n), size=10000)
+            phi = np.random.gamma(shape=v_n/2, scale=2/(s2_n*v_n), size=dist_size)
             sigma = 1/np.sqrt(phi)
 
             # calculate the posterior mean
-            post_mu = np.random.normal(loc=m_n, scale=sigma/(np.sqrt(n_n)), size=10000)
+            post_mu = np.random.normal(loc=m_n, scale=sigma/(np.sqrt(n_n)), size=dist_size)
 
             # create the posterior distribution
-            pred_y =  np.random.normal(loc=post_mu, scale=sigma, size=10000)
+            pred_y =  np.random.normal(loc=post_mu, scale=sigma, size=dist_size)
 
             results_list.extend(pred_y*16)
             results = pd.concat([results, pd.DataFrame(results_list).T], axis=0)

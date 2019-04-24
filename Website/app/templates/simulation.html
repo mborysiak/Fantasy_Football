@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% import 'bootstrap/wtf.html' as wtf %}
+
+{% block app_content %}
+        <h1>Begin Simulation</h1>
+        {% if form %}
+        {{ wtf.quick_form(form) }}
+        <br>
+        {% endif %}
+<html>
+    <link rel="stylesheet" type="text/css" href="df_style.css"/>
+        {{ table|safe }}
+</html>
+{% endblock %}

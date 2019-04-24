@@ -1,137 +1,12 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[1]:
-
-
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-
-
-# # Initializing Parameters
-
-# In[2]:
-
-
-#==========
-# Dictionary for position relevant metrics
-#==========
-
-# initialize full position dictionary
-pos = {}
-
-#---------
-# RB dictionary
-#---------
- 
-# initilize RB dictionary
-pos['RB'] = {}
-
-# total touch filter name
-pos['RB']['touch_filter'] = 'total_touches'
-
-# metrics to be predicted for fantasy point generation
-pos['RB']['metrics'] = ['rush_yd_per_game', 'rec_yd_per_game', 'rec_per_game', 'td_per_game']
-
-# median feature categories
-pos['RB']['med_features'] = ['fp', 'tgt', 'receptions', 'total_touches', 'rush_yds', 'rec_yds', 
-                           'rush_yd_per_game', 'rec_yd_per_game', 'rush_td', 'games_started', 
-                           'qb_rating', 'qb_yds', 'pass_off', 'tm_rush_td', 'tm_rush_yds', 
-                           'tm_rush_att', 'adjust_line_yds', 'ms_rush_yd', 'ms_rec_yd', 'ms_rush_td',
-                           'avg_pick', 'fp_per_touch', 'team_rush_avg_att']
-
-# sum feature categories
-pos['RB']['sum_features'] = ['total_touches', 'att', 'total_yds']
-
-# max feature categories
-pos['RB']['max_features'] = ['fp', 'rush_td', 'tgt', 'rush_yds', 'rec_yds', 'total_yds']
-
-# age feature categories
-pos['RB']['age_features'] = ['fp', 'rush_yd_per_game', 'rec_yd_per_game', 'total_touches', 'receptions', 'tgt',
-                             'ms_rush_yd', 'ms_rec_yd', 'available_rush_att', 'available_tgt', 'total_touches_sum',
-                             'total_yds_sum', 'avg_pick', 'fp_per_touch', 'ms_rush_yd_per_att', 'ms_tgts']
-
-#---------
-# WR dictionary
-#---------
- 
-# initilize RB dictionary
-pos['WR'] = {}
-
-# total touch filter name
-pos['WR']['touch_filter'] = 'tgt'
-
-# metrics to calculate stats for
-pos['WR']['metrics'] = ['rec_yd_per_game', 'rec_per_game', 'td_per_game']
-
-# median feature categories
-pos['WR']['med_features'] = ['fp', 'tgt', 'receptions', 'rec_yds', 'rec_yd_per_game', 'rec_td', 'games_started', 
-                             'qb_rating', 'qb_yds', 'pass_off', 'ms_tgts', 'ms_rec_yd', 
-                             'tm_net_pass_yds', 'avg_pick']
-# sum feature categories
-pos['WR']['sum_features'] = ['receptions', 'rec_yds', 'tgt']
-
-# max feature categories
-pos['WR']['max_features'] = ['fp', 'rec_td', 'tgt', 'ms_tgts', 'ms_rec_yd']
-
-# age feature categories
-pos['WR']['age_features'] = ['fp', 'rec_yd_per_game', 'receptions', 'tgt', 'ms_tgts', 'ms_rec_yd', 
-                             'avg_pick', 'ms_yds_per_tgts']
-
-
-#---------
-# QB dictionary
-#---------
- 
-# initilize RB dictionary
-pos['QB'] = {}
-
-# total touch filter name
-pos['QB']['touch_filter'] = 'qb_att'
-
-# metrics to calculate stats for
-pos['QB']['metrics'] = ['qb_yd_per_game', 'pass_td_per_game','rush_yd_per_game', 
-                        'rush_td_per_game' ,'int_per_game', 'sacks_per_game' ]
-
-pos['QB']['med_features'] = ['fp', 'qb_tds','qb_rating', 'qb_yds', 'pass_off', 'qb_complete_pct', 'qb_td_pct', 
-                                'sack_pct', 'avg_pick', 'sacks_allowed']
-pos['QB']['max_features'] = ['fp', 'qb_rating', 'qb_yds', 'qb_tds']
-pos['QB']['age_features'] = ['fp', 'qb_rating', 'qb_yds', 'qb_complete_pct', 'qb_td_pct', 'sack_pct', 'avg_pick']
-pos['QB']['sum_features'] = ['qb_tds', 'qb_yds']
-
-#---------
-# WR dictionary
-#---------
- 
-# initilize RB dictionary
-pos['TE'] = {}
-
-# total touch filter name
-pos['TE']['touch_filter'] = 'tgt'
-
-# metrics to calculate stats for
-pos['TE']['metrics'] = ['rec_yd_per_game', 'rec_per_game', 'td_per_game']
-
-# median feature categories
-pos['TE']['med_features'] = ['fp', 'tgt', 'receptions', 'rec_yds', 'rec_yd_per_game', 'rec_td', 'games_started', 
-                             'qb_rating', 'qb_yds', 'pass_off', 'tm_net_pass_yds', 'avg_pick']
-# sum feature categories
-pos['TE']['sum_features'] = ['receptions', 'rec_yds', 'tgt']
-
-# max feature categories
-pos['TE']['max_features'] = ['fp', 'rec_td', 'tgt']
-
-# age feature categories
-pos['TE']['age_features'] = ['fp', 'rec_yd_per_game', 'receptions', 'tgt', 'avg_pick']
-
-
-# In[ ]:
-
+import sqlite3
 
 #=========
 # Set the RF search params for each position
 #=========
+
+pos = {'QB': {}, 'RB': {}, 'WR': {}, 'TE': {}}
 
 pos['QB']['tree_params'] = {
     'max_depth': [3, 4, 5, 6, 7],
@@ -161,646 +36,6 @@ pos['TE']['tree_params'] = {
     'min_samples_leaf': [15, 18, 22, 25, 30],
     'splitter': ['random']
 }
-
-
-# # Calculating Fantasy Points
-
-# In[ ]:
-
-
-def calculate_fp(df, pts, pos):
-    
-    # calculate fantasy points for QB's associated with a given RB or WR
-    if pos == 'RB' or 'WR':
-        df['qb_fp'] =         pts['pass_yd_pts']*df['qb_yds'] +         pts['pass_td_pts']*df['qb_tds'] +         pts['int_pts']*df['int'] +         pts['sack_pts']*df['qb_sacks']
-    
-    # calculate fantasy points for RB's
-    if pos == 'RB':
-        
-        # create the points list corresponding to metrics calculated
-        pts_list = [pts['yd_pts'], pts['yd_pts'], pts['rec_pts'], pts['td_pts']]
-        
-        df['fp'] =         pts['yd_pts']*df['rush_yds'] +         pts['yd_pts']*df['rec_yds'] +         pts['td_pts']*df['rush_td'] +         pts['td_pts']*df['rec_td'] +         pts['rec_pts']*df['receptions'] +         pts['fmb_pts']*df['fmb']
-        
-        # calculate fantasy points per touch
-        df['fp_per_touch'] = df['fp'] / df['total_touches']
-        
-        # calculate fantasy points per target
-        df['fp_per_tgt'] = df['fp'] / df['tgt']
-    
-    if pos == 'WR':
-        
-        # create the points list corresponding to metrics calculated
-        pts_list = [pts['yd_pts'], pts['rec_pts'], pts['td_pts']]
-        
-        df['fp'] =         pts['yd_pts']*df['rec_yds'] +         pts['td_pts']*df['rec_td'] +         pts['rec_pts']*df['receptions']
-        
-        # calculate fantasy points per touch
-        df['fp_per_tgt'] = df['fp'] / df['tgt']
-        
-    if pos == 'TE':
-        
-        # create the points list corresponding to metrics calculated
-        pts_list = [pts['yd_pts'], pts['rec_pts'], pts['td_pts']]
-        
-        df['fp'] =         pts['yd_pts']*df['rec_yds'] +         pts['td_pts']*df['rec_td'] +         pts['rec_pts']*df['receptions']
-        
-        # calculate fantasy points per touch
-        df['fp_per_tgt'] = df['fp'] / df['tgt']
-        
-    if pos == 'QB':
-        
-        # create the points list corresponding to metrics calculated
-        pts_list = [pts['pass_yd_pts'], pts['pass_td_pts'], pts['yd_pts'],
-                    pts['td_pts'], pts['int_pts'], pts['sack_pts']]
-        
-        df['fp'] =         pts['pass_yd_pts']*df['qb_yds'] +         pts['pass_td_pts']*df['qb_tds'] +         pts['yd_pts']*df['rush_yds'] +         pts['td_pts']*df['rush_td'] +         pts['int_pts']*df['int'] +         pts['sack_pts']*df['qb_sacks']
-        
-    # calculate fantasy points per game
-    df['fp_per_game'] = df['fp'] / df['games']
-    
-    return df, pts_list
-
-
-# In[ ]:
-
-
-def features_target(df, year_start, year_end, median_features, sum_features, max_features, 
-                    age_features, target_feature):
-    
-    import pandas as pd
-
-    new_df = pd.DataFrame()
-    years = range(year_start+1, year_end+1)
-
-    for year in years:
-        
-        # adding the median features
-        past = df[df['year'] <= year]
-        for metric in median_features:
-            past = past.join(past.groupby('player')[metric].median(),on='player', rsuffix='_median')
-
-        for metric in max_features:
-            past = past.join(past.groupby('player')[metric].max(),on='player', rsuffix='_max')
-            
-        for metric in sum_features:
-            past = past.join(past.groupby('player')[metric].sum(),on='player', rsuffix='_sum')
-            
-        # adding the age features
-        suffix = '/ age'
-        for feature in age_features:
-            feature_label = ' '.join([feature, suffix])
-            past[feature_label] = past[feature] / past['age']
-        
-        # adding the values for target feature
-        year_n = past[past["year"] == year]
-        year_n_plus_one = df[df['year'] == year+1][['player', target_feature]].rename(columns={target_feature: 'y_act'})
-        year_n = pd.merge(year_n, year_n_plus_one, how='left', left_on='player', right_on='player')
-        new_df = new_df.append(year_n)
-    
-    # creating dataframes to export
-    new_df = new_df.sort_values(by=['year', 'fp'], ascending=[False, False])
-    new_df = pd.concat([new_df, pd.get_dummies(new_df.year)], axis=1)
-    
-    df_train = new_df[new_df.year < year_end].reset_index(drop=True)
-    df_predict = new_df[new_df.year == year_end].drop('y_act', axis=1).reset_index(drop=True)
-    
-    df_train['year'] = df_train.year.astype('int')
-    df_train = df_train.sort_values(['year', 'fp_per_game'], ascending=True).reset_index(drop=True)
-
-    df_predict['year'] = df_predict.year.astype('int')
-    
-    return df_train, df_predict
-
-
-# # Visualization
-
-# In[ ]:
-
-
-def visualize_features(df_train):
-    
-    import seaborn as sns
-    import matplotlib.pyplot as plt
-    from my_plot import PrettyPlot
-    
-    plt.figure(figsize=(17,12))
-    k = 25
-    corrmat = abs(df_train.corr())
-    cols_large = corrmat.nlargest(k, 'y_act').index
-    hm_large = corrmat.nlargest(k,'y_act')[cols_large]
-    sns.set(font_scale=1.2)
-    sns_plot = sns.heatmap(hm_large, cmap="YlGnBu", cbar=True, annot=True, square=False, fmt='.2f', 
-                 annot_kws={'size': 12});
-
-    fig = sns_plot.get_figure();
-    PrettyPlot(plt);
-
-
-# In[ ]:
-
-
-def plot_results(results, col_names, asc=True, barh=True, fontsize=12):
-    '''
-    Input:  The feature importance or coefficient weights from a trained model.
-    Return: A plot of the ordered weights, demonstrating relative importance of each feature.
-    '''
-    
-    import pandas as pd
-    import matplotlib.pyplot as plt
-
-    # create series for plotting feature importance
-    series = pd.Series(results, index=col_names, name='feature_rank').sort_values(ascending=asc)
-    
-    # find the max value and filter out any coefficients that less than 10% of the max
-    max_val = abs(series).max()
-    series = series[abs(series) > max_val*0.1]
-    
-    # auto determine the proper length of the figure
-    figsize_length = int(round(len(series) / 5, 0))
-    
-    if barh == True:
-        ax = series.plot.barh(figsize=(6, figsize_length), fontsize=fontsize)
-        #ax.set_xlabel(label, fontsize=fontsize+1)
-    else:
-        ax = series.plot.bar(figsize=(6, figsize_length), fontsize=fontsize)
-        #ax.set_ylabel(label, fontsize=fontsize+1)
-        
-    return ax
-
-
-# # Pre-Model Feature Engineering
-
-# In[ ]:
-
-
-def corr_removal(df_train, df_predict, corr_cutoff=0.025):
-
-    init_features = df_train.shape[1]
-    
-    corr = df_train.corr()['y_act']
-    good_cols = list(corr[abs(corr) > corr_cutoff].index)
-
-    good_cols.extend(['player', 'avg_pick', 'year'])
-    df_train = df_train[good_cols]
-    df_train = df_train.loc[:,~df_train.columns.duplicated()]
-
-    good_cols.remove('y_act')
-    df_predict = df_predict[good_cols]
-    df_predict = df_predict.loc[:,~df_predict.columns.duplicated()]
-    
-    print('Corr removed ', init_features - df_train.shape[1], '/', init_features, ' features')
-    
-    return df_train, df_predict
-
-
-# In[ ]:
-
-
-from sklearn.base import BaseEstimator, TransformerMixin
-from sklearn.preprocessing import Imputer, StandardScaler
-
-from statsmodels.stats.outliers_influence import variance_inflation_factor
-
-class ReduceVIF(BaseEstimator, TransformerMixin):
-    def __init__(self, thresh=5.0, scale=True, impute=True, impute_strategy='median', print_progress=False):
-       
-        # From looking at documentation, values between 5 and 10 are "okay".
-        # Above 10 is too high and so should be removed.
-        self.thresh = thresh
-        self.print_progress = print_progress
-       
-        # The statsmodel function will fail with NaN values, as such we have to impute them.
-        # By default we impute using the median value.
-        # This imputation could be taken out and added as part of an sklearn Pipeline.
-        if impute:
-            self.imputer = Imputer(strategy=impute_strategy)
-            
-        if scale:
-            self.scale = StandardScaler()
- 
-    def fit(self, X, y=None):
-        
-        if hasattr(self, 'imputer'):
-            self.imputer.fit(X)
-            
-        if hasattr(self, 'scale'):
-            self.scale.fit(X)
-        return self
- 
-    def transform(self, X, y=None):
-        
-        columns = X.columns.tolist()
-        
-        if hasattr(self, 'imputer'):
-            X = pd.DataFrame(self.imputer.transform(X), columns=columns)
-            
-        if hasattr(self, 'scale'):
-            X = pd.DataFrame(self.scale.transform(X), columns=columns)
-        
-        return ReduceVIF.calculate_vif(self, X, self.thresh)
- 
-    @staticmethod
-    def calculate_vif(self, X, thresh=5.0):
-        
-        print('Running VIF Feature Reduction')
-        
-        # filter out warnings during run
-        import warnings
-        warnings.filterwarnings("ignore")
-        
-        num_cols = X.shape[1]
-        
-        # Taken from https://stats.stackexchange.com/a/253620/53565 and modified
-        dropped=True
-        while dropped:
-            
-            variables = X.columns
-            
-            dropped = False
-            vif = [variance_inflation_factor(X[variables].values, X.columns.get_loc(var)) for var in X.columns]
-           
-            max_vif = max(vif)
-            if max_vif > thresh:
-                maxloc = vif.index(max_vif)
-                if self.print_progress:
-                    print(f'Dropping {X.columns[maxloc]} with vif={max_vif}')
-                X = X.drop([X.columns.tolist()[maxloc]], axis=1)
-                dropped=True
-                
-        print('Dropped ', num_cols - X.shape[1], '/', num_cols, ' columns')
-                        
-        return X
-
-
-# # Ensemble Model
-
-# In[ ]:
-
-
-#=============
-# Create parameter dictionaries for each algorithm
-#=============
-
-lgbm_params = {
-    'n_estimators':[30, 40, 50, 60, 75],
-    'max_depth':[2, 3, 4, 5, 6, 7],
-    'feature_fraction':[0.5, 0.6, 0.7, 0.8, 0.9, 1],
-    'subsample': [0.5, 0.6, 0.7, 0.8, 0.9, 1],
-    'min_child_weight': [5, 10, 15, 20, 25],
-}
-
-xgb_params = {
-    'n_estimators': [30, 40, 50, 60, 75], 
-    'max_depth': [2, 3, 4, 5, 6, 7], 
-    'subsample': [0.5, 0.6, 0.7, 0.8, 0.9, 1],
-    'min_child_weight': [10, 15, 20, 25, 30],
-    'feature_fraction':[0.5, 0.6, 0.7, 0.8, 0.9, 1]
-}
-
-rf_params = {
-    'n_estimators': [30, 40, 50, 60, 75, 100, 125, 150], 
-    'max_depth': [3, 4, 5, 6, 7], 
-    'min_samples_leaf': [1, 2, 3, 5, 7, 10],
-    'max_features':[0.5, 0.6, 0.7, 0.8, 0.9, 1]
-}
-
-catboost_params = {
-    'iterations': [10, 25, 50], 
-    'depth': [1, 2, 3, 4, 5, 10]
-}
-
-ridge_params = {
-    'alpha': [50, 100, 150, 200, 250, 300, 400, 500]
-}
-
-lasso_params = {
-    'alpha': [0.5, 0.75, 0.8, .9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5]
-}
-
-lasso_pca_params = {
-    'alpha': [0.1, 0.2, 0.3, 0.4, 0.5, 0.75, 1, 1.5, 2]
-}
-
-lr_params = {}
-
-
-# In[ ]:
-
-
-def get_estimator(name, params, rand=True, random_state=None):
-    
-    import random
-    from numpy import random
-    from xgboost import XGBRegressor
-    from lightgbm import LGBMRegressor
-    from sklearn.linear_model import Lasso
-    from sklearn.linear_model import Ridge
-    from sklearn.ensemble import RandomForestRegressor
-    from sklearn.linear_model import LinearRegression
-    from sklearn.tree import DecisionTreeRegressor
-    
-    state = random.RandomState(random_state)
-    
-    rnd_params = {}
-    tmp_params = params[name]
-    if rand == True:
-        for line in tmp_params.items():
-            rnd_params[line[0]] = state.choice(line[1])
-    else:
-        rnd_params = tmp_params
-    
-    if name == 'lgbm':
-        estimator = LGBMRegressor(random_state=1234, **rnd_params, min_data=1)
-        
-    if name == 'xgb':
-        estimator = XGBRegressor(random_state=1234, **rnd_params)
-        
-    if name == 'rf':
-        estimator = RandomForestRegressor(random_state=1234, **rnd_params)
-        
-    if name == 'ridge':
-        estimator = Ridge(random_state=1234, **rnd_params)
-        
-    if name == 'lasso':
-        estimator = Lasso(random_state=1234, **rnd_params)
-        
-    if name == 'lasso_pca':
-        estimator = Lasso(random_state=1234, **rnd_params)
-        
-    if name == 'lr_pca':
-        estimator = LinearRegression()
-
-    return estimator, rnd_params
-
-
-# In[ ]:
-
-
-def X_y_split(train, val, scale=True, pca=False):
-    '''
-    input: train and validation or test datasets
-    output: datasets split into X features and y response for train / validation or test
-    '''
-    
-    from sklearn.preprocessing import StandardScaler
-    from sklearn.decomposition import PCA
-
-    X_train = train.select_dtypes(include=['float', 'int', 'uint8']).drop('y_act', axis=1)
-    y_train = train.y_act
-    
-    try:    
-        X_val = val.select_dtypes(include=['float', 'int', 'uint8']).drop('y_act', axis=1)
-        y_val = val.y_act
-    except:
-        X_val = val.select_dtypes(include=['float', 'int', 'uint8'])
-        y_val = None
-    
-    if scale == True:
-        X_train = StandardScaler().fit_transform(X_train)
-        X_val = StandardScaler().fit_transform(X_val)
-    else:
-        pass
-    
-    if pca == True:
-        pca = PCA(n_components=10)
-        pca.fit(X_train)
-        
-        X_train = pca.transform(X_train)
-        X_val = pca.transform(X_val)
-    else:
-        pass
-        
-    return X_train, X_val, y_train, y_val
-
-
-# In[ ]:
-
-
-def calc_residuals(estimator, X_train, y_train, X_val, y_val, train_error, val_error):
-    '''
-    input: estimator, feature set to be predicted, ground truth
-    output: sum of residuals for train and validation predictions
-    '''
-    predict_train = estimator.predict(X_train)
-    train_error.append(np.sum((predict_train-y_train)**2))
-    
-    predict_val = estimator.predict(X_val)
-    val_error.append(np.sum(abs(predict_val-y_val)**2))
-    
-    return train_error, val_error
-
-
-# In[ ]:
-
-
-def error_compare(df, skip_years):
-    
-    from scipy.stats import pearsonr
-    from sklearn.linear_model import LinearRegression
-    import pandas as pd
-    import matplotlib.pyplot as plt
-
-    df = df[df.year > df.year.min() + skip_years+1].dropna().reset_index(drop=True)
-
-    lr = LinearRegression().fit(df.pred.values.reshape(-1,1), df.y_act)
-    r_sq_pred = round(lr.score(df.pred.values.reshape(-1,1), df.y_act), 3)
-    corr_pred = round(pearsonr(df.pred, df.y_act)[0], 3)
-    
-    lr = LinearRegression().fit(df.avg_pick.values.reshape(-1,1), df.y_act)
-    r_sq_avg_pick = round(lr.score(df.avg_pick.values.reshape(-1,1), df.y_act), 3)
-    corr_avg_pick = abs(round(pearsonr(df.avg_pick, df.y_act)[0], 3))
-
-    return [r_sq_pred, corr_pred, r_sq_avg_pick, corr_avg_pick]
-
-
-# In[ ]:
-
-
-def validation(estimators, params, df_train, iterations=50, random_state=None, scale=False, pca=False, skip_years=2):
-    '''
-    input: training dataset, estimator
-    output: out-of-sample errors and predictions for 5 timeframes
-    '''
-    from sklearn.metrics import mean_squared_error
-    from sklearn.metrics import mean_absolute_error
-    import pandas as pd
-    import numpy as np
-    import datetime
-    
-    # initialize a parameter tracker dictionary and summary output dataframe
-    param_tracker = {}
-    summary = pd.DataFrame()
-    
-    #==========
-    # Complete a Random Hyperparameter search for the given models and parameters
-    #==========
-    
-    for i in range(0, iterations):
-        
-        # update random state to pull new params, but keep consistency based on starting state
-        random_state = random_state + 1
-        
-        # print update on progress
-        if (i+1) % 10 == 0:
-            print(str(datetime.datetime.now())[:-7])
-            print('Completed ' + str(i+1) + '/' + str(iterations) + ' iterations')
-            
-        # create empty sub-dictionary for current iteration storage
-        param_tracker[i] = {}
-        
-        # create empty lists to store predictions and errors for each estimator
-        est_predictions=pd.DataFrame()
-        est_errors=pd.DataFrame()
-        
-        #==========
-        # Loop through estimators with a running time series based training and validation method
-        #==========
-        
-        for est in estimators:
-
-            # grab estimator and random parameters for estimator type
-            estimator, param_tracker[i][est] = get_estimator(est, params, rand=True, random_state=random_state)
-        
-            # run through all years for given estimator and save errors and predictions
-            val_error = []    
-            train_error = [] 
-            val_predictions = np.array([]) 
-            years = df_train.year.unique()[1:]
-
-            #==========
-            # Loop through years and complete a time-series validation of the given model
-            #==========
-            
-            for m in years:
-                
-                # create training set for all previous years and validation set for current year
-                train_split = df_train[df_train.year < m]
-                val_split = df_train[df_train.year == m]
-        
-                # setting the scale parameter based on the given model
-                if est == 'ridge' or est == 'lasso' or est == 'knn' or pca == True:
-                    scale = True
-    
-                # splitting the train and validation sets into X_train, y_train, X_val and y_val
-                X_train, X_val, y_train, y_val = X_y_split(train_split, val_split, scale, pca)
-        
-                # fit training data and creating prediction based on validation data
-                estimator.fit(X_train, y_train)
-                val_predict = estimator.predict(X_val)
-                
-                # skip over the first two year of predictions due to high error for xgb / lgbm
-                if m > years.min() + skip_years:
-                    val_predictions = np.append(val_predictions, val_predict, axis=0)
-                    
-                    # calculate and append training and validation errors
-                    train_error, val_error = calc_residuals(estimator, X_train, y_train, X_val, y_val, train_error, val_error)
-                else:
-                    pass
-                
-            # append predictions for all validation samples / models (n_samples x m_models)
-            # and all errors (n_years x m_models) to dataframes 
-            est_predictions = pd.concat([est_predictions, pd.Series(val_predictions, name=est)], axis=1)
-            est_errors = pd.concat([est_errors, pd.Series(val_error, name=est)], axis=1)
-        
-        #==========
-        # Create an ensemble model based on residual errors from each individual model
-        #==========
-        
-        # create weights based on the mean errors across all years for each model
-        est_errors = est_errors.iloc[1:, :]
-        frac = 1 - (est_errors.mean() / (est_errors.mean().sum()))
-        weights = round(frac / frac.sum(), 3)          
-        
-        # multiply the outputs from each model by their weights and sum to get final prediction
-        wt_results = pd.concat([df_train[df_train.year > years.min() + skip_years].reset_index(drop=True),
-                                pd.Series((est_predictions*weights).sum(axis=1), name='pred')],
-                                axis=1)
-        
-        #==========
-        # Calculate Error Metrics and Prepare Export
-        #==========
-        
-        # calculate r_squared and correlation for n+1 results using predictions and avg_pick
-        compare_metrics = error_compare(wt_results, skip_years)
-
-        # calculate the RMSE and MAE of the ensemble predictions
-        wt_rmse = round(np.sqrt(mean_squared_error(wt_results.pred, df_train[df_train.year > years.min() + skip_years].reset_index(drop=True).y_act)), 2)
-        wt_mae = round(mean_absolute_error(wt_results.pred, df_train[df_train.year > years.min() + skip_years].reset_index(drop=True).y_act), 2)
-        
-        #--------
-        # create a list of model weights based on residuals, as well s the average RMSE & MAE 
-        # for the ensemble predictions to append to the output dataframe for export
-        #--------
-        
-        # generate a list of weights used for models
-        wt_list = list(weights.values)
-        
-        # append rmse and mae metrics for a given ensemble
-        wt_list.append(wt_rmse)
-        wt_list.append(wt_mae)
-        
-        # extend the results with the r2 and correlation metrics for the ensemble and adp
-        wt_list.extend(compare_metrics)
-        summary = summary.append([(wt_list)])
-    
-    #==========
-    # Update Summary Table of Weights and Error Metric Results
-    #==========
-        
-    summary = summary.reset_index(drop=True)
-    estimators.extend(['rmse', 'mae', 'r2_pred', 'c_pred', 'r2_adp', 'c_adp'])
-    summary.columns = estimators
-    summary = summary.sort_values(by=['rmse', 'r2_pred'], ascending=[True, False])
-    
-    return param_tracker, summary, wt_results, est_errors
-
-
-# In[ ]:
-
-
-def generate_predictions(best_result, param_list, summary, df_train, df_predict, figsize=(6,15)):
-    
-    param_list = param_list[best_result]
-    weights = summary.iloc[best_result, :len(param_list)]
-    est_names = summary.columns[:len(param_list)]
-    
-    X_train, X_val, y_train, _ = X_y_split(df_train, df_predict)
-    
-    predictions = pd.DataFrame()
-    
-    models = []
-    for est in est_names[0:len(param_list)]:
-        estimator, _ = get_estimator(est, param_list, rand=False)
-        
-        estimator.fit(X_train, y_train)
-        test_predictions = pd.Series(estimator.predict(X_val), name=est)
-        
-        predictions = pd.concat([predictions, test_predictions], axis=1)
-        models.append(estimator)
-        
-    wt_predictions = pd.Series((predictions*weights).sum(axis=1), name='pred')
-    wt_predictions = pd.concat([df_predict.reset_index(drop=True), wt_predictions], axis=1)
-    
-    to_plot = wt_predictions.pred
-    to_plot.index = wt_predictions.player
-    figsize_length = int(round(len(to_plot) / 5, 0))
-    to_plot.sort_values().plot.barh(figsize=(5, figsize_length));
-    plt.show()
-    
-    return wt_predictions, models, 
-
-
-# In[ ]:
-
-
-
-
-
-# # Post-Model and Clustering
-
-# In[ ]:
-
 
 #==========
 # Calculate fantasy points based on predictions and point values
@@ -1030,7 +265,7 @@ class Clustering():
         return current
     
     
-    def create_distributions(self, prior_repeats=15, show_plots=True):
+    def create_distributions(self, prior_repeats=15, dist_size=1000, show_plots=False):
         
         # historical standard deviation and mean for actual results
         hist_std = self.df_train.groupby('player').agg('std').dropna()
@@ -1111,7 +346,7 @@ class Clustering():
             v_0 = n_0 - 1
 
             # calculate the prior distribution
-            prior_y = np.random.normal(loc=m_0, scale=np.sqrt(s2_0), size=10000)
+            prior_y = np.random.normal(loc=m_0, scale=np.sqrt(s2_0), size=dist_size)
 
             #--------
             # Create the Data and Data Hyperparameters
@@ -1149,14 +384,14 @@ class Clustering():
             s2_n = ((n-1)*s2 + v_0*s2_0 + (n_0*n*(m_0 - ybar)**2)/n_n)/v_n
 
             # calculate the gamma distribution and convert to sigma
-            phi = np.random.gamma(shape=v_n/2, scale=2/(s2_n*v_n), size=10000)
+            phi = np.random.gamma(shape=v_n/2, scale=2/(s2_n*v_n), size=dist_size)
             sigma = 1/np.sqrt(phi)
 
             # calculate the posterior mean
-            post_mu = np.random.normal(loc=m_n, scale=sigma/(np.sqrt(n_n)), size=10000)
+            post_mu = np.random.normal(loc=m_n, scale=sigma/(np.sqrt(n_n)), size=dist_size)
 
             # create the posterior distribution
-            pred_y =  np.random.normal(loc=post_mu, scale=sigma, size=10000)
+            pred_y =  np.random.normal(loc=post_mu, scale=sigma, size=dist_size)
 
             results_list.extend(pred_y*16)
             results = pd.concat([results, pd.DataFrame(results_list).T], axis=0)
@@ -1184,112 +419,82 @@ class Clustering():
 
         return results.reset_index(drop=True)
 
+def custom_data(db_name, set_year, pts_dict, user_id, prior_repeats=5, dist_size=1000, show_plots=False):
 
-# In[ ]:
+    '''
+    The initialization of this Class reads in all of the statistical projection data and
+    translates it into clusters and projection distributions given a particular scoring schema.
+    The data is then stored in the self.data object, which will be accessed through the analysis.
 
+    Input: A database that contains statistical projections, a dictionary that contains the points
+           for each category, and number of prior repeats to use for Bayesian updating.
+    Return: Stores all the player projection distributions in that self.data object.
+    '''
 
-class KMeansClustering():
+    # create empty dataframe to store all player distributions
+    data = pd.DataFrame()
 
-    def __init__(self, df_train, df_test):
-    
-        import pandas as pd
-        import matplotlib.pyplot as plt
-        
-        # create self versions of train and test
-        self.df_train = df_train
-        self.df_test = df_test
-    
-        # create df for clustering by selecting numeric values and dropping y_act
-        self.X_train = df_train.select_dtypes(include=['float', 'int', 'uint8']).drop(['y_act', 'error'], axis=1)
-        self.X_test = df_test.select_dtypes(include=['float', 'int', 'uint8']).drop([], axis=1)
-        self.y = df_train.y_act
-        
-    def explore_k(self, k=15):
-        
-        from scipy.spatial.distance import cdist
-        from sklearn.cluster import KMeans
-        from sklearn import metrics
+    # ==========
+    # Loop through each position and pull / analyze the data
+    # ==========
 
-        # k means determine k
-        X_train = self.X_train
-        distortions = []
-        silhouettes = []
-        K = range(2,k)
-        for k in K:
-            kmeanModel = KMeans(n_clusters=k, random_state=1).fit(X_train)
-            kmeanModel.fit(X_train);
-            distortions.append(sum(np.min(cdist(X_train, kmeanModel.cluster_centers_, 'euclidean'), axis=1)) / X_train.shape[0]);
-            
-            silhouettes.append(metrics.silhouette_score(X_train, kmeanModel.labels_))
-                               
-        # create elbow plot
-        fig = plt.figure()
-        ax1 = fig.add_subplot(121)
-        ax1.plot(K, distortions, 'bx-')
-        ax1.set_title("Distortion");
-        
-        ax2 = fig.add_subplot(122)
-        ax2.plot(K, silhouettes, 'x-')
-        ax2.set_title("Silhouette Score");
-        
-        
-    def fit_and_predict(self, k=10):
-        
-        from sklearn.cluster import KMeans
+    for pos in ['aQB', 'bRB', 'cWR', 'dTE']:
+        # print current position update
+        print('Loading and Preparing ' + pos[1:] + ' Data')
 
-        # retrain with optimal cluster 
-        self.k = k
-        self.kmeans = KMeans(n_clusters=k, random_state=1).fit(self.X_train)
-        self.train_results = self.kmeans.predict(self.X_train)
-        self.test_results = self.kmeans.predict(self.X_test) 
-    
-        # add cluster results to the df_train and df_test
-        self.df_train['cluster'] = self.train_results
-        self.df_test['cluster'] = self.test_results
+        # --------
+        # Connect to Database and Pull Player Data
+        # --------
 
+        conn = sqlite3.connect('/Users/Mark/Documents/Github/Fantasy_Football/Website/' + db_name)
 
-# In[ ]:
+        df_train_results = pd.read_sql_query('SELECT * FROM ' + pos[1:] + '_Train_Results_' + str(set_year),
+                                             con=conn)
+        df_test_results = pd.read_sql_query('SELECT * FROM ' + pos[1:] + '_Test_Results_' + str(set_year), con=conn)
+        df_train = pd.read_sql_query('SELECT * FROM ' + pos[1:] + '_Train_' + str(set_year), con=conn)
+        df_predict = pd.read_sql_query('SELECT * FROM ' + pos[1:] + '_Predict_' + str(set_year), con=conn)
 
+        # --------
+        # Calculate Fantasy Points for Given Scoring System and Cluster
+        # --------
 
-#===========
-# Function to append distributions results to the database
-#===========
+        # pull in data results from dataframe
+        df_train_results, df_test_results = format_results(df_train_results, df_test_results,
+                                                           df_train, df_predict,
+                                                           pts_dict[pos[1:]])
+        df_train_results = df_train_results.drop('year', axis=1)
 
-def append_to_db(df, db_name='Season_Stats.sqlite3', table_name='NA', if_exist='append'):
+        # initialize cluster with train and test results
+        cluster = Clustering(df_train_results, df_test_results)
 
-    import sqlite3
-    import os
-    import datetime as dt
-    
-    #--------
-    # Append pandas df to database in Github
-    #--------
+        # fit decision tree and apply nodes to players
+        cluster.fit_and_predict_tree(print_results=False)
 
-    os.chdir('/Users/Mark/Documents/Github/Fantasy_Football/Data/')
+        # --------
+        # Use Bayesian Updating to Create Points Distributions
+        # --------
 
-    conn = sqlite3.connect(db_name)
+        # create distributions of data
+        distributions = cluster.create_distributions(prior_repeats=prior_repeats,
+                                                     dist_size=1000,
+                                                     show_plots=show_plots)
 
-    df.to_sql(
-    name=table_name,
-    con=conn,
-    if_exists=if_exist,
-    index=False
-    )
+        # add position to the distributions
+        distributions['pos'] = pos
 
-    #--------
-    # Append pandas df to database in OneDrive
-    #--------
+        # append each position of data to master dataset
+        data = pd.concat([data, distributions], axis=0)
 
-    os.chdir('/Users/Mark/OneDrive/FF/DataBase/')
+    # add flex data
+    flex = data[data.pos.isin(['bRB', 'cWR', 'dTE'])]
+    flex['pos'] = 'eFLEX'
+    data = pd.concat([data, flex])
 
-    conn = sqlite3.connect(db_name)
-    
-    today = dt.datetime.today().strftime('%Y%m%d%H%M')
+    # format the self.data for later use
+    data = data.reset_index(drop=True)
+    data = data.rename(columns={0: 'player'})
 
-    df.to_sql(
-    name=table_name + '_' + today,
-    con=conn,
-    if_exists=if_exist,
-    index=False
-    )
+    data['user_id'] = user_id
+    print(data.shape)
 
+    data.to_sql('Session_Data', con=conn, if_exists='replace')
