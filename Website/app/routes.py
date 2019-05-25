@@ -8,9 +8,21 @@ from datetime import datetime
 from app.email import send_password_reset_email
 from app.helper_functions import *
 from app.simulation import FF_Simulation
-import io
-from matplotlib.backends.backend_agg import FigureCanvasAgg as FigureCanvas
-from matplotlib.figure import Figure
+
+# sql packages
+import sqlalchemy
+import psycopg2
+from sqlalchemy import create_engine
+
+@app.route('/games')
+def games():
+    systems = {
+        'PlayStation': ['Spyro', 'Crash', 'Ico'],
+        'N64': ['Mario', 'Superman'],
+        'SuperNintendo': ['Zelda', 'Sim City', 'Tetris', 'Banjo and Kazooie']
+    }
+
+    return render_template('temp.html', systems=systems)
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -38,14 +50,24 @@ def index():
 
         flash('Loading required data. Requires 10-15 seconds.')
 
-        custom_data(db_name='app.db', set_year=2018, pts_dict=pts_dict, user_id='1')
+        user_id = 20
+
+        engine = create_engine('postgres+psycopg2://postgres:Ctdim#1bf!!!!!@localhost:5432/fantasyfootball')
+
+        write_info = {
+            'engine': engine,
+            'schema': 'website',
+            'table': 'test',
+            'if_exists': 'append'
+        }
+
+        custom_data(write_info, set_year=2018, pts_dict=pts_dict, dist_size=1500, user_id=user_id)
 
         flash('Your data is pulled')
         return redirect(url_for('simulation'))
 
     # return the index template with the PostForm and items of pagination
     return render_template('index.html', title='Home', form=form)
-
 
 
 @app.route('/simulation', methods=['GET', 'POST'])
@@ -60,28 +82,35 @@ def simulation():
         league_info['pos_require'] = {'QB': 1, 'RB': 2, 'WR': 2, 'TE': 1, 'FLEX': 2}
         league_info['num_teams'] = 12
         league_info['salary_cap'] = 290
-
+        league_info['initial_cap'] = 290
 
         player_drop = form.player_drop.data
         salary_drop = form.salary_drop.data
 
         to_drop = {}
-        to_drop['players'] = []
-        to_drop['salaries'] = []
+        to_drop['players'] = [p.strip() for p in player_drop.split(',')]
+        to_drop['salaries'] = [int(s.strip()) for s in salary_drop.split(',')]
 
 
         my_players = form.my_players.data
         my_salaries = form.my_salaries.data
 
         to_add = {}
-        to_add['players'] = []
-        to_add['salaries'] = []
-        to_add['positions'] = {'QB': 0, 'RB': 0, 'WR': 0, 'TE': 0, 'FLEX': 0}
+        to_add['players'] = [p.strip() for p in my_players.split(',')]
+        to_add['salaries'] = [int(s.strip()) for s in my_salaries.split(',')]
 
         iterations = form.iterations.data
 
+        engine = create_engine('postgres+psycopg2://postgres:Ctdim#1bf!!!!!@localhost:5432/fantasyfootball')
+        write_info = {
+            'engine': engine,
+            'schema': 'website',
+            'table': 'test',
+            'if_exists': 'append'
+        }
+
         # instantiate simulation class and add salary information to data
-        sim = FF_Simulation(db_name='app.db', user_id='1')
+        sim = FF_Simulation(write_info, user_id=20)
         salary_data = pd.read_csv('/Users/Mark/Desktop/Jupyter Projects/Fantasy Football/Projections/salaries.csv')
         salary_data = salary_data.dropna(axis=1)
         sim.add_salaries(salary_data)
@@ -99,27 +128,6 @@ def simulation():
 
     # return the index template with the PostForm and items of pagination
     return render_template('simulation.html', title='Simulation', form=form, table=None)
-
-
-@app.route("/tables")
-def show_tables():
-    data = p.d
-
-@app.route('/plot.png')
-def plot_png():
-    fig = create_figure()
-    output = io.BytesIO()
-    FigureCanvas(fig).print_png(output)
-    return Response(output.getvalue(), mimetype='image/png')
-
-
-def create_figure():
-    fig = Figure()
-    axis = fig.add_subplot(1, 1, 1)
-    xs = range(100)
-    ys = [random.randint(1, 50) for x in xs]
-    axis.plot(xs, ys)
-    return fig
 
 
 #==========

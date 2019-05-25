@@ -81,14 +81,16 @@ class InputData(FlaskForm):
 
 class SimulationData(FlaskForm):
 
-    player_drop = StringField('Picked Player')
-    salary_drop = IntegerField('Salaries of Picked Players')
+    player_drop = StringField('Picked Player', default='Todd Gurley')
+    salary_drop = StringField('Salaries of Picked Players', default='100')
+                                #validators = [NumberRange(min=0, max=300, message = 'Enter a number between 0 and 300')])
 
-    my_players = StringField('Your Chosen Players')
-    my_salaries = IntegerField('Salary of Your Chosen Players')
+    my_players = StringField('Your Chosen Players', default='Alvin Kamara, Dalvin COok')
+    my_salaries = StringField('Salary of Your Chosen Players', default='20, 30')
+                               #validators=[NumberRange(min=0, max=300, message='Enter a number between 0 and 300')])
 
     iterations = IntegerField('Number of Model Iterations',
-                              default=1000,
+                              default=500,
                               validators=[NumberRange(min=10, max=1000, message='Enter a number between 10 and 1000')])
 
     submit = SubmitField('Begin Simulation!')

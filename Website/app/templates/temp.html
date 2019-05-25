@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% import 'bootstrap/wtf.html' as wtf %}
+
+{% block app_content %}
+
+<!doctype html>
+<form>
+    <label> System </label>
+    <select id="system">
+        <option></option>
+    </select>
+    <select id="game"></select>
+
+    <button type="submit">Play</button>
+</form>
+
+<form2>
+    <label> System2 </label>
+    <select id="system2">
+        <option></option>
+    </select>
+    <select id="game2"></select>
+
+    <button type="submit">Play</button>
+</form2>
+
+<script src="//code.jquery.com/jquery-2.1.1.min.js"></script>
+<script>
+    "use strict";
+    var systems = {{ systems|tojson }};
+    var form = $('form');
+    var system = $('select#system');
+    var game = $('select#game');
+
+    for (var key in systems) {
+        system.append($('<option/>', {'value': key, 'text': key}));
+    }
+
+    system.change(function(ev) {
+        game.empty();
+        game.append($('<option/>'));
+
+        var games = systems[system.val()];
+
+        for (var i in games) {
+            game.append($('<option/>', {'value': games[i], 'text': games[i]}));
+        }
+    });
+
+    var systems2 = {{ systems|tojson }};
+    var form2 = $('form2');
+    var system2 = $('select#system2');
+    var game2 = $('select#game2');
+
+    for (var key in systems2) {
+        system2.append($('<option/>', {'value': key, 'text': key}));
+    }
+
+    system2.change(function(ev2) {
+        game2.empty();
+        game2.append($('<option/>'));
+
+        var games2 = systems[system2.val()];
+
+        for (var i in games2) {
+            game2.append($('<option/>', {'value': games2[i], 'text': games2[i]}));
+        }
+    });
+
+    form.submit(function(ev) {
+        ev.preventDefault();
+        alert("playing " + game.val() + " on " + system.val());
+    });
+
+    form2.submit(function(ev2) {
+        ev2.preventDefault();
+        alert("playing " + game.val() + " on " + system.val());
+    });
+</script>
+
+{% endblock %}

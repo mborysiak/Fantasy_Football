@@ -14,16 +14,32 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 class FF_Simulation():
-
     # ==========
     # Creating Player Distributions for Given Settings
     # ==========
 
-    def __init__(self, db_name, user_id):
+    def __init__(self, write_info, user_id):
 
-        conn = sqlite3.connect('/Users/Mark/Documents/Github/Fantasy_Football/Website/' + db_name)
-        self.data = pd.read_sql_query('SELECT * FROM Session_Data WHERE user_id={0}'.format(user_id),
-                                      con=conn).drop('user_id', axis=1)
+        # pull in the points data for the given user
+        self.data = pd.read_sql_query('SELECT * FROM {}.{} WHERE userid={}'.format(write_info['schema'],
+                                                                                   write_info['table'],
+                                                                                   user_id), write_info['engine'])
+        self.data = self.data.drop('userid', axis=1).astype('int16')
+
+        # pull in the integer to player mapping data and convert to dictionary
+        int_to_player = pd.read_sql_query('SELECT * FROM {}.intplayermap'.format(write_info['schema']),
+                                          write_info['engine']).to_dict()['0']
+
+        # create position to integer mappings
+        int_to_pos = {1: 'aQB',
+                      2: 'bRB',
+                      3: 'cWR',
+                      4: 'dTE',
+                      5: 'eFLEX'}
+
+        # map position and player back to actual values
+        self.data.pos = self.data.pos.map(int_to_pos)
+        self.data.player = self.data.player.map(int_to_player)
 
     def return_data(self):
         '''
@@ -36,13 +52,39 @@ class FF_Simulation():
     # ==========
 
     def run_simulation(self, league_info, to_drop, to_add, iterations=500):
+        '''
+        Method that runs the actual simulation and returns the results.
 
+        Input: Projected player data and salaries with variance, the league
+               information (e.g. position requirements, and salary caps), and
+               information about players selected by your team and other teams.
+        Returns: The top team results (players selected and salaries), as well
+                 as counts of players selected, their salary they were selected at,
+                 and the points the scored when selected.
+        '''
         # --------
         # Pull Out Data, Salaries, and Inflation for Current Simulation
         # --------
 
         # create a copy of self.data for current iteration settings
         data = self.data.copy()
+
+        # pull out min salary from data
+        min_salary = data.salary.min()
+
+        # if the total + the minimum salary
+        if np.sum(to_add['salaries']) + min_salary > league_info['salary_cap']:
+            print('''The selected salaries equal {}, the cheapest projected
+                     player costs {}, and the max salary cap is {}.  
+
+                     As a result, no player is able to be selected from the optimization.
+                     Select lower salaries or increase the salary cap to continue.'''.format(np.sum(to_add['salaries']),
+                                                                                             min_salary,
+                                                                                             league_info['salary_cap']))
+            return [], []
+
+            # give an extra dollar to prevent errors with minimum salaried players
+        league_info['salary_cap'] = league_info['salary_cap'] + 1
 
         # drop other selected players + calculate inflation metrics
         data, drop_proj_sal, drop_act_sal = self._drop_players(data, league_info, to_drop)
@@ -93,8 +135,8 @@ class FF_Simulation():
         trial_counts = 0
         for i in range(0, iterations):
 
-            # every 250 trials, randomly shuffle each run in salary skews and data
-            if i % 250 == 0:
+            # every N trials, randomly shuffle each run in salary skews and data
+            if i % 50 == 0:
                 _ = [np.random.shuffle(row) for row in salary_skews]
                 data = self._df_shuffle(data)
 
@@ -173,33 +215,55 @@ class FF_Simulation():
         Return: The players that remain available for the simulation, the players to be kept,
                 and metrics to calculate salary inflation.
         '''
-
+        print('starting add players')
+        # pull data for players that have been added to your team and split out other players
         add_data = data[data.index.isin(to_add['players'])]
-        add_data = add_data[~add_data.index.duplicated(keep='first')]
         other_data = data.drop(add_data.index, axis=0)
 
+        # pull out the salaries of your players and sum
         add_proj_salary = add_data.salary.drop_duplicates().sum()
         add_act_salary = np.sum(to_add['salaries'])
 
         # update the salary for your team to subtract out drafted player's salaries
         league_info['salary_cap'] = float(league_info['salary_cap'] - add_act_salary)
 
+        # add the mean points scored by the players who have been added
         to_add['points'] = -1.0 * (add_data.drop(['pos', 'salary'], axis=1).mean(axis=1).values)
 
-        for pos in league_info['pos_require'].keys():
-            league_info['pos_require'][pos] = league_info['pos_require'][pos] - to_add['positions'][pos]
+        # create list of letters to append to position for proper indexing
+        letters = ['a', 'b', 'c', 'd', 'e']
 
+        # loop through each position in the pos_require dictionary
+        for i, pos in enumerate(league_info['pos_require'].keys()):
+
+            # create a unique label based on letter and position
+            pos_label = letters[i] + pos
+
+            # loop through each player that has been selected
+            for player in list(add_data[add_data.pos == pos_label].index):
+
+                # if the position is still required to be filled:
+                if league_info['pos_require'][pos] > 0:
+                    # subtract out the current player from the position count
+                    league_info['pos_require'][pos] = league_info['pos_require'][pos] - 1
+
+                    # and remove that player from consideration for filling other positions
+                    add_data = add_data[add_data.index != player]
+
+        print(league_info['pos_require'])
         return other_data, league_info, to_add, add_proj_salary, add_act_salary
 
     @staticmethod
     def _calc_inflation(league_info, drop_proj_sal, drop_act_sal, add_proj_sal, add_act_sal):
-
+        '''
+        Method to calculate inflation based on players selected and the expected salaries.
+        '''
         # add up the total actual and projected salaries for all keepers
         projected_salary = drop_proj_sal + add_proj_sal
         actual_salary = drop_act_sal + add_act_sal
 
         # calculate the salary inflation due to the keepers
-        total_cap = league_info['num_teams'] * league_info['salary_cap']
+        total_cap = league_info['num_teams'] * league_info['initial_cap']
         inflation = (total_cap - actual_salary) / (total_cap - projected_salary)
 
         return inflation
@@ -228,7 +292,7 @@ class FF_Simulation():
 
         # drop salary from the points dataframe and reset the columns from 0 to N
         data = data.drop(['pos', 'salary'], axis=1)
-        data.columns = [i for i in range(0, 1001)]
+        data.columns = [i for i in range(0, len(data.columns))]
 
         return data, salaries, salary_skews, pos_counts
 
@@ -457,17 +521,38 @@ class FF_Simulation():
         '''
 
         # pull out points and salary for a given player
-        pts = np.array(self.counts['points'][player]) * -1
         sal = np.array(self.counts['salary'][player])
 
         # create and displayjoint distribution plot
-        sns.jointplot(x=pts, y=sal, kind="kde", ratio=4, size=5, space=0)
-        ax = plt.gca()
-        ax.get_yaxis().get_major_formatter().set_useOffset(False)
+        sns.distplot(sal)
+        plt.show()
 
     def show_most_selected(self, to_add, iterations, num_show=20):
 
-        counts = pd.DataFrame.from_dict(self.counts['names'], orient='index')
+        counts = pd.DataFrame.from_dict(self.counts['names'], orient='index').rename(columns={0: 'Percent Drafted'})
+        counts = counts.sort_values(by='Percent Drafted',
+                                    ascending=False)[len(to_add['players']):].head(num_show) / iterations
 
-        counts = counts.sort_values(by=0, ascending=False)[len(to_add['players']):].head(num_show) / iterations
-        to_plot = counts.plot.bar(legend=False, figsize=(15, 4))
+        avg_sal = {}
+        for key, value in self.counts['salary'].items():
+            avg_sal[key] = np.mean(value)
+
+        avg_sal = pd.DataFrame.from_dict(avg_sal, orient='index').rename(columns={0: 'Average Salary'})
+        avg_sal = pd.merge(counts, avg_sal, how='inner', left_index=True,
+                           right_index=True).sort_values(by='Percent Drafted', ascending=False)
+
+        fig = plt.figure(figsize=(15, 4))  # Create matplotlib figure
+
+        ax = fig.add_subplot(111)  # Create matplotlib axes
+        ax2 = ax.twinx()  # Create another axes that shares the same x-axis as ax.
+
+        width = 0.4
+
+        avg_sal['Average Salary'].plot(kind='bar', color='blue', ax=ax2, width=width,
+                                       position=0, align='center')
+        counts.plot(kind='bar', color='red', ax=ax, width=width, position=1, align='center')
+
+        ax.set_ylabel('Percent Drafted')
+        ax2.set_ylabel('Average Price')
+
+        plt.show()

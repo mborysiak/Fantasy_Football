@@ -105,3 +105,15 @@ venv.bak/
 
 # mypy
 .mypy_cache/
+*.sqlite3
+Website/logs/microblog.log.1
+Website/logs/microblog.log.10
+Website/logs/microblog.log.2
+Website/logs/microblog.log.3
+Website/logs/microblog.log.4
+Website/logs/microblog.log.5
+Website/logs/microblog.log.6
+Website/logs/microblog.log.7
+Website/logs/microblog.log.8
+Website/logs/microblog.log.9
+Website/.idea/workspace.xml

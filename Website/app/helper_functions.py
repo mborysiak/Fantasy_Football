@@ -1,6 +1,8 @@
 import pandas as pd
 import numpy as np
-import sqlite3
+import sqlalchemy
+import psycopg2
+
 
 #=========
 # Set the RF search params for each position
@@ -173,60 +175,6 @@ class Clustering():
 
         return Image(graph.create_png())
         
-    
-    def add_fit_metrics(self):
-        
-        from sklearn.linear_model import LinearRegression
-        from sklearn.model_selection import cross_val_score
-        
-        final_train = pd.DataFrame()
-        final_test = pd.DataFrame()
-        
-        for j in list(self.df_train.cluster.unique()):
-        
-            test = self.df_test[self.df_test.cluster == j]
-            train = self.df_train[self.df_train.cluster==j]
-            
-            try:
-                # create a linear regression instance
-                lr = LinearRegression()
-                X=train.pred.values.reshape(-1,1)
-                y=train.y_act
-
-                # calculate rmse of predicted values vs. actual score
-                scores = cross_val_score(lr, X, y, scoring='neg_mean_absolute_error', cv=X.shape[0])
-                mae = np.mean(abs(scores))
-
-                # update predictions based on actual score
-                lr.fit(X, y)
-                X_test = test.pred.values.reshape(-1,1)
-                predictions = lr.predict(X_test)
-                predictions_train = lr.predict(X)
-
-                # output accuracy metrics and predictions
-                rsq = round(lr.score(X,y), 3)
-                test['cluster_pred'] = predictions
-                test['rsq'] = rsq
-                test['mae'] = mae
-
-                rsq = round(lr.score(X,y), 3)
-                train['cluster_pred'] = predictions_train
-                train['rsq'] = rsq
-                train['mae'] = mae
-
-                final_test = pd.concat([final_test, test], axis=0)
-                final_train = pd.concat([final_train, train], axis=0)
-                
-            except:
-                pass
-            
-        self.df_test = final_test
-        self.df_train = final_train
-        
-        return self.df_train, self.df_test
-            
-    def return_data(self):
-        return self.df_train
     
     def show_results(self, j):
         from scipy.stats import pearsonr
@@ -419,7 +367,24 @@ class Clustering():
 
         return results.reset_index(drop=True)
 
-def custom_data(db_name, set_year, pts_dict, user_id, prior_repeats=5, dist_size=1000, show_plots=False):
+def create_player_map(p):
+    
+    # create a list of unique players and associated ID
+    player_list = pd.DataFrame(p)
+    player_list['map_id'] = range(0, player_list.shape[0])
+    
+    # create the player name to integer mapping dictionary
+    player_list = player_list.set_index(0).to_dict()
+    player_to_int = player_list['map_id']
+    
+    # reverse it and create the integer to player mapping
+    int_to_player = {}
+    for key, val in player_to_int.items():
+        int_to_player[val] = key
+    
+    return player_to_int, int_to_player
+
+def custom_data(write_info, set_year, pts_dict, user_id, prior_repeats=5, dist_size=1000, show_plots=False):
 
     '''
     The initialization of this Class reads in all of the statistical projection data and
@@ -446,13 +411,17 @@ def custom_data(db_name, set_year, pts_dict, user_id, prior_repeats=5, dist_size
         # Connect to Database and Pull Player Data
         # --------
 
-        conn = sqlite3.connect('/Users/Mark/Documents/Github/Fantasy_Football/Website/' + db_name)
+        # pull the train and test results for projected yards, tds, etc
+        df_train_results = pd.read_sql_query('SELECT * FROM {}."{}_Train_Results_{}"' \
+                                             .format(write_info['schema'], pos[1:], str(set_year)), write_info['engine'])
+        df_test_results = pd.read_sql_query('SELECT * FROM {}."{}_Test_Results_{}"' \
+                                            .format(write_info['schema'], pos[1:], str(set_year)), write_info['engine'])
 
-        df_train_results = pd.read_sql_query('SELECT * FROM ' + pos[1:] + '_Train_Results_' + str(set_year),
-                                             con=conn)
-        df_test_results = pd.read_sql_query('SELECT * FROM ' + pos[1:] + '_Test_Results_' + str(set_year), con=conn)
-        df_train = pd.read_sql_query('SELECT * FROM ' + pos[1:] + '_Train_' + str(set_year), con=conn)
-        df_predict = pd.read_sql_query('SELECT * FROM ' + pos[1:] + '_Predict_' + str(set_year), con=conn)
+        # pass in the raw data for training and predicting algorithms
+        df_train = pd.read_sql_query('SELECT * FROM {}."{}_Train_{}"' \
+                                     .format(write_info['schema'], pos[1:], str(set_year)), write_info['engine'])
+        df_predict = pd.read_sql_query('SELECT * FROM {}."{}_Predict_{}"' \
+                                       .format(write_info['schema'], pos[1:], str(set_year)), write_info['engine'])
 
         # --------
         # Calculate Fantasy Points for Given Scoring System and Cluster
@@ -476,7 +445,7 @@ def custom_data(db_name, set_year, pts_dict, user_id, prior_repeats=5, dist_size
 
         # create distributions of data
         distributions = cluster.create_distributions(prior_repeats=prior_repeats,
-                                                     dist_size=1000,
+                                                     dist_size=dist_size,
                                                      show_plots=show_plots)
 
         # add position to the distributions
@@ -490,11 +459,53 @@ def custom_data(db_name, set_year, pts_dict, user_id, prior_repeats=5, dist_size
     flex['pos'] = 'eFLEX'
     data = pd.concat([data, flex])
 
-    # format the self.data for later use
+    # format the data for later use
     data = data.reset_index(drop=True)
     data = data.rename(columns={0: 'player'})
 
-    data['user_id'] = user_id
-    print(data.shape)
+    # create player to integer mapping and reverse mapping
+    player_to_int, int_to_player = create_player_map(data.player.unique())
 
-    data.to_sql('Session_Data', con=conn, if_exists='replace')
+    # create position to integer mappings
+    pos_to_int = {'aQB': 1,
+                  'bRB': 2,
+                  'cWR': 3,
+                  'dTE': 4,
+                  'eFLEX': 5}
+
+    # map all values to integers
+    data.player = data.player.map(player_to_int)
+    data.pos = data.pos.map(pos_to_int)
+
+    # add user id information
+    data['userid'] = user_id
+
+    # convert all data to int16
+    data = data.astype('int16')
+
+    try:
+        sql = '''DELETE FROM website.{} WHERE userid={};'''.format(write_info['table'], user_id)
+        with write_info['engine'].begin() as conn:
+            conn.execute(sql)
+    except:
+        pass
+
+    # generate a dtypes dictionary
+    dtypes = {}
+    dtypes['player'] = sqlalchemy.types.SMALLINT()
+    dtypes['pos'] = sqlalchemy.types.SMALLINT()
+    dtypes['userid'] = sqlalchemy.types.SMALLINT()
+
+    for i in range(1, dist_size + 1):
+        dtypes[i] = sqlalchemy.types.SMALLINT()
+
+    # write out results
+    data.to_sql(write_info['table'], write_info['engine'], schema=write_info['schema'],
+                if_exists=write_info['if_exists'], index=False, dtype=dtypes)
+
+    int_to_player = pd.DataFrame.from_dict(int_to_player, orient='index')
+    try:
+        int_to_player.to_sql('intplayermap', write_info['engine'], schema=write_info['schema'],
+                             if_exists='fail', index=False)
+    except:
+        pass

@@ -2,13 +2,27 @@
 {% import 'bootstrap/wtf.html' as wtf %}
 
 {% block app_content %}
-        <h1>Begin Simulation</h1>
+         <div class="dropdown">
+             <button class="btn btn-default dropdown-toggle" type="button" id="menu1" data-toggle="dropdown">QB1
+                 <span class="caret"></span></button>
+             <ul class="dropdown-menu" role="menu" aria-labelledby="menu1">
+                 {% for player in messages %}
+                 <li role="presentation"><a role="menuitem" tabindex="-1" href="#">My Apllications</a></li>
+                 <li role="presentation"><a role="menuitem" tabindex="-1" href="#">Staff Board</a></li>
+                 <li role="presentation"><a role="menuitem" tabindex="-1" href="#">Apply</a></li>
+             </ul>
+         </div>
+
+
+    <h1>Begin Simulation</h1>
         {% if form %}
         {{ wtf.quick_form(form) }}
         <br>
         {% endif %}
-<html>
-    <link rel="stylesheet" type="text/css" href="df_style.css"/>
-        {{ table|safe }}
-</html>
+
+    <html>
+        <link rel="stylesheet" type="text/css" href="df_style.css"/>
+            {{ table|safe }}
+    </html>
+
 {% endblock %}
