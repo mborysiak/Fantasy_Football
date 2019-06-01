@@ -1,82 +1,219 @@
+# core packages
+import pandas as pd
+import numpy as np
+import random
+import matplotlib.pyplot as plt
 
-class FF_Simulation():
+# sql packages
+import sqlalchemy
+import psycopg2
+from sqlalchemy import create_engine
+
+# linear optimization
+from cvxopt import matrix
+from cvxopt.glpk import ilp
+from scipy.stats import skewnorm
+
+class FootballSimulation():
 
     #==========
     # Creating Player Distributions for Given Settings
     #==========
     
-    def __init__(self, db_name, set_year, pts_dict, prior_repeats=5, show_plots=False):
-        '''
-        The initialization of this Class reads in all of the statistical projection data and
-        translates it into clusters and projection distributions given a particular scoring schema.
-        The data is then stored in the self.data object, which will be accessed through the analysis.
+    def __init__(self, pts_dict, table_info, set_year=2018):
         
-        Input: A database that contains statistical projections, a dictionary that contains the points
-               for each category, and number of prior repeats to use for Bayesian updating.
-        Return: Stores all the player projection distributions in that self.data object.
-        '''
-        # create empty dataframe to store all player distributions
-        self.data = pd.DataFrame()
-        
-        #==========
-        # Loop through each position and pull / analyze the data
-        #==========
-        
+        # create empty dataframe to store player point distributions
+        tree_output = pd.DataFrame()
         for pos in ['aQB', 'bRB', 'cWR', 'dTE']:
-                
-            # print current position update
-            print('Loading and Preparing ' + pos[1:] + ' Data')
-            
-            #--------
-            # Connect to Database and Pull Player Data
-            #--------
-            
-            conn = sqlite3.connect(path + 'Data/' + db_name)
 
-            df_train_results = pd.read_sql_query('SELECT * FROM ' + pos[1:] + '_Train_Results_' + str(set_year), con=conn)
-            df_test_results = pd.read_sql_query('SELECT * FROM ' + pos[1:] + '_Test_Results_' + str(set_year), con=conn)
-            df_train = pd.read_sql_query('SELECT * FROM ' + pos[1:] + '_Train_' + str(set_year), con=conn)
-            df_predict = pd.read_sql_query('SELECT * FROM ' + pos[1:] + '_Predict_' + str(set_year), con=conn)
+            # extract the train and test data for passing into the tree algorithm
+            train, test = self._data_pull(pts_dict, pos, table_info, set_year)
 
-            #--------
-            # Calculate Fantasy Points for Given Scoring System and Cluster
-            #--------
-            df_train_results, df_test_results = format_results(df_train_results, df_test_results, 
-                                                               df_train, df_predict, 
-                                                               pts_dict[pos[1:]])
-            df_train_results = df_train_results.drop('year', axis=1)
-            
-            # initialize cluster with train and test results
-            cluster = Clustering(df_train_results, df_test_results)
+            # obtain the cluster standard deviation + the mixed prediction / cluster mean
+            results = self._tree_cluster(train, test, pos)
 
-            # fit decision tree and apply nodes to players
-            cluster.fit_and_predict_tree(print_results=False)
+            # append the results for each position into single dataframe
+            tree_output = pd.concat([tree_output, results], axis=0)
 
-            # add linear regression of predicted vs actual for cluster predictions
-            #c_train, c_test = cluster.add_fit_metrics()
-            
-            #--------
-            # Use Bayesian Updating to Create Points Distributions
-            #--------
-            
-            # create distributions of data
-            distributions = cluster.create_distributions(prior_repeats=prior_repeats, show_plots=show_plots)
-            
-            # add position to the distributions
-            distributions['pos'] = pos
-            
-            # append each position of data to master dataset
-            self.data = pd.concat([self.data, distributions], axis=0)
-            
+        tree_output = tree_output.reset_index(drop=True)
+
+        # loop through each row in tree output and create a normal distribution
+        data_list = []
+        for row in tree_output.iterrows():
+            dist = list(np.uint16(np.random.normal(loc=row[1]['PredMean'], scale=row[1]['ClusterStd'], size=1500)*16))
+            data_list.append(dist)
+
+        # create the player, position, point distribution dataframe
+        self.data = pd.concat([tree_output.player, pd.DataFrame(data_list), tree_output.pos], axis=1)
+
+        # add salaries to the dataframe and set index to player
+        salaries = pd.read_sql_query('SELECT * FROM {}."salaries"'.format(table_info['schema']), table_info['engine'])
+        self.data = pd.merge(self.data, salaries, how='inner', left_on='player', right_on='player')
+        
         # add flex data
         flex = self.data[self.data.pos.isin(['bRB', 'cWR', 'dTE'])]
-        flex['pos'] = 'eFLEX'
+        flex.loc[:, 'pos'] = 'eFLEX'
         self.data = pd.concat([self.data, flex])
         
-        # format the self.data for later use
-        self.data = self.data.reset_index(drop=True)
-        self.data = self.data.rename(columns={0: 'player'})
-    
+        # reset index
+        self.data = self.data.set_index('player')
+
+
+    @staticmethod
+    def _data_pull(pts_dict, pos, table_info, set_year=2018):
+
+        '''
+        This function reads in all raw statistical predictions from the ensemble model for a given
+        position group and then converts it into predicted points scored based on a given scoring system.
+
+        Input: Database connection to pull stored raw statistical data, a dictionary containing points
+               per statistical category, and a position to pull.
+        Return: A dataframe with a player, their raw statistical projections and the predicted points
+                scored for a given scoring system.
+        '''
+
+        import pandas as pd
+
+        #--------
+        # Connect to Database and Pull Player Data
+        #--------
+
+        train = pd.read_sql_query('SELECT * FROM {}."{}_Train_{}"' \
+                                             .format(table_info['schema'], pos[1:], str(set_year)), table_info['engine'])
+        test = pd.read_sql_query('SELECT * FROM {}."{}_Test_{}"' \
+                                            .format(table_info['schema'], pos[1:], str(set_year)), table_info['engine'])
+
+        #--------
+        # Calculate Fantasy Points for Given Scoring System
+        #-------- 
+
+        # extract points list and get the idx of point attributes based on length of list
+        pts_list = pts_dict[pos[1:]]
+        c_idx = len(pts_list) + 1
+
+        # multiply stat categories by corresponding point values
+        train.iloc[:, 1:c_idx] = train.iloc[:, 1:c_idx] * pts_list
+        test.iloc[:, 1:c_idx] = test.iloc[:, 1:c_idx] * pts_list
+
+        # add a total predicted points stat category
+        train.loc[:, 'pred'] = train.iloc[:, 1:c_idx].sum(axis=1)
+        test.loc[:, 'pred'] = test.iloc[:, 1:c_idx].sum(axis=1)
+
+        return train, test
+
+    @staticmethod
+    def _searching(est, pos, X_grid, y_grid, n_jobs=1):
+        '''
+        Function to perform GridSearchCV and return the test RMSE, as well as the 
+        optimized and fitted model
+        '''
+        from sklearn.model_selection import GridSearchCV
+        from sklearn.model_selection import cross_val_score
+
+         #=========
+        # Set the RF search params for each position
+        #=========
+
+        params = {}
+
+        params['QB'] = {
+            'max_depth': [4, 5],
+            'min_samples_split': [2],
+            'min_samples_leaf': [15, 20, 25],
+            'splitter': ['random']
+        }
+
+        params['RB'] = {
+            'max_depth': [5, 6, 7],
+            'min_samples_split': [2],
+            'min_samples_leaf': [15, 20, 25],
+            'splitter': ['random']
+        }
+
+        params['WR'] = {
+            'max_depth': [4, 5, 6],
+            'min_samples_split': [2],
+            'min_samples_leaf': [20, 25, 30],
+            'splitter': ['random']
+        }
+
+
+        params['TE'] = {
+            'max_depth': [4, 5],
+            'min_samples_split': [2],
+            'min_samples_leaf': [15, 20, 25],
+            'splitter': ['random']
+        }
+
+        # set up GridSearch object
+        Search = GridSearchCV(estimator=est,
+                              param_grid=params[pos[1:]],
+                              scoring='neg_mean_squared_error',
+                              n_jobs=n_jobs,
+                              cv=3,
+                              return_train_score=False,
+                              iid=False)
+
+        # try all combination of parameters with the fit
+        search_results = Search.fit(X_grid, y_grid)
+
+        # extract best estimator parameters and create model object with them
+        best_params = search_results.cv_results_['params'][search_results.best_index_]
+        est.set_params(**best_params)
+
+        # fit the optimal estimator with the data
+        est.fit(X_grid, y_grid)
+
+        return est
+
+
+    def _tree_cluster(self, train, test, pos):
+
+        # create df for clustering by selecting numeric values and dropping y_act
+        X_train = train.select_dtypes(include=['float', 'int', 'uint8']).drop('y_act', axis=1)
+        X_test = test.select_dtypes(include=['float', 'int', 'uint8'])
+        y = train.y_act
+
+        #----------
+        # Train the Decision Tree with GridSearch optimization
+        #----------
+
+        from sklearn.tree import DecisionTreeRegressor
+
+        # train decision tree with _searching method
+        dtree = self._searching(DecisionTreeRegressor(random_state=1), pos, X_train, y)
+
+        #----------
+        # Calculate each cluster's mean and standard deviation
+        #----------
+
+        # pull out the training clusters and cbind with the actual points scored
+        train_results = pd.concat([pd.Series(dtree.apply(X_train), name='Cluster'), y], axis=1)
+
+        # calculate the average and standard deviation of points scored by cluster
+        train_results = train_results.groupby('Cluster', as_index=False).agg({'y_act': ['mean', 'std']})
+        train_results.columns = ['Cluster', 'ClusterMean', 'ClusterStd']
+
+        #----------
+        # Add the cluster to test results and resulting group mean / std: Player | Pred | StdDev
+        #----------
+
+        # grab the player, prediction, and add cluster to dataset
+        test_results = pd.concat([test[['player', 'pred']], 
+                                  pd.Series(dtree.apply(X_test), name='Cluster')], axis=1)
+
+        # merge the test results with the train result on cluster to add mean cluster and std
+        test_results = pd.merge(test_results, train_results, how='inner', left_on='Cluster', right_on='Cluster')
+
+        # calculate an overall prediction mean and add position to dataset
+        test_results['PredMean'] = (0.5*test_results.pred + 0.5*test_results.ClusterMean)
+        test_results['pos'] = pos
+
+        # pull out relevant results for creating distributions
+        test_results = test_results[['player', 'pos', 'PredMean', 'ClusterStd']]
+
+        return test_results
+
     
     def return_data(self):
         '''
@@ -90,7 +227,16 @@ class FF_Simulation():
     #==========
     
     def run_simulation(self, league_info, to_drop, to_add, iterations=500):        
+        '''
+        Method that runs the actual simulation and returns the results.
         
+        Input: Projected player data and salaries with variance, the league 
+               information (e.g. position requirements, and salary caps), and 
+               information about players selected by your team and other teams.
+        Returns: The top team results (players selected and salaries), as well
+                 as counts of players selected, their salary they were selected at,
+                 and the points the scored when selected.
+        '''
         #--------
         # Pull Out Data, Salaries, and Inflation for Current Simulation
         #--------
@@ -98,6 +244,23 @@ class FF_Simulation():
         # create a copy of self.data for current iteration settings
         data = self.data.copy()
         
+        # pull out min salary from data
+        min_salary = data.salary.min()
+        
+        # if the total + the minimum salary 
+        if np.sum(to_add['salaries']) + min_salary > league_info['salary_cap']:
+            print('''The selected salaries equal {}, the cheapest projected
+                     player costs {}, and the max salary cap is {}.  
+                     
+                     As a result, no player is able to be selected from the optimization.
+                     Select lower salaries or increase the salary cap to continue.'''.format(np.sum(to_add['salaries']), 
+                                                                                             min_salary,
+                                                                                             league_info['salary_cap']))
+            return [], []
+        
+        # give an extra dollar to prevent errors with minimum salaried players
+        league_info['salary_cap'] = league_info['salary_cap'] + 1
+       
         # drop other selected players + calculate inflation metrics
         data, drop_proj_sal, drop_act_sal = self._drop_players(data, league_info, to_drop)
         
@@ -147,8 +310,8 @@ class FF_Simulation():
         trial_counts = 0
         for i in range(0, iterations):
     
-            # every 250 trials, randomly shuffle each run in salary skews and data
-            if i % 250 == 0:
+            # every N trials, randomly shuffle each run in salary skews and data
+            if i % 50 == 0:
                 _ = [np.random.shuffle(row) for row in salary_skews]
                 data = self._df_shuffle(data)
 
@@ -170,7 +333,7 @@ class FF_Simulation():
     #==========
     # Helper Functions for the Simulation Loop
     #==========
-    
+
     #--------
     # Salary (+Inflation) and Keeper Setup
     #--------
@@ -229,36 +392,57 @@ class FF_Simulation():
         Return: The players that remain available for the simulation, the players to be kept,
                 and metrics to calculate salary inflation.
         '''
-
+        print('starting add players')
+        # pull data for players that have been added to your team and split out other players
         add_data = data[data.index.isin(to_add['players'])]
-        add_data = add_data[~add_data.index.duplicated(keep='first')]
         other_data = data.drop(add_data.index, axis=0)
 
+        # pull out the salaries of your players and sum
         add_proj_salary = add_data.salary.drop_duplicates().sum()
         add_act_salary = np.sum(to_add['salaries'])
         
         # update the salary for your team to subtract out drafted player's salaries
         league_info['salary_cap'] = float(league_info['salary_cap'] - add_act_salary)
         
-        
+        # add the mean points scored by the players who have been added
         to_add['points'] = -1.0*(add_data.drop(['pos', 'salary'],axis=1).mean(axis=1).values)
         
+        # create list of letters to append to position for proper indexing
+        letters = ['a', 'b', 'c', 'd', 'e']
+
+        # loop through each position in the pos_require dictionary
+        for i, pos in enumerate(league_info['pos_require'].keys()):
+
+            # create a unique label based on letter and position
+            pos_label = letters[i]+pos
+
+            # loop through each player that has been selected  
+            for player in list(add_data[add_data.pos==pos_label].index):
+
+                # if the position is still required to be filled:
+                if league_info['pos_require'][pos] > 0:
+
+                    # subtract out the current player from the position count
+                    league_info['pos_require'][pos] = league_info['pos_require'][pos] - 1
+
+                    # and remove that player from consideration for filling other positions
+                    add_data = add_data[add_data.index != player]
         
-        for pos in league_info['pos_require'].keys():
-            league_info['pos_require'][pos] = league_info['pos_require'][pos] - to_add['positions'][pos]
-        
+        print(league_info['pos_require'])
         return other_data, league_info, to_add, add_proj_salary, add_act_salary
     
     
     @staticmethod
     def _calc_inflation(league_info, drop_proj_sal, drop_act_sal, add_proj_sal, add_act_sal):
-        
+        '''
+        Method to calculate inflation based on players selected and the expected salaries.
+        '''
         # add up the total actual and projected salaries for all keepers
         projected_salary = drop_proj_sal + add_proj_sal
         actual_salary = drop_act_sal + add_act_sal
         
         # calculate the salary inflation due to the keepers
-        total_cap = league_info['num_teams'] * league_info['salary_cap']
+        total_cap = league_info['num_teams'] * league_info['initial_cap']
         inflation = (total_cap-actual_salary) / (total_cap-projected_salary)
         
         return inflation
@@ -288,7 +472,7 @@ class FF_Simulation():
 
         # drop salary from the points dataframe and reset the columns from 0 to N
         data = data.drop(['pos', 'salary'], axis=1)
-        data.columns = [i for i in range(0, 10000)]
+        data.columns = [i for i in range(0, len(data.columns))]
         
         return data, salaries, salary_skews, pos_counts
         
@@ -303,7 +487,7 @@ class FF_Simulation():
         _salaries = salaries.reshape(-1,1)
 
         # create a skews normal distribution of uncertainty for salaries
-        skews = (skewnorm.rvs(10, size=10000)*.07).reshape(1, -1)
+        skews = (skewnorm.rvs(5, size=1000)*.1).reshape(1, -1)
 
         # create a p x m matrix with dot product, where p is the number of players
         # and m is the number of skewed uncertainties, e.g. 320 players x 10000 skewed errors
@@ -426,7 +610,7 @@ class FF_Simulation():
         Return: Randomly selected array of points and salaries + skews for a given trial
         '''
         # select random number between 0-10000
-        ran_num = random.randint(0, 9999)
+        ran_num = random.randint(0, 999)
 
         # pull out a random column of points 
         points = data.iloc[:, ran_num].values.astype('double')*-1.0
@@ -524,17 +708,39 @@ class FF_Simulation():
         '''
         
         # pull out points and salary for a given player
-        pts = np.array(self.counts['points'][player])*-1
         sal = np.array(self.counts['salary'][player])
         
         # create and displayjoint distribution plot
-        sns.jointplot(x=pts, y=sal, kind="kde", ratio=4, size=5, space=0)
-        ax = plt.gca()
-        ax.get_yaxis().get_major_formatter().set_useOffset(False)
+        sns.distplot(sal)
+        plt.show()
         
     def show_most_selected(self, to_add, iterations, num_show=20):
         
-        counts = pd.DataFrame.from_dict(self.counts['names'], orient='index')
+        counts = pd.DataFrame.from_dict(self.counts['names'], orient='index').rename(columns={0: 'Percent Drafted'})
+        counts = counts.sort_values(by='Percent Drafted', 
+                                    ascending=False)[len(to_add['players']):].head(num_show) / iterations
         
-        counts = counts.sort_values(by=0, ascending=False)[len(to_add['players']):].head(num_show) / iterations
-        to_plot = counts.plot.bar(legend=False, figsize=(15, 4))
+        avg_sal = {}
+        for key, value in self.counts['salary'].items():
+            avg_sal[key] = np.mean(value)
+
+        avg_sal = pd.DataFrame.from_dict(avg_sal, orient='index').rename(columns={0: 'Average Salary'})
+        avg_sal = pd.merge(counts, avg_sal, how='inner', left_index=True, 
+                           right_index=True).sort_values(by='Percent Drafted', ascending=False)
+        
+        fig = plt.figure(figsize=(15,4)) # Create matplotlib figure
+
+        ax = fig.add_subplot(111) # Create matplotlib axes
+        ax2 = ax.twinx() # Create another axes that shares the same x-axis as ax.
+
+        width = 0.4
+        
+        avg_sal['Average Salary'].plot(kind='bar', color='blue', ax=ax2, width=width, 
+                               position=0, align='center')
+        counts.plot(kind='bar', color='red', ax=ax, width=width, position=1, align='center')
+
+
+        ax.set_ylabel('Percent Drafted')
+        ax2.set_ylabel('Average Price')
+
+        plt.show()
