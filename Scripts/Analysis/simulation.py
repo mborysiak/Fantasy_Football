@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import random
 import matplotlib.pyplot as plt
+import pandas.io.formats.style
 
 # sql packages
 import sqlalchemy
@@ -48,6 +49,7 @@ class FootballSimulation():
 
         # add salaries to the dataframe and set index to player
         salaries = pd.read_sql_query('SELECT * FROM {}."salaries"'.format(table_info['schema']), table_info['engine'])
+        self.sal = salaries
         self.data = pd.merge(self.data, salaries, how='inner', left_on='player', right_on='player')
         
         # add flex data
@@ -206,8 +208,8 @@ class FootballSimulation():
         test_results = pd.merge(test_results, train_results, how='inner', left_on='Cluster', right_on='Cluster')
 
         # calculate an overall prediction mean and add position to dataset
-        test_results['PredMean'] = (0.5*test_results.pred + 0.5*test_results.ClusterMean)
-        test_results['pos'] = pos
+        test_results.loc[:, 'PredMean'] = (0.5*test_results.pred + 0.5*test_results.ClusterMean)
+        test_results.loc[:, 'pos'] = pos
 
         # pull out relevant results for creating distributions
         test_results = test_results[['player', 'pos', 'PredMean', 'ClusterStd']]
@@ -270,11 +272,11 @@ class FootballSimulation():
         pos_require = list(league_info['pos_require'].values())
         
         # calculate inflation based on drafted players and their salaries
-        inflation = self._calc_inflation(league_info, drop_proj_sal, drop_act_sal, add_proj_sal, add_act_sal)
+        inflation, total_cap = self._calc_inflation(league_info, drop_proj_sal, drop_act_sal, add_proj_sal, add_act_sal)
 
         # determine salaries, skew distributions, and number of players for each position
         data, salaries, salary_skews, pos_counts = self._pull_salary_poscounts(data, inflation)
-        
+
         #--------
         # Initialize Matrix and Results Dictionary for Simulation
         #--------
@@ -318,6 +320,17 @@ class FootballSimulation():
             # pull out a random selection of points and salaries
             points, salaries_tmp = self._random_select(data, salaries, salary_skews)
             
+            # adjust salaries to ensure they don't go over the total cap
+            # first sum of the salaries of unique players (exclude flex)
+            sum_salaries = np.sum(salaries_tmp[:len(data.index.unique())])
+            
+            # sum up the salaries with total already spent
+            all_money = add_act_sal + drop_act_sal + sum_salaries
+
+            # calculate an inflation or deflation metric and multiply by salaries
+            factor = total_cap / all_money
+            salaries_tmp = salaries_tmp * factor
+
             # run linear integer optimization
             x = self._run_opt(A, points, salaries_tmp, league_info['salary_cap'], pos_require)
 
@@ -445,7 +458,7 @@ class FootballSimulation():
         total_cap = league_info['num_teams'] * league_info['initial_cap']
         inflation = (total_cap-actual_salary) / (total_cap-projected_salary)
         
-        return inflation
+        return inflation, total_cap
         
         
     def _pull_salary_poscounts(self, data, inflation):
@@ -700,6 +713,10 @@ class FootballSimulation():
         results_df = results_df.sort_values(by=first_num_col, ascending=False)
 
         return results_df
+
+    #===============
+    # Creating Output Visualizations
+    #===============
     
     
     def density_plot(self, player):
@@ -714,33 +731,88 @@ class FootballSimulation():
         sns.distplot(sal)
         plt.show()
         
+
+    #---------
+    # Create a pandas dataframe with bars in the cells
+    #---------
+
+    # def _bar_center_zero(self, s, color_positive, color_negative, width):
+
+    #     # Either the min or the max should reach the edge (50%, centered on zero)
+    #     m = max(abs(s.min()),abs(s.max()))
+
+    #     normed = s * 60 * width / (100 * m)
+
+    #     base = 'width: 10em; height: 80%;'
+
+    #     attrs_neg = (base+ 'background: linear-gradient(90deg, transparent 0%, transparent {w}%, {c} {w}%, '
+    #                 '{c} 50%, transparent 50%)')
+
+    #     attrs_pos = (base+ 'background: linear-gradient(90deg, transparent 0%, transparent 5%, {c} 0%, {c} {w}%, '
+    #                 'transparent {w}%)')
+
+    #     return [attrs_pos.format(c=color_positive,  w=(5+x)) if x > 0
+    #                 else attrs_neg.format(c=color_negative, w=(0)) 
+    #                     for x in normed]
+
+    # def bar_excel(self, subset=None, axis=0, color_positive='#5FBA7D', 
+    #                 color_negative='#d65f5f', width=100):
+
+    #     self.apply(self._bar_center_zero, axis=axis, subset=subset, 
+    #             color_positive=color_positive, color_negative=color_negative,
+    #             width=width)
+    #     return self
+
+                
     def show_most_selected(self, to_add, iterations, num_show=20):
         
-        counts = pd.DataFrame.from_dict(self.counts['names'], orient='index').rename(columns={0: 'Percent Drafted'})
-        counts = counts.sort_values(by='Percent Drafted', 
-                                    ascending=False)[len(to_add['players']):].head(num_show) / iterations
-        
+        #----------
+        # Create data frame of percent drafted and average salary
+        #----------
+
+        # create a dataframe of counts drafted for each player
+        counts_df = pd.DataFrame.from_dict(self.counts['names'], orient='index').rename(columns={0: 'Percent Drafted'})
+        counts_df = counts_df.sort_values(by='Percent Drafted', 
+                                    ascending=False)[len(to_add['players']):].head(30) / iterations
+
+        # pull out the salary that each player was drafted at from dictionary
         avg_sal = {}
         for key, value in self.counts['salary'].items():
             avg_sal[key] = np.mean(value)
 
+        # pass the average salaries into datframe and merge with the counts dataframe
         avg_sal = pd.DataFrame.from_dict(avg_sal, orient='index').rename(columns={0: 'Average Salary'})
-        avg_sal = pd.merge(counts, avg_sal, how='inner', left_index=True, 
-                           right_index=True).sort_values(by='Percent Drafted', ascending=False)
+        avg_sal = pd.merge(counts_df, avg_sal, how='inner', left_index=True, 
+                        right_index=True).sort_values(by='Percent Drafted', ascending=False)
+
+        # format the result with rounding
+        avg_sal.loc[:, 'Percent Drafted'] = round(avg_sal.loc[:, 'Percent Drafted'] * 100, 1)
+        avg_sal.loc[:, 'Average Salary'] = round(avg_sal.loc[:, 'Average Salary'], 1)
+
+        # # create the bar charts within the
+        # pd.io.formats.style.Styler._bar_center_zero = _bar_center_zero
+        # pd.io.formats.style.Styler.bar_excel = bar_excel
+
+        #----------
+        # Creating dual axis bar chart
+        #----------
+
+        # fig = plt.figure(figsize=(15,4)) # Create matplotlib figure
+
+        # ax = fig.add_subplot(111) # Create matplotlib axes
+        # ax2 = ax.twinx() # Create another axes that shares the same x-axis as ax.
+
+        # width = 0.4
         
-        fig = plt.figure(figsize=(15,4)) # Create matplotlib figure
+        # avg_sal['Avg Salary'].plot(kind='bar', color='blue', ax=ax2, width=width, 
+        #                        position=0, align='center')
+        # counts.plot(kind='bar', color='red', ax=ax, width=width, position=1, align='center')
 
-        ax = fig.add_subplot(111) # Create matplotlib axes
-        ax2 = ax.twinx() # Create another axes that shares the same x-axis as ax.
 
-        width = 0.4
+        # ax.set_ylabel('Percent Drafted')
+        # ax2.set_ylabel('Average Price')
+
+        # plt.show()
+
+        return avg_sal
         
-        avg_sal['Average Salary'].plot(kind='bar', color='blue', ax=ax2, width=width, 
-                               position=0, align='center')
-        counts.plot(kind='bar', color='red', ax=ax, width=width, position=1, align='center')
-
-
-        ax.set_ylabel('Percent Drafted')
-        ax2.set_ylabel('Average Price')
-
-        plt.show()
