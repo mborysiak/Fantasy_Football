@@ -77,7 +77,7 @@ def append_to_db(df, db_name='Season_Stats.sqlite3', table_name='NA', if_exist='
     # Append pandas df to database in Dropbox
     #--------
 
-    os.chdir('/Users/Mark/Dropbox/FF/')
+    os.chdir('/Users/Mark/OneDrive/FF/')
 
     conn = sqlite3.connect(db_name)
 
@@ -87,3 +87,56 @@ def append_to_db(df, db_name='Season_Stats.sqlite3', table_name='NA', if_exist='
     if_exists=if_exist,
     index=False
     )
+    
+#==========
+# Clean the ADP data
+#==========
+
+'''
+Cleaning the ADP data by selecting relevant features, and extracting the name and team
+from the combined string column. Note that the year is not shifted back because the 
+stats will be used to calculate FP/G for the rookie in that season, but will be removed
+prior to training. Thus, the ADP should match the year from the stats.
+'''
+
+def clean_adp(data_adp, year):
+
+    #--------
+    # Select relevant columns and clean special figures
+    #--------
+
+    data_adp['year'] = year
+
+    # set column names to what they are after pulling
+    df_adp = data_adp.iloc[:, 1:].rename(columns={
+        1: 'Player', 
+        2: 'Avg. Pick',
+        3: 'Min. Pick',
+        4: 'Max. Pick',
+        5: '# Drafts Selected In'
+    })
+
+    # selecting relevant columns and dropping na
+    df_adp = df_adp[['Player', 'year', 'Avg. Pick']].dropna()
+
+    # convert year to float and move back one year to match with stats
+    df_adp['year'] = df_adp.year.astype('float')
+
+    # selecting team and player name information from combined string
+    df_adp['Tm'] = df_adp.Player.apply(team_select)
+    df_adp['Player'] = df_adp.Player.apply(name_select)
+    df_adp['Player'] = df_adp.Player.apply(name_clean)
+
+    # format and rename columns
+    df_adp = df_adp[['Player', 'Tm', 'year', 'Avg. Pick']]
+
+    colnames_adp = {
+        'Player': 'player',
+        'Tm': 'team',
+        'year': 'year',
+        'Avg. Pick': 'avg_pick'
+    }
+
+    df_adp = df_adp.rename(columns=colnames_adp)
+    
+    return df_adp

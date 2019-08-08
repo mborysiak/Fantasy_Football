@@ -172,15 +172,22 @@ def calculate_fp(df, pts, pos):
     
     # calculate fantasy points for QB's associated with a given RB or WR
     if pos == 'RB' or 'WR':
-        df['qb_fp'] =         pts['pass_yd_pts']*df['qb_yds'] +         pts['pass_td_pts']*df['qb_tds'] +         pts['int_pts']*df['int'] +         pts['sack_pts']*df['qb_sacks']
+        df['qb_fp'] = \
+        pts['QB'][0]*df['qb_yds'] + \
+        pts['QB'][1]*df['qb_tds'] + \
+        pts['QB'][4]*df['int'] + \
+        pts['QB'][5]*df['qb_sacks']
     
     # calculate fantasy points for RB's
     if pos == 'RB':
         
-        # create the points list corresponding to metrics calculated
-        pts_list = [pts['yd_pts'], pts['yd_pts'], pts['rec_pts'], pts['td_pts']]
-        
-        df['fp'] =         pts['yd_pts']*df['rush_yds'] +         pts['yd_pts']*df['rec_yds'] +         pts['td_pts']*df['rush_td'] +         pts['td_pts']*df['rec_td'] +         pts['rec_pts']*df['receptions'] +         pts['fmb_pts']*df['fmb']
+        df['fp'] = \
+        pts['RB'][0]*df['rush_yds'] + \
+        pts['RB'][1]*df['rec_yds'] + \
+        pts['RB'][3]*df['rush_td'] + \
+        pts['RB'][3]*df['rec_td'] + \
+        pts['RB'][2]*df['receptions'] + \
+        pts['RB'][4]*df['fmb']
         
         # calculate fantasy points per touch
         df['fp_per_touch'] = df['fp'] / df['total_touches']
@@ -190,36 +197,38 @@ def calculate_fp(df, pts, pos):
     
     if pos == 'WR':
         
-        # create the points list corresponding to metrics calculated
-        pts_list = [pts['yd_pts'], pts['rec_pts'], pts['td_pts']]
-        
-        df['fp'] =         pts['yd_pts']*df['rec_yds'] +         pts['td_pts']*df['rec_td'] +         pts['rec_pts']*df['receptions']
+        df['fp'] = \
+        pts['WR'][0]*df['rec_yds'] + \
+        pts['WR'][2]*df['rec_td'] + \
+        pts['WR'][1]*df['receptions']
         
         # calculate fantasy points per touch
         df['fp_per_tgt'] = df['fp'] / df['tgt']
         
     if pos == 'TE':
         
-        # create the points list corresponding to metrics calculated
-        pts_list = [pts['yd_pts'], pts['rec_pts'], pts['td_pts']]
-        
-        df['fp'] =         pts['yd_pts']*df['rec_yds'] +         pts['td_pts']*df['rec_td'] +         pts['rec_pts']*df['receptions']
+        df['fp'] = \
+        pts['WR'][0]*df['rec_yds'] + \
+        pts['WR'][2]*df['rec_td'] + \
+        pts['WR'][1]*df['receptions']
         
         # calculate fantasy points per touch
         df['fp_per_tgt'] = df['fp'] / df['tgt']
         
     if pos == 'QB':
         
-        # create the points list corresponding to metrics calculated
-        pts_list = [pts['pass_yd_pts'], pts['pass_td_pts'], pts['yd_pts'],
-                    pts['td_pts'], pts['int_pts'], pts['sack_pts']]
-        
-        df['fp'] =         pts['pass_yd_pts']*df['qb_yds'] +         pts['pass_td_pts']*df['qb_tds'] +         pts['yd_pts']*df['rush_yds'] +         pts['td_pts']*df['rush_td'] +         pts['int_pts']*df['int'] +         pts['sack_pts']*df['qb_sacks']
+        df['fp'] = \
+        pts['QB'][0]*df['qb_yds'] + \
+        pts['QB'][1]*df['qb_tds'] + \
+        pts['QB'][2]*df['rush_yds'] + \
+        pts['QB'][3]*df['rush_td'] + \
+        pts['QB'][4]*df['int'] + \
+        pts['QB'][5]*df['qb_sacks']
         
     # calculate fantasy points per game
     df['fp_per_game'] = df['fp'] / df['games']
     
-    return df, pts_list
+    return df
 
 
 # In[ ]:
@@ -471,11 +480,12 @@ catboost_params = {
 }
 
 ridge_params = {
-    'alpha': [50, 100, 150, 200, 250, 300, 400, 500]
+    'alpha': [50, 100, 150, 200, 250, 300, 400, 500, 600, 700, 1000]
 }
 
 lasso_params = {
-    'alpha': [0.5, 0.75, 0.8, .9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5]
+   # 'alpha': [0.5, 0.75, 0.8, .9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5]
+    'alpha': [0.5, 1, 5, 10, 25, 50, 100, 150, 200, 250]
 }
 
 lasso_pca_params = {

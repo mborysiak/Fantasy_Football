@@ -77,7 +77,7 @@ def append_to_db(df, db_name='Season_Stats.sqlite3', table_name='NA', if_exist='
     # Append pandas df to database in Dropbox
     #--------
 
-    os.chdir('/Users/Mark/Dropbox/FF/')
+    os.chdir('/Users/Mark/OneDrive/FF/')
 
     conn = sqlite3.connect(db_name)
 

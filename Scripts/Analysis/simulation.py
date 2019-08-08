@@ -4,6 +4,7 @@ import numpy as np
 import random
 import matplotlib.pyplot as plt
 import pandas.io.formats.style
+import copy
 
 # sql packages
 import sqlalchemy
@@ -21,7 +22,7 @@ class FootballSimulation():
     # Creating Player Distributions for Given Settings
     #==========
     
-    def __init__(self, pts_dict, table_info, set_year=2018):
+    def __init__(self, pts_dict, table_info, set_year, iterations):
         
         # create empty dataframe to store player point distributions
         tree_output = pd.DataFrame()
@@ -41,16 +42,20 @@ class FootballSimulation():
         # loop through each row in tree output and create a normal distribution
         data_list = []
         for row in tree_output.iterrows():
-            dist = list(np.uint16(np.random.normal(loc=row[1]['PredMean'], scale=row[1]['ClusterStd'], size=1500)*16))
+            dist = list(np.uint16(np.random.normal(loc=row[1]['PredMean'], 
+                                                   scale=row[1]['ClusterStd'], size=iterations*2)*16))
             data_list.append(dist)
 
         # create the player, position, point distribution dataframe
         self.data = pd.concat([tree_output.player, pd.DataFrame(data_list), tree_output.pos], axis=1)
 
         # add salaries to the dataframe and set index to player
-        salaries = pd.read_sql_query('SELECT * FROM {}."salaries"'.format(table_info['schema']), table_info['engine'])
+        salaries = pd.read_sql_query('SELECT * FROM {}."salaries_{}"'.format(table_info['schema'], str(set_year)), table_info['engine'])
         self.sal = salaries
         self.data = pd.merge(self.data, salaries, how='inner', left_on='player', right_on='player')
+        
+        # pull in injury risk information
+        self.inj = pd.read_sql_query('SELECT * FROM {}."injuries_{}"'.format(table_info['schema'], str(set_year)), table_info['engine'])
         
         # add flex data
         flex = self.data[self.data.pos.isin(['bRB', 'cWR', 'dTE'])]
@@ -245,6 +250,8 @@ class FootballSimulation():
         
         # create a copy of self.data for current iteration settings
         data = self.data.copy()
+        league_info = copy.deepcopy(league_info)
+        inj = self.inj.copy()
         
         # pull out min salary from data
         min_salary = data.salary.min()
@@ -273,9 +280,12 @@ class FootballSimulation():
         
         # calculate inflation based on drafted players and their salaries
         inflation, total_cap = self._calc_inflation(league_info, drop_proj_sal, drop_act_sal, add_proj_sal, add_act_sal)
-
+        
         # determine salaries, skew distributions, and number of players for each position
-        data, salaries, salary_skews, pos_counts = self._pull_salary_poscounts(data, inflation)
+        data, salaries, salary_skews, pos_counts = self._pull_salary_poscounts(data, inflation, iterations)
+        
+        # calculate the injury distributions
+        data, inj_dist, replace_val = self._injury_replacement(data, league_info, inj, iterations)
 
         #--------
         # Initialize Matrix and Results Dictionary for Simulation
@@ -303,6 +313,7 @@ class FootballSimulation():
         
         # shuffle the random data--both salary skews and the point projections
         _ = [np.random.shuffle(row) for row in salary_skews]
+        inj_dist = self._df_shuffle(inj_dist)
         data = self._df_shuffle(data)
                 
         #--------
@@ -313,12 +324,14 @@ class FootballSimulation():
         for i in range(0, iterations):
     
             # every N trials, randomly shuffle each run in salary skews and data
-            if i % 50 == 0:
+            if i % (iterations / 10) == 0:
                 _ = [np.random.shuffle(row) for row in salary_skews]
+                inj_dist = self._df_shuffle(inj_dist)
                 data = self._df_shuffle(data)
-
+            
             # pull out a random selection of points and salaries
-            points, salaries_tmp = self._random_select(data, salaries, salary_skews)
+            points, salaries_tmp = self._random_select(data, salaries, salary_skews, 
+                                                       inj_dist, replace_val, iterations)
             
             # adjust salaries to ensure they don't go over the total cap
             # first sum of the salaries of unique players (exclude flex)
@@ -341,7 +354,7 @@ class FootballSimulation():
         # format the results after the simulation loop is finished
         self.results = self._format_results(results)
         
-        return self.results, self.counts
+        return self.results
     
     #==========
     # Helper Functions for the Simulation Loop
@@ -405,7 +418,7 @@ class FootballSimulation():
         Return: The players that remain available for the simulation, the players to be kept,
                 and metrics to calculate salary inflation.
         '''
-        print('starting add players')
+        
         # pull data for players that have been added to your team and split out other players
         add_data = data[data.index.isin(to_add['players'])]
         other_data = data.drop(add_data.index, axis=0)
@@ -416,6 +429,7 @@ class FootballSimulation():
         
         # update the salary for your team to subtract out drafted player's salaries
         league_info['salary_cap'] = float(league_info['salary_cap'] - add_act_salary)
+        print('Remaining Salary:', league_info['salary_cap'])
         
         # add the mean points scored by the players who have been added
         to_add['points'] = -1.0*(add_data.drop(['pos', 'salary'],axis=1).mean(axis=1).values)
@@ -441,7 +455,7 @@ class FootballSimulation():
                     # and remove that player from consideration for filling other positions
                     add_data = add_data[add_data.index != player]
         
-        print(league_info['pos_require'])
+        print('Remaining Positions Required:', league_info['pos_require'])
         return other_data, league_info, to_add, add_proj_salary, add_act_salary
     
     
@@ -461,7 +475,7 @@ class FootballSimulation():
         return inflation, total_cap
         
         
-    def _pull_salary_poscounts(self, data, inflation):
+    def _pull_salary_poscounts(self, data, inflation, iterations):
         '''
         Method to pull salaries from the data dataframe, create salary skews, and determine
         the position counts for the A matrix in the simulation
@@ -478,20 +492,16 @@ class FootballSimulation():
         salaries = data.salary.values*inflation
 
         # calculate salary skews for each player's salary
-        salary_skews = self._skews(salaries)
+        salary_skews = self._skews(salaries, iterations*2)
 
         # extract the number of counts for each position for later creating A matrix
         pos_counts = list(data.pos.value_counts().sort_index())
-
-        # drop salary from the points dataframe and reset the columns from 0 to N
-        data = data.drop(['pos', 'salary'], axis=1)
-        data.columns = [i for i in range(0, len(data.columns))]
         
         return data, salaries, salary_skews, pos_counts
         
         
     @staticmethod
-    def _skews(salaries):
+    def _skews(salaries, iterations):
         '''
         Input: Internal method that accepts the salaries input for each player in the dataset.
         Return: Right skewed salary uncertainties, scaled to the actual salary of the player.
@@ -500,13 +510,79 @@ class FootballSimulation():
         _salaries = salaries.reshape(-1,1)
 
         # create a skews normal distribution of uncertainty for salaries
-        skews = (skewnorm.rvs(5, size=1000)*.1).reshape(1, -1)
+        skews = (skewnorm.rvs(5, size=iterations*2)*.1).reshape(1, -1)
 
         # create a p x m matrix with dot product, where p is the number of players
         # and m is the number of skewed uncertainties, e.g. 320 players x 10000 skewed errors
         salary_skews = np.dot(_salaries, skews)
 
         return salary_skews
+    
+    
+    @staticmethod
+    def _injury_replacement(data, league_info, inj, iterations):
+        '''
+        Input: Points dataset, league information, and injury risk, which are used to
+               calculate the replacement values for each position, as well as the injury
+               risk distribution for each player.
+        Output: The points dataset with replacement level points attached and a separate
+                poisson distribution of expected games missed for each player.
+        '''
+        #----------
+        # Calculate Replacement Level Value
+        #----------
+        
+        # calculate the mean points predicted for each player
+        mean_pts = data.iloc[:, 0:iterations*2].mean(axis=1).reset_index()
+        mean_pts = pd.concat([data.pos.reset_index(drop=True), mean_pts], axis=1)
+        mean_pts = mean_pts.sort_values(by=['pos', 0], ascending=[True, False])
+
+        # loop through each position and calculate the replacement level value
+        _pos = ['aQB', 'bRB', 'cWR', 'dTE', 'eFLEX']
+        replacement = []
+
+        for i, key_val in enumerate(league_info['pos_require'].items()):
+
+            # use the positional requirement to determine replacement level
+            num = key_val[1] * league_info['num_teams']
+            num = int(num + (num/2))
+
+            # calculate the replacement level for each position
+            replace = mean_pts[mean_pts.pos==_pos[i]].iloc[num:, 2].median() / 16
+            replacement.append([_pos[i], replace])
+
+        # convert replace values to dataframe and merge with all data to add replacement column
+        replacement = pd.DataFrame(replacement, columns=['pos', 'replace_val'])
+        data = pd.merge(data.reset_index(), replacement, how='left', left_on='pos', right_on='pos').set_index('player')
+        replace_val = data.replace_val
+        
+        # drop salary from the points dataframe and reset the columns from 0 to N-1, leaving the replacement columns
+        data = data.drop(['pos', 'salary', 'replace_val'], axis=1)
+        cols = [i for i in range(0, len(data.columns))]
+        data.columns = cols
+        
+        
+        #----------
+        # Create the Injury Distribtions
+        #----------
+
+        # merge with the points dataset to ensure every player is added with null mean risk filled by median
+        inj = pd.merge(pd.DataFrame(data.index).drop_duplicates(), inj, how='left', left_on='player', right_on='player')
+        inj.mean_risk = inj.mean_risk.fillna(inj.mean_risk.mean())
+
+        # create a poisson distribution of injury risk for each player (clip at 16 games)
+        pois = []
+        for val in inj.mean_risk:
+            pois.append(np.random.poisson(val, iterations*2))
+        inj_dist = pd.concat([inj.player, pd.DataFrame(pois).astype('uint8').clip(upper=16, axis=0)], axis=1)
+        
+        # ensure that the injury distributions are in the same row order as the points dataset
+        inj_dist = pd.merge(pd.DataFrame(data.index), inj_dist, how='left', left_on='player', right_on='player')
+        inj_dist = inj_dist.drop('player', axis=1)
+
+        # return the updated dataset with replacement points and injury distribution dataset
+        return data, inj_dist, replace_val
+
         
     #--------
     # Setting up and Running the Simulation
@@ -615,18 +691,26 @@ class FootballSimulation():
         return x
     
     @staticmethod
-    def _random_select(data, salaries, salary_skews):
+    def _random_select(data, salaries, salary_skews, inj_dist, replace_val, iterations):
         '''
         Random column selection for trial in simulation
         
         Input: Data, salaries, and salary skews
         Return: Randomly selected array of points and salaries + skews for a given trial
         '''
-        # select random number between 0-10000
-        ran_num = random.randint(0, 999)
+        # select random number between 0 and sise of distributions
+        ran_num = random.randint(0, iterations*2-1)
 
-        # pull out a random column of points 
-        points = data.iloc[:, ran_num].values.astype('double')*-1.0
+        # pull out a random column of points and convert to points per game
+        ppg = data.iloc[:, ran_num] / 16
+                
+        # pull a random selection of expected games missed
+        inj_adjust = inj_dist.iloc[:, ran_num]
+        
+        # calculate total points scored as the number of games played by expected ppg
+        # plus the number of games missed times replacement level value
+        points = -1.0*((ppg.values) * (16-inj_adjust.values) + \
+                       (inj_adjust.values * pd.concat([replace_val, ppg], axis=1).min(axis=1).values))
 
         # pull out a random skew and add to the original salaries
         salaries_tmp = salaries + salary_skews[:, ran_num]
@@ -730,42 +814,14 @@ class FootballSimulation():
         # create and displayjoint distribution plot
         sns.distplot(sal)
         plt.show()
-        
-
-    #---------
-    # Create a pandas dataframe with bars in the cells
-    #---------
-
-    # def _bar_center_zero(self, s, color_positive, color_negative, width):
-
-    #     # Either the min or the max should reach the edge (50%, centered on zero)
-    #     m = max(abs(s.min()),abs(s.max()))
-
-    #     normed = s * 60 * width / (100 * m)
-
-    #     base = 'width: 10em; height: 80%;'
-
-    #     attrs_neg = (base+ 'background: linear-gradient(90deg, transparent 0%, transparent {w}%, {c} {w}%, '
-    #                 '{c} 50%, transparent 50%)')
-
-    #     attrs_pos = (base+ 'background: linear-gradient(90deg, transparent 0%, transparent 5%, {c} 0%, {c} {w}%, '
-    #                 'transparent {w}%)')
-
-    #     return [attrs_pos.format(c=color_positive,  w=(5+x)) if x > 0
-    #                 else attrs_neg.format(c=color_negative, w=(0)) 
-    #                     for x in normed]
-
-    # def bar_excel(self, subset=None, axis=0, color_positive='#5FBA7D', 
-    #                 color_negative='#d65f5f', width=100):
-
-    #     self.apply(self._bar_center_zero, axis=axis, subset=subset, 
-    #             color_positive=color_positive, color_negative=color_negative,
-    #             width=width)
-    #     return self
 
                 
     def show_most_selected(self, to_add, iterations, num_show=20):
-        
+        '''
+        Input: Dictionary containing all the values (counts, salaries, points) of the various
+               iterations from the simulation.
+        Output: Formatted dataframe that can be printed with pandas bar charts to visualize results.
+        '''
         #----------
         # Create data frame of percent drafted and average salary
         #----------
@@ -788,31 +844,6 @@ class FootballSimulation():
         # format the result with rounding
         avg_sal.loc[:, 'Percent Drafted'] = round(avg_sal.loc[:, 'Percent Drafted'] * 100, 1)
         avg_sal.loc[:, 'Average Salary'] = round(avg_sal.loc[:, 'Average Salary'], 1)
-
-        # # create the bar charts within the
-        # pd.io.formats.style.Styler._bar_center_zero = _bar_center_zero
-        # pd.io.formats.style.Styler.bar_excel = bar_excel
-
-        #----------
-        # Creating dual axis bar chart
-        #----------
-
-        # fig = plt.figure(figsize=(15,4)) # Create matplotlib figure
-
-        # ax = fig.add_subplot(111) # Create matplotlib axes
-        # ax2 = ax.twinx() # Create another axes that shares the same x-axis as ax.
-
-        # width = 0.4
-        
-        # avg_sal['Avg Salary'].plot(kind='bar', color='blue', ax=ax2, width=width, 
-        #                        position=0, align='center')
-        # counts.plot(kind='bar', color='red', ax=ax, width=width, position=1, align='center')
-
-
-        # ax.set_ylabel('Percent Drafted')
-        # ax2.set_ylabel('Average Price')
-
-        # plt.show()
 
         return avg_sal
         
