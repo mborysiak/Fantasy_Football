@@ -353,8 +353,12 @@ class FootballSimulation():
         
         # format the results after the simulation loop is finished
         self.results = self._format_results(results)
-        
-        return self.results
+
+        # add self version of variable for output calculations
+        self._inflation = inflation
+        self._sal = self.data.reset_index()[['player', 'salary']].drop_duplicates().set_index('player')
+
+        return self.counts
     
     #==========
     # Helper Functions for the Simulation Loop
@@ -840,10 +844,16 @@ class FootballSimulation():
         avg_sal = pd.DataFrame.from_dict(avg_sal, orient='index').rename(columns={0: 'Average Salary'})
         avg_sal = pd.merge(counts_df, avg_sal, how='inner', left_index=True, 
                         right_index=True).sort_values(by='Percent Drafted', ascending=False)
+        
+        # pull in the list salary + inflation to calculate drafted salary minus expected
+        avg_sal = pd.merge(avg_sal, self._sal, how='inner', left_index=True, right_index=True)
+        avg_sal.salary = (avg_sal['Average Salary'] - avg_sal.salary * self._inflation)
+        avg_sal = avg_sal.rename(columns={'salary': 'Expected Salary Diff'})
 
         # format the result with rounding
         avg_sal.loc[:, 'Percent Drafted'] = round(avg_sal.loc[:, 'Percent Drafted'] * 100, 1)
         avg_sal.loc[:, 'Average Salary'] = round(avg_sal.loc[:, 'Average Salary'], 1)
+        avg_sal.loc[:, 'Expected Salary Diff'] = round(avg_sal.loc[:, 'Expected Salary Diff'], 1)
 
         return avg_sal
-        
+            
