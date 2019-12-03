@@ -186,8 +186,7 @@ def calculate_fp(df, pts, pos):
         pts['RB'][1]*df['rec_yds'] + \
         pts['RB'][3]*df['rush_td'] + \
         pts['RB'][3]*df['rec_td'] + \
-        pts['RB'][2]*df['receptions'] + \
-        pts['RB'][4]*df['fmb']
+        pts['RB'][2]*df['receptions']
         
         # calculate fantasy points per touch
         df['fp_per_touch'] = df['fp'] / df['total_touches']
@@ -269,15 +268,11 @@ def features_target(df, year_start, year_end, median_features, sum_features, max
     
     # creating dataframes to export
     new_df = new_df.sort_values(by=['year', 'fp'], ascending=[False, False])
-    new_df = pd.concat([new_df, pd.get_dummies(new_df.year)], axis=1)
+  #  new_df = pd.concat([new_df, pd.get_dummies(new_df.year)], axis=1, sort=False)
     
     df_train = new_df[new_df.year < year_end].reset_index(drop=True)
     df_predict = new_df[new_df.year == year_end].drop('y_act', axis=1).reset_index(drop=True)
-    
-    df_train['year'] = df_train.year.astype('int')
     df_train = df_train.sort_values(['year', 'fp_per_game'], ascending=True).reset_index(drop=True)
-
-    df_predict['year'] = df_predict.year.astype('int')
     
     return df_train, df_predict
 
@@ -340,7 +335,53 @@ def plot_results(results, col_names, asc=True, barh=True, fontsize=12):
 
 # # Pre-Model Feature Engineering
 
-# In[ ]:
+def corr_collinear_removal(df_train, corr_cutoff, collinear_cutoff):
+    '''
+    Function that removes low correlation features, followed by looping through
+    the highest correlations in order and removing any features that are above
+    a minimum collinear cutoff.
+    '''
+    
+    # get the initial number of features to show the end difference
+    init_features = df_train.shape[1]
+
+    # find out the correlation with the target
+    corr = df_train.corr()['y_act']
+    
+    # pull out the features with correlation above the cutoff and sort by absolute correlation
+    corr_sort = list(abs(corr[abs(corr) > corr_cutoff]).sort_values(ascending=False).index)
+    
+    # create lists to store good and bad features
+    good_cols = ['y_act']
+    bad_cols = []
+    
+    # loop through each sorted feature (skipping y_act, which is index 0)
+    for feature in corr_sort[1:]:
+        
+        # if the feature has already been removed, move to next feature
+        if feature in bad_cols:
+            continue
+            
+        else:
+            # if the feature hasn't been removed, append it to the good features list
+            good_cols.append(feature)
+            
+            # find all features that are above the collinear cutoff for the current feature
+            collinear = df_train.corr()[feature]
+            collinear_cols = list(collinear[abs(collinear) > collinear_cutoff].index)
+            
+            # add these extra features to the bad_cols list
+            bad_cols.extend(collinear_cols)
+
+    # add player, ADP, and year back to the features list and subset df_train
+    good_cols.extend(['player', 'avg_pick', 'year'])
+    df_train = df_train[good_cols]
+    df_train = df_train.loc[:,~df_train.columns.duplicated()]
+
+#     # optionally, print the number of features removed
+#     print('Corr removed ', init_features - df_train.shape[1], '/', init_features, ' features')
+    
+    return df_train
 
 
 def corr_removal(df_train, df_predict, corr_cutoff=0.025):
@@ -452,24 +493,24 @@ class ReduceVIF(BaseEstimator, TransformerMixin):
 #=============
 
 lgbm_params = {
-    'n_estimators':[30, 40, 50, 60, 75],
-    'max_depth':[2, 3, 4, 5, 6, 7],
+    'n_estimators':[20, 25, 30, 40, 50, 60],
+    'max_depth':[2, 3, 4, 5, 6],
     'feature_fraction':[0.5, 0.6, 0.7, 0.8, 0.9, 1],
     'subsample': [0.5, 0.6, 0.7, 0.8, 0.9, 1],
-    'min_child_weight': [5, 10, 15, 20, 25],
+    'min_child_weight': [10, 15, 20, 25, 30, 35],
 }
 
 xgb_params = {
-    'n_estimators': [30, 40, 50, 60, 75], 
-    'max_depth': [2, 3, 4, 5, 6, 7], 
+    'n_estimators': [20, 25, 30, 40, 50, 60], 
+    'max_depth': [2, 3, 4, 5, 6], 
     'subsample': [0.5, 0.6, 0.7, 0.8, 0.9, 1],
-    'min_child_weight': [10, 15, 20, 25, 30],
+    'min_child_weight': [10, 15, 20, 25, 30, 35],
     'feature_fraction':[0.5, 0.6, 0.7, 0.8, 0.9, 1]
 }
 
 rf_params = {
     'n_estimators': [30, 40, 50, 60, 75, 100, 125, 150], 
-    'max_depth': [3, 4, 5, 6, 7], 
+    'max_depth': [3, 4, 5, 6, 7, 8], 
     'min_samples_leaf': [1, 2, 3, 5, 7, 10],
     'max_features':[0.5, 0.6, 0.7, 0.8, 0.9, 1]
 }
@@ -480,7 +521,7 @@ catboost_params = {
 }
 
 ridge_params = {
-    'alpha': [50, 100, 150, 200, 250, 300, 400, 500, 600, 700, 1000]
+    'alpha': [5, 10, 25, 50, 100, 150, 200, 250, 300, 400, 500, 600, 700, 1000]
 }
 
 lasso_params = {
@@ -493,6 +534,34 @@ lasso_pca_params = {
 }
 
 lr_params = {}
+
+lgbm_params_class = {
+    'n_estimators':[10, 15, 20, 25, 30, 40, 50],
+    'max_depth':[2, 3, 4, 5],
+    'feature_fraction':[0.5, 0.6, 0.7, 0.8, 0.9, 1],
+    'subsample': [0.5, 0.6, 0.7, 0.8, 0.9, 1],
+    'min_child_weight': [10, 15, 20, 25, 30, 35],
+}
+
+xgb_params_class = {
+    'n_estimators': [20, 25, 30, 40, 50, 60], 
+    'max_depth': [2, 3, 4, 5, 6], 
+    'subsample': [0.5, 0.6, 0.7, 0.8, 0.9, 1],
+    'min_child_weight': [10, 15, 20, 25, 30, 35],
+    'feature_fraction':[0.5, 0.6, 0.7, 0.8, 0.9, 1]
+}
+
+rf_params_class = {
+    'n_estimators': [30, 40, 50, 60, 75, 100, 125, 150], 
+    'max_depth': [3, 4, 5, 6, 7, 8], 
+    'min_samples_leaf': [1, 2, 3, 5],
+    'max_features':[0.5, 0.6, 0.7, 0.8, 0.9, 1]
+}
+
+logit_params = {
+    'C': [0.1, 1, 5, 10, 25, 50, 100, 150, 200, 250, 500]
+
+}
 
 
 # In[ ]:
@@ -611,8 +680,6 @@ def error_compare(df, skip_years):
     import pandas as pd
     import matplotlib.pyplot as plt
 
-    df = df[df.year > df.year.min() + skip_years+1].dropna().reset_index(drop=True)
-
     lr = LinearRegression().fit(df.pred.values.reshape(-1,1), df.y_act)
     r_sq_pred = round(lr.score(df.pred.values.reshape(-1,1), df.y_act), 3)
     corr_pred = round(pearsonr(df.pred, df.y_act)[0], 3)
@@ -624,10 +691,7 @@ def error_compare(df, skip_years):
     return [r_sq_pred, corr_pred, r_sq_avg_pick, corr_avg_pick]
 
 
-# In[ ]:
-
-
-def validation(estimators, params, df_train, iterations=50, random_state=None, scale=False, pca=False, skip_years=2):
+def validation(estimators, params, df_train_orig, iterations=50, random_state=None, scale=False, pca=False, skip_years=2):
     '''
     input: training dataset, estimator
     output: out-of-sample errors and predictions for 5 timeframes
@@ -640,6 +704,7 @@ def validation(estimators, params, df_train, iterations=50, random_state=None, s
     
     # initialize a parameter tracker dictionary and summary output dataframe
     param_tracker = {}
+    results_tracker = {}
     summary = pd.DataFrame()
     
     #==========
@@ -649,7 +714,7 @@ def validation(estimators, params, df_train, iterations=50, random_state=None, s
     for i in range(0, iterations):
         
         # update random state to pull new params, but keep consistency based on starting state
-        random_state = random_state + 1
+        random_state = random_state + i*20 + i*3
         
         # print update on progress
         if (i+1) % 10 == 0:
@@ -658,11 +723,31 @@ def validation(estimators, params, df_train, iterations=50, random_state=None, s
             
         # create empty sub-dictionary for current iteration storage
         param_tracker[i] = {}
+        results_tracker[i] = {}
         
         # create empty lists to store predictions and errors for each estimator
         est_predictions=pd.DataFrame()
         est_errors=pd.DataFrame()
         
+        #----------
+        # Filter down the features with a random correlation and collinear cutoff
+        #----------
+        
+        # select a random correlation cutoff and store in param_tracker
+        np.random.seed(200*i+55*i+15*i+25)
+        corrs = [0.2, 0.25, 0.3, 0.35, 0.4]
+        corr_cutoff = np.random.choice(corrs)
+        param_tracker[i]['corr_cutoff'] = corr_cutoff
+                
+        # select a random collinear cutoff and store in param_tracker
+        np.random.seed(100*i+25*i+105*i+50)
+        collinears = [0.5, 0.6, 0.7, 0.8, 0.9]
+        collinear_cutoff = np.random.choice(collinears)
+        param_tracker[i]['collinear_cutoff'] = collinear_cutoff
+
+        # return the df_train with only relevant features remaining
+        df_train = corr_collinear_removal(df_train_orig, corr_cutoff, collinear_cutoff)
+
         #==========
         # Loop through estimators with a running time series based training and validation method
         #==========
@@ -676,7 +761,7 @@ def validation(estimators, params, df_train, iterations=50, random_state=None, s
             val_error = []    
             train_error = [] 
             val_predictions = np.array([]) 
-            years = df_train.year.unique()[1:]
+            years = df_train_orig.year.unique()[1:]
 
             #==========
             # Loop through years and complete a time-series validation of the given model
@@ -723,9 +808,12 @@ def validation(estimators, params, df_train, iterations=50, random_state=None, s
         weights = round(frac / frac.sum(), 3)          
         
         # multiply the outputs from each model by their weights and sum to get final prediction
-        wt_results = pd.concat([df_train[df_train.year > years.min() + skip_years].reset_index(drop=True),
+        wt_results = pd.concat([df_train[df_train.year > (years.min() + skip_years)].reset_index(drop=True),
                                 pd.Series((est_predictions*weights).sum(axis=1), name='pred')],
                                 axis=1)
+        
+        # store the current predictions in the results tracker
+        results_tracker[i] = wt_results
         
         #==========
         # Calculate Error Metrics and Prepare Export
@@ -761,17 +849,159 @@ def validation(estimators, params, df_train, iterations=50, random_state=None, s
     summary = summary.reset_index(drop=True)
     estimators.extend(['rmse', 'mae', 'r2_pred', 'c_pred', 'r2_adp', 'c_adp'])
     summary.columns = estimators
-    summary = summary.sort_values(by=['rmse', 'r2_pred'], ascending=[True, False])
+    summary = summary.sort_values(by=['r2_pred', 'rmse'], ascending=[False, True])
     
-    return param_tracker, summary, wt_results, est_errors
-
+    return param_tracker, summary, results_tracker, est_errors
 
 # In[ ]:
 
 
-def generate_predictions(best_result, param_list, summary, df_train, df_predict, figsize=(6,15)):
+# def validation(estimators, params, df_train, iterations=50, random_state=None, scale=False, pca=False, skip_years=2):
+#     '''
+#     input: training dataset, estimator
+#     output: out-of-sample errors and predictions for 5 timeframes
+#     '''
+#     from sklearn.metrics import mean_squared_error
+#     from sklearn.metrics import mean_absolute_error
+#     import pandas as pd
+#     import numpy as np
+#     import datetime
     
-    param_list = param_list[best_result]
+#     # initialize a parameter tracker dictionary and summary output dataframe
+#     param_tracker = {}
+#     summary = pd.DataFrame()
+    
+#     #==========
+#     # Complete a Random Hyperparameter search for the given models and parameters
+#     #==========
+    
+#     for i in range(0, iterations):
+        
+#         # update random state to pull new params, but keep consistency based on starting state
+#         random_state = random_state + 1
+        
+#         # print update on progress
+#         if (i+1) % 10 == 0:
+#             print(str(datetime.datetime.now())[:-7])
+#             print('Completed ' + str(i+1) + '/' + str(iterations) + ' iterations')
+            
+#         # create empty sub-dictionary for current iteration storage
+#         param_tracker[i] = {}
+        
+#         # create empty lists to store predictions and errors for each estimator
+#         est_predictions=pd.DataFrame()
+#         est_errors=pd.DataFrame()
+        
+#         #==========
+#         # Loop through estimators with a running time series based training and validation method
+#         #==========
+        
+#         for est in estimators:
+
+#             # grab estimator and random parameters for estimator type
+#             estimator, param_tracker[i][est] = get_estimator(est, params, rand=True, random_state=random_state)
+        
+#             # run through all years for given estimator and save errors and predictions
+#             val_error = []    
+#             train_error = [] 
+#             val_predictions = np.array([]) 
+#             years = df_train.year.unique()[1:]
+
+#             #==========
+#             # Loop through years and complete a time-series validation of the given model
+#             #==========
+            
+#             for m in years:
+                
+#                 # create training set for all previous years and validation set for current year
+#                 train_split = df_train[df_train.year < m]
+#                 val_split = df_train[df_train.year == m]
+        
+#                 # setting the scale parameter based on the given model
+#                 if est == 'ridge' or est == 'lasso' or est == 'knn' or pca == True:
+#                     scale = True
+    
+#                 # splitting the train and validation sets into X_train, y_train, X_val and y_val
+#                 X_train, X_val, y_train, y_val = X_y_split(train_split, val_split, scale, pca)
+        
+#                 # fit training data and creating prediction based on validation data
+#                 estimator.fit(X_train, y_train)
+#                 val_predict = estimator.predict(X_val)
+                
+#                 # skip over the first two year of predictions due to high error for xgb / lgbm
+#                 if m > years.min() + skip_years:
+#                     val_predictions = np.append(val_predictions, val_predict, axis=0)
+                    
+#                     # calculate and append training and validation errors
+#                     train_error, val_error = calc_residuals(estimator, X_train, y_train, X_val, y_val, train_error, val_error)
+#                 else:
+#                     pass
+                
+#             # append predictions for all validation samples / models (n_samples x m_models)
+#             # and all errors (n_years x m_models) to dataframes 
+#             est_predictions = pd.concat([est_predictions, pd.Series(val_predictions, name=est)], axis=1)
+#             est_errors = pd.concat([est_errors, pd.Series(val_error, name=est)], axis=1)
+        
+#         #==========
+#         # Create an ensemble model based on residual errors from each individual model
+#         #==========
+        
+#         # create weights based on the mean errors across all years for each model
+#         est_errors = est_errors.iloc[1:, :]
+#         frac = 1 - (est_errors.mean() / (est_errors.mean().sum()))
+#         weights = round(frac / frac.sum(), 3)          
+        
+#         # multiply the outputs from each model by their weights and sum to get final prediction
+#         wt_results = pd.concat([df_train[df_train.year > (years.min() + skip_years)].reset_index(drop=True),
+#                                 pd.Series((est_predictions*weights).sum(axis=1), name='pred')],
+#                                 axis=1)
+        
+#         #==========
+#         # Calculate Error Metrics and Prepare Export
+#         #==========
+        
+#         # calculate r_squared and correlation for n+1 results using predictions and avg_pick
+#         compare_metrics = error_compare(wt_results, skip_years)
+
+#         # calculate the RMSE and MAE of the ensemble predictions
+#         wt_rmse = round(np.sqrt(mean_squared_error(wt_results.pred, df_train[df_train.year > years.min() + skip_years].reset_index(drop=True).y_act)), 2)
+#         wt_mae = round(mean_absolute_error(wt_results.pred, df_train[df_train.year > years.min() + skip_years].reset_index(drop=True).y_act), 2)
+        
+#         #--------
+#         # create a list of model weights based on residuals, as well s the average RMSE & MAE 
+#         # for the ensemble predictions to append to the output dataframe for export
+#         #--------
+        
+#         # generate a list of weights used for models
+#         wt_list = list(weights.values)
+        
+#         # append rmse and mae metrics for a given ensemble
+#         wt_list.append(wt_rmse)
+#         wt_list.append(wt_mae)
+        
+#         # extend the results with the r2 and correlation metrics for the ensemble and adp
+#         wt_list.extend(compare_metrics)
+#         summary = summary.append([(wt_list)])
+    
+#     #==========
+#     # Update Summary Table of Weights and Error Metric Results
+#     #==========
+        
+#     summary = summary.reset_index(drop=True)
+#     estimators.extend(['rmse', 'mae', 'r2_pred', 'c_pred', 'r2_adp', 'c_adp'])
+#     summary.columns = estimators
+#     summary = summary.sort_values(by=['r2_pred', 'rmse'], ascending=[False, True])
+    
+#     return param_tracker, summary, wt_results, est_errors
+
+
+def generate_predictions(best_result, param_list, summary, df_train, df_predict, figsize=(6,15)):
+    '''
+    Function to generate predictions using the best model and associated weightings.
+    '''
+    
+    # remove corr cutoff and collinear cutoff from the param dictionaries
+    param_list = {k: v for k, v in param_list[best_result].items() if k not in ['corr_cutoff', 'collinear_cutoff']}
     weights = summary.iloc[best_result, :len(param_list)]
     est_names = summary.columns[:len(param_list)]
     
@@ -798,7 +1028,49 @@ def generate_predictions(best_result, param_list, summary, df_train, df_predict,
     to_plot.sort_values().plot.barh(figsize=(5, figsize_length));
     plt.show()
     
-    return wt_predictions, models, 
+    return wt_predictions, models
+
+
+def convert_to_float(df):
+    for c in df.columns:
+        try:
+            df[c] = df[c].astype('float')
+        except:
+            pass
+    
+    return df
+
+
+# def generate_predictions(best_result, param_list, summary, df_train, df_predict, figsize=(6,15)):
+    
+#     param_list = param_list[best_result]
+#     weights = summary.iloc[best_result, :len(param_list)]
+#     est_names = summary.columns[:len(param_list)]
+    
+#     X_train, X_val, y_train, _ = X_y_split(df_train, df_predict)
+    
+#     predictions = pd.DataFrame()
+    
+#     models = []
+#     for est in est_names[0:len(param_list)]:
+#         estimator, _ = get_estimator(est, param_list, rand=False)
+        
+#         estimator.fit(X_train, y_train)
+#         test_predictions = pd.Series(estimator.predict(X_val), name=est)
+        
+#         predictions = pd.concat([predictions, test_predictions], axis=1)
+#         models.append(estimator)
+        
+#     wt_predictions = pd.Series((predictions*weights).sum(axis=1), name='pred')
+#     wt_predictions = pd.concat([df_predict.reset_index(drop=True), wt_predictions], axis=1)
+    
+#     to_plot = wt_predictions.pred
+#     to_plot.index = wt_predictions.player
+#     figsize_length = int(round(len(to_plot) / 5, 0))
+#     to_plot.sort_values().plot.barh(figsize=(5, figsize_length));
+#     plt.show()
+    
+#     return wt_predictions, models, 
 
 
 # In[ ]:
@@ -875,6 +1147,57 @@ def searching(est, params, X_grid, y_grid, n_jobs=3, print_results=True):
        
     return est
 
+
+
+def get_adp_predictions(df, year_min_int, pct_off=0.25, act_ppg=11):
+    
+    from sklearn.linear_model import LinearRegression
+    lr = LinearRegression()
+
+    output = pd.DataFrame()
+    for yy in range(int(df.year.min()+year_min_int), int(df.year.max()+1)):
+
+        X = df[df.year < yy].avg_pick.values.reshape(-1, 1)
+        y = df[df.year < yy].y_act
+
+        lr.fit(X, y)
+        pred = lr.predict(df[df.year == yy].avg_pick.values.reshape(-1, 1))
+        output_tmp = df.loc[df.year == yy, ['player', 'year', 'avg_pick', 'y_act']].reset_index(drop=True)
+        output_tmp = pd.concat([output_tmp, pd.Series(pred)], axis=1)
+
+        output = pd.concat([output, output_tmp], axis=0)
+
+    output = output.rename(columns={0: 'avg_pick_pred'})
+    
+    output['pct_off'] = (output.y_act - output.avg_pick_pred) / output.avg_pick_pred
+    output['label'] = 0
+    output.loc[(output.pct_off > pct_off) & (output.y_act > act_ppg), 'label'] = 1
+    
+    return output, lr
+
+
+def remove_classification_collinear(df, collinear_cutoff, keep_cols):
+    
+    means = df.groupby('label').agg('median').T
+    means['mean_diff'] = abs((means[0] - means[1]) / np.mean([abs(means[0]), abs(means[1])]))
+    col_order = list(means.sort_values(by='mean_diff', ascending=False).index)
+
+    all_bad_cols = []
+    all_good_cols = keep_cols
+    for col in col_order:
+
+        if col in all_bad_cols:
+            continue
+        else:
+            all_good_cols.append(col)
+            cor = df.corr()[col]
+            bad_cols = cor[abs(cor) > collinear_cutoff].index
+            all_bad_cols.extend(bad_cols)
+
+    df = df[all_good_cols]
+    df = df.loc[:,~df.columns.duplicated()]
+    
+    return df
 
 # # Clustering Functions
 

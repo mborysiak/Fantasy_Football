@@ -43,7 +43,7 @@ class FootballSimulation():
         data_list = []
         for row in tree_output.iterrows():
             dist = list(np.uint16(np.random.normal(loc=row[1]['PredMean'], 
-                                                   scale=row[1]['ClusterStd'], size=iterations*2)*16))
+                                                   scale=row[1]['ClusterStd'], size=iterations*2).clip(min=0)*16))
             data_list.append(dist)
 
         # create the player, position, point distribution dataframe
@@ -96,16 +96,18 @@ class FootballSimulation():
 
         # extract points list and get the idx of point attributes based on length of list
         pts_list = pts_dict[pos[1:]]
-        c_idx = len(pts_list) + 1
+        c_idx = len(pts_list) + 2
 
+        # calculate the y_act metrics based on actual stat categories and provided pts list
+        act_cols = [c for c in train.columns if 'act' in c]
+        train['y_act'] = (train[act_cols] * pts_list).sum(axis=1)
+        train = train.drop(act_cols, axis=1)
+        
         # multiply stat categories by corresponding point values
-        train.iloc[:, 1:c_idx] = train.iloc[:, 1:c_idx] * pts_list
-        test.iloc[:, 1:c_idx] = test.iloc[:, 1:c_idx] * pts_list
-
-        # add a total predicted points stat category
-        train.loc[:, 'pred'] = train.iloc[:, 1:c_idx].sum(axis=1)
-        test.loc[:, 'pred'] = test.iloc[:, 1:c_idx].sum(axis=1)
-
+        pred_cols = [c for c in train.columns if 'pred' in c]
+        train.loc[:, 'pred'] = (train[pred_cols] * pts_list).sum(axis=1)
+        test.loc[:, 'pred'] = (test[pred_cols] * pts_list).sum(axis=1)
+        
         return train, test
 
     @staticmethod
@@ -213,12 +215,12 @@ class FootballSimulation():
         test_results = pd.merge(test_results, train_results, how='inner', left_on='Cluster', right_on='Cluster')
 
         # calculate an overall prediction mean and add position to dataset
-        test_results.loc[:, 'PredMean'] = (0.5*test_results.pred + 0.5*test_results.ClusterMean)
+        test_results.loc[:, 'PredMean'] = (0.75*test_results.pred + 0.25*test_results.ClusterMean)
         test_results.loc[:, 'pos'] = pos
 
         # pull out relevant results for creating distributions
         test_results = test_results[['player', 'pos', 'PredMean', 'ClusterStd']]
-
+        
         return test_results
 
     
@@ -280,7 +282,8 @@ class FootballSimulation():
         
         # calculate inflation based on drafted players and their salaries
         inflation, total_cap = self._calc_inflation(league_info, drop_proj_sal, drop_act_sal, add_proj_sal, add_act_sal)
-        
+        print('Current Inflation:', round(inflation, 2))
+
         # determine salaries, skew distributions, and number of players for each position
         data, salaries, salary_skews, pos_counts = self._pull_salary_poscounts(data, inflation, iterations)
         
@@ -339,7 +342,7 @@ class FootballSimulation():
             
             # sum up the salaries with total already spent
             all_money = add_act_sal + drop_act_sal + sum_salaries
-
+            
             # calculate an inflation or deflation metric and multiply by salaries
             factor = total_cap / all_money
             salaries_tmp = salaries_tmp * factor
@@ -405,9 +408,9 @@ class FootballSimulation():
         other_data = data.drop(drop_data.index, axis=0)
         
         # pull out the projected and actual salaries for the players that are being kept
-        drop_proj_salary = drop_data.salary.drop_duplicates().sum()
+        drop_proj_salary = drop_data.salary.reset_index().drop_duplicates().sum().salary
         drop_act_salary = np.sum(to_drop['salaries'])
-        
+
         return other_data, drop_proj_salary, drop_act_salary
     
     
@@ -428,9 +431,9 @@ class FootballSimulation():
         other_data = data.drop(add_data.index, axis=0)
 
         # pull out the salaries of your players and sum
-        add_proj_salary = add_data.salary.drop_duplicates().sum()
+        add_proj_salary =  add_data.salary.reset_index().drop_duplicates().sum().salary
         add_act_salary = np.sum(to_add['salaries'])
-        
+
         # update the salary for your team to subtract out drafted player's salaries
         league_info['salary_cap'] = float(league_info['salary_cap'] - add_act_salary)
         print('Remaining Salary:', league_info['salary_cap'])
