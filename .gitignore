@@ -8,6 +8,8 @@ __pycache__/
 *.DS_store
 .DS_store
 
+# pickle files
+*.p
 
 # Distribution / packaging
 .Python
