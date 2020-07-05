@@ -8,9 +8,6 @@ __pycache__/
 *.DS_store
 .DS_store
 
-# pickle files
-*.p
-
 # jupyter notebooks
 *.ipynb
 
