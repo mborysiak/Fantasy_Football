@@ -110,7 +110,6 @@ venv.bak/
 
 # mypy
 .mypy_cache/
-*.sqlite3
 Website/logs/microblog.log.1
 Website/logs/microblog.log.10
 Website/logs/microblog.log.2
