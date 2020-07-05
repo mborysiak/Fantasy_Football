@@ -11,6 +11,9 @@ __pycache__/
 # pickle files
 *.p
 
+# jupyter notebooks
+*.ipynb
+
 # Distribution / packaging
 .Python
 build/
