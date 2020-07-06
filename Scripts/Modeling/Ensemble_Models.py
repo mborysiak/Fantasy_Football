@@ -39,6 +39,8 @@ from sklearn.svm import SVR, LinearSVR, LinearSVC
 from sklearn.utils.testing import ignore_warnings
 from sklearn.exceptions import ConvergenceWarning
 
+from zHelper_Functions import *
+
 import pandas_bokeh
 pandas_bokeh.output_notebook()
 
@@ -50,22 +52,12 @@ pandas_bokeh.output_notebook()
 # set core path
 path = '/Users/Mark/Documents/Github/Fantasy_Football/'
 
-# load the helper functions
-os.chdir(path + 'Scripts/Analysis/Helper_Scripts')
-from helper_functions import *
-os.chdir(path)
-
 # specify database name with model data
 db_name = 'Model_Inputs.sqlite3'
-
-# set to position to analyze: 'RB', 'WR', 'QB', or 'TE'
-set_pos = 'WR'
-
-# set year to analyze
-set_year = 2019
+conn = sqlite3.connect(path + 'Data/Databases/' + db_name)
 
 # set path to param database
-param_conn = sqlite3.connect(path + 'Data/ParamTracking.sqlite3')
+param_conn = sqlite3.connect(path + 'Data/Databases/ParamTracking.sqlite3')
 
 #==========
 # Postgres Database
@@ -116,66 +108,6 @@ pts_dict['TE'] = [rec_yd_per_pt, ppr, rush_rec_td]
 # Model Settings
 #==========
 
-pos['QB']['req_touch'] = 50
-pos['RB']['req_touch'] = 40
-pos['WR']['req_touch'] = 35
-pos['TE']['req_touch'] = 30
-
-pos['QB']['req_games'] = 8
-pos['RB']['req_games'] = 8
-pos['WR']['req_games'] = 8
-pos['TE']['req_games'] = 8
-
-pos['QB']['earliest_year'] = 2003
-pos['RB']['earliest_year'] = 1998
-pos['WR']['earliest_year'] = 1998
-pos['TE']['earliest_year'] = 1998
-
-pos['QB']['skip_years'] = 10
-pos['RB']['skip_years'] = 10
-pos['WR']['skip_years'] = 10
-pos['TE']['skip_years'] = 4
-
-pos['QB']['use_ay'] = False
-pos['RB']['use_ay'] = False
-pos['WR']['use_ay'] = False
-pos['TE']['use_ay'] = True
-
-output = pd.DataFrame({
-    'pkey': [None],
-    'year': [set_year],
-    'pos': [set_pos],
-    'metric': [None],
-    'req_touch': [pos[set_pos]['req_touch']],
-    'req_games': [pos[set_pos]['req_games']],
-    'earliest_year': [pos[set_pos]['earliest_year']],
-    'skip_years': [pos[set_pos]['skip_years']],
-    'use_ay': [pos[set_pos]['use_ay']],
-    'breakout_class_id': [None],
-    'model': [None],
-    'rmse_validation': [None],
-    'rmse_validation_adp': [None],
-    'r2_validation': [None],
-    'r2_validation_adp': [None]
-})
-
-output_class = pd.DataFrame({
-    'pkey': [None],
-    'year': [set_year],
-    'pos': [set_pos],
-    'breakout_metric': [None],
-    'req_touch': [pos[set_pos]['req_touch']],
-    'req_games': [pos[set_pos]['req_games']],
-    'earliest_year': [None],
-    'skip_years': [pos[set_pos]['skip_years']],
-    'use_ay': [pos[set_pos]['use_ay']],
-    'act_ppg': [None],
-    'pct_off': [None], 
-    'model': [None],
-    'f1_score': [None],
-    'baseline_f1': [None]
-})
-
 def save_pickle(obj, filename, protocol=-1):
     with gzip.open(filename, 'wb') as f:
         pickle.dump(obj, f, protocol)
@@ -188,11 +120,45 @@ def load_pickle(filename):
 
 # +
 #==========
+# Extract parameters from database results
+#==========
+
+# specify the minimum and maximum rows from the database
+min_rowid = 1
+max_rowid = 7
+rows = tuple([c for c in range(min_rowid, max_rowid+1)])
+
+# pull in the results for the given primary keys and extract best model coordinates
+res = pd.read_sql_query(f'''SELECT * FROM ClassParamTracking WHERE rowid in {rows}''', param_conn)
+best_models = res[['pkey', 'model']]
+
+# convert the dataframe to to dictionary to extract data
+res = res.drop(['pkey', 'model', 'score'], axis=1).drop_duplicates()
+res = res.T.to_dict()[0]
+
+# set the position and year
+set_year = res['year']
+set_pos = res['pos']
+
+# set all of the data preparation filters 
+pos[set_pos]['req_touch'] = res['req_touch']
+pos[set_pos]['req_games'] = res['req_games']
+pos[set_pos]['earliest_year'] = res['earliest_year'] - 2
+pos[set_pos]['skip_years'] = res['skip_years']
+pos[set_pos]['use_ay'] = True if res['use_ay']==1 else False
+
+# set filters for act ppg, pct off from adp, and adp ppg
+breakout_metric = res['breakout_metric']
+act_ppg = res['act_ppg']
+adp_ppg = res['adp_ppg']
+pct_off = res['pct_off']
+
+# +
+#==========
 # Pull and clean compiled data
 #==========
 
 # connect to database and pull in positional data
-conn = sqlite3.connect(path + 'Data/' + db_name)
 df = pd.read_sql_query('SELECT * FROM ' + set_pos + '_' + str(set_year), con=conn)
 
 # append air yards for specified positions
@@ -208,43 +174,147 @@ df = calculate_fp(df, pts_dict, pos=set_pos).reset_index(drop=True)
 
 # add features based for a players performance relative to their experience
 df = add_exp_metrics(df, set_pos, pos[set_pos]['use_ay'])
+
 # -
 
-# # Breakout Models
+df = df[df.player.isin(['Antonio Brown', 'Dez Bryant'])]
+df = df.sort_values(by=['player', 'year'], ascending=[True, True]).reset_index(drop=True)
+
+
+def rolling_stats(df, gcols, rcol, period):
+    '''
+    Calculate rolling mean stats over a specified number of previous weeks
+    '''
+    
+    # calculate the mean over a given groupby for a given period
+    gmean = df.groupby(gcols)[rcol].rolling(period).mean().reset_index().drop('level_' + str(len(gcols)), axis=1)
+    gmean = gmean.rename(columns={rcol: 'mean_' + rcol + '_' + str(period)})
+    
+    # merge the rolling stats back to the original dataframe
+    df = pd.concat([df, gmean],axis=1).fillna(-1)
+
+    return df
+
+
+df = rolling_stats(df, ['player'], 'receptions', 2)
+
+df[['player', 'team', 'year', 'receptions', 'mean_receptions_2']]
 
 # +
+target_feature = 'fp_per_game'
+early_year = pos[set_pos]['earliest_year']
+year_start = early_year
+year_end = set_year-1
+median_features = pos[set_pos]['med_features']
+sum_features=pos[set_pos]['sum_features']
+max_features=pos[set_pos]['max_features']
+age_features=pos[set_pos]['age_features']
+
+
+##########
+    
+import pandas as pd
+
+new_df = pd.DataFrame()
+years = range(year_start+1, year_end+1)
+
+for year in years:
+
+    # adding the median features
+    past = df[df['year'] <= year]
+    for metric in median_features:
+        past = past.join(past.groupby('player')[metric].median(), on='player', rsuffix='_median')
+
+    for metric in max_features:
+        past = past.join(past.groupby('player')[metric].max(),on='player', rsuffix='_max')
+
+    for metric in sum_features:
+        past = past.join(past.groupby('player')[metric].sum(),on='player', rsuffix='_sum')
+
+    # adding the age features
+    suffix = '/ age'
+    for feature in age_features:
+        feature_label = ' '.join([feature, suffix])
+        past[feature_label] = past[feature] / past['age']
+
+    # adding the values for target feature
+    year_n = past[past["year"] == year]
+    year_n_plus_one = df[df['year'] == year+1][['player', target_feature]].rename(columns={target_feature: 'y_act'})
+    year_n = pd.merge(year_n, year_n_plus_one, how='left', left_on='player', right_on='player')
+    new_df = new_df.append(year_n)
+
+# creating dataframes to export
+new_df = new_df.sort_values(by=['year', 'fp'], ascending=[False, False])
+#  new_df = pd.concat([new_df, pd.get_dummies(new_df.year)], axis=1, sort=False)
+
+df_train = new_df[new_df.year < year_end].reset_index(drop=True)
+df_predict = new_df[new_df.year == year_end].drop('y_act', axis=1).reset_index(drop=True)
+df_train = df_train.sort_values(['year', 'fp_per_game'], ascending=True).reset_index(drop=True)
+################    
+
+df_train = convert_to_float(df_train)
+df_predict = convert_to_float(df_predict)
+
+# drop any rows that have a null target value (likely due to injuries or other missed season)
+df_train = df_train.dropna(subset=['y_act']).reset_index(drop=True)
+df_train = df_train.fillna(df_train.mean())
+df_predict = df_predict.dropna().reset_index(drop=True)
+
+
+# -
+
+
+
+# +
+#==========
+# Pull and clean compiled data
+#==========
+
+# connect to database and pull in positional data
+df = pd.read_sql_query('SELECT * FROM ' + set_pos + '_' + str(set_year), con=conn)
+
+# append air yards for specified positions
+if pos[set_pos]['use_ay']:
+    ay = pd.read_sql_query('SELECT * FROM AirYards', con=sqlite3.connect(path + 'Data/Season_Stats.sqlite3'))
+    df = pd.merge(df, ay, how='inner', left_on=['player', 'year'], right_on=['player', 'year'])
+    
+# apply the specified touches and game filters
+df, df_train_results, df_test_results = touch_game_filter(df, pos, set_pos, set_year)
+
+# calculate FP for a given set of scoring values
+df = calculate_fp(df, pts_dict, pos=set_pos).reset_index(drop=True)
+
+# add features based for a players performance relative to their experience
+df = add_exp_metrics(df, set_pos, pos[set_pos]['use_ay'])
+
 #==============
 # Create Break-out Probability Features
 #==============
 
-breakout_metric = 'fp_per_game'
-act_ppg = 0
-pct_off = -0.2
-gorl = 'less'
-adp_ppg = 11
-
 # get the train and prediction dataframes for FP per game
-df_train, df_predict = get_train_predict(df, breakout_metric, pos, set_pos, set_year, pos[set_pos]['earliest_year'])
+df_train_orig, df_predict = get_train_predict(df, breakout_metric, pos, set_pos, set_year, pos[set_pos]['earliest_year'])
 
-# get the outlier training dataset with outlier players labeled
-df_train_orig, df_predict = get_outliers(df_train, df_predict, act_ppg=act_ppg, pct_off=pct_off, 
-                                         year_min_int=1, gorl=gorl)
+# get the adp predictions and merge back to the training dataframe
+df_train_adp, lr = get_adp_predictions(df_train_orig, 1)
+df_train_orig = pd.merge(df_train_orig, df_train_adp, on=['player', 'year'])
+df_predict['avg_pick_pred'] = lr.predict(df_predict.avg_pick.values.reshape(-1,1))
 
+# create the label and filter based on inputs
+df_train_orig['label'] = 0
+df_train_orig.loc[(eval(f'df_train_orig.pct_off{pct_off}')) & (eval(f'df_train_orig.y_act{act_ppg}')), 'label'] = 1
+df_train_orig = df_train_orig[(eval(f'df_train_orig.avg_pick_pred{adp_ppg}'))].reset_index(drop=True)
+df_predict = df_train_orig[(eval(f'df_predict.avg_pick_pred{adp_ppg}'))].reset_index(drop=True)
 
-
-df_train_orig = df_train_orig[df_train_orig.avg_pick_pred > adp_ppg].drop('avg_pick_pred', axis=1).reset_index(drop=True)
-
-
+# add in extra columns to the results dataframes
+df_train_results = pd.merge(df_train_results, df_train_orig[['player', 'year', 'y_act', 'pct_off', 'avg_pick_pred']], on=['player', 'year'])
+df_test_results = pd.merge(df_test_results, df_predict[['player', 'year', 'avg_pick_pred']], on=['player', 'year'])
+df_train_orig = df_train_orig.drop(['y_act', 'pct_off'], axis=1).rename(columns={'label': 'y_act'})
 
 # get the minimum number of training samples for the initial datasets
 min_samples = int(0.5*df_train_orig[df_train_orig.year <= df_train_orig.year.min() + pos[set_pos]['skip_years']].shape[0])
 
 # print the value-counts
 print(df_train_orig.y_act.value_counts())
-
-val_y = df_train_orig.loc[df_train_orig.year > df_train_orig.year.min() + pos[set_pos]['skip_years'], 'y_act']
-baseline = round(matthews_corrcoef(val_y, np.repeat(1, len(val_y))), 3)
-print('Baseline F1-score:', baseline)
 print('Min Year:', df_train_orig.year.min())
 print('Max Year:', df_train_orig.year.max())
 
@@ -283,84 +353,9 @@ def class_run_best_model(model, p, skip_years):
     return result, val_pred, ty_pred, ty_proba, trained_est, cols
 
 
-# -
-
-def class_ensemble(summary, results, n, iters, agg_type):
-    '''
-    Function that accepts multiple model results and averages them together to create an ensemble prediction.
-    It then calculates metrics to validate that the ensemble is more accurate than individual models.
-    '''
-
-    from sklearn.metrics import f1_score
-
-    # initialize Series to store results
-    ensemble = pd.Series(dtype='float')
-    ty_ensemble = pd.Series(dtype='float')
-    ty_proba = pd.Series(dtype='float')
-
-    # for each row in the summary dataframe, append the result
-    for i, row in summary.iterrows():
-        if i == 0:
-            ensemble = pd.concat([ensemble, results['val_pred'][row.Iteration]], axis=1)
-            ty_ensemble = pd.concat([ty_ensemble, results['ty_pred'][row.Iteration]], axis=1)
-            if row.Model != 'svr':
-                ty_proba = pd.concat([ty_proba, results['ty_proba'][row.Iteration]], axis=1)
-        else:
-            ensemble = pd.concat([ensemble, results['val_pred'][row.Iteration]['pred' + str(row.Iteration)]], axis=1)
-            ty_ensemble = pd.concat([ty_ensemble, results['ty_pred'][row.Iteration]['pred' + str(row.Iteration)]], axis=1)
-            if row.Model != 'svr':
-                ty_proba = pd.concat([ty_proba, results['ty_proba'][row.Iteration]['proba' + str(row.Iteration)]], axis=1)
-
-
-    # get the median prediction from each of the models
-    ensemble = ensemble.drop(0, axis=1)
-    ty_ensemble = ty_ensemble.drop(0, axis=1)
-    ty_proba = ty_proba.drop(0, axis=1)
-
-    if agg_type=='mean':
-        ensemble['pred'] = ensemble.iloc[:, 4:].mean(axis=1)
-        ty_ensemble['pred'] = ty_ensemble.iloc[:, 3:].mean(axis=1)
-        ty_proba['proba'] = ty_proba.iloc[:, 3:].mean(axis=1)
-    elif agg_type=='median':
-        ensemble['pred'] = ensemble.iloc[:, 4:].median(axis=1)
-        ty_ensemble['pred'] = ty_ensemble.iloc[:, 3:].median(axis=1)
-        ty_proba['proba'] = ty_proba.iloc[:, 3:].median(axis=1)
-
-    ensemble.loc[ensemble.pred >= 0.5, 'pred'] = 1
-    ensemble.loc[ensemble.pred < 0.5, 'pred'] = 0
-
-    # store the predictions in the results dictionary
-    results['val_pred'][int(n)] = ensemble
-    results['ty_pred'][int(n)] = ty_ensemble
-    results['ty_proba'][int(n)] = ty_proba
-    
-    # remove the +4 amount and iteration number from the n to properly
-    # name the ensemble model with number of included models
-    if agg_type=='median': j=str(int(n)-4-iters) 
-    else: j=str(int(n) - iters)
-
-    # create the output list to append error metrics
-    ens_error = [n, 'Ensemble'+j]
-    ens_error.append(f1_score(ensemble.y_act, ensemble.pred))
-    
-    # create dataframe of results
-    ens_error = pd.DataFrame(ens_error).T
-    ens_error.columns = summary.columns
-    
-    return results, ens_error
-
 # +
-best_models = min_rowid = 99
-max_rowid = 105
-
 skip_year = pos[set_pos]['skip_years']
 
-print('Running ' + breakout_metric)
-rows = tuple([c for c in range(min_rowid, max_rowid+1)])
-best_models = pd.read_sql_query(f'''SELECT pkey, model
-                                    FROM ClassParamTracking
-                                    WHERE rowid in {rows}
-                                          ''', param_conn)
 print(best_models)
 
 results = {'summary': {}, 'val_pred': {}, 'ty_pred': {}, 'ty_proba': {}, 'trained_model': {}, 'cols': {}}
@@ -431,49 +426,24 @@ best_train = best_train.rename(columns={'pred': 'pred_' + breakout_metric, 'y_ac
 best_ty_proba = results['ty_proba'][best_iter][['player', 'year', 'proba']]
 best_ty_proba = best_ty_proba.rename(columns={'proba': 'proba_' + breakout_metric})
 
-# apply the specified touches and game filters
-_, df_train_results, df_test_results = touch_game_filter(df, pos, set_pos, set_year)
-
 # merge the train results for the given metric with all other metric outputs
 df_train_results = pd.merge(df_train_results, best_train, on=['player', 'year'])
 
 # merge the test results for the given metric with all other metric outputs
 df_test_results = pd.merge(df_test_results, best_ty, on=['player', 'year'])
 df_test_results = pd.merge(df_test_results, best_ty_proba, on=['player', 'year'])
-
-#----------
-# Format for Next Step
-#----------
-
-# reorder the results of the output to have predicted before actual
-col_order = ['player', 'year']
-col_order.extend([c for c in df_train_results.columns if 'pred' in c])
-col_order.extend([c for c in df_train_results.columns if 'act' in c])
-df_train_results = df_train_results[col_order]
-
-# +
-# get the train and prediction dataframes for FP per game
-compare_train, compare_test = get_train_predict(df, breakout_metric, pos, set_pos, 
-                                                set_year, pos[set_pos]['earliest_year'])
-compare, lr = get_adp_predictions(compare_train, year_min_int=1, pct_off=pct_off, act_ppg=act_ppg, gorl=gorl)
-compare = compare.drop('label', axis=1)
-compare_test['avg_pick_pred'] = lr.predict(compare_test.avg_pick.values.reshape(-1,1))
-
-df_train_results = pd.merge(df_train_results, compare, on=['player', 'year'])
-df_test_results = pd.merge(df_test_results, compare_test[['player', 'year', 'avg_pick_pred']], on=['player', 'year'])
 # -
 
-df_test_results[df_test_results.avg_pick_pred > 12].sort_values(by=['pred_fp_per_game', 'proba_fp_per_game'],
-                                                                ascending=[False, False])
+df_test_results.sort_values(by=['pred_fp_per_game', 'proba_fp_per_game'], ascending=[False,False]).iloc[:60]
 
-df_train_results.groupby('pred_fp_per_game').agg({'y_act': 'mean',
-                                                  'pct_off': 'mean',
-                                                  'avg_pick_pred': 'mean'})
+df_train_results.groupby('pred_fp_per_game').agg({'y_act': 'median',
+                                                  'pct_off': 'median',
+                                                  'avg_pick_pred': 'median'})
 
 # +
 # Create Bokeh-Table with DataFrame:
 from bokeh.models.widgets import DataTable, TableColumn
-from bokeh.models import ColumnDataSource
+from bokeh.models import ColumnDataSource, Span
 
 data_table = DataTable(
     columns=[TableColumn(field=Ci, title=Ci) for Ci in df_train_results.columns],
@@ -490,6 +460,11 @@ p_scatter = df_train_results.plot_bokeh.scatter(
     title="Iris DataSet Visualization",
     show_figure=False
 )
+
+hline = Span(location=eval(pct_off[1:]), dimension='width', line_color='green', line_width=3)
+vline = Span(location=eval(act_ppg[1:]), dimension='height', line_color='blue', line_width=3)
+p_scatter.renderers.extend([hline, vline])
+
 
 # Combine Table and Scatterplot via grid layout:
 pandas_bokeh.plot_grid([[data_table, p_scatter]], plot_width=500, plot_height=500)

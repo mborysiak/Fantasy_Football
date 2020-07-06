@@ -4,10 +4,6 @@ import matplotlib.pyplot as plt
 from sklearn.utils.testing import ignore_warnings
 from sklearn.exceptions import ConvergenceWarning
 
-# # Initializing Parameters
-
-# In[2]:
-
 
 #==========
 # Dictionary for position relevant metrics
@@ -219,6 +215,11 @@ pos['TE']['age_features'] = ['fp', 'rec_yd_per_game', 'receptions', 'tgt', 'ms_t
                              'rz_20_tgt_exp_diff', 'rz_20_receptions_exp_diff']
 
 
+#==========
+# Data Preparation Functions
+#==========
+
+
 def touch_game_filter(df, pos, set_pos, set_year):
     '''
     Apply filters to the touches and games required to be in the dataset
@@ -236,7 +237,7 @@ def touch_game_filter(df, pos, set_pos, set_year):
     # create dataframes to store results
     df_train_results = pd.DataFrame([old.player, old.year]).T
     df_test_results = pd.DataFrame([this_year.player, this_year.year]).T
-    get_breakout_proba
+    
     return df, df_train_results, df_test_results
 
 
@@ -272,45 +273,6 @@ def add_exp_metrics(df, set_pos, use_ay=True):
         df[lab + '_exp_div'] = df[lab] / df[lab + '_exp']
         
     return df
-
-
-#=========
-# Set the RF search params for each position
-#=========
-
-pos['QB']['tree_params'] = {
-    'max_depth': [3, 4, 5, 6, 7],
-    'min_samples_split': [2],
-    'min_samples_leaf': [15, 18, 21, 25, 30],
-    'splitter': ['random']
-}
-
-pos['RB']['tree_params'] = {
-    'max_depth': [4, 5, 6, 7, 8, 9, 10],
-    'min_samples_split': [2],
-    'min_samples_leaf': [15, 18, 21, 25],
-    'splitter': ['random']
-}
-
-pos['WR']['tree_params'] = {
-    'max_depth': [3, 4, 5, 6, 7, 8],
-    'min_samples_split': [2],
-    'min_samples_leaf': [15, 20, 25, 30, 35],
-    'splitter': ['random']
-}
-
-
-pos['TE']['tree_params'] = {
-    'max_depth': [3, 4, 5, 6, 7],
-    'min_samples_split': [2],
-    'min_samples_leaf': [15, 18, 22, 25, 30],
-    'splitter': ['random']
-}
-
-
-# # Calculating Fantasy Points
-
-# In[ ]:
 
 
 def calculate_fp(df, pts, pos):
@@ -375,7 +337,27 @@ def calculate_fp(df, pts, pos):
     return df
 
 
-# In[ ]:
+
+def get_train_predict(df, target, pos, set_pos, set_year, early_year):
+
+    # create training and prediction dataframes
+    df_train, df_predict = features_target(df,
+                                           early_year, set_year-1,
+                                           pos[set_pos]['med_features'],
+                                           pos[set_pos]['sum_features'],
+                                           pos[set_pos]['max_features'],
+                                           pos[set_pos]['age_features'],
+                                           target_feature=target)
+
+    df_train = convert_to_float(df_train)
+    df_predict = convert_to_float(df_predict)
+
+    # drop any rows that have a null target value (likely due to injuries or other missed season)
+    df_train = df_train.dropna(subset=['y_act']).reset_index(drop=True)
+    df_train = df_train.fillna(df_train.mean())
+    df_predict = df_predict.dropna().reset_index(drop=True)
+    
+    return df_train, df_predict
 
 
 def features_target(df, year_start, year_end, median_features, sum_features, max_features, 
@@ -422,58 +404,53 @@ def features_target(df, year_start, year_end, median_features, sum_features, max
     return df_train, df_predict
 
 
-def visualize_features(df_train):
+
+#===========
+# Saving out Data to DB
+#===========
+
+def append_to_db(df, db_name='Season_Stats.sqlite3', table_name='NA', if_exist='append'):
+
+    import sqlite3
+    import os
+    import datetime as dt
     
-    import seaborn as sns
-    import matplotlib.pyplot as plt
-    from my_plot import PrettyPlot
+    #--------
+    # Append pandas df to database in Github
+    #--------
+
+    os.chdir('/Users/Mark/Documents/Github/Fantasy_Football/Data/Databases/')
+
+    conn = sqlite3.connect(db_name)
+
+    df.to_sql(
+    name=table_name,
+    con=conn,
+    if_exists=if_exist,
+    index=False
+    )
+
+    #--------
+    # Append pandas df to database in OneDrive
+    #--------
+
+    os.chdir('/Users/Mark/OneDrive/FF/DataBase/')
+
+    conn = sqlite3.connect(db_name)
     
-    plt.figure(figsize=(17,12))
-    k = 25
-    corrmat = abs(df_train.corr())
-    cols_large = corrmat.nlargest(k, 'y_act').index
-    hm_large = corrmat.nlargest(k,'y_act')[cols_large]
-    sns.set(font_scale=1.2)
-    sns_plot = sns.heatmap(hm_large, cmap="YlGnBu", cbar=True, annot=True, square=False, fmt='.2f', 
-                 annot_kws={'size': 12});
+    today = dt.datetime.today().strftime('%Y%m%d%H%M')
 
-    fig = sns_plot.get_figure();
-    PrettyPlot(plt);
+    df.to_sql(
+    name=table_name + '_' + today,
+    con=conn,
+    if_exists=if_exist,
+    index=False
+    )
 
 
-# In[ ]:
-
-
-def plot_results(results, col_names, asc=True, barh=True, fontsize=12):
-    '''
-    Input:  The feature importance or coefficient weights from a trained model.
-    Return: A plot of the ordered weights, demonstrating relative importance of each feature.
-    '''
-    
-    import pandas as pd
-    import matplotlib.pyplot as plt
-
-    # create series for plotting feature importance
-    series = pd.Series(results, index=col_names, name='feature_rank').sort_values(ascending=asc)
-    
-    # find the max value and filter out any coefficients that less than 10% of the max
-    max_val = abs(series).max()
-    series = series[abs(series) > max_val*0.1]
-    
-    # auto determine the proper length of the figure
-    figsize_length = int(round(len(series) / 5, 0))
-    
-    if barh == True:
-        ax = series.plot.barh(figsize=(6, figsize_length), fontsize=fontsize)
-        #ax.set_xlabel(label, fontsize=fontsize+1)
-    else:
-        ax = series.plot.bar(figsize=(6, figsize_length), fontsize=fontsize)
-        #ax.set_ylabel(label, fontsize=fontsize+1)
-        
-    return ax
-
-
-# # Pre-Model Feature Engineering
+#================
+# Regression Functions
+#================
 
 def corr_collinear_removal(df_train, corr_cutoff, collinear_cutoff):
     '''
@@ -518,61 +495,8 @@ def corr_collinear_removal(df_train, corr_cutoff, collinear_cutoff):
     good_cols.extend(['player', 'avg_pick', 'year'])
     df_train = df_train[good_cols]
     df_train = df_train.loc[:,~df_train.columns.duplicated()]
-
-#     # optionally, print the number of features removed
-#     print('Corr removed ', init_features - df_train.shape[1], '/', init_features, ' features')
     
     return df_train
-
-
-def get_estimator(name, params, rand=True, random_state=None):
-    
-    import random
-    from numpy import random
-    from xgboost import XGBRegressor
-    from lightgbm import LGBMRegressor
-    from sklearn.linear_model import Lasso
-    from sklearn.linear_model import Ridge
-    from sklearn.ensemble import RandomForestRegressor
-    from sklearn.linear_model import LinearRegression
-    from sklearn.tree import DecisionTreeRegressor
-    
-    state = random.RandomState(random_state)
-    
-    rnd_params = {}
-    tmp_params = params[name]
-    if rand == True:
-        for line in tmp_params.items():
-            rnd_params[line[0]] = state.choice(line[1])
-    else:
-        rnd_params = tmp_params
-    
-    if name == 'lgbm':
-        estimator = LGBMRegressor(random_state=1234, **rnd_params, min_data=1, n_jobs=4)
-        
-    if name == 'xgb':
-        estimator = XGBRegressor(random_state=1234, **rnd_params, nthread=4)
-        
-    if name == 'rf':
-        estimator = RandomForestRegressor(random_state=1234, **rnd_params, n_jobs=4)
-        
-    if name == 'ridge':
-        estimator = Ridge(random_state=1234, **rnd_params)
-        
-    if name == 'lasso':
-        estimator = Lasso(random_state=1234, **rnd_params)
-        
-    if name == 'lasso_pca':
-        estimator = Lasso(random_state=1234, **rnd_params)
-        
-    if name == 'lr_pca':
-        estimator = LinearRegression()
-
-    scale = False
-    if name == 'ridge' or name == 'lasso':
-        scale=True
-
-    return estimator, scale
 
 
 def X_y_split(train, val, scale=True, pca=False):
@@ -632,6 +556,7 @@ def error_compare(df):
     rmse_adp = round(np.sqrt(mean_squared_error(df.pred_adp, df.y_act)), 3)
 
     return [r_sq_pred, r_sq_adp, rmse_pred, rmse_adp]
+
 
 
 def validation(estimator, df_train_orig, df_predict, corr_cutoff, collinear_cutoff, 
@@ -709,82 +634,6 @@ def validation(estimator, df_train_orig, df_predict, corr_cutoff, collinear_cuto
 
     return result, val_pred, ty_pred, estimator, output_cols
 
-def param_search(df_train, df_predict, est_names, model_params, corrs, collinears, iters, set_seed):
-    '''
-    Input a set of search parameters for model + parameters, correlation cutoffs, collinear cutoffs,
-    with the training / prediction dataframes and return the optimal model results, including 
-    ensembles of the top performing models of each type.
-    '''
-
-    import time
-
-    results = {'summary': {}, 'val_pred': {}, 'ty_pred': {}, 'trained_model': {}, 'cols': {}}
-
-    start = time.time()
-    for i in range(iters):
-
-        np.random.seed(i*set_seed)
-
-        # print progress as it runs
-        if i % 10 == 0 and i > 0:
-            print(f'Iteration {str(i)}, Time Elapsed: {round(time.time()-start, 1)}')
-        
-        results[i] = {}
-
-        # select the model type
-        est_name = np.random.choice(est_names)
-        results['summary'][i] = [est_name]
-        
-        # grab estimator and random parameters for estimator type
-        est, scale = get_estimator(est_name, model_params, rand=True, random_state=i*10)
-
-        # get corr and collinear cutoff
-        corr_cut = np.random.choice(corrs)
-        col_cut = np.random.choice(collinears)
-
-        # run the validation script for the given model
-        result, val_pred, ty_pred, trained_est, cols = validation(est, df_train, df_predict, corr_cut, col_cut, skip_years=2, scale=scale)
-        
-        # save out the predictions to the dictionary
-        results['summary'][i].extend(result)
-        results['trained_model'][i] = trained_est
-        results['cols'][i] = cols
-
-        val_pred = val_pred.rename(columns={'pred': 'pred' + str(i)})
-        results['val_pred'][i] = val_pred
-
-        ty_pred = ty_pred.rename(columns={'pred': 'pred' + str(i)})
-        results['ty_pred'][i] = ty_pred
-
-    #============
-    # Create Ensembles and Provide Summary of Best Models
-    #============
-
-    # Specify metric for sorting by
-    sort_metric = 'PredR2'
-    if sort_metric=='RMSE': ascend=True 
-    else: ascend=False
-
-    # create the summary dataframe
-    summary = create_summary(results, sort_metric, keep_first=False)
-
-    for n in range(2, 6):
-
-        # create the ensemble dataframe based on the top results for each model type
-        to_ens = create_summary(results, sort_metric, keep_first=True).head(n)
-        results, ens_result = test_ensemble(to_ens, results, str(n+iters), iters, 'mean')
-        summary =  pd.concat([summary, ens_result], axis=0)
-
-        # create the ensemble dataframe based on the top results for each model type
-        to_ens = create_summary(results, sort_metric, keep_first=True).head(n)
-        results, ens_result = test_ensemble(to_ens, results, str(n+iters+4), iters, 'median')
-        summary =  pd.concat([summary, ens_result], axis=0)
-
-    summary = summary.sort_values(by=sort_metric, ascending=ascend).reset_index(drop=True)
-    print(summary.head(10))
-
-    return summary, results
-
 
 def create_summary(results, sort_col, keep_first=False):
     
@@ -808,6 +657,7 @@ def create_summary(results, sort_col, keep_first=False):
         summary = summary.drop_duplicates(subset=['Model'], keep='first')
 
     return summary
+
 
 
 def test_ensemble(summary, results, n, iters, agg_type):
@@ -872,229 +722,12 @@ def convert_to_float(df):
     return df
 
 
-
-
-#==========
-# Calculate fantasy points based on predictions and point values
-#==========
-
-def format_results(df_train_results, df_test_results, df_train, df_predict, pts_list):
-
-    # calculate fantasy points for the train set
-    df_train_results.iloc[:, 2:] = df_train_results.iloc[:, 2:] * pts_list
-    df_train_results.loc[:, 'pred'] = df_train_results.iloc[:, 2:].sum(axis=1)
-
-    # calculate fantasy points for the test set
-    df_test_results.iloc[:, 1:] = df_test_results.iloc[:, 1:] * pts_list
-    df_test_results.loc[:, 'pred'] = df_test_results.iloc[:, 1:].sum(axis=1)
-
-    # add actual results and adp to the train df
-    df_train_results = pd.merge(df_train_results, df_train[['player', 'year', 'age', 'avg_pick', 'y_act']],
-                               how='inner', left_on=['player', 'year'], right_on=['player', 'year'])
-
-    # add adp to the test df
-    df_test_results = pd.merge(df_test_results, df_predict[['player', 'age', 'avg_pick']],
-                               how='inner', left_on='player', right_on='player')
-
-    # calculate the residual between the predictions and results
-    df_train_results['error'] = df_train_results.pred - df_train_results.y_act
-    
-    return df_train_results, df_test_results
-
-
-
-def searching(est, params, X_grid, y_grid, n_jobs=3, print_results=True):
-    '''
-    Function to perform GridSearchCV and return the test RMSE, as well as the 
-    optimized and fitted model
-    '''
-    from sklearn.model_selection import GridSearchCV
-    from sklearn.model_selection import cross_val_score
-    
-    Search = GridSearchCV(estimator=est,
-                          param_grid=params,
-                          scoring='neg_mean_squared_error',
-                          n_jobs=n_jobs,
-                          cv=5,
-                          return_train_score=True,
-                          iid=False)
-   
-    search_results = Search.fit(X_grid, y_grid)
-   
-    best_params = search_results.cv_results_['params'][search_results.best_index_]
-    est.set_params(**best_params)
-    
-    test_rmse = cross_val_score(est, X_grid, y_grid, scoring='neg_mean_squared_error', cv=5)
-    test_rmse = np.mean(np.sqrt(np.abs(test_rmse)))
-    
-    if print_results==True:
-        print(best_params)
-        print('Best RMSE: ', round(test_rmse, 3))
-   
-    est.fit(X_grid, y_grid)
-       
-    return est
-
-
-
 #================
-# Breakout Prediction Code
+# Breakout Classification Functions
 #================
 
-def get_estimator_class(name, params, rand=True, random_state=None):
-    
-    import random
-    from numpy import random
-    from xgboost import XGBClassifier
-    from lightgbm import LGBMClassifier
-    from sklearn.linear_model import LogisticRegression
-    from sklearn.ensemble import RandomForestClassifier
-    from sklearn.svm import SVC
-    
-    state = random.RandomState(random_state)
-    
-    rnd_params = {}
-    tmp_params = params[name]
-    if rand == True:
-        for line in tmp_params.items():
-            rnd_params[line[0]] = state.choice(line[1])
-    else:
-        rnd_params = tmp_params
-    
-    if name == 'lgbm':
-        estimator = LGBMClassifier(random_state=1234, **rnd_params, min_data=1)
-        
-    if name == 'xgb':
-        estimator = XGBClassifier(random_state=1234, **rnd_params)
-        
-    if name == 'rf':
-        estimator = RandomForestClassifier(random_state=1234, **rnd_params)
-        
-    if name == 'lr':
-        estimator = LogisticRegression(random_state=1234, **rnd_params, solver='liblinear', tol=.001)
-        
-    if name == 'svm':
-        estimator = SVC(probability=True, gamma='scale', **rnd_params)
-        
-    return estimator, rnd_params
 
-
-def get_breakout_proba(outlier, est_names, params, iterations, use_smote, scale=False):
-
-    from sklearn.metrics import f1_score, precision_score, recall_score
-    from imblearn.over_sampling import SMOTE
-    import warnings
-    from sklearn.exceptions import UndefinedMetricWarning
-    warnings.filterwarnings(action='ignore', category=UndefinedMetricWarning)
-    import datetime
-
-    np.random.seed(1234)
-
-    param_tracker = {}
-    results_tracker = {}
-
-    for est_name in est_names:
-        param_tracker[est_name] = {}
-        results_tracker[est_name] = {}
-
-    for i in range(0, iterations):
-
-        # update random state to pull new params, but keep consistency based on starting state
-        random_state = 100 + i*20 + i*3
-
-        # print update on progress
-        if (i+1) % 10 == 0:
-            print(str(datetime.datetime.now())[:-7])
-            print('Completed ' + str(i+1) + '/' + str(iterations) + ' iterations')
-
-        # create dataframe to store probabilities
-        for est_name in est_names:
-
-            est, _ = get_estimator_class(est_name, params, rand=True, random_state=random_state)
-
-            # if using smote, set the zero class weight to something close to 1
-            if use_smote:
-                zero_weight = np.random.uniform(1, 1.5)
-            else:
-                label_cts = outlier.y_act.value_counts()
-                zero_weight = np.random.uniform(1, 1.5) * label_cts[1] / label_cts[0]
-
-            est.class_weight = {0: zero_weight, 1: 1}
-
-            # run through all years for given estimator and save errors and predictions
-            val_error = []    
-            train_error = [] 
-            val_predictions = np.array([]) 
-            years = outlier.year.unique()[1:]
-
-            # create empty sub-dictionary for current iteration storage
-            results_tracker[est_name][i] = {}
-            param_tracker[est_name][i] = est
-
-            for acc_metric in ['f1_score', 'precision', 'recall']:
-                results_tracker[est_name][i][acc_metric] = []
-
-            df_proba = pd.DataFrame()
-            for m in years[1:]:
-
-                # create training set for all previous years and validation set for current year
-                train_split = outlier[outlier.year < m]
-                val_split = outlier[outlier.year == m]
-                val_names = val_split[['player', 'year']].reset_index(drop=True)
-
-                # splitting the train and validation sets into X_train, y_train, X_val and y_val
-                X_train, X_val, y_train, y_val = X_y_split(train_split, val_split, scale=scale)
-
-                if use_smote:
-                    knn = int(len(y_train[y_train==1])*0.5)
-                    smt = SMOTE(k_neighbors=knn)
-                    X_train, y_train = smt.fit_resample(X_train.values, y_train)
-                    X_val = X_val.values
-
-                est.fit(X_train, y_train)
-                val_predict = est.predict(X_val)
-
-                # get the probability and add to name and year
-                val_proba = est.predict_proba(X_val)
-                val_proba = pd.concat([val_names, pd.Series(val_proba[:,1], name=est_name + '_prob')], axis=1)
-                df_proba = pd.concat([df_proba, val_proba], axis=0, sort=False)
-
-                # calculate accuracy metrics
-                results_tracker[est_name][i]['f1_score'].append(f1_score(y_val, val_predict))
-                results_tracker[est_name][i]['precision'].append(precision_score(y_val, val_predict))
-                results_tracker[est_name][i]['recall'].append(recall_score(y_val, val_predict))
-
-            for acc_metric in ['f1_score', 'precision', 'recall']:
-                results_tracker[est_name][i][acc_metric] = np.mean(results_tracker[est_name][i][acc_metric])
-
-            results_tracker[est_name][i]['proba'] = df_proba
-    
-    return results_tracker
-
-
-def get_train_predict(df, target, pos, set_pos, set_year, early_year):
-
-    # create training and prediction dataframes
-    df_train, df_predict = features_target(df,
-                                           early_year, set_year-1,
-                                           pos[set_pos]['med_features'],
-                                           pos[set_pos]['sum_features'],
-                                           pos[set_pos]['max_features'],
-                                           pos[set_pos]['age_features'],
-                                           target_feature=target)
-
-    df_train = convert_to_float(df_train)
-    df_predict = convert_to_float(df_predict)
-
-    # drop any rows that have a null target value (likely due to injuries or other missed season)
-    df_train = df_train.dropna(subset=['y_act']).reset_index(drop=True)
-    df_train = df_train.fillna(df_train.mean())
-    df_predict = df_predict.dropna().reset_index(drop=True)
-    
-    return df_train, df_predict
-
-
-def get_adp_predictions(df, year_min_int, pct_off=0.25, act_ppg=11, gorl='greater'):
+def get_adp_predictions(df, year_min_int):
     
     from sklearn.linear_model import LinearRegression
     lr = LinearRegression()
@@ -1113,35 +746,11 @@ def get_adp_predictions(df, year_min_int, pct_off=0.25, act_ppg=11, gorl='greate
         output = pd.concat([output, output_tmp], axis=0)
 
     output = output.rename(columns={0: 'avg_pick_pred'})
-    
     output['pct_off'] = (output.y_act - output.avg_pick_pred) / output.avg_pick_pred
-
+    output = output.drop(['y_act', 'avg_pick'], axis=1)
+    
     return output, lr
 
-
-def get_outliers(df_train, df_predict, act_ppg, pct_off=0.1, year_min_int=2, gorl='greater'): 
-    '''
-    Train a linear regression model for a given target and determine which samples meet
-    outlier criteria based on results over the expected ADP model.
-    '''
-    # get the predictions based on ADP and filter to outlier cases
-    outlier, lr = get_adp_predictions(df_train, year_min_int=year_min_int, pct_off=pct_off, act_ppg=act_ppg, gorl=gorl)
-    outlier = pd.merge(df_train, outlier.drop(['y_act', 'avg_pick'], axis=1), how='inner',
-                       left_on=['player', 'year'], right_on=['player', 'year'])
-
-    # maintain the actual points scored to join back later
-    y_act = outlier[['player', 'year', 'y_act', 'pct_off']]
-    outlier = outlier.drop(['y_act', 'pct_off'], axis=1)
-    outlier = outlier.rename(columns={'label': 'y_act'})
-
-    try:
-        outlier.loc[outlier.rz_td_ratio == np.inf, 'rz_td_ratio'] = 0
-    except:
-        pass
-
-    outlier_predict = df_predict[[c for c in outlier.columns if c not in  ('y_act',  'avg_pick_pred')]].copy()
-    
-    return outlier, outlier_predict
 
 
 def remove_classification_collinear(df, collinear_cutoff, keep_cols):
@@ -1173,7 +782,7 @@ def remove_classification_collinear(df, collinear_cutoff, keep_cols):
 def class_validation(estimator, df_train_orig, df_predict, collinear_cutoff, use_smote,
                      skip_years=2, scale=False, pca=False):  
     
-    from sklearn.metrics import f1_score
+    from sklearn.metrics import matthews_corrcoef
     from imblearn.over_sampling import SMOTE
 
     #----------
@@ -1223,7 +832,7 @@ def class_validation(estimator, df_train_orig, df_predict, collinear_cutoff, use
     val_pred = pd.concat([val_df, pd.Series(val_predictions, name='pred')], axis=1)
 
     # calculate the RMSE and MAE of the ensemble predictions
-    result = round(f1_score(val_pred.pred, val_df.y_act), 3)
+    result = round(matthews_corrcoef(val_pred.pred, val_df.y_act), 3)
     
     #==========
     # Create Predictions for Current Year
@@ -1260,38 +869,48 @@ def class_ensemble(summary, results, n, iters, agg_type):
     It then calculates metrics to validate that the ensemble is more accurate than individual models.
     '''
 
-    from sklearn.metrics import f1_score
+    from sklearn.metrics import matthews_corrcoef
 
     # initialize Series to store results
     ensemble = pd.Series(dtype='float')
     ty_ensemble = pd.Series(dtype='float')
+    ty_proba = pd.Series(dtype='float')
 
     # for each row in the summary dataframe, append the result
     for i, row in summary.iterrows():
         if i == 0:
             ensemble = pd.concat([ensemble, results['val_pred'][row.Iteration]], axis=1)
             ty_ensemble = pd.concat([ty_ensemble, results['ty_pred'][row.Iteration]], axis=1)
+            if row.Model != 'svr':
+                ty_proba = pd.concat([ty_proba, results['ty_proba'][row.Iteration]], axis=1)
         else:
             ensemble = pd.concat([ensemble, results['val_pred'][row.Iteration]['pred' + str(row.Iteration)]], axis=1)
             ty_ensemble = pd.concat([ty_ensemble, results['ty_pred'][row.Iteration]['pred' + str(row.Iteration)]], axis=1)
+            if row.Model != 'svr':
+                ty_proba = pd.concat([ty_proba, results['ty_proba'][row.Iteration]['proba' + str(row.Iteration)]], axis=1)
 
     # get the median prediction from each of the models
     ensemble = ensemble.drop(0, axis=1)
     ty_ensemble = ty_ensemble.drop(0, axis=1)
+    ty_proba = ty_proba.drop(0, axis=1)
+
     if agg_type=='mean':
         ensemble['pred'] = ensemble.iloc[:, 4:].mean(axis=1)
         ty_ensemble['pred'] = ty_ensemble.iloc[:, 3:].mean(axis=1)
+        ty_proba['proba'] = ty_proba.iloc[:, 3:].mean(axis=1)
     elif agg_type=='median':
         ensemble['pred'] = ensemble.iloc[:, 4:].median(axis=1)
         ty_ensemble['pred'] = ty_ensemble.iloc[:, 3:].median(axis=1)
-        
+        ty_proba['proba'] = ty_proba.iloc[:, 3:].median(axis=1)
+
     ensemble.loc[ensemble.pred >= 0.5, 'pred'] = 1
     ensemble.loc[ensemble.pred < 0.5, 'pred'] = 0
 
     # store the predictions in the results dictionary
     results['val_pred'][int(n)] = ensemble
     results['ty_pred'][int(n)] = ty_ensemble
-
+    results['ty_proba'][int(n)] = ty_proba
+    
     # remove the +4 amount and iteration number from the n to properly
     # name the ensemble model with number of included models
     if agg_type=='median': j=str(int(n)-4-iters) 
@@ -1299,13 +918,14 @@ def class_ensemble(summary, results, n, iters, agg_type):
 
     # create the output list to append error metrics
     ens_error = [n, 'Ensemble'+j]
-    ens_error.append(f1_score(ensemble.y_act, ensemble.pred))
+    ens_error.append(round(matthews_corrcoef(ensemble.y_act, ensemble.pred), 3))
     
     # create dataframe of results
     ens_error = pd.DataFrame(ens_error).T
     ens_error.columns = summary.columns
     
     return results, ens_error
+
 
 
 def class_create_summary(results, keep_first=False):
@@ -1323,6 +943,81 @@ def class_create_summary(results, keep_first=False):
         summary = summary.drop_duplicates(subset=['Model'], keep='first')
 
     return summary
+
+
+
+#================
+# Combining Regression and Classification Models
+#================
+
+
+#---------
+# Set the RF search params for each position
+#---------
+
+pos['QB']['tree_params'] = {
+    'max_depth': [3, 4, 5, 6, 7],
+    'min_samples_split': [2],
+    'min_samples_leaf': [15, 18, 21, 25, 30],
+    'splitter': ['random']
+}
+
+pos['RB']['tree_params'] = {
+    'max_depth': [4, 5, 6, 7, 8, 9, 10],
+    'min_samples_split': [2],
+    'min_samples_leaf': [15, 18, 21, 25],
+    'splitter': ['random']
+}
+
+pos['WR']['tree_params'] = {
+    'max_depth': [3, 4, 5, 6, 7, 8],
+    'min_samples_split': [2],
+    'min_samples_leaf': [15, 20, 25, 30, 35],
+    'splitter': ['random']
+}
+
+
+pos['TE']['tree_params'] = {
+    'max_depth': [3, 4, 5, 6, 7],
+    'min_samples_split': [2],
+    'min_samples_leaf': [15, 18, 22, 25, 30],
+    'splitter': ['random']
+}
+
+
+def searching(est, params, X_grid, y_grid, n_jobs=3, print_results=True):
+    '''
+    Function to perform GridSearchCV and return the test RMSE, as well as the 
+    optimized and fitted model
+    '''
+    from sklearn.model_selection import GridSearchCV
+    from sklearn.model_selection import cross_val_score
+    
+    Search = GridSearchCV(estimator=est,
+                          param_grid=params,
+                          scoring='neg_mean_squared_error',
+                          n_jobs=n_jobs,
+                          cv=5,
+                          return_train_score=True,
+                          iid=False)
+   
+    search_results = Search.fit(X_grid, y_grid)
+   
+    best_params = search_results.cv_results_['params'][search_results.best_index_]
+    est.set_params(**best_params)
+    
+    test_rmse = cross_val_score(est, X_grid, y_grid, scoring='neg_mean_squared_error', cv=5)
+    test_rmse = np.mean(np.sqrt(np.abs(test_rmse)))
+    
+    if print_results==True:
+        print(best_params)
+        print('Best RMSE: ', round(test_rmse, 3))
+   
+    est.fit(X_grid, y_grid)
+       
+    return est
+
+
 
     
 def create_distributions(self, prior_repeats=15, dist_size=1000, show_plots=False):
@@ -1478,49 +1173,3 @@ def create_distributions(self, prior_repeats=15, dist_size=1000, show_plots=Fals
             plt.show();
 
     return results.reset_index(drop=True)
-
-
-
-
-#===========
-# Function to append distributions results to the database
-#===========
-
-def append_to_db(df, db_name='Season_Stats.sqlite3', table_name='NA', if_exist='append'):
-
-    import sqlite3
-    import os
-    import datetime as dt
-    
-    #--------
-    # Append pandas df to database in Github
-    #--------
-
-    os.chdir('/Users/Mark/Documents/Github/Fantasy_Football/Data/')
-
-    conn = sqlite3.connect(db_name)
-
-    df.to_sql(
-    name=table_name,
-    con=conn,
-    if_exists=if_exist,
-    index=False
-    )
-
-    #--------
-    # Append pandas df to database in OneDrive
-    #--------
-
-    os.chdir('/Users/Mark/OneDrive/FF/DataBase/')
-
-    conn = sqlite3.connect(db_name)
-    
-    today = dt.datetime.today().strftime('%Y%m%d%H%M')
-
-    df.to_sql(
-    name=table_name + '_' + today,
-    con=conn,
-    if_exists=if_exist,
-    index=False
-    )
-

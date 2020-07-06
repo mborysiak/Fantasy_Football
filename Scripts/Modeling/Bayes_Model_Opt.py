@@ -39,7 +39,7 @@ from sklearn.svm import SVR, LinearSVR, LinearSVC
 from sklearn.utils.testing import ignore_warnings
 from sklearn.exceptions import ConvergenceWarning
 
-from helper_functions import *
+from zHelper_Functions import *
 
 import pandas_bokeh
 pandas_bokeh.output_notebook()
@@ -51,44 +51,18 @@ pandas_bokeh.output_notebook()
 # set core path
 path = '/Users/Mark/Documents/Github/Fantasy_Football/'
 
-# load the helper functions
-os.chdir(path + 'Scripts/Analysis/Helper_Scripts')
-os.chdir(path)
-
-# specify database name with model data
-db_name = 'Model_Inputs.sqlite3'
-
 # set to position to analyze: 'RB', 'WR', 'QB', or 'TE'
 set_pos = 'WR'
 
 # set year to analyze
 set_year = 2019
 
+# specify database name with model data
+db_name = 'Model_Inputs.sqlite3'
+conn = sqlite3.connect(path + 'Data/Databases/' + db_name)
+
 # set path to param database
-param_conn = sqlite3.connect(path + 'Data/ParamTracking.sqlite3')
-
-#==========
-# Postgres Database
-#==========
-
-# postgres login information
-pg_log = {
-    'USER': 'postgres',
-    'PASSWORD': 'Ctdim#1bf!!!!!',
-    'HOST': 'localhost',
-    'PORT': '5432', 
-    'DATABASE_NAME': 'fantasyfootball'
-}
-
-# # create engine for connecting to database
-# engine = create_engine('postgres+psycopg2://{}:{}@{}:{}/{}'.format(pg_log['USER'], pg_log['PASSWORD'], pg_log['HOST'],
-#                                                                    pg_log['PORT'], pg_log['DATABASE_NAME']))
-
-# # specify schema and table to write out intermediate results
-# table_info = {
-#     'engine': engine,
-#     'schema': 'websitedev',
-# }
+param_conn = sqlite3.connect(path + 'Data/Databases/ParamTracking.sqlite3')
 
 #==========
 # Fantasy Point Values
@@ -171,9 +145,9 @@ output_class = pd.DataFrame({
     'use_ay': [pos[set_pos]['use_ay']],
     'act_ppg': [None],
     'pct_off': [None], 
+    'adp_ppg': [None],
     'model': [None],
-    'f1_score': [None],
-    'baseline_f1': [None]
+    'score': [None]
 })
 
 def save_pickle(obj, filename, protocol=-1):
@@ -192,7 +166,6 @@ def load_pickle(filename):
 #==========
 
 # connect to database and pull in positional data
-conn = sqlite3.connect(path + 'Data/' + db_name)
 df = pd.read_sql_query('SELECT * FROM ' + set_pos + '_' + str(set_year), con=conn)
 
 # append air yards for specified positions
@@ -218,83 +191,34 @@ df = add_exp_metrics(df, set_pos, pos[set_pos]['use_ay'])
 # - Add in metrics related to games missed + over / under performning recent year vs prior
 # - Convert everything to Mathews Coefficient
 
-# get the train and prediction dataframes for FP per game
-df_train, df_predict = get_train_predict(df, breakout_metric, pos, set_pos, set_year, pos[set_pos]['earliest_year'])
-
-
-# +
-def get_adp_predictions(df, year_min_int, pct_off=0.25):
-    
-    from sklearn.linear_model import LinearRegression
-    lr = LinearRegression()
-
-    output = pd.DataFrame()
-    for yy in range(int(df.year.min()+year_min_int), int(df.year.max()+1)):
-
-        X = df[df.year < yy].avg_pick.values.reshape(-1, 1)
-        y = df[df.year < yy].y_act
-
-        lr.fit(X, y)
-        pred = lr.predict(df[df.year == yy].avg_pick.values.reshape(-1, 1))
-        output_tmp = df.loc[df.year == yy, ['player', 'year', 'avg_pick', 'y_act']].reset_index(drop=True)
-        output_tmp = pd.concat([output_tmp, pd.Series(pred)], axis=1)
-
-        output = pd.concat([output, output_tmp], axis=0)
-
-    output = output.rename(columns={0: 'avg_pick_pred'})
-    
-    output['pct_off'] = (output.y_act - output.avg_pick_pred) / output.avg_pick_pred
-
-    return output, lr
-
-
-
-
-df_train_orig, lr = get_adp_predictions(df_train, 1, pct_off=0.25)
-
-
-
-#   output['label'] = 0
-#     if gorl=='greater':
-#         output.loc[(output.pct_off > pct_off) & (output.y_act > act_ppg), 'label'] = 1
-#     elif gorl=='less':
-#         output.loc[(output.pct_off < pct_off) & (output.y_act > act_ppg), 'label'] = 1
-# -
-
-df_train_orig
-
 # +
 #==============
 # Create Break-out Probability Features
 #==============
 
 breakout_metric = 'fp_per_game'
-act_ppg = 0
-pct_off = -0.2
-gorl = 'less'
+act_ppg = '>0'
+pct_off = '>0.3'
+adp_ppg = '<=11'
 
 # get the train and prediction dataframes for FP per game
-df_train, df_predict = get_train_predict(df, breakout_metric, pos, set_pos, set_year, pos[set_pos]['earliest_year'])
+df_train_orig, df_predict = get_train_predict(df, breakout_metric, pos, set_pos, set_year, pos[set_pos]['earliest_year'])
 
-# get the outlier training dataset with outlier players labeled
-df_train_orig, df_predict = get_outliers(df_train, df_predict, act_ppg=act_ppg, pct_off=pct_off, 
-                                         year_min_int=1, gorl=gorl)
+# get the adp predictions and merge back to the training dataframe
+df_train_adp, lr = get_adp_predictions(df_train_orig, 1)
+df_train_orig = pd.merge(df_train_orig, df_train_adp, on=['player', 'year'])
 
-
-
-# df_train_orig = df_train_orig[df_train_orig.avg_pick_pred > 12].drop('avg_pick_pred', axis=1).reset_index(drop=True)
-
-
+# create the label and filter based on inputs
+df_train_orig['label'] = 0
+df_train_orig.loc[(eval(f'df_train_orig.pct_off{pct_off}')) & (eval(f'df_train_orig.y_act{act_ppg}')), 'label'] = 1
+df_train_orig = df_train_orig[(eval(f'df_train_orig.avg_pick_pred{adp_ppg}'))].reset_index(drop=True)
+df_train_orig = df_train_orig.drop(['y_act', 'pct_off'], axis=1).rename(columns={'label': 'y_act'})
 
 # get the minimum number of training samples for the initial datasets
 min_samples = int(0.5*df_train_orig[df_train_orig.year <= df_train_orig.year.min() + pos[set_pos]['skip_years']].shape[0])
 
 # print the value-counts
 print(df_train_orig.y_act.value_counts())
-
-val_y = df_train_orig.loc[df_train_orig.year > df_train_orig.year.min() + pos[set_pos]['skip_years'], 'y_act']
-baseline = round(matthews_corrcoef(val_y, np.repeat(1, len(val_y))), 3)
-print('Baseline F1-score:', baseline)
 print('Min Year:', df_train_orig.year.min())
 print('Max Year:', df_train_orig.year.max())
 
@@ -478,12 +402,6 @@ class_search_space = {
         Real(0.01, 1, name='zero_weight')
     ]
 }
-# -
-
-
-
-
-
 # +
 x0=None
 skip_years = pos[set_pos]['skip_years']
@@ -507,14 +425,14 @@ for model in class_models.keys():
     output_class.loc[0, 'breakout_metric'] = breakout_metric
     output_class.loc[0, 'act_ppg'] = act_ppg
     output_class.loc[0, 'pct_off'] = pct_off
+    output_class.loc[0, 'adp_ppg'] = adp_ppg
     output_class.loc[0, 'model'] = model
     output_class.loc[0, 'earliest_year'] = df_train_orig.year.min()
-    output_class.loc[0, 'f1_score'] = -res_gp.fun
-    output_class.loc[0, 'baseline_f1'] = baseline
+    output_class.loc[0, 'score'] = -res_gp.fun
 
     params_output = dict(zip(space_keys(space), res_gp.x))
 
-    output_class.to_sql('ClassParamTracking', param_conn, if_exists='append', index=False)
+    append_to_db(output_class, db_name='ParamTracking.sqlite3', table_name='ClassParamTracking', if_exist='append')
     max_pkey = pd.read_sql_query("SELECT max(pkey) FROM ClassParamTracking", param_conn).values[0][0]
 
     save_pickle(params_output, path + f'Data/Model_Params_Class/{max_pkey}.p')
