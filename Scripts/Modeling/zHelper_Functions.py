@@ -341,7 +341,7 @@ def calculate_fp(df, pts, pos):
 def get_train_predict(df, target, pos, set_pos, set_year, early_year):
 
     # create training and prediction dataframes
-    df_train, df_predict = features_target(df,
+    df_train, df_predict = features_target_v2(df,
                                            early_year, set_year-1,
                                            pos[set_pos]['med_features'],
                                            pos[set_pos]['sum_features'],
@@ -405,6 +405,57 @@ def features_target(df, year_start, year_end, median_features, sum_features, max
 
 
 
+def features_target_v2(df, year_start, year_end, median_features, sum_features, max_features, 
+                       age_features, target_feature):
+    
+    import pandas as pd
+
+    new_df = pd.DataFrame()
+    years = range(year_start+1, year_end+1)
+
+    for year in years:
+
+        # adding the median features
+        past = df[df['year'] <= year]
+
+    #     # add features based for a players performance relative to their experience
+    #     past = add_exp_metrics(past, set_pos, pos[set_pos]['use_ay'])
+
+        # join in the median, max, and sum features
+        past = past.join(past.groupby('player')[median_features].median(), on='player', rsuffix='_median')
+        past = past.join(past.groupby('player')[max_features].max(),on='player', rsuffix='_max')
+        past = past.join(past.groupby('player')[sum_features].sum(),on='player', rsuffix='_sum')
+
+        for mf in median_features:
+            baseline = 0.25*past[mf].mean()
+            past[mf + '_over_median'] = (past[mf]-past[mf + '_median']) / (past[mf + '_median'] + baseline)
+
+        # adding the age features
+        suffix = '/ age'
+        for feature in age_features:
+            feature_label = ' '.join([feature, suffix])
+            past[feature_label] = past[feature] / past['age']
+
+        # adding the values for target feature
+        year_n = past[past["year"] == year]
+        year_n_plus_one = df[df['year'] == year+1][['player', target_feature]].rename(columns={target_feature: 'y_act'})
+        year_n = pd.merge(year_n, year_n_plus_one, how='left', left_on='player', right_on='player')
+        new_df = new_df.append(year_n)
+
+    # creating dataframes to export
+    new_df = new_df.sort_values(by=['player', 'year']).reset_index(drop=True)
+    rolling_stats = new_df.groupby('player')[median_features].rolling(3).mean().fillna(-1).reset_index(drop=True)
+    rolling_stats.columns = [c + '_rolling' for c in rolling_stats.columns]
+    new_df = pd.concat([new_df, rolling_stats], axis=1)
+
+    df_train = new_df[new_df.year < year_end].reset_index(drop=True)
+    df_predict = new_df[new_df.year == year_end].drop('y_act', axis=1).reset_index(drop=True)
+    df_train = df_train.sort_values(['year', 'fp_per_game'], ascending=True).reset_index(drop=True)
+    
+    return df_train, df_predict
+
+
+
 #===========
 # Saving out Data to DB
 #===========
@@ -438,10 +489,8 @@ def append_to_db(df, db_name='Season_Stats.sqlite3', table_name='NA', if_exist='
 
     conn = sqlite3.connect(db_name)
     
-    today = dt.datetime.today().strftime('%Y%m%d%H%M')
-
     df.to_sql(
-    name=table_name + '_' + today,
+    name=table_name,
     con=conn,
     if_exists=if_exist,
     index=False
@@ -526,6 +575,11 @@ def X_y_split(train, val, scale=True, pca=False):
         pass
     
     if pca == True:
+        y_corr = pd.concat([X_train, y_train], axis=1).corr()['y_act']
+        y_index = y_corr[y_corr < 0].index
+        X_train.loc[:, y_index] = -1*X_train.loc[:, y_index] 
+        X_val.loc[:, y_index] = -1*X_val.loc[:, y_index] 
+
         n_comp = np.min([X_train.shape[1], 10])
         pca = PCA(n_components=n_comp, random_state=1234)
         pca.fit(X_train)

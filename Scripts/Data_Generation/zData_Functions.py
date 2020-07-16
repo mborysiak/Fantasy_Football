@@ -52,19 +52,34 @@ def team_select(col):
     team = col.split(' ')[2]
     return team
 
+def convert_to_float(df):
+    for c in df.columns:
+        try:
+            df[c] = df[c].astype('float')
+        except:
+            pass
+    
+    return df
+
 # function to append data to sqlite
 def append_to_db(df, db_name='Season_Stats.sqlite3', table_name='NA', if_exist='append'):
 
     import sqlite3
     import os
+    import datetime as dt
     
     #--------
     # Append pandas df to database in Github
     #--------
 
-    os.chdir('/Users/Mark/Documents/Github/Fantasy_Football/Data/')
-
+    os.chdir('/Users/Mark/Documents/Github/Fantasy_Football/Data/Databases/')
     conn = sqlite3.connect(db_name)
+
+    #--------
+    # Save Backup
+    #--------
+    
+    backup = pd.read_sql_query(f'''SELECT * FROM {table_name}''', conn)
 
     df.to_sql(
     name=table_name,
@@ -77,7 +92,7 @@ def append_to_db(df, db_name='Season_Stats.sqlite3', table_name='NA', if_exist='
     # Append pandas df to database in Dropbox
     #--------
 
-    os.chdir('/Users/Mark/OneDrive/FF/')
+    os.chdir('/Users/Mark/OneDrive/FF/DataBase/')
 
     conn = sqlite3.connect(db_name)
 
@@ -87,6 +102,10 @@ def append_to_db(df, db_name='Season_Stats.sqlite3', table_name='NA', if_exist='
     if_exists=if_exist,
     index=False
     )
+    
+    backup_date = dt.datetime.now().strftime('%Y%m%d%H%M')
+    backup_path_ext = f'Backups/{db_name.replace('.sqlite3', '')}_{table_name}_{backup_date}.csv'
+    df.to_csv(f'/Users/Mark/OneDrive/FF/DataBase/{backup_path_ext}', index=False)
     
 #==========
 # Clean the ADP data

@@ -19,12 +19,8 @@ import sqlite3
 import os
 import pandas as pd
 import numpy as np
-from data_functions import *
+from zData_Functions import *
 
-
-# import datetime as dt
-#
-# today = dt.datetime.now().date()
 
 # # Helper Functions
 
@@ -85,7 +81,23 @@ def qb_run(df):
 
     qb_run = qb_run.groupby(['team', 'year']).agg('max').reset_index()
 
-    df = pd.merge(df, qb_run, how='inner', left_on=['team', 'year'], right_on=['team', 'year'])
+    df = pd.merge(df, qb_run, how='left', on=['team', 'year'])
+    print(df.isnull().sum()[df.isnull().sum()>0])
+    df.fillna(0,inplace=True)
+    print('')
+    print(df.isnull().sum()[df.isnull().sum()>0])
+    
+    return df
+
+
+def draft_value(df):
+    
+    draft_val = pd.read_sql_query('''SELECT player, year min_year, nfl_draft_value FROM Draft_Positions a
+                                     JOIN (SELECT Pick, Value nfl_draft_value FROM Draft_Values) b
+                                          ON a.Pick=b.Pick''', conn)
+
+    df = pd.merge(df, draft_val, on=['player', 'min_year'], how='left').fillna(1)
+    df['nfl_draft_value_decay'] = df.nfl_draft_value * (1 / (1 + np.exp(-df.year_exp)))
     
     return df
 
@@ -104,14 +116,16 @@ allow for grouped statistics generation.
 '''
 
 # load prepared data
-conn = sqlite3.connect('/Users/Mark/Documents/Github/Fantasy_Football/Data/Season_Stats.sqlite3')
+conn = sqlite3.connect('/Users/Mark/Documents/Github/Fantasy_Football/Data/Databases/Season_Stats.sqlite3')
 query = ''' 
     SELECT * 
     FROM RB_Stats A 
     INNER JOIN OLine_Stats B ON A.team = B.team AND A.year = B.year
     INNER JOIN Team_Efficiency C ON A.team = C.team AND A.year = C.year
     INNER JOIN Team_Offensive_Stats D ON A.team = D.team AND A.year = D.year
-    INNER JOIN QB_PosPred E ON A.team = E.team AND A.year = E.year'''
+    INNER JOIN QB_PosPred E ON A.team = E.team AND A.year = E.year
+    LEFT JOIN Team_Drafts F ON A.team = F.team AND A.year = F.year 
+    '''
 
 df = pd.read_sql_query(query, con=conn)
 
@@ -157,20 +171,22 @@ df['rush_rec_ratio'] = df.rush_yds / df.rec_yds
 df['ms_rec_td'] = df['rec_td'] / df['tm_pass_td']
 
 df['ms_rush_yd_per_att'] = df['ms_rush_yd'] / df['ms_rush_att']
-
 df['avail_x_newteam'] = df['available_rush_att'] * df['new_team']
 
-df['total_rz_att'] = df.rz_20_rush_att + df.rz_10_rush_att + df.rz_5_rush_att
-df['rz_td_ratio'] = df.rush_td / df.total_rz_att
+df['total_rz_rush_att'] = df.rz_20_rush_att + df.rz_10_rush_att + df.rz_5_rush_att +1
+df['rz_rush_td_ratio'] = df.rush_td / df.total_rz_rush_att
 
-df['total_rz_att'] = df.rz_20_tgt + df.rz_10_tgt
-df['rz_td_ratio'] = df.rec_td / df.total_rz_att
+df['total_rz_rec_att'] = df.rz_20_tgt + df.rz_10_tgt + 1
+df['rz_rec_td_ratio'] = df.rec_td / df.total_rz_rec_att
+
+df['total_rz_att'] = df.rz_20_rush_att + df.rz_10_rush_att + df.rz_5_rush_att + df.rz_20_tgt + df.rz_10_tgt + 1
+df['rz_total_td_ratio'] = df.rec_td / df.total_rz_att
 # -
 
 df = adp_groupby(df, 'RB')
 df = year_exp(df)
 df = qb_run(df)
-df['total_yd_per_game'] = df.rush_yd_per_game + df.rec_yd_per_game
+df = draft_value(df)
 
 append_to_db(df, db_name='Model_Inputs.sqlite3', table_name='RB_' + str(year), if_exist='replace')
 
@@ -188,14 +204,15 @@ allow for grouped statistics generation.
 '''
 
 # load prepared data
-conn = sqlite3.connect('/Users/Mark/Documents/Github/Fantasy_Football/Data/Season_Stats.sqlite3')
+conn = sqlite3.connect('/Users/Mark/Documents/Github/Fantasy_Football/Data/Databases/Season_Stats.sqlite3')
 query = ''' 
     SELECT * 
     FROM WR_Stats A 
     INNER JOIN OLine_Stats B ON A.team = B.team AND A.year = B.year
     INNER JOIN Team_Efficiency C ON A.team = C.team AND A.year = C.year
     INNER JOIN Team_Offensive_Stats D ON A.team = D.team AND A.year = D.year
-    INNER JOIN QB_PosPred E ON A.team = E.team AND A.year = E.year'''
+    INNER JOIN QB_PosPred E ON A.team = E.team AND A.year = E.year
+    INNER JOIN Team_Drafts F ON A.team = F.team AND A.year = F.year'''
 
 df = pd.read_sql_query(query, con=conn)
 
@@ -236,6 +253,9 @@ df['ms_rec_yd'] = df['rec_yds'] / df['tm_pass_yds']
 df['ms_tgts'] = df['tgt'] / df['tm_pass_att']
 df['ms_yds_per_tgts'] = df['ms_rec_yd'] / df['ms_tgts']
 
+df['total_rz_rec_att'] = df.rz_20_tgt + df.rz_10_tgt + 1
+df['rz_rec_td_ratio'] = df.rec_td / df.total_rz_rec_att
+
 df['avail_tgt_x_newteam'] = df['available_tgt'] * df['new_team']
 df['avail_yds_x_newteam'] = df['available_yds'] * df['new_team']
 # -
@@ -243,6 +263,7 @@ df['avail_yds_x_newteam'] = df['available_yds'] * df['new_team']
 df = adp_groupby(df, 'WR')
 df = year_exp(df)
 df = qb_run(df)
+df = draft_value(df)
 
 append_to_db(df, db_name='Model_Inputs.sqlite3', table_name='WR_' + str(year), if_exist='replace')
 
@@ -260,14 +281,16 @@ allow for grouped statistics generation.
 '''
 
 # load prepared data
-conn = sqlite3.connect('/Users/Mark/Documents/Github/Fantasy_Football/Data/Season_Stats.sqlite3')
+conn = sqlite3.connect('/Users/Mark/Documents/Github/Fantasy_Football/Data/Databases/Season_Stats.sqlite3')
 query = ''' 
     SELECT * 
     FROM QB_Stats A 
     INNER JOIN OLine_Stats B ON A.team = B.team AND A.year = B.year
     INNER JOIN Team_Efficiency C ON A.team = C.team AND A.year = C.year
     INNER JOIN Team_Offensive_Stats D ON A.team = D.team AND A.year = D.year
-    INNER JOIN QB_PosPred E ON A.team = E.team AND A.year = E.year'''
+    INNER JOIN QB_PosPred E ON A.team = E.team AND A.year = E.year
+     INNER JOIN Team_Drafts F ON A.team = F.team AND A.year = F.year
+    '''
 
 df = pd.read_sql_query(query, con=conn)
 
@@ -288,6 +311,7 @@ for col in df.columns:
 # -
 
 df = year_exp(df)
+df = draft_value(df)
 
 append_to_db(df, db_name='Model_Inputs.sqlite3', table_name='QB_' + str(year), if_exist='replace')
 
@@ -305,14 +329,15 @@ allow for grouped statistics generation.
 '''
 
 # load prepared data
-conn = sqlite3.connect('/Users/Mark/Documents/Github/Fantasy_Football/Data/Season_Stats.sqlite3')
+conn = sqlite3.connect('/Users/Mark/Documents/Github/Fantasy_Football/Data/Databases/Season_Stats.sqlite3')
 query = ''' 
     SELECT * 
     FROM TE_Stats A 
     INNER JOIN OLine_Stats B ON A.team = B.team AND A.year = B.year
     INNER JOIN Team_Efficiency C ON A.team = C.team AND A.year = C.year
     INNER JOIN Team_Offensive_Stats D ON A.team = D.team AND A.year = D.year
-    INNER JOIN QB_PosPred E ON A.team = E.team AND A.year = E.year'''
+    INNER JOIN QB_PosPred E ON A.team = E.team AND A.year = E.year
+    INNER JOIN Team_Drafts F ON A.team = F.team AND A.year = F.year'''
 
 df = pd.read_sql_query(query, con=conn)
 
@@ -353,6 +378,9 @@ df['ms_rec_yd'] = df['rec_yds'] / df['tm_pass_yds']
 df['ms_tgts'] = df['tgt'] / df['tm_pass_att']
 df['ms_yds_per_tgts'] = df['ms_rec_yd'] / df['ms_tgts']
 
+df['total_rz_rec_att'] = df.rz_20_tgt + df.rz_10_tgt + 1
+df['rz_rec_td_ratio'] = df.rec_td / df.total_rz_rec_att
+
 df['avail_tgt_x_newteam'] = df['available_tgt'] * df['new_team']
 df['avail_yds_x_newteam'] = df['available_yds'] * df['new_team']
 # -
@@ -360,6 +388,7 @@ df['avail_yds_x_newteam'] = df['available_yds'] * df['new_team']
 df = adp_groupby(df, 'WR')
 df = year_exp(df)
 df = qb_run(df)
+df = draft_value(df)
 
 append_to_db(df, db_name='Model_Inputs.sqlite3', table_name='TE_' + str(year), if_exist='replace')
 

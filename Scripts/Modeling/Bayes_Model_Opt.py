@@ -52,7 +52,7 @@ pandas_bokeh.output_notebook()
 path = '/Users/Mark/Documents/Github/Fantasy_Football/'
 
 # set to position to analyze: 'RB', 'WR', 'QB', or 'TE'
-set_pos = 'WR'
+set_pos = 'RB'
 
 # set year to analyze
 set_year = 2019
@@ -147,7 +147,9 @@ output_class = pd.DataFrame({
     'pct_off': [None], 
     'adp_ppg': [None],
     'model': [None],
-    'score': [None]
+    'score': [None],
+    'kappa': [None],
+    'bayes_seed': [None]
 })
 
 def save_pickle(obj, filename, protocol=-1):
@@ -158,8 +160,6 @@ def load_pickle(filename):
     with gzip.open(filename, 'rb') as f:
         loaded_object = pickle.load(f)
         return loaded_object
-
-
 # +
 #==========
 # Pull and clean compiled data
@@ -170,9 +170,9 @@ df = pd.read_sql_query('SELECT * FROM ' + set_pos + '_' + str(set_year), con=con
 
 # append air yards for specified positions
 if pos[set_pos]['use_ay']:
-    ay = pd.read_sql_query('SELECT * FROM AirYards', con=sqlite3.connect(path + 'Data/Season_Stats.sqlite3'))
+    ay = pd.read_sql_query('SELECT * FROM AirYards', con=sqlite3.connect(path + 'Data/Databases/Season_Stats.sqlite3'))
     df = pd.merge(df, ay, how='inner', left_on=['player', 'year'], right_on=['player', 'year'])
-    
+        
 # apply the specified touches and game filters
 df, df_train_results, df_test_results = touch_game_filter(df, pos, set_pos, set_year)
 
@@ -181,6 +181,8 @@ df = calculate_fp(df, pts_dict, pos=set_pos).reset_index(drop=True)
 
 # add features based for a players performance relative to their experience
 df = add_exp_metrics(df, set_pos, pos[set_pos]['use_ay'])
+
+
 # -
 
 # # Breakout Models
@@ -192,14 +194,87 @@ df = add_exp_metrics(df, set_pos, pos[set_pos]['use_ay'])
 # - Convert everything to Mathews Coefficient
 
 # +
+def get_train_predict(df, target, pos, set_pos, set_year, early_year):
+
+    # create training and prediction dataframes
+    df_train, df_predict = features_target(df,
+                                               early_year, set_year-1,
+                                               pos[set_pos]['med_features'],
+                                               pos[set_pos]['sum_features'],
+                                               pos[set_pos]['max_features'],
+                                               pos[set_pos]['age_features'],
+                                               target_feature=target)
+
+    df_train = convert_to_float(df_train)
+    df_predict = convert_to_float(df_predict)
+
+    # drop any rows that have a null target value (likely due to injuries or other missed season)
+    df_train = df_train.dropna(subset=['y_act']).reset_index(drop=True)
+    df_train = df_train.fillna(df_train.mean())
+    df_predict = df_predict.dropna().reset_index(drop=True)
+    
+    return df_train, df_predict
+
+
+def features_target(df, year_start, year_end, median_features, sum_features, max_features, 
+                       age_features, target_feature):
+    
+    import pandas as pd
+
+    new_df = pd.DataFrame()
+    years = range(year_start+1, year_end+1)
+
+    for year in years:
+
+        # adding the median features
+        past = df[df['year'] <= year]
+
+    #     # add features based for a players performance relative to their experience
+    #     past = add_exp_metrics(past, set_pos, pos[set_pos]['use_ay'])
+
+        # join in the median, max, and sum features
+        past = past.join(past.groupby('player')[median_features].median(), on='player', rsuffix='_median')
+        past = past.join(past.groupby('player')[max_features].max(),on='player', rsuffix='_max')
+        past = past.join(past.groupby('player')[sum_features].sum(),on='player', rsuffix='_sum')
+
+        for mf in median_features:
+            baseline = 0.25*past[mf].mean()
+            past[mf + '_over_median'] = (past[mf]-past[mf + '_median']) / (past[mf + '_median'] + baseline)
+
+        # adding the age features
+        suffix = '/ age'
+        for feature in age_features:
+            feature_label = ' '.join([feature, suffix])
+            past[feature_label] = past[feature] / past['age']
+
+        # adding the values for target feature
+        year_n = past[past["year"] == year]
+        year_n_plus_one = df[df['year'] == year+1][['player', target_feature]].rename(columns={target_feature: 'y_act'})
+        year_n = pd.merge(year_n, year_n_plus_one, how='left', left_on='player', right_on='player')
+        new_df = new_df.append(year_n)
+
+    # creating dataframes to export
+    new_df = new_df.sort_values(by=['player', 'year']).reset_index(drop=True)
+    rolling_stats = new_df.groupby('player')[median_features].rolling(3).mean().fillna(-1).reset_index(drop=True)
+    rolling_stats.columns = [c + '_rolling' for c in rolling_stats.columns]
+    new_df = pd.concat([new_df, rolling_stats], axis=1)
+
+    df_train = new_df[new_df.year < year_end].reset_index(drop=True)
+    df_predict = new_df[new_df.year == year_end].drop('y_act', axis=1).reset_index(drop=True)
+    df_train = df_train.sort_values(['year', 'fp_per_game'], ascending=True).reset_index(drop=True)
+    
+    return df_train, df_predict
+
+
+# +
 #==============
 # Create Break-out Probability Features
 #==============
 
 breakout_metric = 'fp_per_game'
-act_ppg = '>0'
-pct_off = '>0.3'
-adp_ppg = '<=11'
+act_ppg = '>=12'
+pct_off = '>0.2'
+adp_ppg = '>=0'
 
 # get the train and prediction dataframes for FP per game
 df_train_orig, df_predict = get_train_predict(df, breakout_metric, pos, set_pos, set_year, pos[set_pos]['earliest_year'])
@@ -323,11 +398,11 @@ class_search_space = {
         Real(0.001, 10000, "log_uniform", name='reg_lambda'),
         Real(0.001, 100, 'log_uniform', name='reg_alpha'),
         Integer(1, min_samples, name='min_data_in_leaf'),
-        Real(.3, 1, name='collinear_cutoff'),
+        Real(.2, 1, name='collinear_cutoff'),
         Integer(0, 1, name='scale'),
         Integer(0, 1, name='pca'),
         Integer(0, 1, name='use_smote'),
-        Real(0.01, 1, name='zero_weight')
+        Real(0.1, 1, name='zero_weight')
     ],
     
     'xgb': [
@@ -340,20 +415,20 @@ class_search_space = {
         Real(0.0001, 1, 'log_uniform', name='gamma'),
         Real(0.001, 10000, "log_uniform", name='reg_lambda'),
         Real(0.001, 100, 'log_uniform', name='reg_alpha'),
-        Real(.3, 1, name='collinear_cutoff'),
+        Real(.2, 1, name='collinear_cutoff'),
         Integer(0, 1, name='scale'),
         Integer(0, 1, name='pca'),
         Integer(0, 1, name='use_smote'),
-        Real(0.01, 1, name='zero_weight')
+        Real(0.1, 1, name='zero_weight')
     ],
         
     'lr': [
-        Real(0.001, 1000000, 'log_uniform', name='C'),
-        Real(.3, 1, name='collinear_cutoff'),
+        Real(0.00001, 100000000, 'log_uniform', name='C'),
+        Real(.2, 1, name='collinear_cutoff'),
         Integer(0, 1, name='scale'),
         Integer(0, 1, name='pca'),
         Integer(0, 1, name='use_smote'),
-        Real(0.01, 1, name='zero_weight')
+        Real(0.1, 1, name='zero_weight')
     ],
         
     'rf': [
@@ -362,11 +437,11 @@ class_search_space = {
         Integer(1, min_samples, name='min_samples_leaf'),
         Real(0.01, 1, name='max_features'),
         Integer(2, 50, name='min_samples_split'),
-        Real(.3, 1, name='collinear_cutoff'),
+        Real(.2, 1, name='collinear_cutoff'),
         Integer(0, 1, name='scale'),
         Integer(0, 1, name='pca'),
         Integer(0, 1, name='use_smote'),
-        Real(0.01, 1, name='zero_weight')
+        Real(0.1, 1, name='zero_weight')
     ],
     
     'gbm': [
@@ -375,31 +450,31 @@ class_search_space = {
         Integer(1, min_samples, name='min_samples_leaf'),
         Real(0.01, 1, name='max_features'),
         Integer(2, 50, name='min_samples_split'),
-        Real(.3, 1, name='collinear_cutoff'),
+        Real(.2, 1, name='collinear_cutoff'),
         Integer(0, 1, name='scale'),
         Integer(0, 1, name='pca'),
         Integer(0, 1, name='use_smote'),
-        Real(0.01, 1, name='zero_weight')
+        Real(0.1, 1, name='zero_weight')
     ],
     
     'knn': [
         Integer(1, min_samples, name='n_neighbors'),
         Categorical(['distance', 'uniform'], name='weights'),
         Categorical(['auto', 'ball_tree', 'kd_tree', 'brute'], name='algorithm'),
-        Real(.3, 1, name='collinear_cutoff'),
+        Real(.2, 1, name='collinear_cutoff'),
         Integer(0, 1, name='scale'),
         Integer(0, 1, name='pca'),
         Integer(0, 1, name='use_smote'),
-        Real(0.01, 1, name='zero_weight')
+        Real(0.1, 1, name='zero_weight')
     ],
     
     'svr': [
         Real(0.0001, 1000, 'log_uniform', name='C'),
-        Real(.3, 1, name='collinear_cutoff'),
+        Real(.2, 1, name='collinear_cutoff'),
         Integer(0, 1, name='scale'),
         Integer(0, 1, name='pca'),
         Integer(0, 1, name='use_smote'),
-        Real(0.01, 1, name='zero_weight')
+        Real(0.1, 1, name='zero_weight')
     ]
 }
 # +
@@ -419,8 +494,10 @@ for model in class_models.keys():
     def space_keys(**args):
         return list(args.keys())
 
+    bayes_seed = 12345
+    kappa = 2
     res_gp = gp_minimize(objective_class, space, n_calls=100, n_random_starts=25, x0=x0,
-                        random_state=12345, verbose=True, kappa=2., n_jobs=-1)
+                        random_state=bayes_seed, verbose=True, kappa=kappa, n_jobs=-1)
 
     output_class.loc[0, 'breakout_metric'] = breakout_metric
     output_class.loc[0, 'act_ppg'] = act_ppg
@@ -429,7 +506,9 @@ for model in class_models.keys():
     output_class.loc[0, 'model'] = model
     output_class.loc[0, 'earliest_year'] = df_train_orig.year.min()
     output_class.loc[0, 'score'] = -res_gp.fun
-
+    output_class.loc[0, 'kappa'] = kappa
+    output_class.loc[0, 'bayes_seed'] = bayes_seed
+    
     params_output = dict(zip(space_keys(space), res_gp.x))
 
     append_to_db(output_class, db_name='ParamTracking.sqlite3', table_name='ClassParamTracking', if_exist='append')
@@ -730,3 +809,5 @@ for metric in pos[set_pos]['metrics']:
         save_pickle(params_output, path + f'Data/Model_Params/{max_pkey}.p')
         save_pickle(df_train_orig, path + f'Data/Model_Datasets/{max_pkey}.p')    
         save_pickle(search_space[model], path + f'Data/Bayes_Space/{max_pkey}.p')
+
+

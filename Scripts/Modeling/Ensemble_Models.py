@@ -124,8 +124,8 @@ def load_pickle(filename):
 #==========
 
 # specify the minimum and maximum rows from the database
-min_rowid = 1
-max_rowid = 7
+min_rowid = 116
+max_rowid = 122
 rows = tuple([c for c in range(min_rowid, max_rowid+1)])
 
 # pull in the results for the given primary keys and extract best model coordinates
@@ -139,6 +139,8 @@ res = res.T.to_dict()[0]
 # set the position and year
 set_year = res['year']
 set_pos = res['pos']
+bayes_seed = res['bayes_seed']
+kappa = res['kappa']
 
 # set all of the data preparation filters 
 pos[set_pos]['req_touch'] = res['req_touch']
@@ -152,117 +154,9 @@ breakout_metric = res['breakout_metric']
 act_ppg = res['act_ppg']
 adp_ppg = res['adp_ppg']
 pct_off = res['pct_off']
-
-# +
-#==========
-# Pull and clean compiled data
-#==========
-
-# connect to database and pull in positional data
-df = pd.read_sql_query('SELECT * FROM ' + set_pos + '_' + str(set_year), con=conn)
-
-# append air yards for specified positions
-if pos[set_pos]['use_ay']:
-    ay = pd.read_sql_query('SELECT * FROM AirYards', con=sqlite3.connect(path + 'Data/Season_Stats.sqlite3'))
-    df = pd.merge(df, ay, how='inner', left_on=['player', 'year'], right_on=['player', 'year'])
-    
-# apply the specified touches and game filters
-df, df_train_results, df_test_results = touch_game_filter(df, pos, set_pos, set_year)
-
-# calculate FP for a given set of scoring values
-df = calculate_fp(df, pts_dict, pos=set_pos).reset_index(drop=True)
-
-# add features based for a players performance relative to their experience
-df = add_exp_metrics(df, set_pos, pos[set_pos]['use_ay'])
-
 # -
 
-df = df[df.player.isin(['Antonio Brown', 'Dez Bryant'])]
-df = df.sort_values(by=['player', 'year'], ascending=[True, True]).reset_index(drop=True)
-
-
-def rolling_stats(df, gcols, rcol, period):
-    '''
-    Calculate rolling mean stats over a specified number of previous weeks
-    '''
-    
-    # calculate the mean over a given groupby for a given period
-    gmean = df.groupby(gcols)[rcol].rolling(period).mean().reset_index().drop('level_' + str(len(gcols)), axis=1)
-    gmean = gmean.rename(columns={rcol: 'mean_' + rcol + '_' + str(period)})
-    
-    # merge the rolling stats back to the original dataframe
-    df = pd.concat([df, gmean],axis=1).fillna(-1)
-
-    return df
-
-
-df = rolling_stats(df, ['player'], 'receptions', 2)
-
-df[['player', 'team', 'year', 'receptions', 'mean_receptions_2']]
-
-# +
-target_feature = 'fp_per_game'
-early_year = pos[set_pos]['earliest_year']
-year_start = early_year
-year_end = set_year-1
-median_features = pos[set_pos]['med_features']
-sum_features=pos[set_pos]['sum_features']
-max_features=pos[set_pos]['max_features']
-age_features=pos[set_pos]['age_features']
-
-
-##########
-    
-import pandas as pd
-
-new_df = pd.DataFrame()
-years = range(year_start+1, year_end+1)
-
-for year in years:
-
-    # adding the median features
-    past = df[df['year'] <= year]
-    for metric in median_features:
-        past = past.join(past.groupby('player')[metric].median(), on='player', rsuffix='_median')
-
-    for metric in max_features:
-        past = past.join(past.groupby('player')[metric].max(),on='player', rsuffix='_max')
-
-    for metric in sum_features:
-        past = past.join(past.groupby('player')[metric].sum(),on='player', rsuffix='_sum')
-
-    # adding the age features
-    suffix = '/ age'
-    for feature in age_features:
-        feature_label = ' '.join([feature, suffix])
-        past[feature_label] = past[feature] / past['age']
-
-    # adding the values for target feature
-    year_n = past[past["year"] == year]
-    year_n_plus_one = df[df['year'] == year+1][['player', target_feature]].rename(columns={target_feature: 'y_act'})
-    year_n = pd.merge(year_n, year_n_plus_one, how='left', left_on='player', right_on='player')
-    new_df = new_df.append(year_n)
-
-# creating dataframes to export
-new_df = new_df.sort_values(by=['year', 'fp'], ascending=[False, False])
-#  new_df = pd.concat([new_df, pd.get_dummies(new_df.year)], axis=1, sort=False)
-
-df_train = new_df[new_df.year < year_end].reset_index(drop=True)
-df_predict = new_df[new_df.year == year_end].drop('y_act', axis=1).reset_index(drop=True)
-df_train = df_train.sort_values(['year', 'fp_per_game'], ascending=True).reset_index(drop=True)
-################    
-
-df_train = convert_to_float(df_train)
-df_predict = convert_to_float(df_predict)
-
-# drop any rows that have a null target value (likely due to injuries or other missed season)
-df_train = df_train.dropna(subset=['y_act']).reset_index(drop=True)
-df_train = df_train.fillna(df_train.mean())
-df_predict = df_predict.dropna().reset_index(drop=True)
-
-
-# -
-
+# # Running Ensemble Models
 
 
 # +
@@ -303,7 +197,7 @@ df_predict['avg_pick_pred'] = lr.predict(df_predict.avg_pick.values.reshape(-1,1
 df_train_orig['label'] = 0
 df_train_orig.loc[(eval(f'df_train_orig.pct_off{pct_off}')) & (eval(f'df_train_orig.y_act{act_ppg}')), 'label'] = 1
 df_train_orig = df_train_orig[(eval(f'df_train_orig.avg_pick_pred{adp_ppg}'))].reset_index(drop=True)
-df_predict = df_train_orig[(eval(f'df_predict.avg_pick_pred{adp_ppg}'))].reset_index(drop=True)
+df_predict = df_predict[(eval(f'df_predict.avg_pick_pred{adp_ppg}'))].reset_index(drop=True)
 
 # add in extra columns to the results dataframes
 df_train_results = pd.merge(df_train_results, df_train_orig[['player', 'year', 'y_act', 'pct_off', 'avg_pick_pred']], on=['player', 'year'])
@@ -436,9 +330,11 @@ df_test_results = pd.merge(df_test_results, best_ty_proba, on=['player', 'year']
 
 df_test_results.sort_values(by=['pred_fp_per_game', 'proba_fp_per_game'], ascending=[False,False]).iloc[:60]
 
-df_train_results.groupby('pred_fp_per_game').agg({'y_act': 'median',
-                                                  'pct_off': 'median',
-                                                  'avg_pick_pred': 'median'})
+df_train_results
+
+df_train_results.groupby('pred_fp_per_game').agg({'y_act': 'mean',
+                                                  'pct_off': 'mean',
+                                                  'avg_pick_pred': 'mean'})
 
 # +
 # Create Bokeh-Table with DataFrame:
@@ -448,8 +344,8 @@ from bokeh.models import ColumnDataSource, Span
 data_table = DataTable(
     columns=[TableColumn(field=Ci, title=Ci) for Ci in df_train_results.columns],
     source=ColumnDataSource(df_train_results),
-    height=500,
-    width=500
+    height=750,
+    width=750
 )
 
 # Create Scatterplot:
@@ -461,14 +357,23 @@ p_scatter = df_train_results.plot_bokeh.scatter(
     show_figure=False
 )
 
-hline = Span(location=eval(pct_off[1:]), dimension='width', line_color='green', line_width=3)
-vline = Span(location=eval(act_ppg[1:]), dimension='height', line_color='blue', line_width=3)
+hline = Span(location=eval(pct_off[-1:]), dimension='width', line_color='green', line_width=3)
+vline = Span(location=eval(act_ppg[-1:]), dimension='height', line_color='blue', line_width=3)
 p_scatter.renderers.extend([hline, vline])
 
 
 # Combine Table and Scatterplot via grid layout:
-pandas_bokeh.plot_grid([[data_table, p_scatter]], plot_width=500, plot_height=500)
+pandas_bokeh.plot_grid([[data_table, p_scatter]], plot_width=750, plot_height=750)
 # -
+
+ind = 0
+try:
+    imp = pd.DataFrame(results['trained_model'][ind].coef_, columns=results['cols'][ind]).T
+    imp = imp[abs(imp) > 0.2*imp.max()].sort_values(by=0).reset_index()
+except:
+    imp = pd.DataFrame([results['trained_model'][ind].feature_importances_], columns=results['cols'][ind]).T
+    imp = imp[abs(imp) > 0.1*imp.max()].sort_values(by=0).reset_index()
+imp.plot_bokeh(x='index', y=0, kind='barh')
 
 # # Regression Models
 
@@ -794,6 +699,3 @@ print(f'Ensemble Error: {ensemble_error}')
 
 # save the results to the output dataframe
 output = pd.concat([output, pd.DataFrame({'FantasyProsRMSE': [fantasy_pros_error], 'EnsembleRMSE': [ensemble_error]})], axis=1)
-# -
-
-

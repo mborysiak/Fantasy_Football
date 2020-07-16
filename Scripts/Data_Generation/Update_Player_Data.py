@@ -304,7 +304,7 @@ df_rb['total_touches'] = df_rb.rush_att + df_rb.receptions
 df_rb['total_td'] = df_rb.rush_td + df_rb.rec_td
 df_rb['td_per_game'] = df_rb.total_td / df_rb.games
 df_rb['total_yds'] = df_rb.rush_yds + df_rb.rec_yds
-df_rb['total_yds'] = df_rb.rush_yds + df_rb.rec_yds
+df_rb['total_yds_per_game'] = df_rb.total_yds / df_rb.games
 df_rb['yds_per_touch'] = df_rb.total_yds / df_rb.total_touches
 df_rb['rush_att_per_game'] = df_rb.rush_att / df_rb.games
 # -

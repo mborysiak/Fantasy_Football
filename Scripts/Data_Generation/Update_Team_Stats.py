@@ -18,6 +18,7 @@
 # +
 year = 2018
 
+path = '/Users/Mark/Documents/Github/Fantasy_Football/'
 db_name = 'Season_Stats.sqlite3'
 # -
 
@@ -27,7 +28,7 @@ import pandas as pd
 import numpy as np
 import os
 import sqlite3
-from data_functions import *
+from zData_Functions import *
 import re
 
 # # Update Team Efficiency
@@ -603,5 +604,112 @@ all_coaches = all_coaches.reset_index(drop=True)
 # -
 
 all_coaches.head()
+
+# # Draft Data by Team
+
+# ## Pull Data From Pro Football Reference
+
+# pulling in the draft value for each pick
+draft_values = pd.read_html('https://www.pro-football-reference.com/draft/draft_trade_value.htm')[0]
+draft_values = draft_values[['Round', 'Pick', 'Value']]
+draft_values = draft_values.dropna()
+draft_values = draft_values[draft_values.Round != 'Round'].reset_index(drop=True)
+draft_values = convert_to_float(draft_values)
+
+append_to_db(draft_values, table_name='Draft_Values')
+
+# +
+# create full positional list to loop through
+draft_pos = pd.DataFrame()
+for y in range(1985, 1995):
+    
+    # scrape in the results for each position
+    DRAFT_URL = f'https://www.pro-football-reference.com/play-index/draft-finder.cgi?request=1&year_min={y}&year_max={y}&pick_type=overall&pos%5B%5D=qb&pos%5B%5D=rb&pos%5B%5D=wr&pos%5B%5D=te&pos%5B%5D=e&pos%5B%5D=t&pos%5B%5D=g&pos%5B%5D=c&pos%5B%5D=ol&pos%5B%5D=dt&pos%5B%5D=de&pos%5B%5D=dl&pos%5B%5D=ilb&pos%5B%5D=olb&pos%5B%5D=lb&pos%5B%5D=cb&pos%5B%5D=s&pos%5B%5D=db&pos%5B%5D=k&pos%5B%5D=p&conference=any&show=all&order_by=default'
+    d = pd.read_html(DRAFT_URL)[0]
+    
+    # pull out the column names from multi column index
+    good_cols = [c[1] for c in d.columns]
+    d = d.T.reset_index(drop=True).T
+    d.columns = good_cols
+
+    # grab relevant columns and rename
+    d = d[['Year', 'Rnd', 'Pick', 'Player', 'Pos', 'Tm', 'College/Univ']]
+    d.columns = ['year', 'Round', 'Pick', 'player', 'pos', 'team', 'college']
+    
+    # concat current results to all results
+    draft_pos = pd.concat([draft_pos, d], axis=0)
+    
+# ensure all positions are upper cased
+draft_pos.pos = draft_pos.pos.apply(lambda x: x.upper())    
+    
+# drop duplicates if guy is in multiple positional pulls    
+draft_pos = draft_pos.drop_duplicates()
+
+# remove crap header rows and convert to float
+draft_pos = draft_pos[draft_pos.year !='Year'].reset_index(drop=True)
+draft_pos = convert_to_float(draft_pos)
+
+# update the team names
+draft_pos.loc[draft_pos.team == 'STL', 'team'] = 'LAR'
+draft_pos.loc[draft_pos.team == 'SDG', 'team'] = 'LAC'
+draft_pos.loc[draft_pos.team == 'LVR', 'team'] = 'OAK'
+# -
+
+append_to_db(draft_pos, table_name='Draft_Positions', if_exist='append')
+
+# ## Roll up to Team Level
+
+# +
+# select all data from draft positions
+draft_pos = pd.read_sql_query('''SELECT * FROM Draft_Positions''', conn)
+
+# if a position is on defense then assign Def tag
+check_d = ['DE', 'DT', 'LB', 'DB', 'NT', 'DL', 'OLB', 'CB', 'S', 'ILB', '']
+draft_pos.loc[draft_pos.pos.isin(check_d), 'pos'] = 'Def'
+
+# if a position is on oline then assign OL tag
+check_ol = ['T', 'G', 'C', 'FB', 'OL', 'OT']
+draft_pos.loc[draft_pos.pos.isin(check_ol), 'pos'] = 'OL'
+
+# if a position is on ST then assign ST tag
+check_st = ['P', 'K', 'LS']
+draft_pos.loc[draft_pos.pos.isin(check_st), 'pos'] = 'ST'
+
+# pull in the values for each draft pick
+draft_values = pd.read_sql_query('''SELECT * FROM Draft_Values''', conn)
+draft = pd.merge(draft_pos, draft_values, on=['Pick'], how='left').fillna(1)
+
+# calculate the max, sum, and count of values
+total_value = draft.groupby(['team', 'year', 'pos']).agg({'Value': 'sum'}).reset_index().rename(columns={'Value': 'total_draft_value'})
+max_value = draft.groupby(['team', 'year', 'pos']).agg({'Value': 'max'}).reset_index().rename(columns={'Value': 'max_draft_value'})
+value_cnts = draft.groupby(['team', 'year', 'pos']).agg({'Value': 'count'}).reset_index().rename(columns={'Value': 'count_picks'})
+
+# join various value metrics together
+team_value = pd.merge(total_value, max_value, on=['team', 'year', 'pos'])
+team_value = pd.merge(team_value, value_cnts, on=['team', 'year', 'pos'])
+
+# pivot tables out to wide format
+total_value = pd.pivot_table(team_value, index=['team', 'year'], columns='pos', values='total_draft_value').reset_index().fillna(0)
+cols = ['team', 'year']
+cols.extend([c + '_draft_value_sum' for c in total_value.columns if c not in ('team', 'year')])
+total_value.columns = cols
+
+max_value = pd.pivot_table(team_value, index=['team', 'year'], columns='pos', values='max_draft_value').reset_index().fillna(0)
+cols=['team', 'year']
+cols.extend([c + '_draft_value_max' for c in max_value.columns if c not in ('team', 'year')])
+max_value.columns = cols
+
+value_cnts = pd.pivot_table(team_value, index=['team', 'year'], columns='pos', values='count_picks').reset_index().fillna(0)
+cols=['team', 'year']
+cols.extend([c + '_draft_count_picks' for c in value_cnts.columns if c not in ('team', 'year')])
+value_cnts.columns = cols
+
+# join pivoted values back together
+team_values = pd.merge(total_value, max_value, on=['team', 'year'])
+team_values = pd.merge(team_values, value_cnts, on=['team', 'year'])
+team_values.year = team_values.year - 1
+# -
+
+append_to_db(team_values, table_name='Team_Drafts', if_exist='replace')
 
 
