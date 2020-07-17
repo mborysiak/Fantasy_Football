@@ -338,16 +338,28 @@ def calculate_fp(df, pts, pos):
 
 
 
-def get_train_predict(df, target, pos, set_pos, set_year, early_year):
+def get_train_predict(df, target, pos, set_pos, set_year, early_year, vers):
 
-    # create training and prediction dataframes
-    df_train, df_predict = features_target_v2(df,
-                                           early_year, set_year-1,
-                                           pos[set_pos]['med_features'],
-                                           pos[set_pos]['sum_features'],
-                                           pos[set_pos]['max_features'],
-                                           pos[set_pos]['age_features'],
-                                           target_feature=target)
+    if vers == 'v1':
+        # create training and prediction dataframes
+        df_train, df_predict = features_target(df,
+                                               early_year, set_year-1,
+                                               pos[set_pos]['med_features'],
+                                               pos[set_pos]['sum_features'],
+                                               pos[set_pos]['max_features'],
+                                               pos[set_pos]['age_features'],
+                                               target_feature=target)
+    elif vers == 'v2':
+        # create training and prediction dataframes
+        df_train, df_predict = features_target_v2(df,
+                                               early_year, set_year-1,
+                                               pos[set_pos]['med_features'],
+                                               pos[set_pos]['sum_features'],
+                                               pos[set_pos]['max_features'],
+                                               pos[set_pos]['age_features'],
+                                               target_feature=target)
+    else:
+        print('Specify v1 or v2 for features_target')
 
     df_train = convert_to_float(df_train)
     df_predict = convert_to_float(df_predict)
@@ -548,7 +560,7 @@ def corr_collinear_removal(df_train, corr_cutoff, collinear_cutoff):
     return df_train
 
 
-def X_y_split(train, val, scale=True, pca=False):
+def X_y_split(train, val, scale=True, pca=False, n_components=0.5):
     '''
     input: train and validation or test datasets
     output: datasets split into X features and y response for train / validation or test
@@ -570,18 +582,18 @@ def X_y_split(train, val, scale=True, pca=False):
     if scale == True:
         scale = StandardScaler().fit(X_train)
         X_train = pd.DataFrame(scale.transform(X_train), columns=X_train.columns)
-        X_val = pd.DataFrame(scale.transform(X_val), columns=X_train.columns)
+        X_val = pd.DataFrame(scale.transform(X_val), columns=X_val.columns)
     else:
         pass
     
     if pca == True:
         y_corr = pd.concat([X_train, y_train], axis=1).corr()['y_act']
         y_index = y_corr[y_corr < 0].index
-        X_train.loc[:, y_index] = -1*X_train.loc[:, y_index] 
-        X_val.loc[:, y_index] = -1*X_val.loc[:, y_index] 
+        X_train.loc[:, y_index] = -1 * X_train.loc[:, y_index] 
+        X_val.loc[:, y_index] = -1 * X_val.loc[:, y_index] 
 
-        n_comp = np.min([X_train.shape[1], 10])
-        pca = PCA(n_components=n_comp, random_state=1234)
+        n_comp = np.max([2, int(X_train.shape[1] * n_components)])
+        pca = PCA(n_components=n_comp, random_state=1234, svd_solver='randomized')
         pca.fit(X_train)
 
         X_train = pd.DataFrame(pca.transform(X_train), columns=['pca' + str(i) for i in range(n_comp)])
@@ -614,7 +626,7 @@ def error_compare(df):
 
 
 def validation(estimator, df_train_orig, df_predict, corr_cutoff, collinear_cutoff, 
-               skip_years=2, scale=False, pca=False):
+               skip_years=2, scale=False, pca=False, n_components=0.5):
 
     from sklearn.linear_model import LinearRegression
     
@@ -644,7 +656,7 @@ def validation(estimator, df_train_orig, df_predict, corr_cutoff, collinear_cuto
         val_split = df_train[df_train.year == m]
 
         # splitting the train and validation sets into X_train, y_train, X_val and y_val
-        X_train, X_val, y_train, y_val = X_y_split(train_split, val_split, scale, pca)
+        X_train, X_val, y_train, y_val = X_y_split(train_split, val_split, scale, pca, n_components)
 
         # fit training data and creating prediction based on validation data
         estimator.fit(X_train, y_train)
@@ -678,7 +690,7 @@ def validation(estimator, df_train_orig, df_predict, corr_cutoff, collinear_cuto
     
     pred_cols = list(df_train.columns)
     pred_cols.remove('y_act')
-    X_train, X_val, y_train, _ = X_y_split(df_train, df_predict[pred_cols])
+    X_train, X_val, y_train, _ = X_y_split(df_train, df_predict[pred_cols], scale, pca, n_components)
     output_cols = list(X_train.columns)
 
     # fit training data and creating prediction based on validation data
@@ -834,7 +846,7 @@ def remove_classification_collinear(df, collinear_cutoff, keep_cols):
 
 
 def class_validation(estimator, df_train_orig, df_predict, collinear_cutoff, use_smote,
-                     skip_years=2, scale=False, pca=False):  
+                     skip_years=2, scale=False, pca=False, n_components=0.5):  
     
     from sklearn.metrics import matthews_corrcoef
     from imblearn.over_sampling import SMOTE
@@ -862,7 +874,7 @@ def class_validation(estimator, df_train_orig, df_predict, collinear_cutoff, use
         val_split = df_train[df_train.year == m]
 
         # splitting the train and validation sets into X_train, y_train, X_val and y_val
-        X_train, X_val, y_train, y_val = X_y_split(train_split, val_split, scale, pca)
+        X_train, X_val, y_train, y_val = X_y_split(train_split, val_split, scale, pca, n_components)
 
         if use_smote:
             knn = int(len(y_train[y_train==1])*0.5)

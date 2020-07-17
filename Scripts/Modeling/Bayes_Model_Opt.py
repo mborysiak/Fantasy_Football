@@ -110,6 +110,11 @@ pos['RB']['skip_years'] = 10
 pos['WR']['skip_years'] = 10
 pos['TE']['skip_years'] = 4
 
+pos['QB']['features'] = 'v2'
+pos['RB']['features'] = 'v2'
+pos['WR']['features'] = 'v2'
+pos['TE']['features'] = 'v2'
+
 pos['QB']['use_ay'] = False
 pos['RB']['use_ay'] = False
 pos['WR']['use_ay'] = False
@@ -122,10 +127,10 @@ output = pd.DataFrame({
     'metric': [None],
     'req_touch': [pos[set_pos]['req_touch']],
     'req_games': [pos[set_pos]['req_games']],
-    'earliest_year': [pos[set_pos]['earliest_year']],
+    'earliest_year': [None],
     'skip_years': [pos[set_pos]['skip_years']],
     'use_ay': [pos[set_pos]['use_ay']],
-    'breakout_class_id': [None],
+    'features': [pos[set_pos]['features']],
     'model': [None],
     'rmse_validation': [None],
     'rmse_validation_adp': [None],
@@ -142,14 +147,13 @@ output_class = pd.DataFrame({
     'req_games': [pos[set_pos]['req_games']],
     'earliest_year': [None],
     'skip_years': [pos[set_pos]['skip_years']],
+    'features': [pos[set_pos]['features']],
     'use_ay': [pos[set_pos]['use_ay']],
     'act_ppg': [None],
     'pct_off': [None], 
     'adp_ppg': [None],
     'model': [None],
-    'score': [None],
-    'kappa': [None],
-    'bayes_seed': [None]
+    'score': [None]
 })
 
 def save_pickle(obj, filename, protocol=-1):
@@ -181,8 +185,6 @@ df = calculate_fp(df, pts_dict, pos=set_pos).reset_index(drop=True)
 
 # add features based for a players performance relative to their experience
 df = add_exp_metrics(df, set_pos, pos[set_pos]['use_ay'])
-
-
 # -
 
 # # Breakout Models
@@ -194,90 +196,17 @@ df = add_exp_metrics(df, set_pos, pos[set_pos]['use_ay'])
 # - Convert everything to Mathews Coefficient
 
 # +
-def get_train_predict(df, target, pos, set_pos, set_year, early_year):
-
-    # create training and prediction dataframes
-    df_train, df_predict = features_target(df,
-                                               early_year, set_year-1,
-                                               pos[set_pos]['med_features'],
-                                               pos[set_pos]['sum_features'],
-                                               pos[set_pos]['max_features'],
-                                               pos[set_pos]['age_features'],
-                                               target_feature=target)
-
-    df_train = convert_to_float(df_train)
-    df_predict = convert_to_float(df_predict)
-
-    # drop any rows that have a null target value (likely due to injuries or other missed season)
-    df_train = df_train.dropna(subset=['y_act']).reset_index(drop=True)
-    df_train = df_train.fillna(df_train.mean())
-    df_predict = df_predict.dropna().reset_index(drop=True)
-    
-    return df_train, df_predict
-
-
-def features_target(df, year_start, year_end, median_features, sum_features, max_features, 
-                       age_features, target_feature):
-    
-    import pandas as pd
-
-    new_df = pd.DataFrame()
-    years = range(year_start+1, year_end+1)
-
-    for year in years:
-
-        # adding the median features
-        past = df[df['year'] <= year]
-
-    #     # add features based for a players performance relative to their experience
-    #     past = add_exp_metrics(past, set_pos, pos[set_pos]['use_ay'])
-
-        # join in the median, max, and sum features
-        past = past.join(past.groupby('player')[median_features].median(), on='player', rsuffix='_median')
-        past = past.join(past.groupby('player')[max_features].max(),on='player', rsuffix='_max')
-        past = past.join(past.groupby('player')[sum_features].sum(),on='player', rsuffix='_sum')
-
-        for mf in median_features:
-            baseline = 0.25*past[mf].mean()
-            past[mf + '_over_median'] = (past[mf]-past[mf + '_median']) / (past[mf + '_median'] + baseline)
-
-        # adding the age features
-        suffix = '/ age'
-        for feature in age_features:
-            feature_label = ' '.join([feature, suffix])
-            past[feature_label] = past[feature] / past['age']
-
-        # adding the values for target feature
-        year_n = past[past["year"] == year]
-        year_n_plus_one = df[df['year'] == year+1][['player', target_feature]].rename(columns={target_feature: 'y_act'})
-        year_n = pd.merge(year_n, year_n_plus_one, how='left', left_on='player', right_on='player')
-        new_df = new_df.append(year_n)
-
-    # creating dataframes to export
-    new_df = new_df.sort_values(by=['player', 'year']).reset_index(drop=True)
-    rolling_stats = new_df.groupby('player')[median_features].rolling(3).mean().fillna(-1).reset_index(drop=True)
-    rolling_stats.columns = [c + '_rolling' for c in rolling_stats.columns]
-    new_df = pd.concat([new_df, rolling_stats], axis=1)
-
-    df_train = new_df[new_df.year < year_end].reset_index(drop=True)
-    df_predict = new_df[new_df.year == year_end].drop('y_act', axis=1).reset_index(drop=True)
-    df_train = df_train.sort_values(['year', 'fp_per_game'], ascending=True).reset_index(drop=True)
-    
-    return df_train, df_predict
-
-
-# +
 #==============
 # Create Break-out Probability Features
 #==============
 
 breakout_metric = 'fp_per_game'
-act_ppg = '>=12'
+act_ppg = '>=11'
 pct_off = '>0.2'
-adp_ppg = '>=0'
+adp_ppg = '<11'
 
 # get the train and prediction dataframes for FP per game
-df_train_orig, df_predict = get_train_predict(df, breakout_metric, pos, set_pos, set_year, pos[set_pos]['earliest_year'])
+df_train_orig, df_predict = get_train_predict(df, breakout_metric, pos, set_pos, set_year, pos[set_pos]['earliest_year'], pos[set_pos]['features'])
 
 # get the adp predictions and merge back to the training dataframe
 df_train_adp, lr = get_adp_predictions(df_train_orig, 1)
@@ -294,6 +223,7 @@ min_samples = int(0.5*df_train_orig[df_train_orig.year <= df_train_orig.year.min
 
 # print the value-counts
 print(df_train_orig.y_act.value_counts())
+print(df_train_orig.shape)
 print('Min Year:', df_train_orig.year.min())
 print('Max Year:', df_train_orig.year.max())
 
@@ -312,11 +242,12 @@ def calc_f1_score(**args):
     scale = True if args['scale'] == 1 else False
     pca = True if args['pca'] == 1 else False   
     use_smote = True if args['use_smote'] == 1 else False
-
+    
+    n_components = args['n_components']
     collinear_cutoff = args['collinear_cutoff']
     zero_weight = args['zero_weight']
     
-    for arg in ['scale', 'pca', 'collinear_cutoff', 'use_smote', 'zero_weight']:
+    for arg in ['scale', 'pca', 'collinear_cutoff', 'use_smote', 'zero_weight', 'n_components']:
         del args[arg]
 
     #----------
@@ -342,7 +273,7 @@ def calc_f1_score(**args):
         val_split = df_train[df_train.year == m]
 
         # splitting the train and validation sets into X_train, y_train, X_val and y_val
-        X_train, X_val, y_train, y_val = X_y_split(train_split, val_split, scale, pca)
+        X_train, X_val, y_train, y_val = X_y_split(train_split, val_split, scale, pca, n_components)
 
         # fit training data and creating prediction based on validation data
         estimator.set_params(**args)
@@ -402,7 +333,8 @@ class_search_space = {
         Integer(0, 1, name='scale'),
         Integer(0, 1, name='pca'),
         Integer(0, 1, name='use_smote'),
-        Real(0.1, 1, name='zero_weight')
+        Real(0.1, 1, name='zero_weight'),
+        Real(0.01, 1, name='n_components')
     ],
     
     'xgb': [
@@ -419,7 +351,8 @@ class_search_space = {
         Integer(0, 1, name='scale'),
         Integer(0, 1, name='pca'),
         Integer(0, 1, name='use_smote'),
-        Real(0.1, 1, name='zero_weight')
+        Real(0.1, 1, name='zero_weight'),
+        Real(0.01, 1, name='n_components')
     ],
         
     'lr': [
@@ -428,7 +361,8 @@ class_search_space = {
         Integer(0, 1, name='scale'),
         Integer(0, 1, name='pca'),
         Integer(0, 1, name='use_smote'),
-        Real(0.1, 1, name='zero_weight')
+        Real(0.1, 1, name='zero_weight'),
+        Real(0.01, 1, name='n_components')
     ],
         
     'rf': [
@@ -441,7 +375,8 @@ class_search_space = {
         Integer(0, 1, name='scale'),
         Integer(0, 1, name='pca'),
         Integer(0, 1, name='use_smote'),
-        Real(0.1, 1, name='zero_weight')
+        Real(0.1, 1, name='zero_weight'),
+        Real(0.01, 1, name='n_components')
     ],
     
     'gbm': [
@@ -454,7 +389,8 @@ class_search_space = {
         Integer(0, 1, name='scale'),
         Integer(0, 1, name='pca'),
         Integer(0, 1, name='use_smote'),
-        Real(0.1, 1, name='zero_weight')
+        Real(0.1, 1, name='zero_weight'),
+        Real(0.01, 1, name='n_components')
     ],
     
     'knn': [
@@ -465,7 +401,8 @@ class_search_space = {
         Integer(0, 1, name='scale'),
         Integer(0, 1, name='pca'),
         Integer(0, 1, name='use_smote'),
-        Real(0.1, 1, name='zero_weight')
+        Real(0.1, 1, name='zero_weight'),
+        Real(0.01, 1, name='n_components')
     ],
     
     'svr': [
@@ -474,7 +411,8 @@ class_search_space = {
         Integer(0, 1, name='scale'),
         Integer(0, 1, name='pca'),
         Integer(0, 1, name='use_smote'),
-        Real(0.1, 1, name='zero_weight')
+        Real(0.1, 1, name='zero_weight'),
+        Real(0.01, 1, name='n_components')
     ]
 }
 # +
@@ -494,8 +432,8 @@ for model in class_models.keys():
     def space_keys(**args):
         return list(args.keys())
 
-    bayes_seed = 12345
-    kappa = 2
+    bayes_seed = 123456
+    kappa = 3
     res_gp = gp_minimize(objective_class, space, n_calls=100, n_random_starts=25, x0=x0,
                         random_state=bayes_seed, verbose=True, kappa=kappa, n_jobs=-1)
 
@@ -506,8 +444,6 @@ for model in class_models.keys():
     output_class.loc[0, 'model'] = model
     output_class.loc[0, 'earliest_year'] = df_train_orig.year.min()
     output_class.loc[0, 'score'] = -res_gp.fun
-    output_class.loc[0, 'kappa'] = kappa
-    output_class.loc[0, 'bayes_seed'] = bayes_seed
     
     params_output = dict(zip(space_keys(space), res_gp.x))
 
@@ -537,13 +473,13 @@ models = {
 
 # +
 df_train, df_predict = get_train_predict(df, pos[set_pos]['metrics'][0], 
-                                         pos, set_pos, set_year, pos[set_pos]['earliest_year'])
+                                         pos, set_pos, set_year, pos[set_pos]['earliest_year'], pos[set_pos]['features'])
 min_samples = int(0.5*df_train[df_train.year <= df_train.year.min() + pos[set_pos]['skip_years']].shape[0])
 
 search_space = {
     'lgbm': [
-        Integer(1, 250, name='n_estimators'),
-        Integer(2, 50, name='max_depth'),
+        Integer(1, 500, name='n_estimators'),
+        Integer(2, 100, name='max_depth'),
         Real(10**-5, 10**0, "log-uniform", name='learning_rate'),
         Real(0.01, 1, name='colsample_bytree'),
         Real(0.01, 1, name='subsample'),
@@ -552,14 +488,15 @@ search_space = {
         Real(0.001, 100, 'log_uniform', name='reg_alpha'),
         Integer(1, min_samples, name='min_data_in_leaf'),
         Real(0, .6, name='corr_cutoff'),
-        Real(.3, 1, name='collinear_cutoff'),
+        Real(.2, 1, name='collinear_cutoff'),
         Integer(0, 1, name='scale'),
-        Integer(0, 1, name='pca')
+        Integer(0, 1, name='pca'),
+        Real(0.01, 0.5, name='n_components')
     ],
     
     'xgb': [
-        Integer(1, 250, 'log_uniform', name='n_estimators'),
-        Integer(2, 50, name='max_depth'),
+        Integer(1, 500, 'log_uniform', name='n_estimators'),
+        Integer(2, 100, name='max_depth'),
         Real(10**-6, 10**0, "log-uniform", name='learning_rate'),
         Real(0.01, 1, name='colsample_bytree'),
         Real(0.01, 1, name='subsample'),
@@ -568,26 +505,29 @@ search_space = {
         Real(0.001, 10000, "log_uniform", name='reg_lambda'),
         Real(0.001, 100, 'log_uniform', name='reg_alpha'),
         Real(0, .6, name='corr_cutoff'),
-        Real(.3, 1, name='collinear_cutoff'),
+        Real(.2, 1, name='collinear_cutoff'),
         Integer(0, 1, name='scale'),
-        Integer(0, 1, name='pca')
+        Integer(0, 1, name='pca'),
+        Real(0.01, 0.5, name='n_components')
     ],
         
     
     'ridge': [
-        Real(0.1, 1000, 'log_uniform', name='alpha'),
+        Real(0.001, 100000, 'log_uniform', name='alpha'),
         Real(0, .6, name='corr_cutoff'),
-        Real(.3, 1, name='collinear_cutoff'),
+        Real(.2, 1, name='collinear_cutoff'),
         Integer(0, 1, name='scale'),
-        Integer(0, 1, name='pca')
+        Integer(0, 1, name='pca'),
+        Real(0.01, 0.5, name='n_components')
     ],
     
     'lasso': [
-        Real(0.1, 100, 'log_uniform', name='alpha'),
+        Real(0.001, 1000, 'log_uniform', name='alpha'),
         Real(0, .6, name='corr_cutoff'),
-        Real(.3, 1, name='collinear_cutoff'),
+        Real(.2, 1, name='collinear_cutoff'),
         Integer(0, 1, name='scale'),
-        Integer(0, 1, name='pca')
+        Integer(0, 1, name='pca'),
+        Real(0.01, 0.5, name='n_components')
     ],
         
     'rf': [
@@ -597,30 +537,33 @@ search_space = {
         Real(0.01, 1, name='max_features'),
         Integer(2, 50, name='min_samples_split'),
         Real(0, .6, name='corr_cutoff'),
-        Real(.3, 1, name='collinear_cutoff'),
+        Real(.2, 1, name='collinear_cutoff'),
         Integer(0, 1, name='scale'),
-        Integer(0, 1, name='pca')
+        Integer(0, 1, name='pca'),
+        Real(0.01, 0.5, name='n_components')
     ],
     
     'enet': [
-        Real(0.1, 1000, 'log_uniform', name='alpha'),
+        Real(0.001, 10000, 'log_uniform', name='alpha'),
         Real(0.02, 0.98, name='l1_ratio'),
         Real(0, .6, name='corr_cutoff'),
-        Real(.3, 1, name='collinear_cutoff'),
+        Real(.2, 1, name='collinear_cutoff'),
         Integer(0, 1, name='scale'),
-        Integer(0, 1, name='pca')
+        Integer(0, 1, name='pca'),
+        Real(0.01, 0.5, name='n_components')
     ],
     
     'gbm': [
         Integer(1, 500, name='n_estimators'),
-        Integer(2, 50, name='max_depth'),
+        Integer(2, 100, name='max_depth'),
         Integer(1, min_samples, name='min_samples_leaf'),
         Real(0.01, 1, name='max_features'),
         Integer(2, 50, name='min_samples_split'),
         Real(0, .6, name='corr_cutoff'),
-        Real(.3, 1, name='collinear_cutoff'),
+        Real(.2, 1, name='collinear_cutoff'),
         Integer(0, 1, name='scale'),
-        Integer(0, 1, name='pca')
+        Integer(0, 1, name='pca'),
+        Real(0.01, 0.5, name='n_components')
     ],
     
     'knn': [
@@ -628,29 +571,20 @@ search_space = {
         Categorical(['distance', 'uniform'], name='weights'),
         Categorical(['auto', 'ball_tree', 'kd_tree', 'brute'], name='algorithm'),
         Real(0, .6, name='corr_cutoff'),
-        Real(.3, 1, name='collinear_cutoff'),
+        Real(.2, 1, name='collinear_cutoff'),
         Integer(0, 1, name='scale'),
-        Integer(0, 1, name='pca')
-    ],
-    
-    'cb': [
-        Integer(1, 100, name='iterations'),
-        Integer(2, 10, name='depth'),
-        Real(0.0001, 1, name='learning_rate'),
-        Integer(1, 100, name='l2_leaf_reg'),
-        Real(0, .6, name='corr_cutoff'),
-        Real(.3, 1, name='collinear_cutoff'),
-        Integer(0, 1, name='scale')
+        Integer(0, 1, name='pca'),
+        Real(0.01, 0.5, name='n_components')
     ],
     
     'svr': [
         Real(0.0001, 100, 'log_uniform', name='C'),
         Real(0.005, 100, 'log_uniform', name='epsilon'),
-#         Categorical(['linear', 'poly', 'rbf', 'sigmoid'], name='kernel'),
-        Real(0.1, .6, name='corr_cutoff'),
-        Real(.3, 1, name='collinear_cutoff'),
+        Real(0, .6, name='corr_cutoff'),
+        Real(.2, 1, name='collinear_cutoff'),
         Integer(0, 1, name='scale'),
-        Integer(0, 1, name='pca')
+        Integer(0, 1, name='pca'),
+        Real(0.01, 0.5, name='n_components')
     ]
 }
 
@@ -669,19 +603,14 @@ def calc_rmse(**args):
 
     # remove the extra args not needed for modeling
     scale = True if args['scale'] == 1 else False
-
-    try:
-        pca = True if args['pca'] == 1 else False
-        del args['pca']
-    except:
-        pca=False      
-
+    pca = True if args['pca'] == 1 else False
+    
+    n_components = args['n_components']
     corr_cutoff = args['corr_cutoff']
     collinear_cutoff = args['collinear_cutoff']
 
-    del args['scale']
-    del args['corr_cutoff']
-    del args['collinear_cutoff']
+    for arg in ['scale', 'pca', 'corr_cutoff', 'collinear_cutoff', 'n_components']:
+        del args[arg]
 
     #----------
     # Filter down the features with a random correlation and collinear cutoff
@@ -706,7 +635,7 @@ def calc_rmse(**args):
         val_split = df_train[df_train.year == m]
 
         # splitting the train and validation sets into X_train, y_train, X_val and y_val
-        X_train, X_val, y_train, y_val = X_y_split(train_split, val_split, scale, pca)
+        X_train, X_val, y_train, y_val = X_y_split(train_split, val_split, scale, pca, n_components)
 
         # fit training data and creating prediction based on validation data
         estimator.set_params(**args)
@@ -736,20 +665,19 @@ def run_best_model(model, p, skip_years):
     corr_cut = p['corr_cutoff']
     col_cut= p['collinear_cutoff']
     scale = p['scale']
-    try:
-        pca = p['pca']
-    except:
-        pca = False
+    pca = p['pca']
+    n_components = p['n_components']
+    
     model_p = {}
     for k, v in p.items():
-        if k not in ['corr_cutoff', 'collinear_cutoff', 'scale', 'pca']:
+        if k not in ['corr_cutoff', 'collinear_cutoff', 'scale', 'pca', 'n_components']:
             model_p[k] = v
 
     est = models[model]
     est.set_params(**model_p)
 
     result, val_pred, ty_pred, trained_est, cols = validation(est, df_train_orig, df_predict, corr_cut, 
-                                                              col_cut, skip_years=skip_years, scale=scale, pca=pca)
+                                                              col_cut, skip_years=skip_years, scale=scale, pca=pca, n_components=n_components)
 
     return result, val_pred, ty_pred, trained_est, cols
 
@@ -762,8 +690,9 @@ for metric in pos[set_pos]['metrics']:
     
     print(metric)
     
-    df_train, df_predict = get_train_predict(df, metric, pos, set_pos, set_year, pos[set_pos]['earliest_year'])
-    print(f'Number of Training Samples: {df_train.shape[0]}\n')
+    df_train, df_predict = get_train_predict(df, metric, pos, set_pos, set_year, pos[set_pos]['earliest_year'], pos[set_pos]['features'])
+    print(f'Number of Training Samples: {df_train.shape[0]}')
+    print(f'Number of Training Features: {df_train.shape[1]}\n')
 
     for c in df_train.columns:
         if len(df_train[df_train[c]==np.inf]) > 0:
@@ -776,8 +705,6 @@ for metric in pos[set_pos]['metrics']:
         estimator = models[model]
         space = search_space[model]
 
-    #     try: x0 = list(best_results[model]['params'].values())
-    #     except: x0=None
         x0=None
         df_train_orig = df_train.copy()
         skip_years = pos[set_pos]['skip_years']
@@ -802,6 +729,7 @@ for metric in pos[set_pos]['metrics']:
         output.loc[0, 'rmse_validation_adp'] = result[3]
         output.loc[0, 'r2_validation'] = result[0]
         output.loc[0, 'r2_validation_adp'] = result[1]
+        output.loc[0, 'earliest_year'] = df_train_orig.year.min()
 
         output.to_sql('RegParamTracking', param_conn, if_exists='append', index=False)
         max_pkey = pd.read_sql_query("SELECT max(pkey) FROM RegParamTracking", param_conn).values[0][0]
@@ -809,5 +737,3 @@ for metric in pos[set_pos]['metrics']:
         save_pickle(params_output, path + f'Data/Model_Params/{max_pkey}.p')
         save_pickle(df_train_orig, path + f'Data/Model_Datasets/{max_pkey}.p')    
         save_pickle(search_space[model], path + f'Data/Bayes_Space/{max_pkey}.p')
-
-

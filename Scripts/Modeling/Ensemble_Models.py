@@ -124,8 +124,8 @@ def load_pickle(filename):
 #==========
 
 # specify the minimum and maximum rows from the database
-min_rowid = 116
-max_rowid = 122
+min_rowid = 132
+max_rowid = 138
 rows = tuple([c for c in range(min_rowid, max_rowid+1)])
 
 # pull in the results for the given primary keys and extract best model coordinates
@@ -186,7 +186,7 @@ df = add_exp_metrics(df, set_pos, pos[set_pos]['use_ay'])
 #==============
 
 # get the train and prediction dataframes for FP per game
-df_train_orig, df_predict = get_train_predict(df, breakout_metric, pos, set_pos, set_year, pos[set_pos]['earliest_year'])
+df_train_orig, df_predict = get_train_predict(df, breakout_metric, pos, set_pos, set_year, pos[set_pos]['earliest_year'], 'v1')
 
 # get the adp predictions and merge back to the training dataframe
 df_train_adp, lr = get_adp_predictions(df_train_orig, 1)
@@ -231,18 +231,19 @@ def class_run_best_model(model, p, skip_years):
     col_cut = p['collinear_cutoff']
     scale = True if p['scale']==1 else False
     pca = True if p['pca']==1 else False
+    n_components = p['n_components'] 
     
     model_p = {}
     for k, v in p.items():
-        if k not in ['use_smote', 'zero_weight', 'collinear_cutoff', 'scale', 'pca']:
+        if k not in ['use_smote', 'zero_weight', 'collinear_cutoff', 'scale', 'pca', 'n_components']:
             model_p[k] = v
-
+            
     est = class_models[model]
     est.set_params(**model_p)
     est.class_weight = {0: zero_weight, 1: 1}
 
     result, val_pred, ty_pred, ty_proba, trained_est, cols = class_validation(est, df_train_orig, df_predict, col_cut,
-                                                                              use_smote, skip_years, scale, pca)
+                                                                              use_smote, skip_years, scale, pca, n_components)
 
     return result, val_pred, ty_pred, ty_proba, trained_est, cols
 
@@ -332,8 +333,8 @@ df_test_results.sort_values(by=['pred_fp_per_game', 'proba_fp_per_game'], ascend
 
 df_train_results
 
-df_train_results.groupby('pred_fp_per_game').agg({'y_act': 'mean',
-                                                  'pct_off': 'mean',
+df_train_results.groupby('pred_fp_per_game').agg({'y_act': 'median',
+                                                  'pct_off': 'median',
                                                   'avg_pick_pred': 'mean'})
 
 # +
@@ -357,8 +358,8 @@ p_scatter = df_train_results.plot_bokeh.scatter(
     show_figure=False
 )
 
-hline = Span(location=eval(pct_off[-1:]), dimension='width', line_color='green', line_width=3)
-vline = Span(location=eval(act_ppg[-1:]), dimension='height', line_color='blue', line_width=3)
+hline = Span(location=eval(pct_off.replace('>=', '').replace('<=', '').replace('<', '').replace('>', '')), dimension='width', line_color='green', line_width=3)
+vline = Span(location=eval(act_ppg.replace('>=', '').replace('<=', '').replace('<', '').replace('>', '')), dimension='height', line_color='blue', line_width=3)
 p_scatter.renderers.extend([hline, vline])
 
 
@@ -366,7 +367,7 @@ p_scatter.renderers.extend([hline, vline])
 pandas_bokeh.plot_grid([[data_table, p_scatter]], plot_width=750, plot_height=750)
 # -
 
-ind = 0
+ind = 1
 try:
     imp = pd.DataFrame(results['trained_model'][ind].coef_, columns=results['cols'][ind]).T
     imp = imp[abs(imp) > 0.2*imp.max()].sort_values(by=0).reset_index()
@@ -376,6 +377,58 @@ except:
 imp.plot_bokeh(x='index', y=0, kind='barh')
 
 # # Regression Models
+
+# +
+#==========
+# Extract parameters from database results
+#==========
+
+# specify the minimum and maximum rows from the database
+min_rowid = 1
+max_rowid = 15
+rows = tuple([c for c in range(min_rowid, max_rowid+1)])
+
+# pull in the results for the given primary keys and extract best model coordinates
+res = pd.read_sql_query(f'''SELECT * FROM RegParamTracking WHERE rowid in {rows}''', param_conn)
+best_models = res[['pkey', 'metric', 'model']]
+
+# convert the dataframe to to dictionary to extract data
+res = res.drop(['pkey', 'metric', 'model', 'rmse_validation', 'rmse_validation_adp', 'r2_validation', 'r2_validation_adp'], axis=1).drop_duplicates()
+res = res.T.to_dict()[0]
+
+# set the position and year
+set_year = res['year']
+set_pos = res['pos']
+
+# set all of the data preparation filters 
+pos[set_pos]['req_touch'] = res['req_touch']
+pos[set_pos]['req_games'] = res['req_games']
+pos[set_pos]['earliest_year'] = res['earliest_year'] - 2
+pos[set_pos]['skip_years'] = res['skip_years']
+pos[set_pos]['use_ay'] = True if res['use_ay']==1 else False
+
+
+#==========
+# Pull and clean compiled data
+#==========
+
+# connect to database and pull in positional data
+df = pd.read_sql_query('SELECT * FROM ' + set_pos + '_' + str(set_year), con=conn)
+
+# append air yards for specified positions
+if pos[set_pos]['use_ay']:
+    ay = pd.read_sql_query('SELECT * FROM AirYards', con=sqlite3.connect(path + 'Data/Databases/Season_Stats.sqlite3'))
+    df = pd.merge(df, ay, how='inner', left_on=['player', 'year'], right_on=['player', 'year'])
+    
+# apply the specified touches and game filters
+df, df_train_results, df_test_results = touch_game_filter(df, pos, set_pos, set_year)
+
+# calculate FP for a given set of scoring values
+df = calculate_fp(df, pts_dict, pos=set_pos).reset_index(drop=True)
+
+# add features based for a players performance relative to their experience
+df = add_exp_metrics(df, set_pos, pos[set_pos]['use_ay'])
+# -
 
 models = {
     'ridge': Ridge(random_state=1234),
@@ -396,10 +449,9 @@ def run_best_model(model, p, skip_years):
     corr_cut = p['corr_cutoff']
     col_cut= p['collinear_cutoff']
     scale = p['scale']
-    try:
-        pca = p['pca']
-    except:
-        pca = False
+    pca = False# if p['pca']==1 else False
+#     n_components = p['n_components'] 
+
     model_p = {}
     for k, v in p.items():
         if k not in ['corr_cutoff', 'collinear_cutoff', 'scale', 'pca']:
@@ -415,34 +467,25 @@ def run_best_model(model, p, skip_years):
 
 
 # +
+output = pd.DataFrame()
+
 for metric in pos[set_pos]['metrics']:
+    
+    # extract the models for the current metric
+    metric_models = best_models[best_models.metric==metric].copy().reset_index(drop=True)
+    
     print('Running ' + metric)
     ay = 1 if pos[set_pos]['use_ay'] else 0
-
-    best_models = pd.read_sql_query(f'''SELECT pkey, model
-                                        FROM RegParamTracking
-                                        WHERE pos='{set_pos}'
-                                              AND metric='{metric}'
-                                           --   AND req_touch='{pos[set_pos]['req_touch']}'
-                                           --   AND req_games='{pos[set_pos]['req_games']}'
-                                           --   AND earliest_year='{pos[set_pos]['earliest_year']}'
-                                           --   AND skip_years='{pos[set_pos]['skip_years']}'
-                                           --   AND use_ay={ay}
-                                           --   AND year={set_year}
-                                              ''', param_conn)
     
-    df_train, df_predict = get_train_predict(df, metric, pos, set_pos, set_year, pos[set_pos]['earliest_year'])
-    for c in df_train.columns:
-        if len(df_train[df_train[c]==np.inf]) > 0:
-            df_train = df_train.drop(c, axis=1)
+    df_train, df_predict = get_train_predict(df, metric, pos, set_pos, set_year, pos[set_pos]['earliest_year'], 'v1')
     df_train_orig = df_train.copy()
 
     results = {'summary': {}, 'val_pred': {}, 'ty_pred': {}, 'trained_model': {}, 'cols': {}}
-    num_models = best_models.index.max() + 1
+    num_models = metric_models.index.max() + 1
     for i in range(num_models):
 
-        m = best_models.loc[i, 'model']
-        pkey = best_models.loc[i, 'pkey']
+        m = metric_models.loc[i, 'model']
+        pkey = metric_models.loc[i, 'pkey']
         par = load_pickle(path + f'Data/Model_Params/{pkey}.p')
         print(f'Running {m}')
 
