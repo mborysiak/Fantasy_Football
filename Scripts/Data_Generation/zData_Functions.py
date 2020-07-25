@@ -35,7 +35,7 @@ def player_format(data):
 
 # removing un-needed characters
 def name_clean(col):
-    char_remove = re.sub('[\*\+\%\,]', '', str(col))
+    char_remove = re.sub('[\*\+\%\,]', '', str(col)).rstrip().lstrip()
     return char_remove
 
 
@@ -52,6 +52,7 @@ def team_select(col):
     team = col.split(' ')[2]
     return team
 
+
 def convert_to_float(df):
     for c in df.columns:
         try:
@@ -61,25 +62,26 @@ def convert_to_float(df):
     
     return df
 
-# function to append data to sqlite
-def append_to_db(df, db_name='Season_Stats.sqlite3', table_name='NA', if_exist='append'):
+
+def append_to_db(df, db_name='Season_Stats', table_name='NA', if_exist='append'):
 
     import sqlite3
     import os
     import datetime as dt
+    from shutil import copyfile
     
     #--------
     # Append pandas df to database in Github
     #--------
-
-    os.chdir('/Users/Mark/Documents/Github/Fantasy_Football/Data/Databases/')
-    conn = sqlite3.connect(db_name)
-
-    #--------
-    # Save Backup
-    #--------
     
-    backup = pd.read_sql_query(f'''SELECT * FROM {table_name}''', conn)
+    # move into the local database directory
+    os.chdir('/Users/Mark/Documents/Github/Fantasy_Football/Data/Databases/')
+    
+    # copy the current database over to new folder with timestamp appended
+    today_time = dt.datetime.now().strftime('_%Y_%m_%d_%M')
+    copyfile(db_name + '.sqlite3', 'DB_Versioning/' + db_name + today_time + '.sqlite3')
+
+    conn = sqlite3.connect(db_name + '.sqlite3')
 
     df.to_sql(
     name=table_name,
@@ -89,23 +91,20 @@ def append_to_db(df, db_name='Season_Stats.sqlite3', table_name='NA', if_exist='
     )
 
     #--------
-    # Append pandas df to database in Dropbox
+    # Append pandas df to database in OneDrive
     #--------
 
     os.chdir('/Users/Mark/OneDrive/FF/DataBase/')
+    copyfile(db_name + '.sqlite3', 'DB_Versioning/' + db_name + today_time + '.sqlite3')
 
-    conn = sqlite3.connect(db_name)
-
+    conn = sqlite3.connect(db_name + '.sqlite3')
+    
     df.to_sql(
     name=table_name,
     con=conn,
     if_exists=if_exist,
     index=False
     )
-    
-    backup_date = dt.datetime.now().strftime('%Y%m%d%H%M')
-    backup_path_ext = f'Backups/{db_name.replace('.sqlite3', '')}_{table_name}_{backup_date}.csv'
-    df.to_csv(f'/Users/Mark/OneDrive/FF/DataBase/{backup_path_ext}', index=False)
     
 #==========
 # Clean the ADP data

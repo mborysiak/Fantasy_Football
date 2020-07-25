@@ -338,12 +338,12 @@ def calculate_fp(df, pts, pos):
 
 
 
-def get_train_predict(df, target, pos, set_pos, set_year, early_year, vers):
+def get_train_predict(df, target, pos, set_pos, year_split, early_year, vers):
 
     if vers == 'v1':
         # create training and prediction dataframes
         df_train, df_predict = features_target(df,
-                                               early_year, set_year-1,
+                                               early_year, year_split,
                                                pos[set_pos]['med_features'],
                                                pos[set_pos]['sum_features'],
                                                pos[set_pos]['max_features'],
@@ -352,7 +352,7 @@ def get_train_predict(df, target, pos, set_pos, set_year, early_year, vers):
     elif vers == 'v2':
         # create training and prediction dataframes
         df_train, df_predict = features_target_v2(df,
-                                               early_year, set_year-1,
+                                               early_year, year_split,
                                                pos[set_pos]['med_features'],
                                                pos[set_pos]['sum_features'],
                                                pos[set_pos]['max_features'],
@@ -372,26 +372,22 @@ def get_train_predict(df, target, pos, set_pos, set_year, early_year, vers):
     return df_train, df_predict
 
 
-def features_target(df, year_start, year_end, median_features, sum_features, max_features, 
+def features_target(df, year_start, year_split, median_features, sum_features, max_features, 
                     age_features, target_feature):
     
     import pandas as pd
 
     new_df = pd.DataFrame()
-    years = range(year_start+1, year_end+1)
+    years = range(year_start+1, int(df.year.max()+1))
 
     for year in years:
         
         # adding the median features
         past = df[df['year'] <= year]
-        for metric in median_features:
-            past = past.join(past.groupby('player')[metric].median(),on='player', rsuffix='_median')
-
-        for metric in max_features:
-            past = past.join(past.groupby('player')[metric].max(),on='player', rsuffix='_max')
-            
-        for metric in sum_features:
-            past = past.join(past.groupby('player')[metric].sum(),on='player', rsuffix='_sum')
+        
+        past = past.join(past.groupby('player')[median_features].median(),on='player', rsuffix='_median')
+        past = past.join(past.groupby('player')[max_features].max(),on='player', rsuffix='_max')
+        past = past.join(past.groupby('player')[sum_features].sum(),on='player', rsuffix='_sum')
             
         # adding the age features
         suffix = '/ age'
@@ -409,21 +405,21 @@ def features_target(df, year_start, year_end, median_features, sum_features, max
     new_df = new_df.sort_values(by=['year', 'fp'], ascending=[False, False])
   #  new_df = pd.concat([new_df, pd.get_dummies(new_df.year)], axis=1, sort=False)
     
-    df_train = new_df[new_df.year < year_end].reset_index(drop=True)
-    df_predict = new_df[new_df.year == year_end].drop('y_act', axis=1).reset_index(drop=True)
+    df_train = new_df[new_df.year < year_split].reset_index(drop=True)
+    df_predict = new_df[new_df.year >= year_split].drop('y_act', axis=1).reset_index(drop=True)
     df_train = df_train.sort_values(['year', 'fp_per_game'], ascending=True).reset_index(drop=True)
     
     return df_train, df_predict
 
 
 
-def features_target_v2(df, year_start, year_end, median_features, sum_features, max_features, 
+def features_target_v2(df, year_start, year_split, median_features, sum_features, max_features, 
                        age_features, target_feature):
     
     import pandas as pd
 
     new_df = pd.DataFrame()
-    years = range(year_start+1, year_end+1)
+    years = range(year_start+1, int(df.year.max()+1))
 
     for year in years:
 
@@ -460,8 +456,8 @@ def features_target_v2(df, year_start, year_end, median_features, sum_features, 
     rolling_stats.columns = [c + '_rolling' for c in rolling_stats.columns]
     new_df = pd.concat([new_df, rolling_stats], axis=1)
 
-    df_train = new_df[new_df.year < year_end].reset_index(drop=True)
-    df_predict = new_df[new_df.year == year_end].drop('y_act', axis=1).reset_index(drop=True)
+    df_train = new_df[new_df.year < year_split].reset_index(drop=True)
+    df_predict = new_df[new_df.year >= year_split].drop('y_act', axis=1).reset_index(drop=True)
     df_train = df_train.sort_values(['year', 'fp_per_game'], ascending=True).reset_index(drop=True)
     
     return df_train, df_predict
@@ -472,19 +468,25 @@ def features_target_v2(df, year_start, year_end, median_features, sum_features, 
 # Saving out Data to DB
 #===========
 
-def append_to_db(df, db_name='Season_Stats.sqlite3', table_name='NA', if_exist='append'):
+def append_to_db(df, db_name='Season_Stats', table_name='NA', if_exist='append'):
 
     import sqlite3
     import os
     import datetime as dt
+    from shutil import copyfile
     
     #--------
     # Append pandas df to database in Github
     #--------
-
+    
+    # move into the local database directory
     os.chdir('/Users/Mark/Documents/Github/Fantasy_Football/Data/Databases/')
+    
+    # copy the current database over to new folder with timestamp appended
+    today_time = dt.datetime.now().strftime('_%Y_%m_%d_%M')
+    copyfile(db_name + '.sqlite3', 'DB_Versioning/' + db_name + today_time + '.sqlite3')
 
-    conn = sqlite3.connect(db_name)
+    conn = sqlite3.connect(db_name + '.sqlite3')
 
     df.to_sql(
     name=table_name,
@@ -498,8 +500,9 @@ def append_to_db(df, db_name='Season_Stats.sqlite3', table_name='NA', if_exist='
     #--------
 
     os.chdir('/Users/Mark/OneDrive/FF/DataBase/')
+    copyfile(db_name + '.sqlite3', 'DB_Versioning/' + db_name + today_time + '.sqlite3')
 
-    conn = sqlite3.connect(db_name)
+    conn = sqlite3.connect(db_name + '.sqlite3')
     
     df.to_sql(
     name=table_name,
@@ -573,10 +576,10 @@ def X_y_split(train, val, scale=True, pca=False, n_components=0.5):
     y_train = train.y_act
     
     try:    
-        X_val = val.select_dtypes(include=['float', 'int', 'uint8']).drop('y_act', axis=1)
+        X_val = val.select_dtypes(include=['float', 'int', 'uint8']).drop('y_act', axis=1).copy()
         y_val = val.y_act
     except:
-        X_val = val.select_dtypes(include=['float', 'int', 'uint8'])
+        X_val = val.select_dtypes(include=['float', 'int', 'uint8']).copy()
         y_val = None
     
     if scale == True:
@@ -589,10 +592,11 @@ def X_y_split(train, val, scale=True, pca=False, n_components=0.5):
     if pca == True:
         y_corr = pd.concat([X_train, y_train], axis=1).corr()['y_act']
         y_index = y_corr[y_corr < 0].index
-        X_train.loc[:, y_index] = -1 * X_train.loc[:, y_index] 
-        X_val.loc[:, y_index] = -1 * X_val.loc[:, y_index] 
+        X_train.loc[:, y_index] = -1. * X_train.loc[:, y_index] 
+        X_val.loc[:, y_index] = -1. * X_val.loc[:, y_index] 
 
         n_comp = np.max([2, int(X_train.shape[1] * n_components)])
+        n_comp = np.min([n_comp, X_train.shape[0]])
         pca = PCA(n_components=n_comp, random_state=1234, svd_solver='randomized')
         pca.fit(X_train)
 

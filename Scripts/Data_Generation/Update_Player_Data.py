@@ -25,16 +25,16 @@ year = 2019
 update = True
 
 # name of database to append new data to
-db_name = 'Season_Stats.sqlite3'
-
-conn = sqlite3.connect('/Users/Mark/Documents/GitHub/Fantasy_Football/Data/Season_Stats.sqlite3')
+db_name = 'Season_Stats'
+db_path = '/Users/Mark/Documents/GitHub/Fantasy_Football/Data/Databases/'
+conn = sqlite3.connect(db_path + db_name + '.sqlite3')
 # -
 
 # # Load Packages and Functions
 
 import pandas as pd
 import os
-from data_functions import *
+from zData_Functions import *
 pd.options.mode.chained_assignment = None
 import numpy as np
 
@@ -77,7 +77,8 @@ def clean_adp(data_adp, year):
     df_adp['Tm'] = df_adp.Player.apply(team_select)
     df_adp['Player'] = df_adp.Player.apply(name_select)
     df_adp['Player'] = df_adp.Player.apply(name_clean)
-
+    df_adp = df_adp[df_adp.Player != '1 Page:']
+    
     # format and rename columns
     df_adp = df_adp[['Player', 'Tm', 'year', 'Avg Pick']]
 
@@ -138,7 +139,8 @@ def merge_stats_adp(df_stats, df_adp):
         'NOS': 'NOR',
         'NYG': 'NYG',
         'NYJ': 'NYJ',
-        'OAK': 'OAK',
+        'OAK': 'LVR',
+        'LVR': 'LVR',
         'PHI': 'PHI',
         'PIT': 'PIT',
         'SEA': 'SEA',
@@ -194,7 +196,7 @@ url_rec = 'https://www.pro-football-reference.com/years/' + str(year) + '/receiv
 data_rec = pd.read_html(url_rec)[0]
 
 # pulling historical player adp for runningbacks
-url_adp_rush = f'https://api.myfantasyleague.com/{year+1}/reports?R=ADP&POS=RB&ROOKIES=0&INJURED=1&CUTOFF=5&FCOUNT=0&IS_PPR=3&IS_KEEPER=N&IS_MOCK=1&PERIOD=RECENT'
+url_adp_rush = f'https://www71.myfantasyleague.com/{year+1}/reports?R=ADP&POS=RB&PERIOD=JULY&CUTOFF=5&INJURED=1&IS_PPR=3&IS_KEEPER=N&IS_MOCK=1&PAGE=ALL'
 data_adp_rush = pd.read_html(url_adp_rush)[1]
 
 # pulling historical redzone receiving data
@@ -224,50 +226,56 @@ data_rec['year'] = year
 #--------
 
 # cleaning up the rush columns
-df_rush = data_rush.iloc[:, 1:]
-df_rush = df_rush.T.reset_index(drop=True).T
+good_cols = [c[1] for c in data_rush.columns if c[1] != '']
+good_cols.append('year')
+df_rush = data_rush.T.reset_index(drop=True).T
+df_rush.columns = good_cols
+df_rush = df_rush.drop('Rk', axis=1)
 
 # cleaning up the receiving columns
-df_rec = data_rec.iloc[:, 1:].drop('Y/Tgt', axis=1)
-df_rec = df_rec.T.reset_index(drop=True).T
+df_rec = data_rec.copy()
+df_rec = df_rec.drop('Rk', axis=1)
 
 # setting the column names for rushing data
 colnames_rush = {
-    0: 'player', 
-    1: 'team', 
-    2: 'age',
-    3: 'pos',
-    4: 'games',
-    5: 'games_started',
-    6: 'rush_att',
-    7: 'rush_yds',
-    8: 'rush_td',
-    9: 'long_rush',
-    10: 'rush_yd_per_att',
-    11: 'rush_yd_per_game',
-    12: 'fmb',
-    13: 'year'
+    'Player': 'player', 
+    'Tm': 'team', 
+    'Age': 'age',
+    'Pos': 'pos',
+    'G': 'games',
+    'GS': 'games_started',
+    'Att': 'rush_att',
+    'Yds': 'rush_yds',
+    'TD': 'rush_td',
+    '1D': 'first_downs',
+    'Lng': 'long_rush',
+    'Y/A': 'rush_yd_per_att',
+    'Y/G': 'rush_yd_per_game',
+    'Fmb': 'fmb',
+    'year': 'year'
 }
 
 # setting the column names for receiving data
 colnames_rec = {
-    0: 'player',
-    1: 'team', 
-    2: 'age',
-    3: 'pos',
-    4: 'games',
-    5: 'games_started',
-    6: 'tgt',
-    7: 'receptions',
-    8: 'catch_pct',
-    9: 'rec_yds', 
-    10: 'yd_per_rec',
-    11: 'rec_td',
-    12: 'long_rec',
-    13: 'rec_per_game',
-    14: 'rec_yd_per_game',
-    15: 'fmb',
-    16: 'year'
+    'Player': 'player',
+    'Tm': 'team', 
+    'Age': 'age',
+    'Pos': 'pos',
+    'G': 'games',
+    'GS': 'games_started',
+    'Tgt': 'tgt',
+    'Rec': 'receptions',
+    'Ctch%': 'catch_pct',
+    'Yds': 'rec_yds', 
+    'Y/R': 'yd_per_rec',
+    'TD': 'rec_td',
+    '1D': 'first_downs',
+    'Lng': 'long_rec',
+    'Y/Tgt': 'yards_per_tgt',
+    'R/G': 'rec_per_game',
+    'Y/G': 'rec_yd_per_game',
+    'Fmb': 'fmb',
+    'year': 'year'
 }
 
 # cleaning player name and stat categories
@@ -307,9 +315,6 @@ df_rb['total_yds'] = df_rb.rush_yds + df_rb.rec_yds
 df_rb['total_yds_per_game'] = df_rb.total_yds / df_rb.games
 df_rb['yds_per_touch'] = df_rb.total_yds / df_rb.total_touches
 df_rb['rush_att_per_game'] = df_rb.rush_att / df_rb.games
-# -
-
-df_rb
 
 # +
 #==========
@@ -317,45 +322,60 @@ df_rb
 #==========
 
 df_adp_rush = clean_adp(data_adp_rush, year)
+# -
+
+find_missing = pd.merge(df_adp_rush, df_rb, on='player', how='left')
+list(find_missing.loc[find_missing.games.isnull(), 'player'].values)
 
 # +
-conn = sqlite3.connect('/Users/Mark/Documents/Github/Fantasy_Football/Data/' + db_name)
 all_rb = pd.read_sql_query("select * from rb_stats", con=conn)
 
-leveon = all_rb[all_rb.player=="Le'Veon Bell"].mean()*0.9
-leveon = leveon[df_rb.columns]
-leveon.player="Le'Veon Bell"
-leveon.team = 'NYJ'
-leveon.age = 27
-leveon.pos = 'RB'
-leveon.games = 13
-leveon.games_started = 13
-leveon.year = 2018
+# leveon = all_rb[all_rb.player=="Le'Veon Bell"].mean()*0.9
+# leveon = leveon[df_rb.columns]
+# leveon.player="Le'Veon Bell"
+# leveon.team = 'NYJ'
+# leveon.age = 27
+# leveon.pos = 'RB'
+# leveon.games = 13
+# leveon.games_started = 13
+# leveon.year = 2018
 
-jerick = all_rb[(all_rb.player=="Jerick McKinnon") | (all_rb.player=='Matt Breida')].mean()
+jerick = all_rb[(all_rb.player=="Jerick McKinnon") | (all_rb.player=='Matt Breida')].mean()*0.8
 jerick  = jerick[df_rb.columns]
 jerick.player="Jerick McKinnon"
 jerick.team = 'SFO'
-jerick.age = 27
+jerick.age = 28
 jerick.pos = 'RB'
 jerick.games = 12
-jerick.games_started = 12
-jerick.year = 2018
+jerick.games_started = 6
+jerick.year = 2019
+jerick['total_yds_per_game'] = jerick.total_yds / jerick.games
 
-guice = all_rb[(all_rb.age < np.log(22))].mean()
-guice  = guice[df_rb.columns]
-guice.player="Derrius Guice"
-guice.team = 'WAS'
-guice.age = 22
-guice.pos = 'RB'
-guice.games = 14
-guice.games_started = 6
-guice.year = 2018
+lamar = all_rb[(all_rb.player=="Lamar Miller") | (all_rb.player=='Carlos Hyde')].mean()*0.8
+lamar  = lamar[df_rb.columns]
+lamar.player="Lamar Miller"
+lamar.team = 'HOU'
+lamar.age = 29
+lamar.pos = 'RB'
+lamar.games = 13
+lamar.games_started = 13
+lamar.year = 2019
+lamar['total_yds_per_game'] = lamar.total_yds / lamar.games
 
-df_rb = pd.concat([df_rb, pd.DataFrame(leveon).T, pd.DataFrame(jerick).T, pd.DataFrame(guice).T], axis=0).reset_index(drop=True)
+# guice = all_rb[(all_rb.age < np.log(22))].mean()
+# guice  = guice[df_rb.columns]
+# guice.player="Derrius Guice"
+# guice.team = 'WAS'
+# guice.age = 22
+# guice.pos = 'RB'
+# guice.games = 14
+# guice.games_started = 6
+# guice.year = 2018
+
+df_rb = pd.concat([df_rb, pd.DataFrame(lamar).T, pd.DataFrame(jerick).T], axis=0).reset_index(drop=True)
 # -
 
-df_adp_rush
+df_rb
 
 # +
 #==========
@@ -363,6 +383,11 @@ df_adp_rush
 #==========
 
 df_rb = merge_stats_adp(df_rb, df_adp_rush)
+
+# +
+# update_oak = pd.read_sql_query('''SELECT * FROM RB_Stats''', conn)
+# update_oak.loc[update_oak.team=='OAK', 'team'] = 'LVR'
+# append_to_db(update_oak, 'Season_Stats', 'RB_Stats', 'replace')
 
 # +
 #==========
@@ -465,34 +490,40 @@ cols = [c for c in all_rb.columns if c.startswith('rz')]
 cols.append('player')
 rz_fill = all_rb[cols]
 
-leveon = rz_fill[rz_fill.player =="Le'Veon Bell"].mean()*0.8
-leveon_rush = leveon[rz_rush.columns]
-leveon_rec = leveon[rz_rec.columns]
-leveon_rush.player = "Le'Veon Bell"
-leveon_rush.year = 2018
-leveon_rec.player = "Le'Veon Bell"
-leveon_rec.year = 2018
+# leveon = rz_fill[rz_fill.player =="Le'Veon Bell"].mean()*0.8
+# leveon_rush = leveon[rz_rush.columns]
+# leveon_rec = leveon[rz_rec.columns]
+# leveon_rush.player = "Le'Veon Bell"
+# leveon_rush.year = 2018
+# leveon_rec.player = "Le'Veon Bell"
+# leveon_rec.year = 2018
 
-jerick = rz_fill[(rz_fill.player=="Jerick McKinnon") | (rz_fill.player=='Matt Breida')].mean()
+jerick = rz_fill[(rz_fill.player=="Jerick McKinnon") | (rz_fill.player=='Matt Breida')].mean()*0.8
 jerick_rush = jerick[rz_rush.columns]
 jerick_rec = jerick[rz_rec.columns]
 jerick_rush.player = "Jerick McKinnon"
-jerick_rush.year = 2018
+jerick_rush.year = 2019
 jerick_rec.player = "Jerick McKinnon"
-jerick_rec.year = 2018
+jerick_rec.year = 2019
 
-guice = rz_fill.mean()
-guice_rush = guice[rz_rush.columns]
-guice_rec = guice[rz_rec.columns]
-guice_rush.player = "Derrius Guice"
-guice_rush.year = 2018
-guice_rec.player = "Derrius Guice"
-guice_rec.year = 2018
+lamar = rz_fill[(rz_fill.player=="Lamar Miller") | (rz_fill.player=='Carlos Hyde')].mean()*0.8
+lamar_rush = lamar[rz_rush.columns]
+lamar_rec = lamar[rz_rec.columns]
+lamar_rush.player = 'Lamar Miller'
+lamar_rush.year = 2019
+lamar_rec.player = 'Lamar Miller'
+lamar_rec.year = 2019
 
-rz_rush = pd.concat([rz_rush, pd.DataFrame(leveon_rush).T, 
-                     pd.DataFrame(jerick_rush).T, pd.DataFrame(guice_rush).T], axis=0)
-rz_rec = pd.concat([rz_rec, pd.DataFrame(leveon_rec).T, 
-                    pd.DataFrame(jerick_rec).T, pd.DataFrame(guice_rec).T], axis=0)
+# guice = rz_fill.mean()
+# guice_rush = guice[rz_rush.columns]
+# guice_rec = guice[rz_rec.columns]
+# guice_rush.player = "Derrius Guice"
+# guice_rush.year = 2018
+# guice_rec.player = "Derrius Guice"
+# guice_rec.year = 2018
+
+rz_rush = pd.concat([rz_rush, pd.DataFrame(jerick_rush).T, pd.DataFrame(lamar_rush).T], axis=0)
+rz_rec = pd.concat([rz_rec, pd.DataFrame(jerick_rec).T, pd.DataFrame(lamar_rec).T], axis=0)
 
 # +
 #==========
@@ -525,7 +556,7 @@ df_rb = df_rb.sort_values(by=['year', 'avg_pick'], ascending=[False, True]).rese
 
 # conn.cursor().execute('''delete from rb_stats where year={}'''.format(year))
 # conn.commit()
-# append_to_db(df_rb, db_name='Season_Stats.sqlite3', table_name='RB_Stats', if_exist='append')
+# append_to_db(df_rb, db_name='Season_Stats', table_name='RB_Stats', if_exist='append')
 
 # # Wide Receivers
 
@@ -539,7 +570,7 @@ Pull in statistical and ADP data for the given years using the custom data_load 
 '''
 
 # pulling historical player adp
-url_adp_rec = 'http://www03.myfantasyleague.com/' + str(year+1) + '/adp?COUNT=100&POS=WR&ROOKIES=0&INJURED=1&CUTOFF=5&FRANCHISES=-1&IS_PPR=-1&IS_KEEPER=0&IS_MOCK=-1&TIME='
+url_adp_rec = f'https://www71.myfantasyleague.com/{year+1}/reports?R=ADP&POS=WR&PERIOD=JUNE&CUTOFF=5&INJURED=1&IS_PPR=3&IS_KEEPER=N&IS_MOCK=1&PAGE=ALL'
 data_adp_rec = pd.read_html(url_adp_rec)[1]
 
 # +
@@ -602,6 +633,8 @@ df_wr.loc[:, 'age'] = np.log(df_wr.age)
 df_wr = df_wr.sort_values(by=['year', 'avg_pick'], ascending=[False, True]).reset_index(drop=True)
 # -
 
+df_wr
+
 # conn.cursor().execute('''delete from wr_stats where year={}'''.format(year))
 # conn.commit()
 # append_to_db(df_wr, db_name='Season_Stats.sqlite3', table_name='WR_Stats', if_exist='append')
@@ -618,7 +651,7 @@ url_qb = 'https://www.pro-football-reference.com/years/' + str(year) + '/passing
 data_qb = pd.read_html(url_qb)[0]
 
 # pulling historical player adp
-url_adp_qb = 'http://www03.myfantasyleague.com/' + str(year+1) + '/adp?COUNT=100&POS=QB&ROOKIES=0&INJURED=1&CUTOFF=1&FRANCHISES=-1&IS_PPR=-1&IS_KEEPER=-1&IS_MOCK=-1&TIME='
+url_adp_qb = f'https://www71.myfantasyleague.com/{year+1}/reports?R=ADP&POS=QB&ROOKIES=0&INJURED=1&CUTOFF=5&FCOUNT=0&IS_PPR=3&IS_KEEPER=N&IS_MOCK=1&PERIOD=JULY'
 data_adp_qb = pd.read_html(url_adp_qb)[1]
 
 # pulling historical redzone passing data
