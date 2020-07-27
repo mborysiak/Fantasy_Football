@@ -5,17 +5,17 @@ from sklearn.utils.testing import ignore_warnings
 from sklearn.exceptions import ConvergenceWarning
 
 
-#==========
+# ==========
 # Dictionary for position relevant metrics
-#==========
+# ==========
 
 # initialize full position dictionary
 pos = {}
 
-#---------
+# ---------
 # RB dictionary
-#---------
- 
+# ---------
+
 # initilize RB dictionary
 pos['RB'] = {}
 
@@ -99,7 +99,7 @@ pos['RB']['age_features'] = ['fp', 'rush_yd_per_game', 'rec_yd_per_game', 'total
 #---------
 # WR dictionary
 #---------
- 
+
 # initilize RB dictionary
 pos['WR'] = {}
 
@@ -142,10 +142,10 @@ pos['WR']['age_features'] = ['fp', 'rec_yd_per_game', 'receptions', 'tgt', 'ms_t
                             ]
 
 
-#---------
+# ---------
 # QB dictionary
-#---------
- 
+# ---------
+
 # initilize RB dictionary
 pos['QB'] = {}
 
@@ -171,10 +171,10 @@ pos['QB']['age_features'] = ['fp', 'qb_rating', 'qb_yds', 'qb_complete_pct', 'qb
                              'avg_pick', 'qbr', 'int', 'int_pct', 'rush_att', 'rush_yds', 'rush_td', 'rush_yd_per_att']
 pos['QB']['sum_features'] = ['qb_tds', 'qb_yds', 'fourth_qt_comeback', 'game_winning_drives', 'fp']
 
-#---------
+# ---------
 # WR dictionary
-#---------
- 
+# ---------
+
 # initilize RB dictionary
 pos['TE'] = {}
 
@@ -215,9 +215,9 @@ pos['TE']['age_features'] = ['fp', 'rec_yd_per_game', 'receptions', 'tgt', 'ms_t
                              'rz_20_tgt_exp_diff', 'rz_20_receptions_exp_diff']
 
 
-#==========
+# ==========
 # Data Preparation Functions
-#==========
+# ==========
 
 
 def touch_game_filter(df, pos, set_pos, set_year):
@@ -337,7 +337,6 @@ def calculate_fp(df, pts, pos):
     return df
 
 
-
 def get_train_predict(df, target, pos, set_pos, year_split, early_year, vers):
 
     if vers == 'v1':
@@ -412,7 +411,6 @@ def features_target(df, year_start, year_split, median_features, sum_features, m
     return df_train, df_predict
 
 
-
 def features_target_v2(df, year_start, year_split, median_features, sum_features, max_features, 
                        age_features, target_feature):
     
@@ -463,10 +461,9 @@ def features_target_v2(df, year_start, year_split, median_features, sum_features
     return df_train, df_predict
 
 
-
-#===========
+# ===========
 # Saving out Data to DB
-#===========
+# ===========
 
 def append_to_db(df, db_name='Season_Stats', table_name='NA', if_exist='append'):
 
@@ -512,9 +509,9 @@ def append_to_db(df, db_name='Season_Stats', table_name='NA', if_exist='append')
     )
 
 
-#================
+# ================
 # Regression Functions
-#================
+# ================
 
 def corr_collinear_removal(df_train, corr_cutoff, collinear_cutoff):
     '''
@@ -572,14 +569,14 @@ def X_y_split(train, val, scale=True, pca=False, n_components=0.5):
     from sklearn.preprocessing import StandardScaler
     from sklearn.decomposition import PCA
 
-    X_train = train.select_dtypes(include=['float', 'int', 'uint8']).drop('y_act', axis=1)
+    X_train = train.select_dtypes(exclude=['object']).drop('y_act', axis=1)
     y_train = train.y_act
     
     try:    
-        X_val = val.select_dtypes(include=['float', 'int', 'uint8']).drop('y_act', axis=1).copy()
+        X_val = val.select_dtypes(exclude=['object']).drop('y_act', axis=1).copy()
         y_val = val.y_act
     except:
-        X_val = val.select_dtypes(include=['float', 'int', 'uint8']).copy()
+        X_val = val.select_dtypes(exclude=['object']).copy()
         y_val = None
     
     if scale == True:
@@ -792,9 +789,9 @@ def convert_to_float(df):
     return df
 
 
-#================
+# ================
 # Breakout Classification Functions
-#================
+# ================
 
 
 def get_adp_predictions(df, year_min_int):
@@ -1016,14 +1013,14 @@ def class_create_summary(results, keep_first=False):
 
 
 
-#================
+# ================
 # Combining Regression and Classification Models
-#================
+# ================
 
 
-#---------
+# ---------
 # Set the RF search params for each position
-#---------
+# ---------
 
 pos['QB']['tree_params'] = {
     'max_depth': [3, 4, 5, 6, 7],
@@ -1089,7 +1086,7 @@ def searching(est, params, X_grid, y_grid, n_jobs=3, print_results=True):
 
 
 
-    
+
 def create_distributions(self, prior_repeats=15, dist_size=1000, show_plots=False):
     
     # historical standard deviation and mean for actual results
