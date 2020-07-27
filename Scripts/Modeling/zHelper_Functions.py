@@ -476,8 +476,10 @@ def append_to_db(df, db_name='Season_Stats', table_name='NA', if_exist='append')
     # Append pandas df to database in Github
     #--------
     
+    username = os.getlogin()
+    
     # move into the local database directory
-    os.chdir('/Users/Mark/Documents/Github/Fantasy_Football/Data/Databases/')
+    os.chdir(f'/Users/{username}/Documents/Github/Fantasy_Football/Data/Databases/')
     
     # copy the current database over to new folder with timestamp appended
     today_time = dt.datetime.now().strftime('_%Y_%m_%d_%M')
@@ -496,7 +498,7 @@ def append_to_db(df, db_name='Season_Stats', table_name='NA', if_exist='append')
     # Append pandas df to database in OneDrive
     #--------
 
-    os.chdir('/Users/Mark/OneDrive/FF/DataBase/')
+    os.chdir('/Users/{username}/OneDrive/FF/DataBase/')
     copyfile(db_name + '.sqlite3', 'DB_Versioning/' + db_name + today_time + '.sqlite3')
 
     conn = sqlite3.connect(db_name + '.sqlite3')

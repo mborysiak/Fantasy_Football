@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.5.0
+#       jupytext_version: 1.5.2
 #   kernelspec:
 #     display_name: Python 3
 #     language: python
@@ -51,7 +51,7 @@ pandas_bokeh.output_notebook()
 #==========
 
 # set core path
-path = '/Users/Mark/Documents/Github/Fantasy_Football/'
+path = f'/Users/{os.getlogin()}/Documents/Github/Fantasy_Football/'
 
 # specify database name with model data
 db_name = 'Model_Inputs.sqlite3'
