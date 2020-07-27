@@ -498,7 +498,7 @@ def append_to_db(df, db_name='Season_Stats', table_name='NA', if_exist='append')
     # Append pandas df to database in OneDrive
     #--------
 
-    os.chdir('/Users/{username}/OneDrive/FF/DataBase/')
+    os.chdir(f'/Users/{username}/OneDrive/FF/DataBase/')
     copyfile(db_name + '.sqlite3', 'DB_Versioning/' + db_name + today_time + '.sqlite3')
 
     conn = sqlite3.connect(db_name + '.sqlite3')

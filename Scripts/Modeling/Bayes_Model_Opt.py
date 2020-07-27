@@ -220,7 +220,7 @@ breakout_metric = 'fp_per_game'
 act_ppg = '>=12'
 pct_off = '>0.15'
 adp_ppg_high = '<100'
-adp_ppg_low = '>=0'
+adp_ppg_low = '>=14'
 
 # get the train and prediction dataframes for FP per game
 df_train_orig, df_predict_orig = get_train_predict(df, breakout_metric, pos, set_pos, set_year-3, pos[set_pos]['earliest_year'], pos[set_pos]['features'])
@@ -297,11 +297,11 @@ def val_results(models, val, combined, test):
     print(results.corr(), '\n')
     
     # determine optimal model location
-    min_models = results[results.x>25].groupby('model').agg({'combined': np.argmin})
+    min_models = results.groupby('model').agg({'combined': np.argmin})
     min_models = min_models.reset_index().rename(columns={'combined': 'x'})
     
     # print out optimum model data
-    print(pd.merge(results[results.x>25], min_models, on=['model', 'x']))
+    print(pd.merge(results, min_models, on=['model', 'x']))
     
     return results
 
@@ -451,17 +451,13 @@ def calc_f1_score(**args):
     years = df_train_orig.year.unique()
     years = years[years > np.min(years) + skip_years]
     
-#     # take a random sample
-#     df_train_val = df_train[df_train.year.isin(years)].copy().reset_index(drop=True)
-#     df_train_only = df_train[df_train.year < np.min(years)].copy().reset_index(drop=True)
-
-#     skf = StratifiedKFold(n_splits=5, random_state=1234, shuffle=True)
-#     for train_index, test_index in skf.split(df_train_val, df_train_val.y_act):
-#         pass
-
-#     df_val = df_train_val.iloc[test_index, :].reset_index(drop=True)
-#     df_train = pd.concat([df_train_only, df_train_val.iloc[train_index, :]], axis=0).reset_index(drop=True)
+    # split train and holdout datasets
+    train, holdout = train_test_split(df_train, test_size=0.2, random_state=i*4+i*9+13, 
+                                      shuffle=True, stratify=df_train.y_act)
  
+    train = train.sort_values(by='year').reset_index(drop=True)
+    holdout = holdout.sort_values(by='year').reset_index(drop=True)
+
     #==========
     # Loop through years and complete a time-series validation of the given model
     #==========
@@ -477,7 +473,6 @@ def calc_f1_score(**args):
         # create training set for all previous years and validation set for current year
         train_split = df_train[df_train.year < m]
         opt_split = df_train[df_train.year == m]
-#         opt_split = pd.concat([opt_split, df_val[df_val.year==m]]).reset_index(drop=True)
         
         # set up the estimator
         estimator.set_params(**args)
@@ -497,34 +492,35 @@ def calc_f1_score(**args):
         estimator.fit(X_train, y_train)
         opt_predict = estimator.predict(X_opt)
         
-        val_predict = opt_predict.copy()
-        y_val = y_opt.copy()
+        train_split = pd.concat([train_split, holdout[holdout.year < m]], axis=0).reset_index(drop=True)
+        val_split = pd.concat([opt_split, holdout[holdout.year == m]], axis=0).reset_index(drop=True)
         
-#         # join the split out validation set
-#         train_split = pd.concat([train_split, df_val[df_val.year<m]], axis=0).reset_index(drop=True)
-#         val_split = pd.concat([opt_split, df_val[df_val.year==m]], axis=0).reset_index(drop=True)
-#         X_train, X_val, y_train, y_val = X_y_split(train_split, val_split, scale, pca, n_components)
+        # splitting the train and validation sets into X_train, y_train, X_val and y_val
+        X_train, X_val, y_train, y_val = X_y_split(train_split, val_split, scale, pca, n_components)
+
+        if use_smote:
+            knn = int(len(y_train[y_train==1])*0.5)
+            smt = SMOTE(k_neighbors=knn, random_state=1234)
+            
+            X_train, y_train = smt.fit_resample(X_train.values, y_train)
+            X_val = X_val.values
+            
+        # train the estimator and get predictions
+        estimator.fit(X_train, y_train)
+        val_predict = estimator.predict(X_val)
         
-#         # if using smote, convert full validation X to values
-#         if use_smote:
-#             knn = int(len(y_train[y_train==1])*0.5)
-#             smt = SMOTE(k_neighbors=knn, random_state=1234)
-            
-#             X_train, y_train = smt.fit_resample(X_train.values, y_train)
-#             X_val = X_val.values
-            
-#         # train the estimator and get predictions
-#         estimator.fit(X_train, y_train)
-#         val_predict = estimator.predict(X_val)
+#         val_predict = opt_predict.copy()
+#         y_val = y_opt.copy()
 
         # append the predictions
         val_predictions = np.append(val_predictions, val_predict, axis=0)
         opt_predictions = np.append(opt_predictions, opt_predict, axis=0)
         y_vals = np.append(y_vals, y_val, axis=0)
         y_opts = np.append(y_opts, y_opt, axis=0)
+        
     
-#     # train for testing on all data
-#     df_train = pd.concat([df_train, df_val], axis=0).reset_index(drop=True)
+    
+    df_train = pd.concat([train, holdout], axis=0).reset_index(drop=True)
     
     # splitting the train and validation sets into X_train, y_train, X_val and y_val
     X_train, X_test, y_train, y_test = X_y_split(df_train, df_predict, scale, pca, n_components)
@@ -546,6 +542,10 @@ def calc_f1_score(**args):
     test_score = round(-matthews_corrcoef(test_predict, y_test), 3)
     opt_score = round(-matthews_corrcoef(opt_predictions, y_opts), 3)
     
+    # add in the opt predictions
+    val_predictions = np.append(val_predictions, opt_predictions, axis=0)
+    y_vals = np.append(y_vals, y_opts, axis=0)
+    
     # set weights for validation to 1 and for test set to 2
     wts = [1]*len(val_predictions)
     wts.extend([1.5]*len(y_test))
@@ -553,6 +553,7 @@ def calc_f1_score(**args):
     # append test to validation predictions for combined scoring
     val_predictions = np.append(val_predictions, test_predict, axis=0)
     y_vals = np.append(y_vals, y_test, axis=0)
+    
    
     # calculate the RMSE and MAE of the ensemble predictions
     m_score = -round(matthews_corrcoef(val_predictions, y_vals, sample_weight=wts), 3)
@@ -600,6 +601,8 @@ test_scores = []
 combined_scores = []
 models_list = []
 
+skip_years = pos[set_pos]['skip_years']
+
 for m_num, model in enumerate(list(class_models.keys())):
     
     cnter = 1
@@ -623,8 +626,8 @@ for m_num, model in enumerate(list(class_models.keys())):
 
     bayes_seed = 12345
     kappa = 3
-    res_gp = eval(pos[set_pos]['minimizer'])(objective_class, space, n_calls=100, n_random_starts=25, x0=x0,
-                        random_state=bayes_seed, verbose=False, kappa=kappa, n_jobs=-1)
+    res_gp = eval(pos[set_pos]['minimizer'])(objective_class, space, n_calls=100, n_random_starts=25,
+                                             random_state=bayes_seed, verbose=False, kappa=kappa, n_jobs=-1)
 
     output_class.loc[0, 'breakout_metric'] = breakout_metric
     output_class.loc[0, 'act_ppg'] = act_ppg
@@ -637,7 +640,6 @@ for m_num, model in enumerate(list(class_models.keys())):
     
     _ = val_results(models_list, val_scores, combined_scores, test_scores)
 
-    print(combined_scores[mnum*100:(mnum+1)*100])
     best_params_model = res_gp.x_iters[np.argmin(combined_scores[m_num*100:(m_num+1)*100])]
     
     print('Best Combined Score:', best_combined)
@@ -825,17 +827,6 @@ def calc_rmse(**args):
     years = df_train_orig.year.unique()
     years = years[years > np.min(years) + skip_years]
 
-#     # pull out the dataset that will be used within validation and training only data
-#     df_train_val = df_train[df_train.year.isin(years)].copy().reset_index(drop=True)
-#     df_train_only = df_train[df_train.year < np.min(years)].copy().reset_index(drop=True)
-    
-#     # randomly split the validation set by holding out 25% of data to be predicted to prevent overfitting of validation set during optimization
-#     df_train_val, df_val, _, _ = train_test_split(df_train_val, df_train_val.y_act, test_size=0.2, 
-#                                                   random_state=globals()['cnter']*3 + globals()['cnter']*17, shuffle=True)
-    
-#     # concat back the train only and 75% of validation data for rolling validation
-#     df_train = pd.concat([df_train_only, df_train_val], axis=0).reset_index(drop=True)
-    
     #==========
     # Loop through years and complete a time-series validation of the given model
     #==========
@@ -864,15 +855,6 @@ def calc_rmse(**args):
         
         y_val = y_opt.copy()
         val_predict = opt_predict.copy()
-        
-#         # join the split out validation set
-#         train_split = pd.concat([train_split, df_val[df_val.year<m]], axis=0).reset_index(drop=True)
-#         val_split = pd.concat([opt_split, df_val[df_val.year==m]], axis=0).reset_index(drop=True)
-#         X_train, X_val, y_train, y_val = X_y_split(train_split, val_split, scale, pca, n_components)
-            
-#         # train the estimator and get predictions
-#         estimator.fit(X_train, y_train)
-#         val_predict = estimator.predict(X_val)
 
         # append the predictions
         val_predictions = np.append(val_predictions, val_predict, axis=0)
@@ -883,9 +865,6 @@ def calc_rmse(**args):
     #==========
     # Predict the Test Set
     #==========
-    
-#     # train for testing on all data
-#     df_train = pd.concat([df_train, df_val], axis=0).reset_index(drop=True)
     
     # splitting the train and test sets into X_train, y_train, X_test and y_test
     X_train, X_test, y_train, y_test = X_y_split(df_train, df_predict, scale, pca, n_components)
@@ -1061,11 +1040,13 @@ for metric in ['fp_per_game']:#pos[set_pos]['metrics']:
         params_output = dict(zip(space_keys(space), best_params_model))
         print(params_output)
         
-#         append_to_db(output, db_name='ParamTracking', table_name='RegParamTracking', if_exist='append')
-#         max_pkey = pd.read_sql_query("SELECT max(pkey) FROM RegParamTracking", param_conn).values[0][0]
+        append_to_db(output, db_name='ParamTracking', table_name='RegParamTracking', if_exist='append')
+        max_pkey = pd.read_sql_query("SELECT max(pkey) FROM RegParamTracking", param_conn).values[0][0]
 
-#         save_pickle(params_output, path + f'Data/Model_Params/{max_pkey}.p')
-#         save_pickle(df_train_orig, path + f'Data/Model_Datasets/{max_pkey}.p')    
-#         save_pickle(search_space[model], path + f'Data/Bayes_Space/{max_pkey}.p')
+        save_pickle(params_output, path + f'Data/Model_Params/{max_pkey}.p')
+        save_pickle(df_train_orig, path + f'Data/Model_Datasets/{max_pkey}.p')    
+        save_pickle(search_space[model], path + f'Data/Bayes_Space/{max_pkey}.p')
 # -
+
+
 

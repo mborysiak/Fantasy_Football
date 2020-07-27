@@ -190,7 +190,7 @@ def pull_class_data(breakout_metric, adp_ppg_low, adp_ppg_high, pct_off, act_ppg
     #==============
 
     # get the train and prediction dataframes for FP per game
-    df_train_orig, df_predict = get_train_predict(df, breakout_metric, pos, set_pos, set_year, pos[set_pos]['earliest_year'], pos[set_pos]['features'])
+    df_train_orig, df_predict = get_train_predict(df, breakout_metric, pos, set_pos, set_year-1, pos[set_pos]['earliest_year'], pos[set_pos]['features'])
 
     # get the adp predictions and merge back to the training dataframe
     df_train_adp, lr = get_adp_predictions(df_train_orig, 1)
@@ -354,7 +354,7 @@ def run_class_ensemble(best_models, df_train_results, df_test_results, pos=pos):
 df_train_results = pd.DataFrame()
 df_test_results = pd.DataFrame()
 
-for i in [(85, 112), (113, 140), (141, 168)]:
+for i in [(216, 222)]:#, (113, 140), (141, 168)]:
 # for i in [(1, 28), (29, 56), (57, 84)]:
     
     # set all the variables
@@ -380,6 +380,8 @@ df_train_results.groupby('class_fp_per_game').agg({'y_act': 'median',
                                                        'pct_off': 'median',
                                                        'avg_pick_pred': 'mean'})
 
+df_test_results.sort_values(by='proba_fp_per_game', ascending=False).iloc[:60]
+
 # +
 # Create Bokeh-Table with DataFrame:
 from bokeh.models.widgets import DataTable, TableColumn
@@ -388,8 +390,8 @@ from bokeh.models import ColumnDataSource, Span
 data_table = DataTable(
     columns=[TableColumn(field=Ci, title=Ci) for Ci in df_train_results.columns],
     source=ColumnDataSource(df_train_results),
-    height=750,
-    width=750
+    height=500,
+    width=500
 )
 
 # Create Scatterplot:
@@ -407,7 +409,7 @@ p_scatter.renderers.extend([hline, vline])
 
 
 # Combine Table and Scatterplot via grid layout:
-pandas_bokeh.plot_grid([[data_table, p_scatter]], plot_width=750, plot_height=750)
+pandas_bokeh.plot_grid([[data_table, p_scatter]], plot_width=500, plot_height=500)
 
 # + jupyter={"source_hidden": true}
 ind = 0
