@@ -228,8 +228,8 @@ def touch_game_filter(df, pos, set_pos, set_year):
     # leave all new players in to ensure everyone gets a prediction
     old = df[(df[pos[set_pos]['touch_filter']] > pos[set_pos]['req_touch']) & \
              (df.games > pos[set_pos]['req_games']) & \
-             (df.year < set_year-1)].reset_index(drop=True)
-    this_year = df[df.year==set_year-1]
+             (df.year < set_year)].reset_index(drop=True)
+    this_year = df[df.year>=set_year]
 
     # merge old and new back together after filtering
     df = pd.concat([old, this_year], axis=0)
@@ -927,7 +927,9 @@ def class_validation(estimator, df_train_orig, df_predict, collinear_cutoff, use
         ty_pred_proba = pd.Series(estimator.predict_proba(X_val)[:,1], name='proba')
         ty_pred_proba = pd.concat([df_predict[['player', 'year', 'avg_pick']], ty_pred_proba], axis=1)
     except:
-        ty_pred_proba = None
+        ty_pred_proba = pd.Series(estimator.predict(X_val), name='proba')*0.5 + 0.25
+        ty_pred_proba = pd.concat([df_predict[['player', 'year', 'avg_pick']], ty_pred_proba], axis=1)
+    
     return result, val_pred, ty_pred, ty_pred_proba, estimator, output_cols
 
 
@@ -950,13 +952,11 @@ def class_ensemble(summary, results, n, iters, agg_type):
         if i == 0:
             ensemble = pd.concat([ensemble, results['val_pred'][row.Iteration]], axis=1)
             ty_ensemble = pd.concat([ty_ensemble, results['ty_pred'][row.Iteration]], axis=1)
-            if row.Model != 'svr':
-                ty_proba = pd.concat([ty_proba, results['ty_proba'][row.Iteration]], axis=1)
+            ty_proba = pd.concat([ty_proba, results['ty_proba'][row.Iteration]], axis=1)
         else:
             ensemble = pd.concat([ensemble, results['val_pred'][row.Iteration]['pred' + str(row.Iteration)]], axis=1)
             ty_ensemble = pd.concat([ty_ensemble, results['ty_pred'][row.Iteration]['pred' + str(row.Iteration)]], axis=1)
-            if row.Model != 'svr':
-                ty_proba = pd.concat([ty_proba, results['ty_proba'][row.Iteration]['proba' + str(row.Iteration)]], axis=1)
+            ty_proba = pd.concat([ty_proba, results['ty_proba'][row.Iteration]['proba' + str(row.Iteration)]], axis=1)
 
     # get the median prediction from each of the models
     ensemble = ensemble.drop(0, axis=1)
