@@ -260,8 +260,8 @@ def add_exp_metrics(df, set_pos, use_ay=True):
                  'int', 'int_pct', 'rush_att', 'rush_yds', 'rush_yd_per_game', 'rush_td', 'rush_yd_per_att']
     
     elif set_pos == 'RB':
-        cols = ['rec_yd_per_game', 'rec_per_game', 'td_per_game', 'rz_20_rush_att', 'rz_5_rush_att', 
-                'rz_20_rush_pct', 'rz_5_rush_pct','ms_rush_att',
+        cols = ['rush_yd_per_game','rec_yd_per_game', 'rec_per_game', 'td_per_game', 'rz_20_rush_att', 
+                'rz_5_rush_att', 'rz_20_rush_pct', 'rz_5_rush_pct','ms_rush_att',
                 'ms_rush_yd', 'ms_rush_td', 'ms_rec_yd', 'ms_tgts', 'rush_rec_ratio',
                 'rz_20_tgt', 'rz_20_receptions', 'avg_pick', 'teammate_diff_min', 'teammate_diff_avg']
     
@@ -341,7 +341,7 @@ def get_train_predict(df, target, pos, set_pos, year_split, early_year, vers):
 
     if vers == 'v1':
         # create training and prediction dataframes
-        df_train, df_predict = features_target(df,
+        df_train, df_predict = features_target(df, set_pos,
                                                early_year, year_split,
                                                pos[set_pos]['med_features'],
                                                pos[set_pos]['sum_features'],
@@ -350,7 +350,7 @@ def get_train_predict(df, target, pos, set_pos, year_split, early_year, vers):
                                                target_feature=target)
     elif vers == 'v2':
         # create training and prediction dataframes
-        df_train, df_predict = features_target_v2(df,
+        df_train, df_predict = features_target_v2(df, set_pos,
                                                early_year, year_split,
                                                pos[set_pos]['med_features'],
                                                pos[set_pos]['sum_features'],
@@ -371,7 +371,7 @@ def get_train_predict(df, target, pos, set_pos, year_split, early_year, vers):
     return df_train, df_predict
 
 
-def features_target(df, year_start, year_split, median_features, sum_features, max_features, 
+def features_target(df, set_pos, year_start, year_split, median_features, sum_features, max_features, 
                     age_features, target_feature):
     
     import pandas as pd
@@ -383,7 +383,7 @@ def features_target(df, year_start, year_split, median_features, sum_features, m
         
         # adding the median features
         past = df[df['year'] <= year]
-        
+        past = add_exp_metrics(past, set_pos)
         past = past.join(past.groupby('player')[median_features].median(),on='player', rsuffix='_median')
         past = past.join(past.groupby('player')[max_features].max(),on='player', rsuffix='_max')
         past = past.join(past.groupby('player')[sum_features].sum(),on='player', rsuffix='_sum')
@@ -411,7 +411,7 @@ def features_target(df, year_start, year_split, median_features, sum_features, m
     return df_train, df_predict
 
 
-def features_target_v2(df, year_start, year_split, median_features, sum_features, max_features, 
+def features_target_v2(df, set_pos, year_start, year_split, median_features, sum_features, max_features, 
                        age_features, target_feature):
     
     import pandas as pd
@@ -423,9 +423,7 @@ def features_target_v2(df, year_start, year_split, median_features, sum_features
 
         # adding the median features
         past = df[df['year'] <= year]
-
-    #     # add features based for a players performance relative to their experience
-    #     past = add_exp_metrics(past, set_pos, pos[set_pos]['use_ay'])
+        past = add_exp_metrics(past, set_pos)
 
         # join in the median, max, and sum features
         past = past.join(past.groupby('player')[median_features].median(), on='player', rsuffix='_median')
@@ -666,7 +664,7 @@ def validation(estimator, df_train_orig, df_predict, corr_cutoff, collinear_cuto
         val_predict = estimator.predict(X_val)
         
         # fit and predict ADP on the dataset
-        X_train, X_val, y_train, y_val = X_y_split(train_split, val_split, scale, pca=False)
+        X_train, X_val, y_train, y_val = X_y_split(train_split, val_split, scale=False, pca=False)
 
         lr.fit(X_train.avg_pick.values.reshape(-1,1), y_train)
         val_predict_adp = lr.predict(X_val.avg_pick.values.reshape(-1,1))

@@ -177,13 +177,10 @@ def pull_class_data(breakout_metric, adp_ppg_low, adp_ppg_high, pct_off, act_ppg
         df = pd.merge(df, ay, how='inner', left_on=['player', 'year'], right_on=['player', 'year'])
 
     # apply the specified touches and game filters
-    df, df_train_results, df_test_results = touch_game_filter(df, pos, set_pos, set_year-2)
+    df, df_train_results, df_test_results = touch_game_filter(df, pos, set_pos, set_year)
 
     # calculate FP for a given set of scoring values
     df = calculate_fp(df, pts_dict, pos=set_pos).reset_index(drop=True)
-
-    # add features based for a players performance relative to their experience
-    df = add_exp_metrics(df, set_pos, pos[set_pos]['use_ay'])
 
     #==============
     # Create Break-out Probability Features
@@ -204,8 +201,8 @@ def pull_class_data(breakout_metric, adp_ppg_low, adp_ppg_high, pct_off, act_ppg
     df_predict = df_predict[(eval(f'df_predict.avg_pick_pred{adp_ppg_low}')) & (eval(f'df_predict.avg_pick_pred{adp_ppg_high}'))].reset_index(drop=True)
 
     # add in extra columns to the results dataframes
-    df_train_results = pd.merge(df_train_results, df_train_orig[['player', 'year', 'y_act', 'pct_off', 'avg_pick_pred']], on=['player', 'year'])
-    df_test_results = pd.merge(df_test_results, df_predict[['player', 'year', 'avg_pick_pred']], on=['player', 'year'])
+    df_train_results = df_train_orig[['player', 'year', 'y_act', 'pct_off', 'avg_pick_pred']].copy()
+    df_test_results = df_predict[['player', 'year', 'avg_pick_pred']].copy()
     df_train_orig = df_train_orig.drop(['y_act', 'pct_off'], axis=1).rename(columns={'label': 'y_act'})
 
     # get the minimum number of training samples for the initial datasets
@@ -216,7 +213,7 @@ def pull_class_data(breakout_metric, adp_ppg_low, adp_ppg_high, pct_off, act_ppg
     print('Min Year:', df_train_orig.year.min())
     print('Max Year:', df_train_orig.year.max())
     print('Compiled Dataset Equals Stored Dataset?: ', df_train_orig.equals(load_pickle(f'{path}Data/Model_Datasets_Class/{str(min_rowid)}.p')))
-    
+  
     return df_train_orig, df_predict, df_train_results, df_test_results
 
 # ## Ensemble Model Helper Functions
@@ -281,7 +278,7 @@ def run_class_ensemble(best_models, df_train_results, df_test_results, pos=pos):
         results['summary'][i] = [m]
 
         result, val_pred, ty_pred, ty_proba, trained_est, cols = class_run_best_model(m, par, skip_year)
-        
+
         # save out the predictions to the dictionary
         results['summary'][i].extend([result])
         results['trained_model'][i] = trained_est
@@ -302,19 +299,45 @@ def run_class_ensemble(best_models, df_train_results, df_test_results, pos=pos):
 
     # create the summary dataframe
     summary = class_create_summary(results, keep_first=False)
-    print(summary)
-    iters = num_models
-    for n in range(2, num_models+2):
 
-        # create the ensemble dataframe based on the top results for each model type
-        to_ens = class_create_summary(results, keep_first=True).head(n)
-        results, ens_result = class_ensemble(to_ens, results, str(n+iters), iters, 'mean')
-        summary =  pd.concat([summary, ens_result], axis=0)
+    best_results = summary[summary.F1Score >= 0.75*summary.F1Score.max()].copy()
+    sum_score = best_results.F1Score.sum()
+    best_results['Weighting'] = best_results.F1Score / sum_score
 
-        # create the ensemble dataframe based on the top results for each model type
-        to_ens = class_create_summary(results, keep_first=True).head(n)
-        results, ens_result = class_ensemble(to_ens, results, str(n+iters+4), iters, 'median')
-        summary =  pd.concat([summary, ens_result], axis=0)
+    for i, row in best_results.iterrows():
+
+        val_pred = results['val_pred'][row.Iteration]
+        val_pred.iloc[:, -1] = val_pred.iloc[:, -1] * row.Weighting
+
+        ty_pred = results['ty_pred'][row.Iteration]
+        ty_pred.iloc[:, -1] = ty_pred.iloc[:, -1] * row.Weighting
+
+        ty_proba = results['ty_proba'][row.Iteration]
+        ty_proba.iloc[:, -1] = ty_proba.iloc[:, -1] * row.Weighting
+
+        if i == 0:
+            val_ensemble = val_pred
+            ty_ensemble = ty_pred
+            ty_proba_ensemble = ty_proba
+        else:
+            val_ensemble = pd.merge(val_ensemble, val_pred.drop(['avg_pick','y_act'], axis=1), on=['player', 'year'])
+            ty_ensemble = pd.merge(ty_ensemble, ty_pred.drop(['avg_pick'], axis=1), on=['player', 'year'])
+            ty_proba_ensemble = pd.merge(ty_proba_ensemble, ty_proba.drop(['avg_pick'], axis=1), on=['player', 'year'])
+
+    for ens in [val_ensemble, ty_ensemble, ty_proba_ensemble]:
+        ens_cols = [c for c in ens.columns if 'pred' in c or 'proba' in c]
+        ens['pred'] = ens.loc[:, ens_cols].sum(axis=1)
+
+    num_rows = len(summary)
+    results['val_pred'][num_rows+1] = val_ensemble
+    results['ty_pred'][num_rows+1] = ty_ensemble
+    results['ty_proba'][num_rows+1] = ty_proba_ensemble
+
+    val_ensemble.loc[val_ensemble.pred >= 0.5, 'pred'] = 1
+    val_ensemble.loc[val_ensemble.pred < 0.5, 'pred'] = 0
+    acc_score = round(matthews_corrcoef(val_ensemble.y_act, val_ensemble.pred), 3)
+    new_result = pd.DataFrame({'Iteration': [num_rows+1], 'Model': 'Ensemble', 'F1Score': acc_score})
+    summary = pd.concat([summary, new_result], axis=0)
 
     summary = summary.sort_values(by='F1Score', ascending=False).reset_index(drop=True)
     print(summary.head(20))
@@ -325,16 +348,16 @@ def run_class_ensemble(best_models, df_train_results, df_test_results, pos=pos):
 
     # get the best model and pull out the results
     best_iter = int(summary[summary.Model.str.contains('Ensemble')].iloc[0].Iteration)
-#     best_iter = int(summary.iloc[0].Iteration)
-
+    #     best_iter = int(summary.iloc[0].Iteration)
+    print(best_iter)
     best_ty = results['ty_pred'][best_iter][['player', 'year', 'pred']]
     best_ty = best_ty.rename(columns={'pred': 'class_' + breakout_metric})
 
     best_train = results['val_pred'][best_iter][['player', 'year', 'pred', 'y_act']]
     best_train = best_train.rename(columns={'pred': 'class_' + breakout_metric, 'y_act': 'class_act_' + breakout_metric})
-    print(results['ty_proba'][best_iter])
-    best_ty_proba = results['ty_proba'][best_iter][['player', 'year', 'proba']]
-    best_ty_proba = best_ty_proba.rename(columns={'proba': 'proba_' + breakout_metric})
+
+    best_ty_proba = results['ty_proba'][best_iter][['player', 'year', 'pred']]
+    best_ty_proba = best_ty_proba.rename(columns={'pred': 'proba_' + breakout_metric})
 
     # merge the train results for the given metric with all other metric outputs
     df_train_results = pd.merge(df_train_results, best_train, on=['player', 'year'])
@@ -354,8 +377,10 @@ def run_class_ensemble(best_models, df_train_results, df_test_results, pos=pos):
 df_train_results = pd.DataFrame()
 df_test_results = pd.DataFrame()
 
-for i in [(234, 240)]:#, (113, 140), (141, 168)]:
-# for i in [(1, 28), (29, 56), (57, 84)]:
+# for i in [(234, 240), (256, 262)]:
+# for i in [(241, 247), (263, 269)]:
+# for i in [(248, 254), (270, 276)]:
+for i in [(293, 297)]:
     
     # set all the variables
     min_rowid=i[0]
@@ -389,14 +414,14 @@ df_train_results.groupby('class_fp_per_game').agg({'y_act': 'median',
                                                        'pct_off': 'median',
                                                        'avg_pick_pred': 'median'})
 
-df_test_results.loc[df_test_results.class_fp_per_game >= 0.5, 'class_fp_per_game'] = 1
-df_test_results.loc[df_test_results.class_fp_per_game < 0.5, 'class_fp_per_game'] = 0
+df_test_results.loc[df_test_results.proba_fp_per_game >= 0.5, 'check'] = 1
+df_test_results.loc[df_test_results.proba_fp_per_game < 0.5, 'check'] = 0
 
-df_test_results.groupby('class_fp_per_game').agg({'y_act': 'median',
+df_test_results.groupby('check').agg({'y_act': 'median',
                                                    'pct_off': 'median',
                                                    'avg_pick_pred': 'median'})
 
-df_test_results.sort_values(by='proba_fp_per_game', ascending=False).iloc[:60]
+df_test_results.sort_values(by='class_fp_per_game', ascending=False).iloc[:60]
 
 # +
 # Create Bokeh-Table with DataFrame:
@@ -491,9 +516,6 @@ def pull_reg_params(min_rowid, max_rowid):
 
     # calculate FP for a given set of scoring values
     df = calculate_fp(df, pts_dict, pos=set_pos).reset_index(drop=True)
-
-    # add features based for a players performance relative to their experience
-    df = add_exp_metrics(df, set_pos, pos[set_pos]['use_ay'])
     
     return best_models, df
 
@@ -662,8 +684,10 @@ def run_reg_ensemble(df, best_models, df_train_results, df_test_results, adp_ppg
 df_train_results_reg = pd.DataFrame()
 df_test_results_reg = pd.DataFrame()
 
-for i in [(323, 331)]:#, (145, 180), (181, 216)]:
-# for i in [(1, 36), (37, 72), (73, 108)]:
+# for i in [(323, 331), (350, 358)]:
+# for i in [(332, 340), (359, 367)]:
+# for i in [(341, 349), (368, 376)]:
+for i in [(377, 384)]:
     
     # specify the minimum and maximum rows from the database
     min_rowid = i[0]
@@ -742,7 +766,28 @@ print('Predicted Only Error: %0.3f' % test_pred_only_err )
 print('Predicted Plus Class Error: %0.3f' % test_pred_class_err)
 # -
 
-pd.concat([df_test_results, pd.Series(test_pred_plus_class, name='final_pred')], axis=1)
+df_test_results = pd.concat([df_test_results, pd.Series(test_pred_plus_class, name='final_pred')], axis=1)
+
+# +
+from scipy.stats import pearsonr
+
+lr.fit( df_test_results.final_pred.values.reshape(-1,1), df_test_results.y_act)
+lr.score(df_test_results.final_pred.values.reshape(-1,1), df_test_results.y_act )
+
+# +
+from scipy.stats import pearsonr
+
+lr.fit( df_test_results.pred_fp_per_game.values.reshape(-1,1), df_test_results.y_act)
+lr.score(df_test_results.pred_fp_per_game.values.reshape(-1,1), df_test_results.y_act )
+
+# +
+from scipy.stats import pearsonr
+
+lr.fit( df_test_results.avg_pick_pred.values.reshape(-1,1), df_test_results.y_act)
+lr.score(df_test_results.avg_pick_pred.values.reshape(-1,1), df_test_results.y_act )
+# -
+
+# # Bayes Regression
 
 # +
 import pymc3 as pm

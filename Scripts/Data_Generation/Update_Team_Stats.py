@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.5.0
+#       jupytext_version: 1.5.2
 #   kernelspec:
 #     display_name: Python 3
 #     language: python
@@ -621,7 +621,7 @@ append_to_db(draft_values, table_name='Draft_Values')
 # +
 # create full positional list to loop through
 draft_pos = pd.DataFrame()
-for y in range(1985, 1995):
+for y in range(1985, 2020):
     
     # scrape in the results for each position
     DRAFT_URL = f'https://www.pro-football-reference.com/play-index/draft-finder.cgi?request=1&year_min={y}&year_max={y}&pick_type=overall&pos%5B%5D=qb&pos%5B%5D=rb&pos%5B%5D=wr&pos%5B%5D=te&pos%5B%5D=e&pos%5B%5D=t&pos%5B%5D=g&pos%5B%5D=c&pos%5B%5D=ol&pos%5B%5D=dt&pos%5B%5D=de&pos%5B%5D=dl&pos%5B%5D=ilb&pos%5B%5D=olb&pos%5B%5D=lb&pos%5B%5D=cb&pos%5B%5D=s&pos%5B%5D=db&pos%5B%5D=k&pos%5B%5D=p&conference=any&show=all&order_by=default'

@@ -6,7 +6,7 @@
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.5.0
+#       jupytext_version: 1.5.2
 #   kernelspec:
 #     display_name: Python 3
 #     language: python
@@ -90,17 +90,67 @@ def qb_run(df):
     return df
 
 
-def draft_value(df):
+def draft_value(df, pos):
     
-    draft_val = pd.read_sql_query('''SELECT player, year min_year, nfl_draft_value FROM Draft_Positions a
-                                     JOIN (SELECT Pick, Value nfl_draft_value FROM Draft_Values) b
-                                          ON a.Pick=b.Pick''', conn)
+    early_draft = pd.read_sql_query(f'''SELECT player, year min_year, nfl_draft_value 
+                                         FROM Draft_Positions a
+                                         JOIN (SELECT Pick, Value nfl_draft_value 
+                                               FROM Draft_Values) b
+                                               ON a.Pick=b.Pick
+                                         WHERE pos='{pos}'
+                                               AND year <= 1998 ''', conn)
 
-    df = pd.merge(df, draft_val, on=['player', 'min_year'], how='left').fillna(1)
-    df['nfl_draft_value_decay'] = df.nfl_draft_value * (1 / (1 + np.exp(-df.year_exp)))
+    earliest = early_draft.groupby('player').agg({'min_year': 'min',
+                                                  'nfl_draft_value': 'max'}).reset_index()
+    early_draft = pd.merge(early_draft, earliest, on=['player', 'min_year', 'nfl_draft_value'])
+
+    # adding years of experience
+    early_min = df.loc[df.year == 1998, ['player']]
+    early_min = pd.merge(early_min, early_draft, on='player')
+
+
+    draft_val = pd.read_sql_query(f'''SELECT player, team, year min_year, nfl_draft_value 
+                                     FROM Draft_Positions a
+                                     JOIN (SELECT Pick, Value nfl_draft_value 
+                                           FROM Draft_Values) b
+                                           ON a.Pick=b.Pick
+                                     WHERE pos='{pos}'
+                                           and year >= 1999''', conn)
+
+
+    dups = draft_val.groupby('player').agg('count')
+    dup_player = list(dups[dups.min_year > 1].index)
+
+    later_min = df[(df.year > 1998) & ~(df.player.isin(early_min.player))]
+    later_min = later_min.groupby('player').agg({'year': 'min'}).reset_index()
+    later_min = pd.merge(later_min, df[['player', 'year', 'team']], on=['player', 'year'])
+
+    later_min_dup = later_min[later_min.player.isin(dup_player)].reset_index(drop=True)
+    later_min = later_min[~later_min.player.isin(dup_player)].reset_index(drop=True).drop('team', axis=1)
+
+    later_min = pd.merge(later_min, draft_val, on=['player'], how='left').drop('team', axis=1)
+    later_min.loc[later_min.min_year.isnull(), 'min_year'] = later_min.loc[later_min.min_year.isnull(), 'year']
+    later_min = later_min.fillna(1)
+    later_min = later_min.drop('year', axis=1)
+
+    later_min_dup = pd.merge(later_min_dup, draft_val, on=['player', 'team'], how='left').drop(['team', 'year'], axis=1)
+
+    mins = pd.concat([early_min, later_min, later_min_dup], axis=0).reset_index(drop=True)
+    df2 = pd.merge(df, mins, on='player')
+
+    # check fo duplicates()
+    df_cnts = df.groupby('player').agg(year1=('year', 'count')).reset_index()
+    df2_cnts = df2.groupby('player').agg(year2=('year', 'count')).reset_index()
+
+    check_dup = pd.merge(df_cnts, df2_cnts, on='player')
+    print('Duplicates:', list(check_dup[check_dup.year1 != check_dup.year2].player))
+
+    df = pd.merge(df, mins, on='player')
+    df['year_exp'] = (df.year - df.min_year)
+    df['nfl_draft_value_decay'] = df.nfl_draft_value * np.exp(-df.year_exp)
+    df['year_exp'] = df['year_exp']+1
     
     return df
-
 
 # # Compile RB
 
@@ -116,7 +166,7 @@ allow for grouped statistics generation.
 '''
 
 # load prepared data
-conn = sqlite3.connect('/Users/Mark/Documents/Github/Fantasy_Football/Data/Databases/Season_Stats.sqlite3')
+conn = sqlite3.connect(f'/Users/{os.getlogin()}/Documents/Github/Fantasy_Football/Data/Databases/Season_Stats.sqlite3')
 query = ''' 
     SELECT * 
     FROM RB_Stats A 
@@ -184,11 +234,11 @@ df['rz_total_td_ratio'] = df.rec_td / df.total_rz_att
 # -
 
 df = adp_groupby(df, 'RB')
-df = year_exp(df)
+df = draft_value(df, 'RB')
 df = qb_run(df)
-df = draft_value(df)
 
-append_to_db(df, db_name='Model_Inputs.sqlite3', table_name='RB_' + str(year), if_exist='replace')
+
+append_to_db(df, db_name='Model_Inputs', table_name='RB_' + str(year), if_exist='replace')
 
 # # Compile WR
 
