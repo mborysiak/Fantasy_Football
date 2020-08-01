@@ -218,6 +218,200 @@ def pull_class_data(breakout_metric, adp_ppg_low, adp_ppg_high, pct_off, act_ppg
   
     return df_train_orig, df_predict, df_train_results, df_test_results
 
+
+# +
+#==========
+# Pull and clean compiled data
+#==========
+
+# connect to database and pull in positional data
+df = pd.read_sql_query('SELECT * FROM ' + set_pos + '_' + str(set_year), con=conn)
+
+# append air yards for specified positions
+if pos[set_pos]['use_ay']:
+    ay = pd.read_sql_query('SELECT * FROM AirYards', con=sqlite3.connect(path + 'Data/Season_Stats.sqlite3'))
+    df = pd.merge(df, ay, how='inner', left_on=['player', 'year'], right_on=['player', 'year'])
+
+# apply the specified touches and game filters
+df, df_train_results, df_test_results = touch_game_filter(df, pos, set_pos, set_year)
+
+# calculate FP for a given set of scoring values
+df = calculate_fp(df, pts_dict, pos=set_pos).reset_index(drop=True)
+
+#==============
+# Create Break-out Probability Features
+#==============
+
+# get the train and prediction dataframes for FP per game
+df_train_orig, df_predict = get_train_predict(df, breakout_metric, pos, set_pos, set_year-pos[set_pos]['test_years'], 
+                                              pos[set_pos]['earliest_year'], pos[set_pos]['features'])
+
+# get the adp predictions and merge back to the training dataframe
+df_train_adp, lr = get_adp_predictions(df_train_orig, 1)
+df_train_orig = pd.merge(df_train_orig, df_train_adp, on=['player', 'year'])
+
+df_predict['avg_pick_pred'] = lr.predict(df_predict.avg_pick.values.reshape(-1,1))
+
+df_predict['y_act'] = (df_predict[pos[set_pos]['metrics']] * pts_dict[set_pos]).sum(axis=1)
+df_predict['pct_off'] = (df_predict.y_act - df_predict.avg_pick_pred) / df_predict.avg_pick_pred
+
+# create the label and filter based on inputs
+df_train_orig['label'] = 0
+df_train_orig.loc[(eval(f'df_train_orig.pct_off{pct_off}')) & (eval(f'df_train_orig.y_act{act_ppg}')), 'label'] = 1
+df_train_orig = df_train_orig[(eval(f'df_train_orig.avg_pick_pred{adp_ppg_low}')) & (eval(f'df_train_orig.avg_pick_pred{adp_ppg_high}'))].reset_index(drop=True)
+
+df_predict['label'] = 0
+df_predict.loc[(eval(f'df_predict.pct_off{pct_off}')) & (eval(f'df_predict.y_act{act_ppg}')), 'label'] = 1
+df_predict = df_predict[(eval(f'df_predict.avg_pick_pred{adp_ppg_low}')) & (eval(f'df_predict.avg_pick_pred{adp_ppg_high}'))].reset_index(drop=True)
+
+# add in extra columns to the results dataframes
+df_train_results = df_train_orig[['player', 'year', 'y_act', 'pct_off', 'avg_pick_pred']].copy()
+df_test_results = df_predict[['player', 'year', 'avg_pick_pred']].copy()
+
+df_train_orig = df_train_orig.drop(['y_act', 'pct_off'], axis=1).rename(columns={'label': 'y_act'})
+df_predict = df_predict.drop(['y_act', 'pct_off'], axis=1).rename(columns={'label': 'y_act'})
+
+# get the minimum number of training samples for the initial datasets
+min_samples = int(0.5*df_train_orig[df_train_orig.year <= df_train_orig.year.min() + pos[set_pos]['skip_years']].shape[0])
+
+# print the value-counts
+print(df_train_orig.y_act.value_counts())
+print('Min Year:', df_train_orig.year.min())
+print('Max Year:', df_train_orig.year.max())
+print('Compiled Dataset Equals Stored Dataset?: ', df_train_orig.equals(load_pickle(f'{path}Data/Model_Datasets_Class/{str(min_rowid)}.p')))
+# -
+
+best_models = pull_class_params(4, 5)
+
+i=0
+
+m = best_models.loc[i, 'model']
+pkey = best_models.loc[i, 'pkey']
+par = load_pickle(path + f'Data/Model_Params_Class/{pkey}.p')
+print(f'Running {m}')
+
+
+@ignore_warnings(category=ConvergenceWarning)
+def class_run_best_model(model, p, skip_years):
+
+    use_smote = True if p['use_smote']==1 else False
+    zero_weight = p['zero_weight']
+    collinear_cutoff = p['collinear_cutoff']
+    scale = True if p['scale']==1 else False
+    pca = True if p['pca']==1 else False
+    n_components = p['n_components'] 
+    
+    model_p = {}
+    for k, v in p.items():
+        if k not in ['use_smote', 'zero_weight', 'collinear_cutoff', 'scale', 'pca', 'n_components']:
+            model_p[k] = v
+            
+    estimator = class_models[model]
+    estimator.set_params(**model_p)
+    estimator.class_weight = {0: zero_weight, 1: 1}
+    
+    from imblearn.over_sampling import SMOTE
+    from sklearn.model_selection import StratifiedKFold
+    
+    #----------
+    # Filter down the features with a random correlation and collinear cutoff
+    #----------
+
+    # remove collinear variables based on difference of means between the 0 and 1 labeled groups
+    df_train = remove_classification_collinear(globals()['df_train_orig'], collinear_cutoff, ['player', 'avg_pick', 'year', 'y_act'])
+    df_predict = globals()['df_predict'][df_train.columns]
+    
+    years = df_train_orig.year.unique()
+    years = years[years > np.min(years) + skip_years]
+    
+    # set up array to save predictions and years to iterate through
+    roll_predictions = np.array([]) 
+    y_rolls = np.array([])
+    
+    #=============
+    # Full Validation Loop Train and Predict
+    #==============
+    
+    for m in years:
+
+        # create training set for all previous years and validation set for current year
+        train_split = df_train[df_train.year < m]
+        roll_split = df_train[df_train.year == m]
+
+        # splitting the train and validation sets into X_train, y_train, X_val and y_val
+        X_train, X_roll, y_train, y_roll = X_y_split(train_split, roll_split, scale, pca, n_components)
+
+        if use_smote:
+            knn = int(len(y_train[y_train==1])*0.5)
+            smt = SMOTE(k_neighbors=knn, random_state=1234)
+
+            X_train, y_train = smt.fit_resample(X_train.values, y_train)
+            X_roll = X_roll.values
+
+        # train the estimator and get predictions
+        estimator.fit(X_train, y_train)
+        roll_predict = estimator.predict(X_roll)
+
+        # append the predictions
+        roll_predictions = np.append(roll_predictions, roll_predict, axis=0)
+        y_rolls = np.append(y_rolls, y_roll, axis=0)
+
+        
+    #==========
+    # Full Model Train + Test Set Prediction
+    #==========
+    
+    # splitting the train and validation sets into X_train, y_train, X_val and y_val
+    X_train, X_test, y_train, y_test = X_y_split(df_train, df_predict, scale, pca, n_components)
+
+    if use_smote:
+            knn = int(len(y_train[y_train==1])*0.5)
+            smt = SMOTE(k_neighbors=knn, random_state=1234)
+            X_train, y_train = smt.fit_resample(X_train.values, y_train)
+            X_test = X_test.values
+
+    estimator.fit(X_train, y_train)
+    test_predict = estimator.predict(X_test)
+
+    roll_score = round(-matthews_corrcoef(roll_predictions, y_rolls), 3)
+    test_score = round(-matthews_corrcoef(test_predict, y_test), 3)
+    print(roll_score)
+    print(test_score)
+    
+    return test_predict
+
+tp = class_run_best_model('rf', par, pos[set_pos]['skip_years'])
+
+
+def class_run_best_model(model, p, skip_years):
+
+    use_smote = True if p['use_smote']==1 else False
+    zero_weight = p['zero_weight']
+    col_cut = p['collinear_cutoff']
+    scale = True if p['scale']==1 else False
+    pca = True if p['pca']==1 else False
+    n_components = p['n_components'] 
+    
+    model_p = {}
+    for k, v in p.items():
+        if k not in ['use_smote', 'zero_weight', 'collinear_cutoff', 'scale', 'pca', 'n_components']:
+            model_p[k] = v
+            
+    est = class_models[model]
+    est.set_params(**model_p)
+    est.class_weight = {0: zero_weight, 1: 1}
+
+    result, val_pred, ty_pred, ty_proba, trained_est, cols = class_validation(est, df_train_orig, df_predict, col_cut,
+                                                                              use_smote, skip_years, scale, pca, n_components)
+
+    return result, val_pred, ty_pred, ty_proba, trained_est, cols
+
+
+results, _, ty_pred, _, _, _ = class_run_best_model('rf', par, pos[set_pos]['skip_years'])
+results
+
+pd.concat([ty_pred, pd.Series(tp, name='new')], axis=1)
+
 # ## Ensemble Model Helper Functions
 
 
@@ -379,7 +573,7 @@ def run_class_ensemble(best_models, df_train_results, df_test_results, pos=pos):
 df_train_results = pd.DataFrame()
 df_test_results = pd.DataFrame()
 
-for i in [(2, 4)]:
+for i in [(4, 5)]:
     
     # set all the variables
     min_rowid=i[0]

@@ -227,8 +227,8 @@ df = calculate_fp(df, pts_dict, pos=set_pos).reset_index(drop=True)
 breakout_metric = 'fp_per_game'
 act_ppg = '>=14'
 pct_off = '>0.15'
-adp_ppg_high = '<100'
-adp_ppg_low = '>=11'
+adp_ppg_high = '>0'
+adp_ppg_low = '<11'
 
 # get the train and prediction dataframes for FP per game
 df_train_orig, df_predict_orig = get_train_predict(df, breakout_metric, pos, set_pos, set_year-pos[set_pos]['test_years'], 
@@ -480,43 +480,43 @@ def calc_f1_score(**args):
     y_rolls = np.array([])
     y_cvs = np.array([])
     
-#     #==============
-#     # K-Fold Holdout Validation Loop for Optimization
-#     #==============
+    #==============
+    # K-Fold Holdout Validation Loop for Optimization
+    #==============
     
-#     skf = StratifiedKFold(n_splits=5, random_state=i*3+i*13+12, shuffle=True)
-#     for train_index, test_index in skf.split(df_train_orig, df_train_orig.year):
+    skf = StratifiedKFold(n_splits=5, random_state=i*3+i*13+12, shuffle=True)
+    for train_index, test_index in skf.split(df_train_orig, df_train_orig.year):
         
-#         train_fold, holdout = df_train.iloc[train_index, :], df_train.iloc[test_index, :]
-#         train_fold = train_fold.sort_values(by='year').reset_index(drop=True)
+        train_fold, holdout = df_train.iloc[train_index, :], df_train.iloc[test_index, :]
+        train_fold = train_fold.sort_values(by='year').reset_index(drop=True)
 
-#         for m in years:
+        for m in years:
 
-#             # create training set for all previous years and validation set for current year
-#             train_split = train_fold[train_fold.year < m]
-#             cv_split = train_fold[train_fold.year == m]
+            # create training set for all previous years and validation set for current year
+            train_split = train_fold[train_fold.year < m]
+            cv_split = train_fold[train_fold.year == m]
 
-#             # set up the estimator
-#             estimator.set_params(**args)
-#             estimator.class_weight = {0: zero_weight, 1: 1}
+            # set up the estimator
+            estimator.set_params(**args)
+            estimator.class_weight = {0: zero_weight, 1: 1}
 
-#             # splitting the train and validation sets into X_train, y_train, X_val and y_val
-#             X_train, X_cv, y_train, y_cv = X_y_split(train_split, cv_split, scale, pca, n_components)
+            # splitting the train and validation sets into X_train, y_train, X_val and y_val
+            X_train, X_cv, y_train, y_cv = X_y_split(train_split, cv_split, scale, pca, n_components)
 
-#             if use_smote:
-#                 knn = int(len(y_train[y_train==1])*0.5)
-#                 smt = SMOTE(k_neighbors=knn, random_state=1234)
+            if use_smote:
+                knn = int(len(y_train[y_train==1])*0.5)
+                smt = SMOTE(k_neighbors=knn, random_state=1234)
 
-#                 X_train, y_train = smt.fit_resample(X_train.values, y_train)
-#                 X_cv = X_cv.values
+                X_train, y_train = smt.fit_resample(X_train.values, y_train)
+                X_cv = X_cv.values
 
-#             # train the estimator and get predictions
-#             estimator.fit(X_train, y_train)
-#             cv_predict = estimator.predict(X_cv)
+            # train the estimator and get predictions
+            estimator.fit(X_train, y_train)
+            cv_predict = estimator.predict(X_cv)
 
-#             # append the predictions
-#             cv_predictions = np.append(cv_predictions, cv_predict, axis=0)
-#             y_cvs = np.append(y_cvs, y_cv, axis=0)
+            # append the predictions
+            cv_predictions = np.append(cv_predictions, cv_predict, axis=0)
+            y_cvs = np.append(y_cvs, y_cv, axis=0)
 
     #=============
     # Full Validation Loop Train and Predict
@@ -571,11 +571,11 @@ def calc_f1_score(**args):
     # Calculate Error Metrics and Prepare Export
     #==========
     
-    cv_score = None#round(-matthews_corrcoef(cv_predictions, y_cvs), 3)
+    cv_score = round(-matthews_corrcoef(cv_predictions, y_cvs), 3)
     roll_score = round(-matthews_corrcoef(roll_predictions, y_rolls), 3)
     test_score = round(-matthews_corrcoef(test_predict, y_test), 3)
     
-    opt_score = round(np.mean([roll_score]), 3)
+    opt_score = round(np.mean([roll_score, cv_score]), 3)
     
     if opt_score < globals()['best_opt']:
         globals()['best_opt'] = opt_score
@@ -607,7 +607,7 @@ models_list = []
 
 skip_years = pos[set_pos]['skip_years']
 
-for m_num, model in enumerate(list(class_models.keys())[1:]):
+for m_num, model in enumerate(list(class_models.keys())):
     
     cnter = 0
 
@@ -927,7 +927,7 @@ def calc_rmse(**args):
     
     roll_score = round(np.sqrt(mean_squared_error(roll_predictions, y_rolls)), 3)
     cv_score = round(np.sqrt(mean_squared_error(cv_predictions, y_cvs)), 3)
-    opt_score = round(np.mean([cv_score, roll_score]), 3)
+    opt_score = round(np.mean([roll_score, cv_score]), 3)
     
     val_adp_score = round(np.sqrt(mean_squared_error(adp_predictions, y_rolls)))
         
