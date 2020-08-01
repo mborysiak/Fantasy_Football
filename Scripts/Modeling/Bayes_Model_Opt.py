@@ -25,7 +25,7 @@ from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier 
 from sklearn.linear_model import Ridge, Lasso, ElasticNet, LogisticRegression
 from sklearn.neighbors import KNeighborsRegressor, KNeighborsClassifier
-from sklearn.metrics import mean_absolute_error, mean_squared_error, f1_score, matthews_corrcoef
+from sklearn.metrics import mean_absolute_error, mean_squared_error, f1_score, matthews_corrcoef, r2_score
 from sklearn.model_selection import train_test_split
 from sqlalchemy import create_engine
 import random
@@ -41,6 +41,7 @@ from sklearn.utils.testing import ignore_warnings
 from sklearn.exceptions import ConvergenceWarning
 import warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning) 
+warnings.filterwarnings("ignore", category=UserWarning) 
 
 from zHelper_Functions import *
 
@@ -123,6 +124,11 @@ pos['RB']['minimizer'] = 'forest_minimize'
 pos['WR']['minimizer'] = 'gp_minimize'
 pos['TE']['minimizer'] = 'gp_minimize'
 
+pos['QB']['test_years'] = 3
+pos['RB']['test_years'] = 3
+pos['WR']['test_years'] = 3
+pos['TE']['test_years'] = 3
+
 pos['QB']['use_ay'] = False
 pos['RB']['use_ay'] = False
 pos['WR']['use_ay'] = False
@@ -139,14 +145,17 @@ output = pd.DataFrame({
     'skip_years': [pos[set_pos]['skip_years']],
     'use_ay': [pos[set_pos]['use_ay']],
     'features': [pos[set_pos]['features']],
-    'minimizer': pos[set_pos]['minimizer'],
+    'minimizer': [pos[set_pos]['minimizer']],
     'adp_ppg_low': [None],
     'adp_ppg_high': [None],
+    'test_years': [pos[set_pos]['test_years']],
     'model': [None],
     'rmse_validation': [None],
     'rmse_validation_adp': [None],
-    'r2_validation': [None],
-    'r2_validation_adp': [None]
+    'rmse_test': [None],
+    'rmse_test_adp': [None],
+    'r2_test': [None],
+    'r2_test_adp': [None]
 })
 
 output_class = pd.DataFrame({
@@ -165,8 +174,10 @@ output_class = pd.DataFrame({
     'pct_off': [None], 
     'adp_ppg_low': [None],
     'adp_ppg_high': [None],
+    'test_years': [pos[set_pos]['test_years']],
     'model': [None],
-    'score': [None]
+    'val_score': [None],
+    'test_score': [None]
 })
 
 def save_pickle(obj, filename, protocol=-1):
@@ -214,13 +225,14 @@ df = calculate_fp(df, pts_dict, pos=set_pos).reset_index(drop=True)
 #==============
 
 breakout_metric = 'fp_per_game'
-act_ppg = '>=0'
-pct_off = '>0.2'
+act_ppg = '>=14'
+pct_off = '>0.15'
 adp_ppg_high = '<100'
-adp_ppg_low = '>=10'
+adp_ppg_low = '>=11'
 
 # get the train and prediction dataframes for FP per game
-df_train_orig, df_predict_orig = get_train_predict(df, breakout_metric, pos, set_pos, set_year-2, pos[set_pos]['earliest_year'], pos[set_pos]['features'])
+df_train_orig, df_predict_orig = get_train_predict(df, breakout_metric, pos, set_pos, set_year-pos[set_pos]['test_years'], 
+                                                   pos[set_pos]['earliest_year'], pos[set_pos]['features'])
 df_predict_orig['y_act'] = (df_predict_orig[pos[set_pos]['metrics']] * pts_dict[set_pos]).sum(axis=1)
 
 #-----------
@@ -274,6 +286,16 @@ print('Max Val Year:', df_train_orig.year.max())
 print('Min Test Year:', df_predict_orig.year.min())
 print('Max Test Year:', df_predict_orig.year.max())
 # -
+
+df_predict_orig[['fp_rolling',
+ 'tgt_rolling',
+ 'receptions_rolling',
+ 'total_touches_rolling',
+ 'rush_yds_rolling',
+ 'rec_yds_rolling',
+ 'rush_yd_per_game_rolling',
+ 'rec_yd_per_game_rolling',
+ 'rush_td_rolling']].head()
 
 import seaborn as sns
 idx = abs(df_train_orig.corr()['y_act'].dropna()).sort_values(ascending=False).index[:25]
@@ -453,10 +475,10 @@ def calc_f1_score(**args):
     years = years[years > np.min(years) + skip_years]
     
     # set up array to save predictions and years to iterate through
-    val_predictions = np.array([]) 
-    opt_predictions = np.array([]) 
-    y_vals = np.array([])
-    y_opts = np.array([])
+    roll_predictions = np.array([]) 
+    cv_predictions = np.array([]) 
+    y_rolls = np.array([])
+    y_cvs = np.array([])
     
 #     #==============
 #     # K-Fold Holdout Validation Loop for Optimization
@@ -472,31 +494,31 @@ def calc_f1_score(**args):
 
 #             # create training set for all previous years and validation set for current year
 #             train_split = train_fold[train_fold.year < m]
-#             opt_split = train_fold[train_fold.year == m]
+#             cv_split = train_fold[train_fold.year == m]
 
 #             # set up the estimator
 #             estimator.set_params(**args)
 #             estimator.class_weight = {0: zero_weight, 1: 1}
 
 #             # splitting the train and validation sets into X_train, y_train, X_val and y_val
-#             X_train, X_opt, y_train, y_opt = X_y_split(train_split, opt_split, scale, pca, n_components)
+#             X_train, X_cv, y_train, y_cv = X_y_split(train_split, cv_split, scale, pca, n_components)
 
 #             if use_smote:
 #                 knn = int(len(y_train[y_train==1])*0.5)
 #                 smt = SMOTE(k_neighbors=knn, random_state=1234)
 
 #                 X_train, y_train = smt.fit_resample(X_train.values, y_train)
-#                 X_opt = X_opt.values
+#                 X_cv = X_cv.values
 
 #             # train the estimator and get predictions
 #             estimator.fit(X_train, y_train)
-#             opt_predict = estimator.predict(X_opt)
+#             cv_predict = estimator.predict(X_cv)
 
 #             # append the predictions
-#             opt_predictions = np.append(opt_predictions, opt_predict, axis=0)
-#             y_opts = np.append(y_opts, y_opt, axis=0)
+#             cv_predictions = np.append(cv_predictions, cv_predict, axis=0)
+#             y_cvs = np.append(y_cvs, y_cv, axis=0)
 
-    #-=============
+    #=============
     # Full Validation Loop Train and Predict
     #==============
     
@@ -504,88 +526,71 @@ def calc_f1_score(**args):
 
         # create training set for all previous years and validation set for current year
         train_split = df_train[df_train.year < m]
-        val_split = df_train[df_train.year == m]
+        roll_split = df_train[df_train.year == m]
 
         # set up the estimator
         estimator.set_params(**args)
         estimator.class_weight = {0: zero_weight, 1: 1}
 
         # splitting the train and validation sets into X_train, y_train, X_val and y_val
-        X_train, X_val, y_train, y_val = X_y_split(train_split, val_split, scale, pca, n_components)
+        X_train, X_roll, y_train, y_roll = X_y_split(train_split, roll_split, scale, pca, n_components)
 
         if use_smote:
             knn = int(len(y_train[y_train==1])*0.5)
             smt = SMOTE(k_neighbors=knn, random_state=1234)
 
             X_train, y_train = smt.fit_resample(X_train.values, y_train)
-            X_val = X_val.values
+            X_roll = X_roll.values
 
         # train the estimator and get predictions
         estimator.fit(X_train, y_train)
-        val_predict = estimator.predict(X_val)
+        roll_predict = estimator.predict(X_roll)
 
         # append the predictions
-        val_predictions = np.append(val_predictions, val_predict, axis=0)
-        y_vals = np.append(y_vals, y_val, axis=0)
+        roll_predictions = np.append(roll_predictions, roll_predict, axis=0)
+        y_rolls = np.append(y_rolls, y_roll, axis=0)
 
         
-#     #==========
-#     # Full Model Train + Test Set Prediction
-#     #==========
+    #==========
+    # Full Model Train + Test Set Prediction
+    #==========
     
-#     # splitting the train and validation sets into X_train, y_train, X_val and y_val
-#     X_train, X_test, y_train, y_test = X_y_split(df_train, df_predict, scale, pca, n_components)
+    # splitting the train and validation sets into X_train, y_train, X_val and y_val
+    X_train, X_test, y_train, y_test = X_y_split(df_train, df_predict, scale, pca, n_components)
 
-#     if use_smote:
-#             knn = int(len(y_train[y_train==1])*0.5)
-#             smt = SMOTE(k_neighbors=knn, random_state=1234)
-#             X_train, y_train = smt.fit_resample(X_train.values, y_train)
-#             X_test = X_test.values
+    if use_smote:
+            knn = int(len(y_train[y_train==1])*0.5)
+            smt = SMOTE(k_neighbors=knn, random_state=1234)
+            X_train, y_train = smt.fit_resample(X_train.values, y_train)
+            X_test = X_test.values
 
-#     estimator.fit(X_train, y_train)
-#     test_predict = estimator.predict(X_test)
+    estimator.fit(X_train, y_train)
+    test_predict = estimator.predict(X_test)
 
     #==========
     # Calculate Error Metrics and Prepare Export
     #==========
     
-    val_score = round(-matthews_corrcoef(val_predictions, y_vals), 3)
-    opt_score = val_score#round(-matthews_corrcoef(opt_predictions, y_opts), 3)
-#     test_score = round(-matthews_corrcoef(test_predict, y_test), 3)
+    cv_score = None#round(-matthews_corrcoef(cv_predictions, y_cvs), 3)
+    roll_score = round(-matthews_corrcoef(roll_predictions, y_rolls), 3)
+    test_score = round(-matthews_corrcoef(test_predict, y_test), 3)
     
-#     m_score = round(np.mean([opt_score, val_score, test_score]), 3)
-    m_score = round(np.mean([opt_score]), 3)
-    test_score = None
-    
-    if i == 25:
-        print('\nBest Random Scores:')
-        print('OptScore:',globals()['best_opt'])
-        print('CombinedScore:', globals()['best_combined'])
+    opt_score = round(np.mean([roll_score]), 3)
     
     if opt_score < globals()['best_opt']:
         globals()['best_opt'] = opt_score
         
-        if i > 25:
-            print('\nNew Best Opt Score Found:')
-            print('OptScore:',opt_score)
-            print('ValScore:',val_score)
-            print('TestScore:', test_score)
-            print('CombinedScore:', m_score)
-        
-    if m_score < globals()['best_combined']:
-        globals()['best_combined'] = m_score
-        
-        if i > 25:
-            print('\nNew Best Combined Score Found:')
-            print('OptScore:',opt_score)
-            print('ValScore:',val_score)
-            print('TestScore:', test_score)
-            print('CombinedScore:', m_score)
+        print('\nNew Best Score Score Found:')
+        print('OptScore:', opt_score)
+        print('CVScore:', cv_score)
+        print('RollScore:',roll_score)
+        print('TestScore:', test_score)
     
     globals()['opt_scores'].append(opt_score) 
-    globals()['val_scores'].append(val_score)    
+    globals()['cv_scores'].append(cv_score)   
+    globals()['roll_scores'].append(roll_score)
     globals()['test_scores'].append(test_score)
-    globals()['combined_scores'].append(m_score)
+
     
     return opt_score
 
@@ -595,21 +600,20 @@ def calc_f1_score(**args):
 #================
     
 opt_scores = []
-val_scores = []
+cv_scores = []
+roll_scores = []
 test_scores = []
-combined_scores = []
 models_list = []
 
 skip_years = pos[set_pos]['skip_years']
 
-for m_num, model in enumerate(list(class_models.keys())):
+for m_num, model in enumerate(list(class_models.keys())[1:]):
     
-    cnter = 1
+    cnter = 0
 
     print(f'\n============= Running {model} =============\n')
 
     best_opt = 100
-    best_combined = 100
     models_list.extend([model]*100)
 
     estimator = class_models[model]
@@ -627,6 +631,12 @@ for m_num, model in enumerate(list(class_models.keys())):
     kappa = 3
     res_gp = eval(pos[set_pos]['minimizer'])(objective_class, space, n_calls=100, n_random_starts=25,
                                              random_state=bayes_seed, verbose=False, kappa=kappa, n_jobs=-1)
+    
+    # best params from the model
+    best_params_model = res_gp.x_iters[np.argmin(opt_scores[m_num*100:(m_num+1)*100])]
+
+    # best index for all score tallying
+    best_idx = m_num*100 + np.argmin(opt_scores[m_num*100:(m_num+1)*100])
 
     output_class.loc[0, 'breakout_metric'] = breakout_metric
     output_class.loc[0, 'act_ppg'] = act_ppg
@@ -635,13 +645,12 @@ for m_num, model in enumerate(list(class_models.keys())):
     output_class.loc[0, 'adp_ppg_low'] = adp_ppg_low
     output_class.loc[0, 'model'] = model
     output_class.loc[0, 'earliest_year'] = df_train_orig.year.min()
-    output_class.loc[0, 'score'] = -best_combined
+    output_class.loc[0, 'val_score'] = -opt_scores[best_idx]
+    output_class.loc[0, 'test_score'] = -test_scores[best_idx]
         
-    _ = val_results(models_list, val_scores, combined_scores, test_scores)
-
-    best_params_model = res_gp.x_iters[np.argmin(combined_scores[m_num*100:(m_num+1)*100])]
+#     _ = val_results(models_list, val_scores, combined_scores, test_scores)
     
-    print('Best Combined Score:', best_combined)
+    print('Best Opt Score:', best_opt)
     params_output = dict(zip(space_keys(space), best_params_model))
     print(params_output)
     
@@ -791,7 +800,6 @@ search_space = {
 
 # ### Define Functions
 
-# +
 @ignore_warnings(category=ConvergenceWarning)
 def calc_rmse(**args):
     
@@ -803,6 +811,10 @@ def calc_rmse(**args):
     from sklearn.metrics import mean_absolute_error
     from sklearn.metrics import mean_squared_error
     from sklearn.model_selection import StratifiedKFold
+    from sklearn.linear_model import LinearRegression
+    
+    lr = LinearRegression()
+    
     # remove the extra args not needed for modeling
     scale = True if args['scale'] == 1 else False
     pca = True if args['pca'] == 1 else False
@@ -826,40 +838,41 @@ def calc_rmse(**args):
     years = years[years > np.min(years) + skip_years]
     
     # set up array to save predictions and years to iterate through
-    val_predictions = np.array([]) 
-    opt_predictions = np.array([]) 
-    y_vals = np.array([])
-    y_opts = np.array([])
+    roll_predictions = np.array([]) 
+    cv_predictions = np.array([]) 
+    adp_predictions = np.array([])
+    y_rolls = np.array([])
+    y_cvs = np.array([])
     
-#     #==============
-#     # K-Fold Holdout Validation Loop for Optimization
-#     #==============
+    #==============
+    # K-Fold Holdout Validation Loop for Optimization
+    #==============
     
-#     skf = StratifiedKFold(n_splits=5, random_state=i*3+i*13+12, shuffle=True)
-#     for train_index, test_index in skf.split(df_train_orig, df_train_orig.year):
+    skf = StratifiedKFold(n_splits=5, random_state=i*3+i*13+12, shuffle=True)
+    for train_index, test_index in skf.split(df_train_orig, df_train_orig.year):
         
-#         train_fold, holdout = df_train.iloc[train_index, :], df_train.iloc[test_index, :]
-#         train_fold = train_fold.sort_values(by='year').reset_index(drop=True)
+        train_fold, holdout = df_train.iloc[train_index, :], df_train.iloc[test_index, :]
+        train_fold = train_fold.sort_values(by='year').reset_index(drop=True)
 
-#         for m in years:
+        for m in years:
 
-#             # create training set for all previous years and validation set for current year
-#             train_split = train_fold[train_fold.year < m]
-#             opt_split = train_fold[train_fold.year == m]
+            # create training set for all previous years and validation set for current year
+            train_split = train_fold[train_fold.year < m]
+            cv_split = train_fold[train_fold.year == m]
 
-#             # set up the estimator
-#             estimator.set_params(**args)
+            # set up the estimator
+            estimator.set_params(**args)
 
-#             # splitting the train and validation sets into X_train, y_train, X_val and y_val
-#             X_train, X_opt, y_train, y_opt = X_y_split(train_split, opt_split, scale, pca, n_components)
+            # splitting the train and validation sets into X_train, y_train, X_val and y_val
+            X_train, X_cv, y_train, y_cv = X_y_split(train_split, cv_split, scale, pca, n_components)
 
-#             # train the estimator and get predictions
-#             estimator.fit(X_train, y_train)
-#             opt_predict = estimator.predict(X_opt)
+            # train the estimator and get predictions
+            estimator.fit(X_train, y_train)
+            cv_predict = estimator.predict(X_cv)
 
-#             # append the predictions
-#             opt_predictions = np.append(opt_predictions, opt_predict, axis=0)
-#             y_opts = np.append(y_opts, y_opt, axis=0)
+            # append the predictions
+            cv_predictions = np.append(cv_predictions, cv_predict, axis=0)
+            y_cvs = np.append(y_cvs, y_cv, axis=0)
 
     #-=============
     # Full Validation Loop Train and Predict
@@ -869,104 +882,84 @@ def calc_rmse(**args):
 
         # create training set for all previous years and validation set for current year
         train_split = df_train[df_train.year < m]
-        val_split = df_train[df_train.year == m]
+        roll_split = df_train[df_train.year == m]
 
         # splitting the train and validation sets into X_train, y_train, X_val and y_val
-        X_train, X_val, y_train, y_val = X_y_split(train_split, val_split, scale, pca, n_components)
+        X_train, X_roll, y_train, y_roll = X_y_split(train_split, roll_split, scale, pca, n_components)
 
         # train the estimator and get predictions
         estimator.fit(X_train, y_train)
-        val_predict = estimator.predict(X_val)
-
+        roll_predict = estimator.predict(X_roll)
+         
         # append the predictions
-        val_predictions = np.append(val_predictions, val_predict, axis=0)
-        y_vals = np.append(y_vals, y_val, axis=0)
-
+        roll_predictions = np.append(roll_predictions, roll_predict, axis=0)
         
-#     #==========
-#     # Full Model Train + Test Set Prediction
-#     #==========
+        #--------------
+        # Create ADP rolling predictions
+        #--------------
+        
+        # append the y rolling values
+        y_rolls = np.append(y_rolls, y_roll, axis=0)
+        
+        # splitting the train and validation sets into X_train, y_train, X_val and y_val
+        X_train, X_adp, y_train, y_adp = X_y_split(train_split, roll_split, False, False, n_components)
+        lr.fit(X_train.avg_pick.values.reshape(-1,1), y_train)
+        adp_predict = lr.predict(X_adp.avg_pick.values.reshape(-1,1))
+        adp_predictions = np.append(adp_predictions, adp_predict, axis=0)
+        
+    #==========
+    # Full Model Train + Test Set Prediction
+    #==========
     
-#     # splitting the train and validation sets into X_train, y_train, X_val and y_val
-#     X_train, X_test, y_train, y_test = X_y_split(df_train, df_predict, scale, pca, n_components)
-
-#     estimator.fit(X_train, y_train)
-#     test_predict = estimator.predict(X_test)
-
+    # splitting the train and validation sets into X_train, y_train, X_val and y_val
+    X_train, X_test, y_train, y_test = X_y_split(df_train, df_predict, False, False, n_components)
+    lr.fit(X_train.avg_pick.values.reshape(-1,1), y_train)
+    test_adp = lr.predict(X_test.avg_pick.values.reshape(-1,1))
+    
+    # splitting the train and validation sets into X_train, y_train, X_val and y_val
+    X_train, X_test, y_train, y_test = X_y_split(df_train, df_predict, scale, pca, n_components)
+    estimator.fit(X_train, y_train)
+    test_predict = estimator.predict(X_test)
+    
     #==========
     # Calculate Error Metrics and Prepare Export
     #==========
     
-    val_score = round(np.sqrt(mean_squared_error(val_predictions, y_vals)), 3)
-    opt_score = val_score#round(np.sqrt(mean_squared_error(opt_predictions, y_opts)), 3)
-    test_score = None#round(np.sqrt(mean_squared_error(test_predict, y_test)), 3)
+    roll_score = round(np.sqrt(mean_squared_error(roll_predictions, y_rolls)), 3)
+    cv_score = round(np.sqrt(mean_squared_error(cv_predictions, y_cvs)), 3)
+    opt_score = round(np.mean([cv_score, roll_score]), 3)
     
-#     m_score = round(np.mean([opt_score, val_score, test_score]), 3)
-    m_score = round(np.mean([opt_score, val_score]), 3)
-
-    if i == 25:
-        print('\nBest Random Scores:')
-        print('OptScore:',globals()['best_opt'])
-        print('CombinedScore:', globals()['best_combined'])
+    val_adp_score = round(np.sqrt(mean_squared_error(adp_predictions, y_rolls)))
+        
+    test_score = round(np.sqrt(mean_squared_error(test_predict, y_test)), 3)
+    test_adp_score = round(np.sqrt(mean_squared_error(test_adp, y_test)), 3)
+    
+    test_r2 = round(r2_score(y_test, test_predict), 3)
+    test_adp_r2 = round(r2_score(y_test, test_adp), 3)
     
     if opt_score < globals()['best_opt']:
         globals()['best_opt'] = opt_score
-        
-        if i > 25:
-            print('\nNew Best Opt Score Found:')
-            print('OptScore:',opt_score)
-            print('ValScore:',val_score)
-            print('TestScore:', test_score)
-            print('CombinedScore:', m_score)
-        
-    if m_score < globals()['best_combined']:
-        globals()['best_combined'] = m_score
-        
-        if i > 25:
-            print('\nNew Best Combined Score Found:')
-            print('OptScore:',opt_score)
-            print('ValScore:',val_score)
-            print('TestScore:', test_score)
-            print('CombinedScore:', m_score)
-    
+
+        print('\nNew Best Opt Score Found:')
+        print('OptScore:',opt_score)
+        print('CVScore:',cv_score)
+        print('RollScore:',roll_score)
+        print('ValAdpScore', val_adp_score)
+        print('TestScore:', test_score)
+        print('TestADPScore:', test_adp_score)
+        print('Test R2:', test_r2)
+        print('ADP R2:', test_adp_r2)
+
     globals()['opt_scores'].append(opt_score) 
-    globals()['val_scores'].append(val_score)    
+    globals()['val_adp_scores'].append(val_adp_score) 
     globals()['test_scores'].append(test_score)
-    globals()['combined_scores'].append(m_score)
+    globals()['test_adp_scores'].append(test_adp_score)
+    
+    globals()['test_r2'].append(test_r2)
+    globals()['test_adp_r2'].append(test_adp_r2)
     
     return opt_score
 
-
-@ignore_warnings(category=ConvergenceWarning)
-def run_best_model(model, p, skip_years):
-    
-    corr_cut = p['corr_cutoff']
-    col_cut= p['collinear_cutoff']
-    scale = p['scale']
-    pca = p['pca']
-    n_components = p['n_components']
-    
-    model_p = {}
-    for k, v in p.items():
-        if k not in ['corr_cutoff', 'collinear_cutoff', 'scale', 'pca', 'n_components']:
-            model_p[k] = v
-
-    est = models[model]
-    est.set_params(**model_p)
-    print(est)
-    print(corr_cut)
-    print(col_cut)
-    print(scale)
-    print(pca)
-    print(n_components)
-    result, val_pred, ty_pred, trained_est, cols = validation(est,  df_train, df_predict, corr_cut, col_cut, 
-                                                              skip_years=skip_years,  scale=scale, pca=pca, 
-                                                              n_components=n_components)
-
-    return result, val_pred, ty_pred, trained_est, cols
-
-
-# -
 
 # ### Get Optimal Parameters
 
@@ -976,9 +969,11 @@ def run_best_model(model, p, skip_years):
 #================
     
 opt_scores = []
-val_scores = []
+val_adp_scores = []
 test_scores = []
-combined_scores = []
+test_adp_scores = []
+test_r2 = []
+test_adp_r2 = []
 models_list = []
 
 for metric in ['fp_per_game']:#pos[set_pos]['metrics']:
@@ -989,7 +984,7 @@ for metric in ['fp_per_game']:#pos[set_pos]['metrics']:
         met = metric
     
     # get the train and predict dataframes
-    df_train, df_predict = get_train_predict(df, met, pos, set_pos, set_year-2, 
+    df_train, df_predict = get_train_predict(df, met, pos, set_pos, set_year-pos[set_pos]['test_years'], 
                                              pos[set_pos]['earliest_year'], pos[set_pos]['features'])
     df_predict['y_act'] = (df_predict[pos[set_pos]['metrics']] * pts_dict[set_pos]).sum(axis=1)
 
@@ -1001,7 +996,6 @@ for metric in ['fp_per_game']:#pos[set_pos]['metrics']:
     if metric == 'pct_off':
         df_train['y_act'] = df_train.pct_off
         
-    print(df_train.y_act)
     # filter based on adp predict
     df_train = df_train[(eval(f'df_train.avg_pick_pred{adp_ppg_low}')) & (eval(f'df_train.avg_pick_pred{adp_ppg_high}'))].reset_index(drop=True).drop(['pct_off'], axis=1)
     df_predict = df_predict[(eval(f'df_predict.avg_pick_pred{adp_ppg_high}')) & (eval(f'df_predict.avg_pick_pred{adp_ppg_low}'))].reset_index(drop=True)
@@ -1022,7 +1016,6 @@ for metric in ['fp_per_game']:#pos[set_pos]['metrics']:
         print(f'\n============= Running {model} =============\n')
 
         best_opt = 100
-        best_combined = 100
         models_list.extend([model]*100)
         
         # get the estimator and search params
@@ -1042,27 +1035,33 @@ for metric in ['fp_per_game']:#pos[set_pos]['metrics']:
 
         res_gp = eval(pos[set_pos]['minimizer'])(objective, space, n_calls=100, n_random_starts=25, x0=x0,
                             random_state=1234, verbose=False, kappa=2., n_jobs=-1)
-        
+        print('finished')
         params_output = dict(zip(space_keys(space), res_gp.x))
-        result, _, _, _, _ = run_best_model(model, params_output, skip_years)
+        
+         # best params from the model
+        best_params_model = res_gp.x_iters[np.argmin(opt_scores[m_num*100:(m_num+1)*100])]
 
+        # best index for all score tallying
+        best_iter = m_num*100 + np.argmin(opt_scores[m_num*100:(m_num+1)*100])
+        
+        print('finished2')
         output.loc[0, 'metric'] = metric
         output.loc[0, 'model'] = model
-        output.loc[0, 'rmse_validation'] = result[2]
-        output.loc[0, 'rmse_validation_adp'] = result[3]
-        output.loc[0, 'r2_validation'] = result[0]
-        output.loc[0, 'r2_validation_adp'] = result[1]
+        output.loc[0, 'rmse_validation'] = opt_scores[best_iter]
+        output.loc[0, 'rmse_validation_adp'] = val_adp_scores[best_iter]
+        output.loc[0, 'rmse_test'] = test_scores[best_iter]
+        output.loc[0, 'rmse_test_adp'] = test_adp_scores[best_iter]
+        output.loc[0, 'r2_test'] = test_r2[best_iter]
+        output.loc[0, 'r2_test_adp'] = test_adp_r2[best_iter]
         output.loc[0, 'earliest_year'] = df_train_orig.year.min()
         output.loc[0, 'adp_ppg_low'] = adp_ppg_low
         output.loc[0, 'adp_ppg_high'] = adp_ppg_high
         
-        # print out the validation results
-        _ = val_results(models_list, val_scores, combined_scores, test_scores)
 
-        # get the best model params
-        best_params_model = res_gp.x_iters[np.argmin(combined_scores[m_num*100:(m_num+1)*100])]
 
-        print('Best Combined Score:', best_combined)
+#         # print out the validation results
+#         _ = val_results(models_list, opt_scores, opt_scores, test_scores)
+
         params_output = dict(zip(space_keys(space), best_params_model))
         print(params_output)
         

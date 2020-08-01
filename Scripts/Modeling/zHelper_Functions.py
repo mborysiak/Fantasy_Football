@@ -625,7 +625,6 @@ def error_compare(df):
     return [r_sq_pred, r_sq_adp, rmse_pred, rmse_adp]
 
 
-
 def validation(estimator, df_train_orig, df_predict, corr_cutoff, collinear_cutoff, 
                skip_years=2, scale=False, pca=False, n_components=0.5):
 
@@ -907,7 +906,7 @@ def class_validation(estimator, df_train_orig, df_predict, collinear_cutoff, use
     
     pred_cols = list(df_train.columns)
     pred_cols.remove('y_act')
-    X_train, X_val, y_train, _ = X_y_split(df_train, df_predict[pred_cols], scale, pca)
+    X_train, X_val, y_train, _ = X_y_split(df_train, df_predict[pred_cols], scale, pca, n_components)
     output_cols = list(X_train.columns)
 
     # fit training data and creating prediction based on validation data
