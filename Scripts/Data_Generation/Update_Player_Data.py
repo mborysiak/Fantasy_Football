@@ -17,6 +17,7 @@
 
 # +
 import sqlite3
+import os
 
 # last year's statistics and adp to pull and append to database
 year = 2019
@@ -26,7 +27,7 @@ update = True
 
 # name of database to append new data to
 db_name = 'Season_Stats'
-db_path = '/Users/Mark/Documents/GitHub/Fantasy_Football/Data/Databases/'
+db_path = f'/Users/{os.getlogin()}/Documents/GitHub/Fantasy_Football/Data/Databases/'
 conn = sqlite3.connect(db_path + db_name + '.sqlite3')
 # -
 
@@ -373,9 +374,6 @@ lamar['total_yds_per_game'] = lamar.total_yds / lamar.games
 # guice.year = 2018
 
 df_rb = pd.concat([df_rb, pd.DataFrame(lamar).T, pd.DataFrame(jerick).T], axis=0).reset_index(drop=True)
-# -
-
-df_rb
 
 # +
 #==========
@@ -383,11 +381,6 @@ df_rb
 #==========
 
 df_rb = merge_stats_adp(df_rb, df_adp_rush)
-
-# +
-# update_oak = pd.read_sql_query('''SELECT * FROM RB_Stats''', conn)
-# update_oak.loc[update_oak.team=='OAK', 'team'] = 'LVR'
-# append_to_db(update_oak, 'Season_Stats', 'RB_Stats', 'replace')
 
 # +
 #==========
@@ -633,11 +626,9 @@ df_wr.loc[:, 'age'] = np.log(df_wr.age)
 df_wr = df_wr.sort_values(by=['year', 'avg_pick'], ascending=[False, True]).reset_index(drop=True)
 # -
 
-df_wr
-
-# conn.cursor().execute('''delete from wr_stats where year={}'''.format(year))
-# conn.commit()
-# append_to_db(df_wr, db_name='Season_Stats.sqlite3', table_name='WR_Stats', if_exist='append')
+conn.cursor().execute('''delete from wr_stats where year={}'''.format(year))
+conn.commit()
+append_to_db(df_wr, db_name='Season_Stats', table_name='WR_Stats', if_exist='append')
 
 # # Update QB
 
@@ -682,6 +673,7 @@ colnames_pass = {
     'TD%': 'qb_td_pct',
     'Int': 'int',
     'Int%': 'int_pct',
+    '1D': 'first_downs',
     'Lng': 'qb_long',
     'Y/A': 'yd_per_att',
     'AY/A': 'adj_yd_per_att',
@@ -700,6 +692,7 @@ colnames_pass = {
 
 # rename columns
 df_qb = df_qb.rename(columns=colnames_pass)
+df_qb = df_qb.drop('first_downs', axis=1)
 
 # cleaning player name and stat categories
 df_qb['player'] = df_qb.player.apply(name_clean)
@@ -747,7 +740,7 @@ df_qb = df_qb[['player', 'pos', 'team', 'year', 'qb_avg_pick', 'qb_age', 'qb_gam
                'fourth_qt_comeback', 'game_winning_drives']]
 
 # merge rushing stats
-df_qb = pd.merge(df_qb, df_rush.drop(['team', 'age', 'pos', 'games', 'games_started'], axis=1), 
+df_qb = pd.merge(df_qb, df_rush.drop(['team', 'age', 'pos', 'games', 'games_started', 'first_downs'], axis=1), 
                  how='inner', left_on=['player', 'year'], right_on=['player', 'year'])
 
 # +
@@ -827,12 +820,12 @@ df_qb = df_qb.sort_values(['year', 'qb_avg_pick'], ascending=[False, True]).rese
 
 # conn.cursor().execute('''delete from qb_stats where year={}'''.format(year))
 # conn.commit()
-# append_to_db(df_qb, db_name='Season_Stats.sqlite3', table_name='QB_Stats', if_exist='append')
+# append_to_db(df_qb, db_name='Season_Stats', table_name='QB_Stats', if_exist='append')
 
 # # Update TE
 
 # pull TE ADP
-url_adp_te = 'http://www03.myfantasyleague.com/' + str(year+1) + '/adp?COUNT=64&POS=TE&ROOKIES=0&INJURED=1&CUTOFF=5&FRANCHISES=-1&IS_PPR=-1&IS_KEEPER=0&IS_MOCK=-1&TIME='
+url_adp_te = f'https://api.myfantasyleague.com/{year+1}/reports?R=ADP&POS=TE&ROOKIES=0&INJURED=1&CUTOFF=5&FCOUNT=0&IS_PPR=3&IS_KEEPER=N&IS_MOCK=1&PERIOD=JULY'
 data_adp_te = pd.read_html(url_adp_te)[1]
 
 # +
@@ -841,27 +834,27 @@ data_adp_te = pd.read_html(url_adp_te)[1]
 #==========
 
 df_adp_te = clean_adp(data_adp_te, year)
+# -
 
-# +
-hunter = df_rec[df_rec.pos == 'TE'].reset_index(drop=True).iloc[3:8].mean()
-hunter['player'] = 'Hunter Henry'
-hunter['team'] = 'LAC'
-hunter['age'] = 24
-hunter['pos'] = 'TE'
-hunter = hunter[df_rec.columns]
-df_rec = pd.concat([df_rec, pd.DataFrame(hunter).T], axis=0)
-
-hunter_rz = rz_rec[rz_rec.player.isin(df_rec[df_rec.pos == 'TE'].player[3:8])].reset_index(drop=True)
-for col in hunter_rz.columns:
-    try:
-        hunter_rz[col] = hunter_rz[col].astype('float')
-    except:
-        pass
-    
-hunter_rz = hunter_rz.mean()
-hunter_rz['player'] = 'Hunter Henry'
-hunter_rz = hunter_rz[rz_rec.columns]
-rz_rec = pd.concat([rz_rec, pd.DataFrame(hunter_rz).T], axis=0)
+# hunter = df_rec[df_rec.pos == 'TE'].reset_index(drop=True).iloc[3:8].mean()
+# hunter['player'] = 'Hunter Henry'
+# hunter['team'] = 'LAC'
+# hunter['age'] = 24
+# hunter['pos'] = 'TE'
+# hunter = hunter[df_rec.columns]
+# df_rec = pd.concat([df_rec, pd.DataFrame(hunter).T], axis=0)
+#
+# hunter_rz = rz_rec[rz_rec.player.isin(df_rec[df_rec.pos == 'TE'].player[3:8])].reset_index(drop=True)
+# for col in hunter_rz.columns:
+#     try:
+#         hunter_rz[col] = hunter_rz[col].astype('float')
+#     except:
+#         pass
+#     
+# hunter_rz = hunter_rz.mean()
+# hunter_rz['player'] = 'Hunter Henry'
+# hunter_rz = hunter_rz[rz_rec.columns]
+# rz_rec = pd.concat([rz_rec, pd.DataFrame(hunter_rz).T], axis=0)
 
 # +
 #==========
@@ -916,6 +909,8 @@ df_te.loc[:, 'age'] = np.log(df_te.age)
 df_te = df_te.sort_values(by=['year', 'avg_pick'], ascending=[False, True]).reset_index(drop=True)
 # -
 
-conn.cursor().execute('''delete from te_stats where year={}'''.format(year))
-conn.commit()
-append_to_db(df_te, db_name='Season_Stats.sqlite3', table_name='TE_Stats', if_exist='append')
+# conn.cursor().execute('''delete from te_stats where year={}'''.format(year))
+# conn.commit()
+# append_to_db(df_te, db_name='Season_Stats', table_name='TE_Stats', if_exist='append')
+
+

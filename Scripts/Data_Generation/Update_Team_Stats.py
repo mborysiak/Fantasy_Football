@@ -16,10 +16,10 @@
 # # User Inputs
 
 # +
-year = 2018
+year = 2019
 
 path = '/Users/Mark/Documents/Github/Fantasy_Football/'
-db_name = 'Season_Stats.sqlite3'
+db_name = 'Season_Stats'
 # -
 
 # # Load Packages
@@ -96,7 +96,8 @@ team_convert = {
     'NO': 'NOR',
     'NYG': 'NYG',
     'NYJ': 'NYJ',
-    'OAK': 'OAK',
+    'OAK': 'LVR',
+    'LVR': 'LVR',
     'PHI': 'PHI',
     'PIT': 'PIT',
     'SEA': 'SEA',
@@ -184,7 +185,8 @@ team_to_abb = {
     'New Orleans Saints': 'NOR',
     'New York Giants NY': 'NYG',
     'New York Jets NY': 'NYJ',
-    'Oakland Raiders': 'OAK',
+    'Oakland Raiders': 'LVR',
+    'Las Vegas Raiders': 'LVR',
     'Philadelphia Eagles': 'PHI',
     'Pittsburgh Steelers': 'PIT',
     'Seattle Seahawks': 'SEA',
@@ -287,9 +289,13 @@ df_team['total_tm_yds'] = df_team.tm_pass_yds + df_team.tm_rush_yds
 df_team.iloc[:, 1:] = df_team.iloc[:, 1:].astype('float')
 # -
 
+df_team
+
 # append_to_db(df_team, db_name=db_name, table_name='Team_Offensive_Stats', if_exist='append')
 
 # # Update Offensive Line
+
+[c[1] for c in oline.columns]
 
 # +
 oline = pd.read_html('https://www.footballoutsiders.com/stats/ol')[0]
@@ -309,9 +315,10 @@ cols = {
     9: 'second_level_rank',
     10: 'open_field_yds',
     11: 'open_field_rank',
-    12: 'pass_block_rank', 
-    13: 'sacks_allowed', 
-    14: 'adjusted_sack_rate'
+    12: 'team_drop',
+    13: 'pass_block_rank', 
+    14: 'sacks_allowed', 
+    15: 'adjusted_sack_rate'
 }
 
 oline_df = oline_df.rename(columns=cols)
@@ -354,7 +361,8 @@ team_convert = {
     'NO': 'NOR',
     'NYG': 'NYG',
     'NYJ': 'NYJ',
-    'OAK': 'OAK',
+    'LVR': 'LVR',
+    'OAK': 'LVR',
     'PHI': 'PHI',
     'PIT': 'PIT',
     'SEA': 'SEA',
@@ -374,7 +382,7 @@ for col in oline_df.columns:
 oline_df = oline_df.dropna()
 # -
 
-# append_to_db(oline_df, db_name=db_name, table_name='OLine_Stats', if_exist='append')
+append_to_db(oline_df, db_name=db_name, table_name='OLine_Stats', if_exist='append')
 
 # # QB for Position Players
 
@@ -388,7 +396,7 @@ url_player = 'https://www.pro-football-reference.com/years/' + str(year) + '/pas
 data_player = pd.read_html(url_player)[0]
 
 # pulling historical player adp
-url_adp_qb = 'http://www03.myfantasyleague.com/' + str(year+1) + '/adp?COUNT=100&POS=QB&ROOKIES=0&INJURED=1&CUTOFF=1&FRANCHISES=-1&IS_PPR=-1&IS_KEEPER=-1&IS_MOCK=-1&TIME='
+url_adp_qb = f'https://www71.myfantasyleague.com/{year+1}/reports?R=ADP&POS=QB&ROOKIES=0&INJURED=1&CUTOFF=5&FCOUNT=0&IS_PPR=3&IS_KEEPER=N&IS_MOCK=1&PERIOD=JULY'
 data_adp_qb = pd.read_html(url_adp_qb)[1]
 
 # +
@@ -415,6 +423,7 @@ colnames_pass = {
     'TD%': 'qb_td_pct',
     'Int': 'int',
     'Int%': 'int_pct',
+    '1D': 'first_downs',
     'Lng': 'qb_long',
     'Y/A': 'yd_per_att',
     'AY/A': 'adj_yd_per_att',
@@ -451,6 +460,62 @@ for col in df_player.columns:
         df_player[col] = df_player[col].astype('float')
     except:
         pass
+
+# +
+#==========
+# Clean the ADP data
+#==========
+
+'''
+Cleaning the ADP data by selecting relevant features, and extracting the name and team
+from the combined string column. Note that the year is not shifted back because the 
+stats will be used to calculate FP/G for the rookie in that season, but will be removed
+prior to training. Thus, the ADP should match the year from the stats.
+'''
+
+def clean_adp(data_adp, year):
+
+    #--------
+    # Select relevant columns and clean special figures
+    #--------
+
+    data_adp['year'] = year
+
+    # set column names to what they are after pulling
+    df_adp = data_adp.iloc[:, 1:].rename(columns={
+        1: 'Player', 
+        2: 'Avg Pick',
+        3: 'Min Pick',
+        4: 'Max Pick',
+        5: '# Drafts Selected In'
+    })
+
+    # selecting relevant columns and dropping na
+    df_adp = df_adp[['Player', 'year', 'Avg Pick']].dropna()
+
+    # convert year to float and move back one year to match with stats
+    df_adp['year'] = df_adp.year.astype('float')
+
+    # selecting team and player name information from combined string
+    df_adp['Tm'] = df_adp.Player.apply(team_select)
+    df_adp['Player'] = df_adp.Player.apply(name_select)
+    df_adp['Player'] = df_adp.Player.apply(name_clean)
+    df_adp = df_adp[df_adp.Player != '1 Page:']
+    
+    # format and rename columns
+    df_adp = df_adp[['Player', 'Tm', 'year', 'Avg Pick']]
+
+    colnames_adp = {
+        'Player': 'player',
+        'Tm': 'team',
+        'year': 'year',
+        'Avg Pick': 'avg_pick'
+    }
+
+    df_adp = df_adp.rename(columns=colnames_adp)
+    
+    return df_adp
+
 
 # +
 #==========
@@ -500,7 +565,8 @@ adp_to_player_teams = {
     'NOS': 'NOR',
     'NYG': 'NYG',
     'NYJ': 'NYJ',
-    'OAK': 'OAK',
+    'OAK': 'LVR',
+    'LVR': 'LVR',
     'PHI': 'PHI',
     'PIT': 'PIT',
     'SEA': 'SEA',
@@ -580,7 +646,7 @@ grouped_df.columns = grouped_df.columns.droplevel(1)
 grouped_df = grouped_df.rename(columns={'qb_att': 'att'})
 # -
 
-# append_to_db(grouped_df, db_name=db_name, table_name='QB_PosPred', if_exist='append')
+append_to_db(grouped_df, db_name=db_name, table_name='QB_PosPred', if_exist='append')
 
 # # Coaching Data
 

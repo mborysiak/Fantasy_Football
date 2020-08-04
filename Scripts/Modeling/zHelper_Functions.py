@@ -60,7 +60,7 @@ pos['RB']['med_features'] = ['fp', 'tgt', 'receptions', 'total_touches', 'rush_y
 
 # sum feature categories
 pos['RB']['sum_features'] = ['total_touches', 'att', 'total_yds', 'rush_td', 'fp', 'rec_yds', 
-                             'rush_yds', 'qb_yds']
+                             'rush_yds', 'qb_yds', 'avg_pick']
 
 # max feature categories
 pos['RB']['max_features'] = ['fp', 'rush_td', 'tgt', 'rush_yds', 'rec_yds', 'total_yds', 
@@ -192,7 +192,7 @@ pos['TE']['med_features'] = ['fp', 'tgt', 'receptions', 'rec_yds', 'rec_yd_per_g
                              'rz_10_tgt', 'rz_10_receptions', 
                             'rz_10_catch_pct', 'rz_10_rec_yds', 'rz_10_rec_tds',
                             'rec_yd_per_game_exp_diff', 'rec_per_game_exp_diff', 'td_per_game_exp_diff', 
-                            'wosp', 'wosp_exp_diff', 'wosp_exp_div', 'air_yards_exp_diff',
+                           # 'wosp', 'wosp_exp_diff', 'wosp_exp_div', 'air_yards_exp_diff',
                              'rz_20_tgt_exp_diff', 'rz_20_receptions_exp_diff']
 # sum feature categories
 pos['TE']['sum_features'] = ['receptions', 'rec_yds', 'tgt', 'rec_td', 'qb_yds']
@@ -211,7 +211,7 @@ pos['TE']['age_features'] = ['fp', 'rec_yd_per_game', 'receptions', 'tgt', 'ms_t
                              'rz_10_tgt', 'rz_10_receptions', 
                             'rz_10_catch_pct', 'rz_10_rec_yds', 'rz_10_rec_tds',
                             'rec_yd_per_game_exp_diff', 'rec_per_game_exp_diff', 'td_per_game_exp_diff', 
-                            'wosp', 'wosp_exp_diff', 'wosp_exp_div', 'air_yards_exp_diff',
+                          #  'wosp', 'wosp_exp_diff', 'wosp_exp_div', 'air_yards_exp_diff',
                              'rz_20_tgt_exp_diff', 'rz_20_receptions_exp_diff']
 
 
@@ -248,7 +248,7 @@ def add_exp_metrics(df, set_pos, use_ay=True):
     '''
     if set_pos in ['WR', 'TE']:
         if use_ay:
-            cols = ['rec_yd_per_game', 'rec_per_game', 'td_per_game', 'wosp', 'air_yards', 
+            cols = ['rec_yd_per_game', 'rec_per_game', 'td_per_game',# 'wosp', 'air_yards', 
                     'rz_20_tgt', 'rz_20_receptions', 'avg_pick', 'min_teammate']
         else:
             cols = ['rec_yd_per_game', 'rec_per_game', 'td_per_game', 
@@ -366,7 +366,7 @@ def get_train_predict(df, target, pos, set_pos, year_split, early_year, vers):
     # drop any rows that have a null target value (likely due to injuries or other missed season)
     df_train = df_train.dropna(subset=['y_act']).reset_index(drop=True)
     df_train = df_train.fillna(df_train.mean())
-    df_predict = df_predict.dropna().reset_index(drop=True)
+#     df_predict = df_predict.dropna().reset_index(drop=True)
     
     return df_train, df_predict
 
@@ -405,7 +405,7 @@ def features_target(df, set_pos, year_start, year_split, median_features, sum_fe
   #  new_df = pd.concat([new_df, pd.get_dummies(new_df.year)], axis=1, sort=False)
     
     df_train = new_df[new_df.year < year_split].reset_index(drop=True)
-    df_predict = new_df[new_df.year >= year_split].drop('y_act', axis=1).reset_index(drop=True)
+    df_predict = new_df[new_df.year >= year_split].reset_index(drop=True)
     df_train = df_train.sort_values(['year', 'fp_per_game'], ascending=True).reset_index(drop=True)
     
     return df_train, df_predict
@@ -453,7 +453,7 @@ def features_target_v2(df, set_pos, year_start, year_split, median_features, sum
     new_df = pd.concat([new_df, rolling_stats], axis=1)
 
     df_train = new_df[new_df.year < year_split].reset_index(drop=True)
-    df_predict = new_df[new_df.year >= year_split].drop('y_act', axis=1).reset_index(drop=True)
+    df_predict = new_df[new_df.year >= year_split].reset_index(drop=True)
     df_train = df_train.sort_values(['year', 'fp_per_game'], ascending=True).reset_index(drop=True)
     
     return df_train, df_predict
@@ -605,22 +605,15 @@ def X_y_split(train, val, scale=True, pca=False, n_components=0.5):
     return X_train, X_val, y_train, y_val
 
 
-def error_compare(df):
+def error_compare(pred, adp, y_act):
     
-    import numpy as np
-    from sklearn.linear_model import LinearRegression
-    from sklearn.metrics import mean_squared_error
-    import pandas as pd
-    import matplotlib.pyplot as plt
+    from sklearn.metrics import mean_squared_error, r2_score
 
-    lr = LinearRegression().fit(df.pred.values.reshape(-1,1), df.y_act)
-    r_sq_pred = round(lr.score(df.pred.values.reshape(-1,1), df.y_act), 3)
-    
-    lr = LinearRegression().fit(df.pred_adp.values.reshape(-1,1), df.y_act)
-    r_sq_adp = round(lr.score(df.pred_adp.values.reshape(-1,1), df.y_act), 3)
+    r_sq_pred = round(r2_score(y_act, pred), 3)
+    r_sq_adp = round(r2_score(y_act, adp), 3)
 
-    rmse_pred = round(np.sqrt(mean_squared_error(df.pred, df.y_act)), 3)
-    rmse_adp = round(np.sqrt(mean_squared_error(df.pred_adp, df.y_act)), 3)
+    rmse_pred = round(np.sqrt(mean_squared_error(pred, y_act)), 3)
+    rmse_adp = round(np.sqrt(mean_squared_error(adp, y_act)), 3)
 
     return [r_sq_pred, r_sq_adp, rmse_pred, rmse_adp]
 
@@ -725,7 +718,6 @@ def create_summary(results, sort_col, keep_first=False):
     return summary
 
 
-
 def test_ensemble(summary, results, n, iters, agg_type):
     '''
     Function that accepts multiple model results and averages them together to create an ensemble prediction.
@@ -777,7 +769,6 @@ def test_ensemble(summary, results, n, iters, agg_type):
     return results, ens_error
 
 
-
 def convert_to_float(df):
     for c in df.columns:
         try:
@@ -788,25 +779,31 @@ def convert_to_float(df):
     return df
 
 
-# ================
-# Breakout Classification Functions
-# ================
+def adp_filter(df, adp_ppg_low, adp_ppg_high):
+    '''Filters the dataframe to the specified adp cutoffs'''
+    
+    return df[(eval(f'df.avg_pick_pred{adp_ppg_low}')) & \
+               (eval(f'df.avg_pick_pred{adp_ppg_high}'))].reset_index(drop=True)
 
 
-def get_adp_predictions(df, year_min_int):
+#
+# # Breakout Classification Functions
+
+
+def get_adp_predictions(df_train, df_predict, year_min_int):
     
     from sklearn.linear_model import LinearRegression
     lr = LinearRegression()
 
     output = pd.DataFrame()
-    for yy in range(int(df.year.min()+year_min_int), int(df.year.max()+1)):
+    for yy in range(int(df_train.year.min()+year_min_int), int(df_train.year.max()+1)):
 
-        X = df[df.year < yy].avg_pick.values.reshape(-1, 1)
-        y = df[df.year < yy].y_act
+        X = df_train[df_train.year < yy].avg_pick.values.reshape(-1, 1)
+        y = df_train[df_train.year < yy].y_act
 
         lr.fit(X, y)
-        pred = lr.predict(df[df.year == yy].avg_pick.values.reshape(-1, 1))
-        output_tmp = df.loc[df.year == yy, ['player', 'year', 'avg_pick', 'y_act']].reset_index(drop=True)
+        pred = lr.predict(df_train[df_train.year == yy].avg_pick.values.reshape(-1, 1))
+        output_tmp = df_train.loc[df_train.year == yy, ['player', 'year', 'avg_pick', 'y_act']].reset_index(drop=True)
         output_tmp = pd.concat([output_tmp, pd.Series(pred)], axis=1)
 
         output = pd.concat([output, output_tmp], axis=0)
@@ -815,8 +812,22 @@ def get_adp_predictions(df, year_min_int):
     output['pct_off'] = (output.y_act - output.avg_pick_pred) / output.avg_pick_pred
     output = output.drop(['y_act', 'avg_pick'], axis=1)
     
-    return output, lr
+    df_train = pd.merge(df_train, output, on=['player', 'year'])
+    df_predict['avg_pick_pred'] = lr.predict(df_predict.avg_pick.values.reshape(-1,1))
+    try: df_predict['pct_off'] = (df_predict.y_act - df_predict.avg_pick_pred) / df_predict.avg_pick_pred
+    except: print('No y_act in df_predict')
+    
+    return df_train, df_predict, lr
 
+
+def class_label(df, pct_off, act_ppg):
+    '''create the label and filter based on inputs'''
+    
+    df['label'] = 0
+    df.loc[(eval(f'df.pct_off{pct_off}')) & (eval(f'df.y_act{act_ppg}')), 'label'] = 1
+    df = df.drop(['y_act', 'pct_off'], axis=1).rename(columns={'label': 'y_act'})
+    
+    return df
 
 
 def remove_classification_collinear(df, collinear_cutoff, keep_cols):
@@ -842,7 +853,6 @@ def remove_classification_collinear(df, collinear_cutoff, keep_cols):
     df = df.loc[:,~df.columns.duplicated()]
     
     return df
-
 
 
 def class_validation(estimator, df_train_orig, df_predict, collinear_cutoff, use_smote,
@@ -930,7 +940,6 @@ def class_validation(estimator, df_train_orig, df_predict, collinear_cutoff, use
     return result, val_pred, ty_pred, ty_pred_proba, estimator, output_cols
 
 
-
 def class_ensemble(summary, results, n, iters, agg_type):
     '''
     Function that accepts multiple model results and averages them together to create an ensemble prediction.
@@ -993,7 +1002,6 @@ def class_ensemble(summary, results, n, iters, agg_type):
     return results, ens_error
 
 
-
 def class_create_summary(results, keep_first=False):
     
     # create summary dataframe
@@ -1009,8 +1017,6 @@ def class_create_summary(results, keep_first=False):
         summary = summary.drop_duplicates(subset=['Model'], keep='first')
 
     return summary
-
-
 
 # ================
 # Combining Regression and Classification Models

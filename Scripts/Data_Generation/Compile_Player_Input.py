@@ -13,6 +13,8 @@
 #     name: python3
 # ---
 
+# set to 1 year prior to current (i.e. the year that has stats)
+# will auto update updates to current year for drafting
 year = 2019
 
 import sqlite3
@@ -238,7 +240,7 @@ df = draft_value(df, 'RB')
 df = qb_run(df)
 
 
-append_to_db(df, db_name='Model_Inputs', table_name='RB_' + str(year), if_exist='replace')
+append_to_db(df, db_name='Model_Inputs', table_name='RB_' + str(year+1), if_exist='replace')
 
 # # Compile WR
 
@@ -254,7 +256,7 @@ allow for grouped statistics generation.
 '''
 
 # load prepared data
-conn = sqlite3.connect('/Users/Mark/Documents/Github/Fantasy_Football/Data/Databases/Season_Stats.sqlite3')
+conn = sqlite3.connect(f'/Users/{os.getlogin()}/Documents/Github/Fantasy_Football/Data/Databases/Season_Stats.sqlite3')
 query = ''' 
     SELECT * 
     FROM WR_Stats A 
@@ -311,11 +313,10 @@ df['avail_yds_x_newteam'] = df['available_yds'] * df['new_team']
 # -
 
 df = adp_groupby(df, 'WR')
-df = year_exp(df)
+df = draft_value(df, 'WR')
 df = qb_run(df)
-df = draft_value(df)
 
-append_to_db(df, db_name='Model_Inputs.sqlite3', table_name='WR_' + str(year), if_exist='replace')
+append_to_db(df, db_name='Model_Inputs', table_name='WR_' + str(year+1), if_exist='replace')
 
 # # Compile QB
 
@@ -331,7 +332,7 @@ allow for grouped statistics generation.
 '''
 
 # load prepared data
-conn = sqlite3.connect('/Users/Mark/Documents/Github/Fantasy_Football/Data/Databases/Season_Stats.sqlite3')
+conn = sqlite3.connect(f'/Users/{os.getlogin()}/Documents/Github/Fantasy_Football/Data/Databases/Season_Stats.sqlite3')
 query = ''' 
     SELECT * 
     FROM QB_Stats A 
@@ -360,10 +361,9 @@ for col in df.columns:
         pass
 # -
 
-df = year_exp(df)
-df = draft_value(df)
+df = draft_value(df, 'QB')
 
-append_to_db(df, db_name='Model_Inputs.sqlite3', table_name='QB_' + str(year), if_exist='replace')
+append_to_db(df, db_name='Model_Inputs', table_name='QB_' + str(year+1), if_exist='replace')
 
 # # Compile TE
 
@@ -379,7 +379,7 @@ allow for grouped statistics generation.
 '''
 
 # load prepared data
-conn = sqlite3.connect('/Users/Mark/Documents/Github/Fantasy_Football/Data/Databases/Season_Stats.sqlite3')
+conn = sqlite3.connect(f'/Users/{os.getlogin()}/Documents/Github/Fantasy_Football/Data/Databases/Season_Stats.sqlite3')
 query = ''' 
     SELECT * 
     FROM TE_Stats A 
@@ -436,11 +436,10 @@ df['avail_yds_x_newteam'] = df['available_yds'] * df['new_team']
 # -
 
 df = adp_groupby(df, 'WR')
-df = year_exp(df)
+df = draft_value(df, 'TE')
 df = qb_run(df)
-df = draft_value(df)
 
-append_to_db(df, db_name='Model_Inputs.sqlite3', table_name='TE_' + str(year), if_exist='replace')
+append_to_db(df, db_name='Model_Inputs', table_name='TE_' + str(year+1), if_exist='replace')
 
 # # Compile Rookie RB
 

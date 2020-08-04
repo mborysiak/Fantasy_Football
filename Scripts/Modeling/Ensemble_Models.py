@@ -23,9 +23,9 @@ from xgboost import XGBRegressor, XGBClassifier
 from lightgbm import LGBMRegressor, LGBMClassifier
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor 
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier 
-from sklearn.linear_model import Ridge, Lasso, ElasticNet, LogisticRegression
+from sklearn.linear_model import Ridge, Lasso, ElasticNet, LogisticRegression, LinearRegression
 from sklearn.neighbors import KNeighborsRegressor, KNeighborsClassifier
-from sklearn.metrics import mean_absolute_error, mean_squared_error, f1_score, matthews_corrcoef
+from sklearn.metrics import mean_absolute_error, mean_squared_error, f1_score, matthews_corrcoef, r2_score
 from sklearn.model_selection import cross_val_score
 from sqlalchemy import create_engine
 import random
@@ -189,23 +189,28 @@ def pull_class_data(breakout_metric, adp_ppg_low, adp_ppg_high, pct_off, act_ppg
 
     # get the train and prediction dataframes for FP per game
     df_train_orig, df_predict = get_train_predict(df, breakout_metric, pos, set_pos, set_year-pos[set_pos]['test_years'], 
+                                              pos[set_pos]['earliest_year'], pos[set_pos]['features'])
+
+    # get the train and prediction dataframes for FP per game
+    df_train_orig, df_predict = get_train_predict(df, breakout_metric, pos, set_pos, set_year-pos[set_pos]['test_years'], 
                                                   pos[set_pos]['earliest_year'], pos[set_pos]['features'])
 
+    df_predict = df_predict.dropna(subset=['y_act']).reset_index(drop=True)
+
     # get the adp predictions and merge back to the training dataframe
-    df_train_adp, lr = get_adp_predictions(df_train_orig, 1)
-    df_train_orig = pd.merge(df_train_orig, df_train_adp, on=['player', 'year'])
-    df_predict['avg_pick_pred'] = lr.predict(df_predict.avg_pick.values.reshape(-1,1))
+    df_train_orig,df_predict, lr = get_adp_predictions(df_train_orig, df_predict, 1)
 
-    # create the label and filter based on inputs
-    df_train_orig['label'] = 0
-    df_train_orig.loc[(eval(f'df_train_orig.pct_off{pct_off}')) & (eval(f'df_train_orig.y_act{act_ppg}')), 'label'] = 1
-    df_train_orig = df_train_orig[(eval(f'df_train_orig.avg_pick_pred{adp_ppg_low}')) & (eval(f'df_train_orig.avg_pick_pred{adp_ppg_high}'))].reset_index(drop=True)
-    df_predict = df_predict[(eval(f'df_predict.avg_pick_pred{adp_ppg_low}')) & (eval(f'df_predict.avg_pick_pred{adp_ppg_high}'))].reset_index(drop=True)
+    # filter to adp cutoffs
+    df_train_orig = adp_filter(df_train_orig, adp_ppg_low, adp_ppg_high)
+    df_predict = adp_filter(df_predict, adp_ppg_low, adp_ppg_high)
 
-    # add in extra columns to the results dataframes
+    # create the results dataframes
     df_train_results = df_train_orig[['player', 'year', 'y_act', 'pct_off', 'avg_pick_pred']].copy()
-    df_test_results = df_predict[['player', 'year', 'avg_pick_pred']].copy()
-    df_train_orig = df_train_orig.drop(['y_act', 'pct_off'], axis=1).rename(columns={'label': 'y_act'})
+    df_test_results = df_predict[['player', 'year', 'avg_pick_pred', 'y_act']].copy()
+
+    # generate labels for prediction based on cutoffs
+    df_train_orig = class_label(df_train_orig, pct_off, act_ppg)
+    df_predict = class_label(df_predict, pct_off, act_ppg)
 
     # get the minimum number of training samples for the initial datasets
     min_samples = int(0.5*df_train_orig[df_train_orig.year <= df_train_orig.year.min() + pos[set_pos]['skip_years']].shape[0])
@@ -217,200 +222,6 @@ def pull_class_data(breakout_metric, adp_ppg_low, adp_ppg_high, pct_off, act_ppg
     print('Compiled Dataset Equals Stored Dataset?: ', df_train_orig.equals(load_pickle(f'{path}Data/Model_Datasets_Class/{str(min_rowid)}.p')))
   
     return df_train_orig, df_predict, df_train_results, df_test_results
-
-
-# +
-#==========
-# Pull and clean compiled data
-#==========
-
-# connect to database and pull in positional data
-df = pd.read_sql_query('SELECT * FROM ' + set_pos + '_' + str(set_year), con=conn)
-
-# append air yards for specified positions
-if pos[set_pos]['use_ay']:
-    ay = pd.read_sql_query('SELECT * FROM AirYards', con=sqlite3.connect(path + 'Data/Season_Stats.sqlite3'))
-    df = pd.merge(df, ay, how='inner', left_on=['player', 'year'], right_on=['player', 'year'])
-
-# apply the specified touches and game filters
-df, df_train_results, df_test_results = touch_game_filter(df, pos, set_pos, set_year)
-
-# calculate FP for a given set of scoring values
-df = calculate_fp(df, pts_dict, pos=set_pos).reset_index(drop=True)
-
-#==============
-# Create Break-out Probability Features
-#==============
-
-# get the train and prediction dataframes for FP per game
-df_train_orig, df_predict = get_train_predict(df, breakout_metric, pos, set_pos, set_year-pos[set_pos]['test_years'], 
-                                              pos[set_pos]['earliest_year'], pos[set_pos]['features'])
-
-# get the adp predictions and merge back to the training dataframe
-df_train_adp, lr = get_adp_predictions(df_train_orig, 1)
-df_train_orig = pd.merge(df_train_orig, df_train_adp, on=['player', 'year'])
-
-df_predict['avg_pick_pred'] = lr.predict(df_predict.avg_pick.values.reshape(-1,1))
-
-df_predict['y_act'] = (df_predict[pos[set_pos]['metrics']] * pts_dict[set_pos]).sum(axis=1)
-df_predict['pct_off'] = (df_predict.y_act - df_predict.avg_pick_pred) / df_predict.avg_pick_pred
-
-# create the label and filter based on inputs
-df_train_orig['label'] = 0
-df_train_orig.loc[(eval(f'df_train_orig.pct_off{pct_off}')) & (eval(f'df_train_orig.y_act{act_ppg}')), 'label'] = 1
-df_train_orig = df_train_orig[(eval(f'df_train_orig.avg_pick_pred{adp_ppg_low}')) & (eval(f'df_train_orig.avg_pick_pred{adp_ppg_high}'))].reset_index(drop=True)
-
-df_predict['label'] = 0
-df_predict.loc[(eval(f'df_predict.pct_off{pct_off}')) & (eval(f'df_predict.y_act{act_ppg}')), 'label'] = 1
-df_predict = df_predict[(eval(f'df_predict.avg_pick_pred{adp_ppg_low}')) & (eval(f'df_predict.avg_pick_pred{adp_ppg_high}'))].reset_index(drop=True)
-
-# add in extra columns to the results dataframes
-df_train_results = df_train_orig[['player', 'year', 'y_act', 'pct_off', 'avg_pick_pred']].copy()
-df_test_results = df_predict[['player', 'year', 'avg_pick_pred']].copy()
-
-df_train_orig = df_train_orig.drop(['y_act', 'pct_off'], axis=1).rename(columns={'label': 'y_act'})
-df_predict = df_predict.drop(['y_act', 'pct_off'], axis=1).rename(columns={'label': 'y_act'})
-
-# get the minimum number of training samples for the initial datasets
-min_samples = int(0.5*df_train_orig[df_train_orig.year <= df_train_orig.year.min() + pos[set_pos]['skip_years']].shape[0])
-
-# print the value-counts
-print(df_train_orig.y_act.value_counts())
-print('Min Year:', df_train_orig.year.min())
-print('Max Year:', df_train_orig.year.max())
-print('Compiled Dataset Equals Stored Dataset?: ', df_train_orig.equals(load_pickle(f'{path}Data/Model_Datasets_Class/{str(min_rowid)}.p')))
-# -
-
-best_models = pull_class_params(4, 5)
-
-i=0
-
-m = best_models.loc[i, 'model']
-pkey = best_models.loc[i, 'pkey']
-par = load_pickle(path + f'Data/Model_Params_Class/{pkey}.p')
-print(f'Running {m}')
-
-
-@ignore_warnings(category=ConvergenceWarning)
-def class_run_best_model(model, p, skip_years):
-
-    use_smote = True if p['use_smote']==1 else False
-    zero_weight = p['zero_weight']
-    collinear_cutoff = p['collinear_cutoff']
-    scale = True if p['scale']==1 else False
-    pca = True if p['pca']==1 else False
-    n_components = p['n_components'] 
-    
-    model_p = {}
-    for k, v in p.items():
-        if k not in ['use_smote', 'zero_weight', 'collinear_cutoff', 'scale', 'pca', 'n_components']:
-            model_p[k] = v
-            
-    estimator = class_models[model]
-    estimator.set_params(**model_p)
-    estimator.class_weight = {0: zero_weight, 1: 1}
-    
-    from imblearn.over_sampling import SMOTE
-    from sklearn.model_selection import StratifiedKFold
-    
-    #----------
-    # Filter down the features with a random correlation and collinear cutoff
-    #----------
-
-    # remove collinear variables based on difference of means between the 0 and 1 labeled groups
-    df_train = remove_classification_collinear(globals()['df_train_orig'], collinear_cutoff, ['player', 'avg_pick', 'year', 'y_act'])
-    df_predict = globals()['df_predict'][df_train.columns]
-    
-    years = df_train_orig.year.unique()
-    years = years[years > np.min(years) + skip_years]
-    
-    # set up array to save predictions and years to iterate through
-    roll_predictions = np.array([]) 
-    y_rolls = np.array([])
-    
-    #=============
-    # Full Validation Loop Train and Predict
-    #==============
-    
-    for m in years:
-
-        # create training set for all previous years and validation set for current year
-        train_split = df_train[df_train.year < m]
-        roll_split = df_train[df_train.year == m]
-
-        # splitting the train and validation sets into X_train, y_train, X_val and y_val
-        X_train, X_roll, y_train, y_roll = X_y_split(train_split, roll_split, scale, pca, n_components)
-
-        if use_smote:
-            knn = int(len(y_train[y_train==1])*0.5)
-            smt = SMOTE(k_neighbors=knn, random_state=1234)
-
-            X_train, y_train = smt.fit_resample(X_train.values, y_train)
-            X_roll = X_roll.values
-
-        # train the estimator and get predictions
-        estimator.fit(X_train, y_train)
-        roll_predict = estimator.predict(X_roll)
-
-        # append the predictions
-        roll_predictions = np.append(roll_predictions, roll_predict, axis=0)
-        y_rolls = np.append(y_rolls, y_roll, axis=0)
-
-        
-    #==========
-    # Full Model Train + Test Set Prediction
-    #==========
-    
-    # splitting the train and validation sets into X_train, y_train, X_val and y_val
-    X_train, X_test, y_train, y_test = X_y_split(df_train, df_predict, scale, pca, n_components)
-
-    if use_smote:
-            knn = int(len(y_train[y_train==1])*0.5)
-            smt = SMOTE(k_neighbors=knn, random_state=1234)
-            X_train, y_train = smt.fit_resample(X_train.values, y_train)
-            X_test = X_test.values
-
-    estimator.fit(X_train, y_train)
-    test_predict = estimator.predict(X_test)
-
-    roll_score = round(-matthews_corrcoef(roll_predictions, y_rolls), 3)
-    test_score = round(-matthews_corrcoef(test_predict, y_test), 3)
-    print(roll_score)
-    print(test_score)
-    
-    return test_predict
-
-tp = class_run_best_model('rf', par, pos[set_pos]['skip_years'])
-
-
-def class_run_best_model(model, p, skip_years):
-
-    use_smote = True if p['use_smote']==1 else False
-    zero_weight = p['zero_weight']
-    col_cut = p['collinear_cutoff']
-    scale = True if p['scale']==1 else False
-    pca = True if p['pca']==1 else False
-    n_components = p['n_components'] 
-    
-    model_p = {}
-    for k, v in p.items():
-        if k not in ['use_smote', 'zero_weight', 'collinear_cutoff', 'scale', 'pca', 'n_components']:
-            model_p[k] = v
-            
-    est = class_models[model]
-    est.set_params(**model_p)
-    est.class_weight = {0: zero_weight, 1: 1}
-
-    result, val_pred, ty_pred, ty_proba, trained_est, cols = class_validation(est, df_train_orig, df_predict, col_cut,
-                                                                              use_smote, skip_years, scale, pca, n_components)
-
-    return result, val_pred, ty_pred, ty_proba, trained_est, cols
-
-
-results, _, ty_pred, _, _, _ = class_run_best_model('rf', par, pos[set_pos]['skip_years'])
-results
-
-pd.concat([ty_pred, pd.Series(tp, name='new')], axis=1)
 
 # ## Ensemble Model Helper Functions
 
@@ -573,7 +384,7 @@ def run_class_ensemble(best_models, df_train_results, df_test_results, pos=pos):
 df_train_results = pd.DataFrame()
 df_test_results = pd.DataFrame()
 
-for i in [(4, 5)]:
+for i in [(21, 28)]:
     
     # set all the variables
     min_rowid=i[0]
@@ -598,21 +409,15 @@ df_train_results.groupby('class_fp_per_game').agg({'y_act': 'mean',
                                                        'pct_off': 'mean',
                                                        'avg_pick_pred': 'mean'})
 
-# append actual points for the past season "Test"
-test_fp = pd.read_sql_query(f"SELECT * FROM {set_pos}_Stats WHERE year>={set_year-2}", sqlite3.connect(path + 'Data/Databases/Season_Stats.sqlite3'))
-test_fp = test_fp[['player', 'year', 'rush_yd_per_game', 'rec_yd_per_game', 'rec_per_game', 'td_per_game']]
-test_fp['year'] = test_fp['year'] - 1
-test_fp['y_act'] = (test_fp[pos[set_pos]['metrics']] * pts_dict['RB']).sum(axis=1)
-test_fp = test_fp[['player', 'year', 'y_act']]
-df_test_results = pd.merge(df_test_results, test_fp, on=['player', 'year'])
-df_test_results['pct_off'] = (df_test_results.y_act - df_test_results.avg_pick_pred) / df_test_results.avg_pick_pred
+df_test_results['pct_off' ] = (df_test_results.y_act - df_test_results.avg_pick_pred) / df_test_results.avg_pick_pred
+df_test_results['class_act_fp_per_game'] = 0
+df_test_results.loc[df_test_results.pct_off >=0, 'class_act_fp_per_game'] = 1
+df_test_results
 
 # +
 df_test_results.loc[df_test_results.class_fp_per_game >= 0.5, 'check'] = 1
 df_test_results.loc[df_test_results.class_fp_per_game < 0.5, 'check'] = 0
 
-df_test_results['class_act_fp_per_game'] = 0
-df_test_results.loc[(df_test_results.y_act >= 14) & (df_test_results.pct_off >= 0.15) , 'class_act_fp_per_game'] = 1
 print('Test Low+High Matthews Score %0.3f' % matthews_corrcoef(df_test_results.class_act_fp_per_game, df_test_results.check))
 # -
 
@@ -679,7 +484,8 @@ def pull_reg_params(min_rowid, max_rowid):
     best_models = res[['pkey', 'metric', 'model']]
     
     # convert the dataframe to to dictionary to extract data
-    res = res.drop(['pkey', 'metric', 'model', 'rmse_validation', 'rmse_validation_adp', 'r2_validation', 'r2_validation_adp'], axis=1).drop_duplicates()
+    res = res.drop(['pkey', 'metric', 'model', 'rmse_validation', 'rmse_validation_adp', 
+                    'rmse_test', 'rmse_test_adp', 'r2_test', 'r2_test_adp'], axis=1).drop_duplicates()
     res = res.rename(columns = {'year': 'set_year', 'pos': 'set_pos'})
     res = res.T.to_dict()[0]
 
@@ -697,6 +503,7 @@ def pull_reg_params(min_rowid, max_rowid):
     pos[set_pos]['skip_years'] = res['skip_years']
     pos[set_pos]['use_ay'] = True if res['use_ay']==1 else False
     pos[set_pos]['features'] = res['features']
+    pos[set_pos]['test_years'] = res['test_years']
 
     #==========
     # Pull and clean compiled data
@@ -711,7 +518,7 @@ def pull_reg_params(min_rowid, max_rowid):
         df = pd.merge(df, ay, how='inner', left_on=['player', 'year'], right_on=['player', 'year'])
 
     # apply the specified touches and game filters
-    df, _, _ = touch_game_filter(df, pos, set_pos, set_year-2)
+    df, _, _ = touch_game_filter(df, pos, set_pos, set_year)
 
     # calculate FP for a given set of scoring values
     df = calculate_fp(df, pts_dict, pos=set_pos).reset_index(drop=True)
@@ -719,7 +526,8 @@ def pull_reg_params(min_rowid, max_rowid):
     return best_models, df
 
 
-# +
+# -
+
 models = {
     'ridge': Ridge(random_state=1234),
     'lasso': Lasso(random_state=1234),
@@ -732,30 +540,98 @@ models = {
     'svr': LinearSVR()
 }
 
+
 @ignore_warnings(category=ConvergenceWarning)
-def run_best_model(model, p, df_train_orig, df_predict, skip_years):
+def validation(m, models, args, df_train_orig, df_predict_orig, skip_years):
 
-    corr_cut = p['corr_cutoff']
-    col_cut= p['collinear_cutoff']
-    scale = p['scale']
-    pca = True if p['pca']==1 else False
-    n_components = p['n_components'] 
-
-    model_p = {}
-    for k, v in p.items():
-        if k not in ['corr_cutoff', 'collinear_cutoff', 'scale', 'pca', 'n_components']:
-            model_p[k] = v
-
-    est = models[model]
-    est.set_params(**model_p)
+    lr = LinearRegression()
     
-    result, val_pred, ty_pred, trained_est, cols = validation(est, df_train_orig, df_predict, corr_cut, col_cut, skip_years=skip_years, 
-                                                              scale=scale, pca=pca, n_components=n_components)
+    # remove the extra args not needed for modeling
+    scale = True if args['scale'] == 1 else False
+    pca = True if args['pca'] == 1 else False
+
+    n_components = args['n_components']
+    corr_cutoff = args['corr_cutoff']
+    collinear_cutoff = args['collinear_cutoff']
+
+    for arg in ['scale', 'pca', 'corr_cutoff', 'collinear_cutoff', 'n_components']:
+        del args[arg]
+
+    # set up the estimator
+    estimator = models[m]
+    estimator.set_params(**args)
+
+    #----------
+    # Filter down the features with a random correlation and collinear cutoff
+    #----------
+
+    # return the df_train with only relevant features remaining
+    df_train = corr_collinear_removal(df_train_orig, corr_cutoff, collinear_cutoff)
+    df_predict = df_predict_orig[df_train.columns]
+
+    years = df_train.year.unique()
+    years = years[years > np.min(years) + skip_years]
+
+    # set up array to save predictions and years to iterate through
+    roll_predictions = np.array([]) 
+    adp_predictions = np.array([])
+    y_rolls = np.array([])
+
+    for m in years:
+
+        # create training set for all previous years and validation set for current year
+        train_split = df_train[df_train.year < m]
+        roll_split = df_train[df_train.year == m]
+
+        # splitting the train and validation sets into X_train, y_train, X_val and y_val
+        X_train, X_roll, y_train, y_roll = X_y_split(train_split, roll_split, scale, pca, n_components)
+
+        # train the estimator and get predictions
+        estimator.fit(X_train, y_train)
+        roll_predict = estimator.predict(X_roll)
+
+        # append the predictions
+        roll_predictions = np.append(roll_predictions, roll_predict, axis=0)
+
+        #--------------
+        # Create ADP rolling predictions
+        #--------------
+
+        # append the y rolling values
+        y_rolls = np.append(y_rolls, y_roll, axis=0)
+
+        # splitting the train and validation sets into X_train, y_train, X_val and y_val
+        X_train, X_adp, y_train, y_adp = X_y_split(train_split, roll_split, False, False, n_components)
+        lr.fit(X_train.avg_pick.values.reshape(-1,1), y_train)
+        adp_predict = lr.predict(X_adp.avg_pick.values.reshape(-1,1))
+        adp_predictions = np.append(adp_predictions, adp_predict, axis=0)
+
+    # splitting the train and validation sets into X_train, y_train, X_val and y_val
+    lr = LinearRegression()
+    X_train, X_test, y_train, y_test = X_y_split(df_train, df_predict, False, False, n_components)
+    lr.fit(X_train.avg_pick.values.reshape(-1,1), y_train)
+    test_adp = lr.predict(X_test.avg_pick.values.reshape(-1,1))
+
+    # splitting the train and validation sets into X_train, y_train, X_val and y_val
+    X_train, X_test, y_train, y_test = X_y_split(df_train, df_predict, scale, pca, n_components)
+    estimator.fit(X_train, y_train)
+    test_predict = estimator.predict(X_test)
+
+    #==========
+    # Calculate Error Metrics and Prepare Export
+    #==========
+
+    results = error_compare(roll_predictions, adp_predictions, y_rolls)
+
+    val_pred = df_train.loc[df_train.year.isin(years), ['player', 'year', 'avg_pick', 'y_act']].reset_index(drop=True)
+    val_pred = pd.concat([val_pred, pd.Series(roll_predictions, name='pred')], axis=1)
+    val_pred = pd.concat([val_pred, pd.Series(adp_predictions, name='pred_adp')], axis=1)
+
+    ty_pred = df_predict[['player', 'year', 'avg_pick']].copy()
+    ty_pred = pd.concat([ty_pred[['player', 'year', 'avg_pick']], pd.Series(test_predict, name='pred')], axis=1)
     
-    return result, val_pred, ty_pred, trained_est, cols
+    return results, val_pred, ty_pred
 
-
-# -
 
 def run_reg_ensemble(df, best_models, df_train_results, df_test_results, adp_ppg_low, adp_ppg_high, pos=pos):
 
@@ -763,53 +639,50 @@ def run_reg_ensemble(df, best_models, df_train_results, df_test_results, adp_ppg
     metrics = list(best_models.metric.unique())
     for metric in metrics:            
         
-        # extract the models for the current metric
-        metric_models = best_models[best_models.metric==metric].copy().reset_index(drop=True)
-        
-        print('Running ' + metric)
-        ay = 1 if pos[set_pos]['use_ay'] else 0
-        
-        if metric == 'pct_off':
-            df_train, df_predict = get_train_predict(df, 'fp_per_game', pos, set_pos, set_year-2, 
-                                                     pos[set_pos]['earliest_year']-1, pos[set_pos]['features'])
-        else:
-            df_train, df_predict = get_train_predict(df, metric, pos, set_pos, set_year-2, 
-                                                     pos[set_pos]['earliest_year']-1, pos[set_pos]['features'])
-            
-        # get the adp predictions and merge back to the training dataframe
-        df_train_adp, lr = get_adp_predictions(df_train, 1)
-        df_train = pd.merge(df_train, df_train_adp, on=['player', 'year'])
-        if metric == 'pct_off':
-            df_train['y_act'] = df_train.pct_off
-        
-        df_predict['avg_pick_pred'] = lr.predict(df_predict.avg_pick.values.reshape(-1,1))
+        #==========
+        # Pull and clean compiled data
+        #==========
 
-        # filter based on adp predict
-        df_train = df_train[(eval(f'df_train.avg_pick_pred{adp_ppg_low}')) & ((eval(f'df_train.avg_pick_pred{adp_ppg_high}')))].reset_index(drop=True).drop(['avg_pick_pred', 'pct_off'], axis=1)
-        df_predict = df_predict[(eval(f'df_predict.avg_pick_pred{adp_ppg_low}')) & ((eval(f'df_predict.avg_pick_pred{adp_ppg_high}')))].reset_index(drop=True).drop('avg_pick_pred', axis=1)
+        # extract the models for the current metric
+        print('Running ' + metric)
+        metric_models = best_models[best_models.metric==metric].copy().reset_index(drop=True)
+
+        # get the train and predict dataframes
+        df_train_orig, df_predict_orig = get_train_predict(df, metric, pos, set_pos, set_year-pos[set_pos]['test_years'], 
+                                                           pos[set_pos]['earliest_year']-1, pos[set_pos]['features'])
+        df_predict_orig = df_predict_orig.dropna(subset=['y_act']).reset_index(drop=True).fillna(0)
+        df_train_orig = df_train_orig.fillna(0)
         
-        print(f'Number of rows and features: {df_train.shape}')
-        print('Dataset equals training?: ' + str(df_train.equals(load_pickle(f'{path}Data/Model_Datasets/{str(min_rowid)}.p'))))
-        df_train_orig = df_train.copy()
-        
+        # print out relevant stats about the dataframes
+        print(f'Number of training rows and features: {df_train_orig.shape}')
+        print(f'Number of test rows and features: {df_predict_orig.shape}')
+        print('Dataset equals training?: ' + str(df_train_orig.equals(load_pickle(f'{path}Data/Model_Datasets/{str(min_rowid)}.p'))))
+
+        #==========
+        # Run the Models
+        #==========
+
         results = {'summary': {}, 'val_pred': {}, 'ty_pred': {}, 'trained_model': {}, 'cols': {}}
         num_models = metric_models.index.max() + 1
+
+        results = {'summary': {}, 'val_pred': {}, 'ty_pred': {}, 'trained_model': {}, 'cols': {}}
+        num_models = int(metric_models.index.max() + 1)
+
         for i in range(num_models):
 
             m = metric_models.loc[i, 'model']
             pkey = metric_models.loc[i, 'pkey']
-            par = load_pickle(path + f'Data/Model_Params/{pkey}.p')
+            args = load_pickle(path + f'Data/Model_Params/{pkey}.p')
+
             print(f'Running {m}')
 
             results[i] = {}
             results['summary'][i] = [m]
-            
-            result, val_pred, ty_pred, trained_est, cols = run_best_model(m, par, df_train_orig, df_predict,  pos[set_pos]['skip_years'])
+
+            result, val_pred, ty_pred = validation(m, models, args, df_train_orig, df_predict_orig, pos[set_pos]['skip_years'])
 
             # save out the predictions to the dictionary
             results['summary'][i].extend(result)
-            results['trained_model'][i] = trained_est
-            results['cols'][i] = cols
 
             val_pred = val_pred.rename(columns={'pred': 'pred' + str(i)})
             results['val_pred'][i] = val_pred
@@ -829,15 +702,15 @@ def run_reg_ensemble(df, best_models, df_train_results, df_test_results, adp_ppg
         # create the summary dataframe
         summary = create_summary(results, sort_metric, keep_first=False)
         
-        best_results = summary[summary.PredRMSE <= 1.01*summary.PredRMSE.min()].copy()
-        best_results['PredRMSE'] = 1 / best_results['PredRMSE']
-        sum_score = best_results.PredRMSE.sum()
-        best_results['Weighting'] = best_results.PredRMSE / sum_score
-        print(best_results)
+        summary['PredRMSEScale'] = summary['PredRMSE'].max() - summary['PredRMSE']
+        best_results = summary[summary.PredRMSEScale >= 0.5*summary.PredRMSEScale.max()].copy()
+        sum_score = best_results.PredRMSEScale.sum()
+        best_results['Weighting'] = best_results.PredRMSEScale / sum_score
+
         for i, row in best_results.iterrows():
 
             val_pred = results['val_pred'][row.Iteration]
-            val_pred.iloc[:, -1] = val_pred.iloc[:, -1] * row.Weighting
+            val_pred.iloc[:, -2] = val_pred.iloc[:, -2] * row.Weighting
 
             ty_pred = results['ty_pred'][row.Iteration]
             ty_pred.iloc[:, -1] = ty_pred.iloc[:, -1] * row.Weighting
@@ -846,11 +719,11 @@ def run_reg_ensemble(df, best_models, df_train_results, df_test_results, adp_ppg
                 val_ensemble = val_pred
                 ty_ensemble = ty_pred
             else:
-                val_ensemble = pd.merge(val_ensemble, val_pred.drop(['avg_pick','y_act'], axis=1), on=['player', 'year'])
+                val_ensemble = pd.merge(val_ensemble, val_pred.drop(['avg_pick','y_act', 'pred_adp'], axis=1), on=['player', 'year'])
                 ty_ensemble = pd.merge(ty_ensemble, ty_pred.drop(['avg_pick'], axis=1), on=['player', 'year'])
 
         for ens in [val_ensemble, ty_ensemble]:
-            ens_cols = [c for c in ens.columns if 'pred' in c or 'proba' in c]
+            ens_cols = [c for c in ens.columns if 'pred' in c and c != 'pred_adp']
             ens['pred'] = ens.loc[:, ens_cols].sum(axis=1)
         
         num_rows = len(summary)
@@ -900,7 +773,7 @@ df_test_results_reg = pd.DataFrame()
 # for i in [(323, 331), (350, 358)]:
 # for i in [(332, 340), (359, 367)]:
 # for i in [(341, 349), (368, 376)]:
-for i in [(434, 442)]:
+for i in [(136, 189)]:
     
     # specify the minimum and maximum rows from the database
     min_rowid = i[0]
@@ -917,27 +790,25 @@ df_train_results_reg = df_train_results_reg.reset_index(drop=True)
 df_test_results_reg = df_test_results_reg.reset_index(drop=True)
 # -
 
+if len(list(best_models.metric.unique())) > 1:
+
+    # extract points list and get the idx of point attributes based on length of list
+    pts_list = pts_dict[set_pos]
+    pred_metrics = ['pred_' + m for m in pos[set_pos]['metrics']]
+    df_train_results_reg['pred_fp_per_game'] = (df_train_results_reg[pred_metrics] * pts_list).sum(axis=1)
+    df_test_results_reg['pred_fp_per_game'] = (df_test_results_reg[pred_metrics] * pts_list).sum(axis=1)
+
 df_train_results = df_train_results_reg.copy()
 df_test_results = df_test_results_reg.copy()
-# df_test_results = df_test_results[~df_test_results.player.isin(['Todd Gurley'])].reset_index(drop=True)
-df_test_results = df_test_results.drop('class_fp_per_game', axis=1)
-df_test_results = df_test_results.rename(columns={'proba_fp_per_game': 'class_fp_per_game'})
 
-# + [markdown] jupyter={"source_hidden": true}
-# if len(list(best_models.metric.unique())) > 1:
-#
-#     # extract points list and get the idx of point attributes based on length of list
-#     pts_list = pts_dict[set_pos]
-#     pred_metrics = ['pred_' + m for m in pos[set_pos]['metrics']]
-#     df_train_results['pred_fp_per_game'] = (df_train_results[pred_metrics] * pts_list).sum(axis=1)
-#     df_test_results['pred_fp_per_game'] = (df_test_results[pred_metrics] * pts_list).sum(axis=1)
+df_test_results
 
 # +
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import StandardScaler
 
-X_train = df_train_results[['avg_pick_pred', 'pred_pct_off','class_fp_per_game']]
-X_test = df_test_results[['avg_pick_pred','pred_pct_off', 'class_fp_per_game']]
+X_train = df_train_results[['class_fp_per_game', 'pred_fp_per_game']]
+X_test = df_test_results[['class_fp_per_game', 'pred_fp_per_game']]
 y = df_train_results.y_act
 
 scale = StandardScaler()
@@ -952,11 +823,11 @@ test_pred_plus_class = lr.predict(X_test)
 print('Coefficients:', lr.coef_)
 
 pred_plus_class_err = np.mean(np.sqrt(-1*(cross_val_score(lr, X_train, y, cv=10, scoring='neg_mean_squared_error'))))
-# pred_only_err = np.sqrt(mean_squared_error(df_train_results.y_act, df_train_results.pred_fp_per_game))
+pred_only_err = np.sqrt(mean_squared_error(df_train_results.y_act, df_train_results.pred_fp_per_game))
 adp_pred_err = np.sqrt(mean_squared_error(df_train_results.y_act, df_train_results.avg_pick_pred))
 
 test_adp_err = np.sqrt(mean_squared_error(df_test_results.y_act, df_test_results.avg_pick_pred))
-# test_pred_only_err = np.sqrt(mean_squared_error(df_test_results.y_act, df_test_results.pred_fp_per_game))
+test_pred_only_err = np.sqrt(mean_squared_error(df_test_results.y_act, df_test_results.pred_fp_per_game))
 test_pred_class_err = np.sqrt(mean_squared_error(df_test_results.y_act, test_pred_plus_class))
 
 test_y = df_test_results.y_act
@@ -975,26 +846,20 @@ print('Predicted Plus Class Error: %0.3f' % test_pred_class_err)
 
 df_test_results = pd.concat([df_test_results, pd.Series(test_pred_plus_class, name='final_pred')], axis=1)
 
-# +
-from scipy.stats import pearsonr
-
 lr.fit( df_test_results.final_pred.values.reshape(-1,1), df_test_results.y_act)
 lr.score(df_test_results.final_pred.values.reshape(-1,1), df_test_results.y_act )
 
-# +
-# from scipy.stats import pearsonr
-
-# lr.fit( df_test_results.pred_fp_per_game.values.reshape(-1,1), df_test_results.y_act)
-# lr.score(df_test_results.pred_fp_per_game.values.reshape(-1,1), df_test_results.y_act )
+lr.fit( df_test_results.pred_fp_per_game.values.reshape(-1,1), df_test_results.y_act)
+lr.score(df_test_results.pred_fp_per_game.values.reshape(-1,1), df_test_results.y_act )
 
 # +
-from scipy.stats import pearsonr
 
 lr.fit( df_test_results.avg_pick_pred.values.reshape(-1,1), df_test_results.y_act)
 lr.score(df_test_results.avg_pick_pred.values.reshape(-1,1), df_test_results.y_act )
 # -
 
-df_test_results
+df_test_results['pred_diff']= df_test_results.pred_fp_per_game - df_test_results.avg_pick_pred
+df_test_results.loc[df_test_results.year==2018].sort_values(by='pred_diff', ascending=False)
 
 # # Bayes Regression
 
