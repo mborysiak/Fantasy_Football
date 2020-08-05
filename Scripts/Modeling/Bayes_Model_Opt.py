@@ -56,7 +56,7 @@ pandas_bokeh.output_notebook()
 path = f'/Users/{os.getlogin()}/Documents/Github/Fantasy_Football/'
 
 # set to position to analyze: 'RB', 'WR', 'QB', or 'TE'
-set_pos = 'TE'
+set_pos = 'RB'
 
 # set year to analyze
 set_year = 2020
@@ -109,25 +109,25 @@ pos['RB']['earliest_year'] = 1998
 pos['WR']['earliest_year'] = 1998
 pos['TE']['earliest_year'] = 1998
 
-pos['QB']['skip_years'] = 5
-pos['RB']['skip_years'] = 7
-pos['WR']['skip_years'] = 7
-pos['TE']['skip_years'] = 7
+pos['QB']['skip_years'] = 10
+pos['RB']['skip_years'] = 10
+pos['WR']['skip_years'] = 10
+pos['TE']['skip_years'] = 10
 
-pos['QB']['features'] = 'v2'
+pos['QB']['features'] = 'v1'
 pos['RB']['features'] = 'v1'
 pos['WR']['features'] = 'v1'
 pos['TE']['features'] = 'v1'
 
-pos['QB']['minimizer'] = 'gp_minimize'
-pos['RB']['minimizer'] = 'gp_minimize'
-pos['WR']['minimizer'] = 'gp_minimize'
-pos['TE']['minimizer'] = 'gp_minimize'
+pos['QB']['minimizer'] = 'forest_minimize'
+pos['RB']['minimizer'] = 'forest_minimize'
+pos['WR']['minimizer'] = 'forest_minimize'
+pos['TE']['minimizer'] = 'forest_minimize'
 
-pos['QB']['test_years'] = 3
-pos['RB']['test_years'] = 4
-pos['WR']['test_years'] = 4
-pos['TE']['test_years'] = 4
+pos['QB']['test_years'] = 2
+pos['RB']['test_years'] = 2
+pos['WR']['test_years'] = 2
+pos['TE']['test_years'] = 2
 
 pos['QB']['use_ay'] = False
 pos['RB']['use_ay'] = False
@@ -225,7 +225,7 @@ df = calculate_fp(df, pts_dict, pos=set_pos).reset_index(drop=True)
 #==============
 
 breakout_metric = 'fp_per_game'
-act_ppg = '>0'
+act_ppg = '>12'
 pct_off = '>0.15'
 adp_ppg_high = '<100'
 adp_ppg_low = '>=0'
@@ -339,7 +339,7 @@ class_search_space = {
         Real(0.001, 10000, "log_uniform", name='reg_lambda'),
         Real(0.001, 100, 'log_uniform', name='reg_alpha'),
         Integer(1, min_samples, name='min_data_in_leaf'),
-        Real(.2, 1, name='collinear_cutoff'),
+        Real(0.4, 0.8, name='collinear_cutoff'),
         Integer(0, 1, name='scale'),
         Integer(0, 1, name='pca'),
         Integer(0, 1, name='use_smote'),
@@ -357,7 +357,7 @@ class_search_space = {
         Real(0.0001, 1, 'log_uniform', name='gamma'),
         Real(0.001, 10000, "log_uniform", name='reg_lambda'),
         Real(0.001, 100, 'log_uniform', name='reg_alpha'),
-        Real(.2, 1, name='collinear_cutoff'),
+        Real(0.4, 0.8, name='collinear_cutoff'),
         Integer(0, 1, name='scale'),
         Integer(0, 1, name='pca'),
         Integer(0, 1, name='use_smote'),
@@ -367,7 +367,7 @@ class_search_space = {
         
     'lr': [
         Real(0.00001, 100000000, 'log_uniform', name='C'),
-        Real(.2, 1, name='collinear_cutoff'),
+        Real(0.4, 0.8, name='collinear_cutoff'),
         Integer(0, 1, name='scale'),
         Integer(0, 1, name='pca'),
         Integer(0, 1, name='use_smote'),
@@ -381,7 +381,7 @@ class_search_space = {
         Integer(1, min_samples, name='min_samples_leaf'),
         Real(0.01, 1, name='max_features'),
         Integer(2, 50, name='min_samples_split'),
-        Real(.2, 1, name='collinear_cutoff'),
+        Real(0.4, 0.8, name='collinear_cutoff'),
         Integer(0, 1, name='scale'),
         Integer(0, 1, name='pca'),
         Integer(0, 1, name='use_smote'),
@@ -395,7 +395,7 @@ class_search_space = {
         Integer(1, min_samples, name='min_samples_leaf'),
         Real(0.01, 1, name='max_features'),
         Integer(2, 50, name='min_samples_split'),
-        Real(.2, 1, name='collinear_cutoff'),
+        Real(0.4, 0.8, name='collinear_cutoff'),
         Integer(0, 1, name='scale'),
         Integer(0, 1, name='pca'),
         Integer(0, 1, name='use_smote'),
@@ -407,7 +407,7 @@ class_search_space = {
         Integer(1, min_samples, name='n_neighbors'),
         Categorical(['distance', 'uniform'], name='weights'),
         Categorical(['auto', 'ball_tree', 'kd_tree', 'brute'], name='algorithm'),
-        Real(.2, 1, name='collinear_cutoff'),
+        Real(0.4, 0.8, name='collinear_cutoff'),
         Integer(0, 1, name='scale'),
         Integer(0, 1, name='pca'),
         Integer(0, 1, name='use_smote'),
@@ -417,7 +417,7 @@ class_search_space = {
     
     'svr': [
         Real(0.0001, 1000, 'log_uniform', name='C'),
-        Real(.2, 1, name='collinear_cutoff'),
+        Real(0.4, 0.8, name='collinear_cutoff'),
         Integer(0, 1, name='scale'),
         Integer(0, 1, name='pca'),
         Integer(0, 1, name='use_smote'),
@@ -455,8 +455,8 @@ def calc_f1_score(**args):
     #----------
 
     # remove collinear variables based on difference of means between the 0 and 1 labeled groups
-    df_train = remove_classification_collinear(globals()['df_train_orig'], collinear_cutoff, ['player', 'avg_pick', 'year', 'y_act'])
-    df_predict = globals()['df_predict_orig'][df_train.columns]
+    df_train = globals()['df_train_orig'].copy()
+    df_predict = globals()['df_predict_orig'].copy()
     
     years = df_train_orig.year.unique()
     years = years[years > np.min(years) + skip_years]
@@ -482,6 +482,10 @@ def calc_f1_score(**args):
             # create training set for all previous years and validation set for current year
             train_split = train_fold[train_fold.year < m]
             cv_split = train_fold[train_fold.year == m]
+            
+            # remove collinear variables based on difference of means between the 0 and 1 labeled groups
+            train_split = remove_classification_collinear(train_split, collinear_cutoff, ['player', 'avg_pick', 'year', 'y_act'])
+            cv_split = cv_split[train_split.columns]
 
             # set up the estimator
             estimator.set_params(**args)
@@ -517,6 +521,10 @@ def calc_f1_score(**args):
 #         # create training set for all previous years and validation set for current year
 #         train_split = df_train[df_train.year < m]
 #         roll_split = df_train[df_train.year == m]
+        
+#         # remove collinear variables based on difference of means between the 0 and 1 labeled groups
+#         train_split = remove_classification_collinear(train_split, collinear_cutoff, ['player', 'avg_pick', 'year', 'y_act'])
+#         roll_split = roll_split[train_split.columns]
 
 #         # set up the estimator
 #         estimator.set_params(**args)
@@ -534,6 +542,7 @@ def calc_f1_score(**args):
 #                 X_roll = X_roll.values
 #         except:
 #             print('SMOTE failed')
+            
 #         # train the estimator and get predictions
 #         estimator.fit(X_train, y_train)
 #         roll_predict = estimator.predict(X_roll)
@@ -546,6 +555,10 @@ def calc_f1_score(**args):
     #==========
     # Full Model Train + Test Set Prediction
     #==========
+    
+    # remove collinear variables based on difference of means between the 0 and 1 labeled groups
+    df_train = remove_classification_collinear(df_train, collinear_cutoff, ['player', 'avg_pick', 'year', 'y_act'])
+    df_predict = df_predict[df_train.columns]
     
     # splitting the train and validation sets into X_train, y_train, X_val and y_val
     X_train, X_test, y_train, y_test = X_y_split(df_train, df_predict, scale, pca, n_components)
@@ -963,7 +976,7 @@ def calc_rmse(**args):
 #================
 
 
-for metric in pos[set_pos]['metrics']:
+for metric in ['fp_per_game']:#pos[set_pos]['metrics']:
     
     opt_scores = []
     val_adp_scores = []

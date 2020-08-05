@@ -384,7 +384,7 @@ def run_class_ensemble(best_models, df_train_results, df_test_results, pos=pos):
 df_train_results = pd.DataFrame()
 df_test_results = pd.DataFrame()
 
-for i in [(21, 28)]:
+for i in [(33, 34)]:
     
     # set all the variables
     min_rowid=i[0]
@@ -411,7 +411,7 @@ df_train_results.groupby('class_fp_per_game').agg({'y_act': 'mean',
 
 df_test_results['pct_off' ] = (df_test_results.y_act - df_test_results.avg_pick_pred) / df_test_results.avg_pick_pred
 df_test_results['class_act_fp_per_game'] = 0
-df_test_results.loc[df_test_results.pct_off >=0, 'class_act_fp_per_game'] = 1
+df_test_results.loc[df_test_results.pct_off >= 0.15, 'class_act_fp_per_game'] = 1
 df_test_results
 
 # +
@@ -421,9 +421,9 @@ df_test_results.loc[df_test_results.class_fp_per_game < 0.5, 'check'] = 0
 print('Test Low+High Matthews Score %0.3f' % matthews_corrcoef(df_test_results.class_act_fp_per_game, df_test_results.check))
 # -
 
-df_test_results.groupby('check').agg({'y_act': 'median',
-                                   'pct_off': 'median',
-                                   'avg_pick_pred': 'median'})
+df_test_results.groupby(['year','check']).agg({'y_act': 'median',
+                                               'pct_off': 'median',
+                                               'avg_pick_pred': 'median'})
 
 df_test_results.sort_values(by='class_fp_per_game', ascending=False).iloc[:60]
 
@@ -773,7 +773,7 @@ df_test_results_reg = pd.DataFrame()
 # for i in [(323, 331), (350, 358)]:
 # for i in [(332, 340), (359, 367)]:
 # for i in [(341, 349), (368, 376)]:
-for i in [(136, 189)]:
+for i in [(190, 216)]:
     
     # specify the minimum and maximum rows from the database
     min_rowid = i[0]
@@ -795,20 +795,44 @@ if len(list(best_models.metric.unique())) > 1:
     # extract points list and get the idx of point attributes based on length of list
     pts_list = pts_dict[set_pos]
     pred_metrics = ['pred_' + m for m in pos[set_pos]['metrics']]
-    df_train_results_reg['pred_fp_per_game'] = (df_train_results_reg[pred_metrics] * pts_list).sum(axis=1)
-    df_test_results_reg['pred_fp_per_game'] = (df_test_results_reg[pred_metrics] * pts_list).sum(axis=1)
+    df_train_results_reg['pred_fp_per_game_stat'] = (df_train_results_reg[pred_metrics] * pts_list).sum(axis=1)
+    df_test_results_reg['pred_fp_per_game_stat'] = (df_test_results_reg[pred_metrics] * pts_list).sum(axis=1)
+
+# +
+# for i in [(323, 331), (350, 358)]:
+# for i in [(332, 340), (359, 367)]:
+# for i in [(341, 349), (368, 376)]:
+for i in [(217, 225)]:
+    
+    # specify the minimum and maximum rows from the database
+    min_rowid = i[0]
+    max_rowid = i[1]
+
+    # set all the variables
+    best_models, df = pull_reg_params(min_rowid, max_rowid)
+    df_train_results_reg, df_test_results_reg, results = run_reg_ensemble(df, best_models, 
+                                                                                df_train_results_reg, 
+                                                                                df_test_results_reg, adp_ppg_low, adp_ppg_high)
+    
+df_train_results_reg = df_train_results_reg.reset_index(drop=True)
+df_test_results_reg = df_test_results_reg.reset_index(drop=True)
+# -
 
 df_train_results = df_train_results_reg.copy()
 df_test_results = df_test_results_reg.copy()
 
 df_test_results
 
+df_test_results['avg_pred'] = df_test_results[['avg_pick_pred', 'pred_fp_per_game', 'pred_fp_per_game_stat']].mean(axis=1)
+print(r2_score(df_test_results.y_act, df_test_results.avg_pred))
+print(np.sqrt(mean_squared_error(df_test_results.y_act, df_test_results.avg_pred)))
+
 # +
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import StandardScaler
 
-X_train = df_train_results[['class_fp_per_game', 'pred_fp_per_game']]
-X_test = df_test_results[['class_fp_per_game', 'pred_fp_per_game']]
+X_train = df_train_results[['class_fp_per_game', 'avg_pick_pred', 'pred_fp_per_game', 'pred_fp_per_game_stat']]
+X_test = df_test_results[['class_fp_per_game', 'avg_pick_pred', 'pred_fp_per_game', 'pred_fp_per_game_stat']]
 y = df_train_results.y_act
 
 scale = StandardScaler()
@@ -852,11 +876,8 @@ lr.score(df_test_results.final_pred.values.reshape(-1,1), df_test_results.y_act 
 lr.fit( df_test_results.pred_fp_per_game.values.reshape(-1,1), df_test_results.y_act)
 lr.score(df_test_results.pred_fp_per_game.values.reshape(-1,1), df_test_results.y_act )
 
-# +
-
 lr.fit( df_test_results.avg_pick_pred.values.reshape(-1,1), df_test_results.y_act)
 lr.score(df_test_results.avg_pick_pred.values.reshape(-1,1), df_test_results.y_act )
-# -
 
 df_test_results['pred_diff']= df_test_results.pred_fp_per_game - df_test_results.avg_pick_pred
 df_test_results.loc[df_test_results.year==2018].sort_values(by='pred_diff', ascending=False)
