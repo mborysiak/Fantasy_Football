@@ -913,4 +913,74 @@ df_te = df_te.sort_values(by=['year', 'avg_pick'], ascending=[False, True]).rese
 # conn.commit()
 # append_to_db(df_te, db_name='Season_Stats', table_name='TE_Stats', if_exist='append')
 
+# # Create Air Yards Table
 
+# +
+import requests
+
+air_year = year
+df_air_json = requests.get(f'http://api.airyards.com/{air_year}/weeks')
+
+df_air = pd.DataFrame(df_air_json.json())
+
+df_air = df_air[df_air.position.isin(['WR', 'RB', 'TE'])].reset_index(drop=True)
+df_air = df_air[['full_name', 'position', 'team', 'week', 'air_yards', 'tar', 'rec', 'rec_yards', 'tm_att', 
+                   'team_air', 'aypt', 'racr', 'ms_air_yards', 'target_share', 'wopr', 'yac']]
+df_air['year'] = air_year
+df_air = df_air.rename(columns={'week': 'games', 'full_name': 'player'})
+
+col_agg = {'air_yards': 'sum',
+           'rec_yards': 'sum',
+           'rec': 'sum',
+           'tar': 'sum',
+           'tm_att': 'sum',
+           'team_air': 'sum',
+           'yac': 'sum',
+           'games': 'count'}
+
+df_air_player = df_air.groupby(['player', 'team', 'year', 'position']).agg(col_agg).reset_index()
+
+dup_players = df_air_player.groupby('player').agg({'tar': 'max'}).reset_index()
+dup_teams = pd.merge(df_air_player[['player', 'team', 'tar']], dup_players, on=['player', 'tar']).drop('tar', axis=1)
+
+col_agg['games'] = 'sum'
+df_air_player = df_air_player.groupby(['player', 'year', 'position']).agg(col_agg).reset_index()
+df_air_player = pd.merge(df_air_player, dup_teams, on='player')
+
+df_air_player['ay_per_game'] = df_air_player.air_yards / df_air_player.games
+df_air_player['yac_per_game'] = df_air_player.yac / df_air_player.games
+df_air_player['racr'] = df_air_player.rec_yards / (df_air_player.air_yards + 1.5)
+df_air_player['ay_per_tar'] = df_air_player.air_yards / (df_air_player.tar + 1.5)
+df_air_player['ay_per_rec'] = df_air_player.air_yards / (df_air_player.rec + 1.5)
+df_air_player['tgt_mkt_share'] = df_air_player.tar / df_air_player.tm_att
+df_air_player['ay_converted'] = (df_air_player.rec_yards - df_air_player.yac) / (df_air_player.air_yards+1.5)
+df_air_player['yac_per_ay'] = df_air_player.yac / (df_air_player.air_yards+1.5)
+df_air_player['air_yd_mkt_share'] = df_air_player.air_yards / df_air_player.team_air
+df_air_player['wopr'] = 1.5*df_air_player.tgt_mkt_share + 0.7*df_air_player.air_yd_mkt_share
+df_air_player['rec_yds_per_ay'] = df_air_player.rec_yards / (df_air_player.air_yards + 1)
+df_air_player['yac_plus_ay'] = df_air_player.yac + df_air_player.air_yards
+
+team_agg = {'tm_att': 'max',
+            'team_air': 'max',
+            'rec_yards': 'sum',
+            'yac': 'sum'}
+
+df_air_team = df_air.groupby(['team', 'games']).agg(team_agg)
+df_air_team = df_air_team.groupby('team').agg({'tm_att': 'sum', 'team_air': 'sum', 'rec_yards': 'sum', 'yac': 'sum'})
+df_air_team = df_air_team.rename(columns={'yac': 'team_yac'})
+df_air_team['tm_air_per_att'] = df_air_team.team_air / df_air_team.tm_att
+df_air_team['tm_ay_converted'] = (df_air_team.rec_yards - df_air_team.team_yac) / df_air_team.team_air
+df_air_team['tm_rec_yds_per_ay'] = df_air_team.rec_yards / df_air_team.team_air
+df_air_team['tm_yac_per_ay'] = df_air_team.team_yac / df_air_team.team_air
+df_air_team = df_air_team.drop('rec_yards', axis=1)
+
+df_air_player = df_air_player.drop(['tm_att', 'team_air', 'rec_yards', 'rec'], axis=1)
+df_air_player = pd.merge(df_air_player, df_air_team, on=['team'])
+df_air_player['tm_ay_per_game'] = df_air_player.team_air / df_air_player.games
+df_air_player['total_tgt_mkt_share'] = df_air_player.tar / df_air_player.tm_att
+df_air_player['yac_mkt_share'] = df_air_player.yac / df_air_player.team_yac
+df_air_player['yac_wopr'] =  1.5*df_air_player.tgt_mkt_share + 0.7*df_air_player.air_yd_mkt_share + df_air_player.yac_mkt_share
+df_air_player = df_air_player.drop(['tar', 'games', 'team'], axis=1)
+# -
+
+append_to_db(df_air_player, db_name='Season_Stats', table_name='AirYards', if_exist='append')

@@ -117,7 +117,6 @@ pos['WR']['med_features'] = ['fp', 'tgt', 'receptions', 'rec_yds', 'rec_yd_per_g
                              'rz_10_tgt', 'rz_10_receptions', 
                             'rz_10_catch_pct', 'rz_10_rec_yds', 'rz_10_rec_tds',
                             'rec_yd_per_game_exp_diff', 'rec_per_game_exp_diff', 'td_per_game_exp_diff', 
-                          #  'wosp', 'wosp_exp_diff', 'wosp_exp_div', 'air_yards_exp_diff',
                              'rz_20_tgt_exp_diff', 'rz_20_receptions_exp_diff'
                             ]
 
@@ -137,7 +136,6 @@ pos['WR']['age_features'] = ['fp', 'rec_yd_per_game', 'receptions', 'tgt', 'ms_t
                             'rz_10_catch_pct', 'rz_10_rec_yds', 'rz_10_rec_tds',
                             'rec_yd_per_game_exp_diff', 'rec_per_game_exp_diff', 'td_per_game_exp_diff',
                             'rec_yd_per_game_exp_div', 'rec_per_game_exp_div', 'td_per_game_exp_div',
-                          #  'wosp', 'wosp_exp_diff', 'wosp_exp_div', 'air_yards_exp_diff',
                              'rz_20_tgt_exp_diff', 'rz_20_receptions_exp_diff'
                             ]
 
@@ -192,7 +190,6 @@ pos['TE']['med_features'] = ['fp', 'tgt', 'receptions', 'rec_yds', 'rec_yd_per_g
                              'rz_10_tgt', 'rz_10_receptions', 
                             'rz_10_catch_pct', 'rz_10_rec_yds', 'rz_10_rec_tds',
                             'rec_yd_per_game_exp_diff', 'rec_per_game_exp_diff', 'td_per_game_exp_diff', 
-                           # 'wosp', 'wosp_exp_diff', 'wosp_exp_div', 'air_yards_exp_diff',
                              'rz_20_tgt_exp_diff', 'rz_20_receptions_exp_diff']
 # sum feature categories
 pos['TE']['sum_features'] = ['receptions', 'rec_yds', 'tgt', 'rec_td', 'qb_yds']
@@ -211,7 +208,6 @@ pos['TE']['age_features'] = ['fp', 'rec_yd_per_game', 'receptions', 'tgt', 'ms_t
                              'rz_10_tgt', 'rz_10_receptions', 
                             'rz_10_catch_pct', 'rz_10_rec_yds', 'rz_10_rec_tds',
                             'rec_yd_per_game_exp_diff', 'rec_per_game_exp_diff', 'td_per_game_exp_diff', 
-                          #  'wosp', 'wosp_exp_diff', 'wosp_exp_div', 'air_yards_exp_diff',
                              'rz_20_tgt_exp_diff', 'rz_20_receptions_exp_diff']
 
 
@@ -241,19 +237,23 @@ def touch_game_filter(df, pos, set_pos, set_year):
     return df, df_train_results, df_test_results
 
 
-def add_exp_metrics(df, set_pos, use_ay=True):
+def add_exp_metrics(df, set_pos):
     '''
     Function to add how a players stats compare to the number of years that they have
     been in the league (years experience)
     '''
     if set_pos in ['WR', 'TE']:
-        if use_ay:
-            cols = ['rec_yd_per_game', 'rec_per_game', 'td_per_game',# 'wosp', 'air_yards', 
+        if pos[set_pos]['use_ay']:
+            cols = ['rec_yd_per_game', 'rec_per_game', 'td_per_game',
                     'rz_20_tgt', 'rz_20_receptions', 'avg_pick', 'min_teammate']
+            cols.extend(['ay_per_game', 'yac_per_game', 'racr', 'ay_per_tar', 'ay_per_rec',
+               'ay_converted', 'yac_per_ay', 'air_yd_mkt_share', 'wopr', 'rec_yds_per_ay',
+               'yac_plus_ay', 'team_yac', 'tm_air_per_att', 'tm_ay_converted', 'tm_rec_yds_per_ay',
+               'tm_yac_per_ay', 'yac_mkt_share', 'yac_wopr', 'total_tgt_mkt_share'])
         else:
             cols = ['rec_yd_per_game', 'rec_per_game', 'td_per_game', 
                     'rz_20_tgt', 'rz_20_receptions', 'avg_pick', 'min_teammate']
-    
+           
     elif set_pos == 'QB':
         cols = ['fp', 'qb_tds','qb_rating', 'qb_yds', 'pass_off', 'qb_complete_pct', 'qb_td_pct', 
                  'sack_pct', 'avg_pick', 'sacks_allowed', 'qbr', 'adj_yd_per_att', 'adj_net_yd_per_att',
