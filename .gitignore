@@ -11,6 +11,7 @@ __pycache__/
 # pickle files
 *.p
 .p
+Data/Bayes_Space/*
 
 # jupyter notebooks
 *.ipynb
