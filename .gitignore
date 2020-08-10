@@ -11,10 +11,10 @@ __pycache__/
 # pickle files
 *.p
 .p
-Data/Bayes_Space/*
-Data/Model_Datasets/*
-Data/Model_Params/*
-Data/Model_Params_Class/*
+.Data/Bayes_Space/*
+.Data/Model_Datasets/*
+.Data/Model_Params/*
+.Data/Model_Params_Class/*
 
 # jupyter notebooks
 *.ipynb
