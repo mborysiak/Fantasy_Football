@@ -6,14 +6,13 @@
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.5.0
+#       jupytext_version: 1.5.2
 #   kernelspec:
 #     display_name: Python 3
 #     language: python
 #     name: python3
 # ---
 
-# +
 import numpy as np
 import pandas as pd
 from xgboost import XGBRegressor
@@ -29,9 +28,8 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import KFold
 from sklearn.model_selection import train_test_split
 import os
-
+from zHelper_Functions import *
 os.environ['KMP_DUPLICATE_LIB_OK']='True'
-# -
 
 # # User Inputs
 
@@ -41,7 +39,8 @@ os.environ['KMP_DUPLICATE_LIB_OK']='True'
 #==========
 
 # set core path
-path = '/Users/Mark/Documents/Github/Fantasy_Football/'
+path = f'/Users/{os.getlogin()}/Documents/Github/Fantasy_Football/'
+
 
 db_name = 'Model_Inputs.sqlite3'
 
@@ -127,24 +126,12 @@ from IPython.core.interactiveshell import InteractiveShell
 # plotting functions
 import matplotlib.pyplot as plt
 import seaborn as sns
-
-# +
-# change directory temporarily to helper scripts
-os.chdir(path + 'Scripts/Analysis/Helper_Scripts')
-
-# load custom plot functions
-from my_plot import PrettyPlot
-PrettyPlot(plt)
-
-# load custom helper functions and ensure lightgbm runs
-from helper_functions import *
-os.environ['KMP_DUPLICATE_LIB_OK']='True';
 # -
 
 # # Pull In Data
 
 # connect to database and pull in positional data
-conn = sqlite3.connect(path + 'Data/' + db_name)
+conn = sqlite3.connect(path + 'Data/Databases/' + db_name)
 df = pd.read_sql_query('SELECT * FROM ' + set_pos + '_' + str(set_year), con=conn)
 bad_ap = df[(df.player == 'Adrian Peterson') & (df.avg_pick > 100)].index
 df = df.drop(bad_ap, axis=0).reset_index(drop=True)

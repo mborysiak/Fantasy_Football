@@ -56,7 +56,7 @@ pandas_bokeh.output_notebook()
 path = f'/Users/{os.getlogin()}/Documents/Github/Fantasy_Football/'
 
 # set to position to analyze: 'RB', 'WR', 'QB', or 'TE'
-set_pos = 'WR'
+set_pos = 'RB'
 
 # set year to analyze
 set_year = 2020
@@ -115,7 +115,7 @@ pos['WR']['skip_years'] = 2
 pos['TE']['skip_years'] = 10
 
 pos['QB']['features'] = 'v1'
-pos['RB']['features'] = 'v1'
+pos['RB']['features'] = 'v2'
 pos['WR']['features'] = 'v1'
 pos['TE']['features'] = 'v1'
 

@@ -6,35 +6,263 @@
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
-#       jupytext_version: 1.5.0
+#       jupytext_version: 1.5.2
 #   kernelspec:
 #     display_name: Python 3
 #     language: python
 #     name: python3
 # ---
 
-# # User Inputs
-
-# # Load Packages
-
-set_year=2019
-
 # +
+import requests
+import json
 import pandas as pd
 import os
 import sqlite3
-from data_functions import *
+from zData_Functions import *
 pd.options.mode.chained_assignment = None
 import numpy as np
 from fractions import Fraction
+import datetime as dt
 
-
+# set the year for last year's stats to pull
+set_year=2019
 
 # set core path
-path = '/Users/Mark/Documents/Github/Fantasy_Football'
+path = f'/Users/{os.getlogin()}/Documents/Github/Fantasy_Football'
 
 # set the database name
-db_name = 'Season_Stats.sqlite3'
+db_name = 'Season_Stats'
+conn = sqlite3.connect(f'{path}/Data/Databases/{db_name}.sqlite3')
+
+# set the api path for collge football data
+CS_API = 'https://api.collegefootballdata.com'
+# -
+
+# # Pull in College Stats
+
+# +
+# # player usage data--earliest 2013
+# player_usage = requests.get(f'{CS_API}/player/usage?year={cstat_year}&excludeGarbageTime=true')
+
+# # player data such as height and weight--need to loop through each letter in alphabet
+# player_data = requests.get(f'{CS_API}/player/search?year={cstat_year}&searchTerm=A')
+
+# # advanced stats data--earliest 2013
+# player_adv = requests.get('https://api.collegefootballdata.com/ppa/players/season?year=2013') 
+
+# standard player college stats
+player_stats = requests.get(f'{CS_API}/stats/player/season?year={set_year}')
+
+# +
+c_stat = []
+for i in player_stats.json():
+    if i['category'] in ['receiving', 'rushing', 'passing']:
+        c_stat.append(i)
+
+c_stat = pd.DataFrame(c_stat)
+c_stat['stat_name'] = c_stat.category + '_' + c_stat.statType
+c_stat['stat'] = c_stat['stat'].astype('float')
+c_stat = pd.pivot_table(c_stat, index=['player', 'team', 'conference'], 
+                        columns='stat_name', values = 'stat').reset_index().fillna(0)
+c_stat = c_stat[~c_stat.player.str.contains('Team')].reset_index(drop=True)
+c_stat['rushing_ATT'] = c_stat.rushing_YDS / (c_stat.rushing_YPC + 0.1)
+
+agg_cols = {
+    'receiving_LONG': 'max', 
+    'receiving_REC': 'sum', 
+    'receiving_TD': 'sum',
+    'receiving_YDS': 'sum',  
+    'rushing_CAR': 'sum', 
+    'rushing_LONG': 'max',
+    'rushing_TD': 'sum', 
+    'rushing_YDS': 'sum', 
+    'rushing_ATT': 'sum',
+    'passing_ATT': 'sum',
+    'passing_COMPLETIONS': 'sum',
+    'passing_INT': 'sum',
+    'passing_PCT': 'sum',
+    'passing_TD': 'sum',
+    'passing_YDS': 'sum',
+}
+team_stat = c_stat.groupby('team').agg(agg_cols).reset_index()
+team_stat.columns = ['team_' + c for c in team_stat.columns]
+team_stat = team_stat.rename(columns={'team_team': 'team'})
+team_stat['team_receiving_YPC'] = team_stat.team_passing_YDS / team_stat.team_passing_COMPLETIONS
+team_stat['team_receiving_YPA'] = team_stat.team_passing_YDS / team_stat.team_passing_ATT
+team_stat['team_complete_pct'] = team_stat.team_passing_COMPLETIONS / team_stat.team_passing_ATT
+
+c_stat = pd.merge(c_stat, team_stat, on='team')
+c_stat = pd.merge(c_stat, c_pstat, on='team')
+
+c_stat['rec_yd_mkt_share'] = c_stat.receiving_YDS / c_stat.team_receiving_YDS
+c_stat['rec_mkt_share'] = c_stat.receiving_REC / c_stat.team_receiving_REC
+c_stat['rec_td_mkt_share'] = c_stat.receiving_TD / c_stat.team_receiving_TD
+
+c_stat['rush_yd_mkt_share'] = c_stat.rushing_YDS / c_stat.team_rushing_YDS
+c_stat['att_mkt_share'] = c_stat.rushing_ATT / c_stat.team_rushing_ATT
+c_stat['rush_td_mkt_share'] = c_stat.rushing_TD / c_stat.team_rushing_TD
+
+c_stat['year'] = cstat_year
+c_stat = pd.concat([c_stat[['player', 'team', 'year', 'conference']], c_stat.iloc[:, 3:-1]], axis=1)
+c_stat = c_stat[(c_stat.rushing_ATT >= 10) | (c_stat.receiving_REC >= 10) | (c_stat.passing_ATT > 25)].reset_index(drop=True)
+# -
+
+append_to_db(c_stat, db_name, 'College_Stats', if_exist='append')
+
+# # Pull Combine Data
+
+COMBINE_PATH = f'https://www.pro-football-reference.com/play-index/nfl-combine-results.cgi?request=1&year_min={set_year+1}&year_max={set_year+1}&height_min=0&height_max=100&weight_min=140&weight_max=400&pos%5B%5D=QB&pos%5B%5D=WR&pos%5B%5D=TE&pos%5B%5D=RB&show=all&order_by=year_id'
+comb = pd.read_html(COMBINE_PATH)
+
+comb_df = comb[0]
+comb_df = comb_df[['Year', 'Player', 'Pos', 'Age', 'Height', 'Wt', '40YD', 
+                   'Vertical', 'BenchReps', 'Broad Jump', '3Cone', 'Shuttle']]
+comb_df.columns = ['year', 'player', 'pos', 'pp_age', 'height', 'weight', 'forty',
+                   'vertical', 'bench_press', 'broad_jump', 'three_cone', 'shuffle_20_yd']
+comb_df = comb_df[comb_df.height!='Height'].reset_index(drop=True)
+comb_df.height = comb_df.height.apply(lambda x: 12*int(x.split('-')[0]) + int(x.split('-')[1]))
+comb_df = convert_to_float(comb_df)
+
+append_to_db(comb_df, db_name, 'Combine_Data_Raw', if_exist='append')
+
+# ## Predict Missing Values
+
+# +
+from sklearn.linear_model import LinearRegression, Ridge
+from sklearn.preprocessing import StandardScaler
+
+def fill_metrics(met, df, X_cols):
+    
+    print(f'============\n{met}\n------------')
+    
+    train = df[~df[met].isnull()]
+    predict = df[df[met].isnull()]
+    
+    y = train[met]
+    X = train[X_cols]
+    
+    sc = StandardScaler()
+
+    X_sc = sc.fit_transform(X)
+    pred_sc = sc.transform(predict[X_cols])
+    pred_sc = pd.DataFrame(pred_sc, columns=X_cols)
+
+    lr = LinearRegression()
+    lr.fit(X_sc, y)
+    print('R2 Score', round(lr.score(X_sc, y), 3))
+    print(pd.Series(lr.coef_, index=X.columns))
+    
+    df.loc[df[met].isnull(), met] = lr.predict(pred_sc)
+    
+    return df
+
+
+def reverse_metrics(met, train, predict, X_cols):
+    
+    print(f'============\n{met}\n------------')
+    
+    y = train[met]
+    X = train[X_cols]
+    
+    sc = StandardScaler()
+
+    X_sc = sc.fit_transform(X)
+    pred_sc = sc.transform(predict[X_cols])
+    pred_sc = pd.DataFrame(pred_sc, columns=X_cols)
+
+    lr = LinearRegression()
+    lr.fit(X_sc, y)
+    print('R2 Score', round(lr.score(X_sc, y), 3))
+    print(pd.Series(lr.coef_, index=X.columns))
+    
+    predict[met] = lr.predict(pred_sc)
+    
+    return predict
+
+
+# +
+comb_df = pd.read_sql_query('''SELECT * FROM combine_data_raw''', conn)
+draft_info = pd.read_sql_query('''SELECT * FROM draft_positions''', conn)
+draft_values = pd.read_sql_query('''SELECT * FROM draft_values''', conn)
+draft_info = pd.merge(draft_info, draft_values, on=['Round', 'Pick'])
+
+comb_df = pd.merge(comb_df, draft_info[['year', 'player', 'Value']], on=['year', 'player'], how='left')
+comb_df.Value = comb_df.Value.fillna(1)
+comb_df = pd.concat([comb_df, pd.get_dummies(comb_df.pos)], axis=1).drop('pos', axis=1)
+
+pred_cols = ['height', 'weight', 'Value', 'QB', 'RB', 'TE', 'WR']
+comb_df = fill_metrics('forty', comb_df, pred_cols)
+
+pred_cols.append('forty')
+comb_df = fill_metrics('vertical', comb_df, pred_cols)
+
+pred_cols.append('vertical')
+comb_df = fill_metrics('broad_jump', comb_df, pred_cols)
+
+pred_cols.append('broad_jump')
+comb_df = fill_metrics('three_cone', comb_df, pred_cols)
+
+pred_cols.append('three_cone')
+comb_df = fill_metrics('shuffle_20_yd', comb_df, pred_cols)
+
+pred_cols.append('shuffle_20_yd')
+comb_df = fill_metrics('bench_press', comb_df, pred_cols)
+# -
+
+# ## Predict Player Profiler Data
+
+# +
+rb = pd.read_sql_query('''SELECT * FROM Rookie_RB_Stats''', conn)
+wr = pd.read_sql_query('''SELECT * FROM Rookie_WR_Stats''', conn)
+
+pp = pd.concat([rb, wr], axis=0).reset_index(drop=True)
+X_cols = [c for c in comb_df if c not in ('year', 'player', 'Value', 'pp_age', 'QB', 'RB', 'TE', 'WR')]
+# -
+
+# ## Get Player's Age as of Start of This Season
+
+
+
+# +
+birthdays = pd.read_html('https://nflbirthdays.com/')[0]
+birthdays.columns = ['_', 'player', 'position', 'team', 'birthday', '__']
+birthdays = birthdays[['player', 'birthday']]
+birthdays = birthdays.iloc[1:, :]
+
+run_date = dt.datetime(month=9, day=1, year=set_year+1)
+birthdays.birthday = (run_date - pd.to_datetime(birthdays.birthday))
+birthdays['age'] = birthdays.birthday.apply(lambda x: x.days / 365)
+
+birthdays = birthdays.drop('birthday', axis=1)
+birthdays['run_date'] = run_date.date()
+# -
+
+exist_age = pd.read_sql_query('''SELECT player, year, age FROM RB_Stats
+                                 UNION
+                                 SELECT player, year, age FROM WR_Stats
+                                 UNION
+                                 SELECT player, year, age FROM TE_Stats
+                                 UNION
+                                 SELECT player, year, qb_age age FROM QB_Stats''', conn)
+exist_age.groupby('player')
+
+birthdays.iloc[:20]
+
+
+
+comb_df = reverse_metrics('hand_size', pp, comb_df, X_cols)
+comb_df = reverse_metrics('arm_length', pp, comb_df, X_cols)
+comb_df = reverse_metrics('speed_score', pp, comb_df, X_cols)
+comb_df = reverse_metrics('athlete_score', pp, comb_df, X_cols)
+comb_df = reverse_metrics('sparq', pp, comb_df, X_cols)
+comb_df = reverse_metrics('bmi', pp, comb_df, X_cols)
+
+pd.read_sql_query('''SELECT * FROM College_Stats''', conn)
+
+# # User Inputs
+
+# # Load Packages
 
 # +
 #==========
