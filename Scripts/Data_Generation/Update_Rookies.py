@@ -126,6 +126,50 @@ comb_df = convert_to_float(comb_df)
 
 append_to_db(comb_df, db_name, 'Combine_Data_Raw', if_exist='append')
 
+# ## Get Player's Age as of Start of This Season
+
+# +
+birthdays = pd.read_html('https://nflbirthdays.com/')[0]
+birthdays.columns = ['_', 'player', 'pos', 'team', 'birthday', '__']
+birthdays = birthdays[['player', 'pos', 'birthday']]
+birthdays = birthdays.iloc[1:, :]
+
+run_date = dt.datetime(month=9, day=1, year=set_year+1)
+birthdays.birthday = (run_date - pd.to_datetime(birthdays.birthday))
+birthdays['age'] = birthdays.birthday.apply(lambda x: x.days / 365)
+
+birthdays = birthdays.drop('birthday', axis=1)
+
+exist_age = pd.read_sql_query('''SELECT player, year, pos, age FROM RB_Stats
+                                 UNION
+                                 SELECT player, year, pos, age FROM WR_Stats
+                                 UNION
+                                 SELECT player, year, pos, age FROM TE_Stats
+                                 UNION
+                                 SELECT player, year, pos, qb_age age FROM QB_Stats''', conn)
+exist_year_max = exist_age.groupby(['player', 'pos']).agg({'year': 'max'}).reset_index()
+exist_age = pd.merge(exist_age, exist_year_max, on=['player', 'pos', 'year'])
+exist_age.loc[exist_age.age < 5, 'age'] = np.exp(exist_age.loc[exist_age.age < 5, 'age'])
+exist_age['age'] = exist_age.age + (set_year+1)-exist_age.year
+
+bday_check = pd.merge(birthdays, exist_age, on='player')
+bday_check[abs(bday_check.age_x - bday_check.age_y) > 1]
+
+# +
+exist_age = exist_age[~exist_age.player.isin(birthdays.player)]
+birthdays = pd.concat([birthdays, exist_age[['player', 'pos', 'age']]], axis=0)
+
+birthdays['run_date'] = run_date.date()
+birthdays = birthdays.dropna()
+
+players = ['DeVante Parker', 'John Ross', 'Josh Reynolds', 'Kelvin Harmon']
+ages = [27, 24.8, 25, 22.7]
+for p, a in zip(players, ages):
+    birthdays.loc[birthdays.player==p, 'age'] = a
+
+append_to_db(birthdays, 'Season_Stats', 'Player_Birthdays', 'replace')
+# -
+
 # ## Predict Missing Values
 
 # +
@@ -182,7 +226,7 @@ def reverse_metrics(met, train, predict, X_cols):
 
 
 # +
-comb_df = pd.read_sql_query('''SELECT * FROM combine_data_raw''', conn)
+comb_df = pd.read_sql_query('''SELECT * FROM combine_data_raw''', conn).drop('pp_age', axis=1)
 draft_info = pd.read_sql_query('''SELECT * FROM draft_positions''', conn)
 draft_values = pd.read_sql_query('''SELECT * FROM draft_values''', conn)
 draft_info = pd.merge(draft_info, draft_values, on=['Round', 'Pick'])
@@ -220,45 +264,96 @@ pp = pd.concat([rb, wr], axis=0).reset_index(drop=True)
 X_cols = [c for c in comb_df if c not in ('year', 'player', 'Value', 'pp_age', 'QB', 'RB', 'TE', 'WR')]
 # -
 
-# ## Get Player's Age as of Start of This Season
-
-
-
-# +
-birthdays = pd.read_html('https://nflbirthdays.com/')[0]
-birthdays.columns = ['_', 'player', 'position', 'team', 'birthday', '__']
-birthdays = birthdays[['player', 'birthday']]
-birthdays = birthdays.iloc[1:, :]
-
-run_date = dt.datetime(month=9, day=1, year=set_year+1)
-birthdays.birthday = (run_date - pd.to_datetime(birthdays.birthday))
-birthdays['age'] = birthdays.birthday.apply(lambda x: x.days / 365)
-
-birthdays = birthdays.drop('birthday', axis=1)
-birthdays['run_date'] = run_date.date()
-# -
-
-exist_age = pd.read_sql_query('''SELECT player, year, age FROM RB_Stats
-                                 UNION
-                                 SELECT player, year, age FROM WR_Stats
-                                 UNION
-                                 SELECT player, year, age FROM TE_Stats
-                                 UNION
-                                 SELECT player, year, qb_age age FROM QB_Stats''', conn)
-exist_age.groupby('player')
-
-birthdays.iloc[:20]
-
-
-
 comb_df = reverse_metrics('hand_size', pp, comb_df, X_cols)
 comb_df = reverse_metrics('arm_length', pp, comb_df, X_cols)
 comb_df = reverse_metrics('speed_score', pp, comb_df, X_cols)
 comb_df = reverse_metrics('athlete_score', pp, comb_df, X_cols)
 comb_df = reverse_metrics('sparq', pp, comb_df, X_cols)
 comb_df = reverse_metrics('bmi', pp, comb_df, X_cols)
+comb_df = reverse_metrics('burst_score', pp, comb_df, X_cols)
+comb_df = reverse_metrics('agility_score', pp, comb_df, X_cols)
 
-pd.read_sql_query('''SELECT * FROM College_Stats''', conn)
+# ## Find the College stats for Players
+
+# +
+from sklearn.preprocessing import RobustScaler
+from difflib import SequenceMatcher
+
+comb_stats = pd.read_sql_query('''SELECT player, year draft_year, pos FROM combine_data_raw''', conn)
+draft = pd.read_sql_query('''SELECT player, year draft_year, pos, college FROM draft_positions''', conn)
+player_age = pd.read_sql_query(f'''SELECT player, pos, age, {set_year+1} as 'run_date' FROM Player_Birthdays ''', conn)
+
+comb_stats = pd.merge(comb_stats, draft, on=['player', 'draft_year', 'pos'])
+comb_stats = pd.merge(comb_stats, player_age, on=['player', 'pos'])
+
+cstats = pd.read_sql_query('''SELECT * FROM College_Stats''', conn)
+comb_stats = pd.merge(comb_stats, cstats, on=['player'])
+comb_stats = comb_stats[comb_stats.year < comb_stats.draft_year].reset_index(drop=True)
+
+
+def match_seq(c):
+    c1 = c[0]
+    c2 = c[1]
+    try:
+        s = SequenceMatcher(None, c1, c2).quick_ratio()
+    except:
+        s = 0
+    return s
+
+old_name = ['UAB', 'UCF', 'Ole Miss']
+new_name = ['Alabama Birmingham', 'Central Florida', 'Mississippi']
+for o, n in zip(old_name, new_name):
+    comb_stats.loc[comb_stats.team==o, 'team'] = n
+comb_stats['team_match'] = comb_stats[['team', 'college']].apply(match_seq, axis=1)
+comb_stats = comb_stats[(comb_stats.team_match > 0.5) | (comb_stats.draft_year == set_year+1)].reset_index(drop=True)
+comb_stats = comb_stats[~((comb_stats.player=='Mike Williams') & (comb_stats.college=='Syracuse'))]
+comb_stats = comb_stats[~((comb_stats.player=='Mike Davis') & (comb_stats.college=='South Carolina'))]
+comb_stats = comb_stats[~((comb_stats.player=='Steve Smith') & (comb_stats.college=='USC'))]
+comb_stats = comb_stats[~((comb_stats.player=='Cedrick Wilson') & (comb_stats.college=='Boise St.'))]
+
+comb_stats['season_age'] = comb_stats.age - (comb_stats.run_date - comb_stats.year)
+comb_stats['season_age_scale'] = RobustScaler().fit_transform(comb_stats.season_age.values.reshape(-1,1))
+comb_stats['season_age_scale'] = -comb_stats.season_age_scale.min() + comb_stats.season_age_scale + 1
+
+comb_stats['power5'] = 0
+comb_stats.loc[comb_stats.conference.isin(['SEC', 'Pac-10', 'Big 12', 'Big Ten', 'Pac-12', 'ACC']), 'power5'] = 1
+# -
+
+import matplotlib.pyplot as plt
+plt.hist(comb_stats.season_age_scale);
+
+# +
+wr = comb_stats[comb_stats.pos=='WR'].reset_index(drop=True).copy()
+wr = wr[['player', 'draft_year', 'pos', 'college', 'conference', 'power5', 'age', 'year', 'season_age', 'season_age_scale',
+         'receiving_LONG', 'receiving_REC', 'receiving_TD', 'receiving_YDS',
+         'receiving_YPR', 'team_receiving_LONG', 'team_receiving_REC', 'team_receiving_TD', 
+         'team_receiving_YDS','rec_yd_mkt_share', 'rec_mkt_share', 'rec_td_mkt_share']]
+
+wr['rec_dominator'] = (wr.rec_mkt_share + (wr.rec_mkt_share * 1.5 * wr.power5)) / wr.season_age_scale
+wr['rec_yd_dominator'] = (wr.rec_yd_mkt_share + (wr.rec_mkt_share* 1.5 * wr.power5)) / wr.season_age_scale
+wr['rec_td_dominator'] = (wr.rec_td_mkt_share + (wr.rec_mkt_share* 1.5 * wr.power5)) / wr.season_age_scale
+
+wr_stats = pd.DataFrame()
+for m in ['mean', 'max']:
+
+    agg_metr = {
+        'rec_dominator': 'mean',
+        'rec_yd_dominator': 'mean', 
+        'rec_td_dominator': 'mean',
+        'rec_mkt_share': 'mean',
+        'rec_yd_mkt_share': 'mean',
+        'rec_td_mkt_share': 'mean',
+    }
+
+    wr_agg = wr.groupby(['player', 'draft_year']).agg(agg_metr)
+    wr_agg.columns = [f'{c}_{m}' for c in wr_agg.columns]
+    wr_stats = pd.concat([wr_stats, wr_agg], axis=1)
+    
+wr_stats = wr_stats.reset_index().rename(columns={'draft_year': 'year'})
+# -
+
+wr_stats = pd.merge(wr_stats, comb_df[comb_df.WR==1], on=['player', 'year'])
+wr_stats = wr_stats.drop(['RB', 'TE', 'QB', 'WR'], axis=1)
 
 # # User Inputs
 
