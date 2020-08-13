@@ -105,6 +105,7 @@ def append_to_db(df, db_name='Season_Stats', table_name='NA', if_exist='append')
     index=False
     )
     
+
 #==========
 # Clean the ADP data
 #==========
@@ -127,14 +128,14 @@ def clean_adp(data_adp, year):
     # set column names to what they are after pulling
     df_adp = data_adp.iloc[:, 1:].rename(columns={
         1: 'Player', 
-        2: 'Avg. Pick',
-        3: 'Min. Pick',
-        4: 'Max. Pick',
+        2: 'Avg Pick',
+        3: 'Min Pick',
+        4: 'Max Pick',
         5: '# Drafts Selected In'
     })
 
     # selecting relevant columns and dropping na
-    df_adp = df_adp[['Player', 'year', 'Avg. Pick']].dropna()
+    df_adp = df_adp[['Player', 'year', 'Avg Pick']].dropna()
 
     # convert year to float and move back one year to match with stats
     df_adp['year'] = df_adp.year.astype('float')
@@ -143,15 +144,16 @@ def clean_adp(data_adp, year):
     df_adp['Tm'] = df_adp.Player.apply(team_select)
     df_adp['Player'] = df_adp.Player.apply(name_select)
     df_adp['Player'] = df_adp.Player.apply(name_clean)
-
+    df_adp = df_adp[df_adp.Player != '1 Page:']
+    
     # format and rename columns
-    df_adp = df_adp[['Player', 'Tm', 'year', 'Avg. Pick']]
+    df_adp = df_adp[['Player', 'Tm', 'year', 'Avg Pick']]
 
     colnames_adp = {
         'Player': 'player',
         'Tm': 'team',
         'year': 'year',
-        'Avg. Pick': 'avg_pick'
+        'Avg Pick': 'avg_pick'
     }
 
     df_adp = df_adp.rename(columns=colnames_adp)

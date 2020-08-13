@@ -37,6 +37,11 @@ conn = sqlite3.connect(f'{path}/Data/Databases/{db_name}.sqlite3')
 
 # set the api path for collge football data
 CS_API = 'https://api.collegefootballdata.com'
+
+def adp_url(adp_pos, y=set_year+1):
+    return f'https://www72.myfantasyleague.com/{y}/reports?R=ADP&POS={adp_pos}&ROOKIES=1&INJURED=1&CUTOFF=5&FCOUNT=0&IS_PPR=3&IS_KEEPER=N&IS_MOCK=1&PERIOD=AUG1'
+
+
 # -
 
 # # Pull in College Stats
@@ -93,7 +98,6 @@ team_stat['team_receiving_YPA'] = team_stat.team_passing_YDS / team_stat.team_pa
 team_stat['team_complete_pct'] = team_stat.team_passing_COMPLETIONS / team_stat.team_passing_ATT
 
 c_stat = pd.merge(c_stat, team_stat, on='team')
-c_stat = pd.merge(c_stat, c_pstat, on='team')
 
 c_stat['rec_yd_mkt_share'] = c_stat.receiving_YDS / c_stat.team_receiving_YDS
 c_stat['rec_mkt_share'] = c_stat.receiving_REC / c_stat.team_receiving_REC
@@ -103,12 +107,12 @@ c_stat['rush_yd_mkt_share'] = c_stat.rushing_YDS / c_stat.team_rushing_YDS
 c_stat['att_mkt_share'] = c_stat.rushing_ATT / c_stat.team_rushing_ATT
 c_stat['rush_td_mkt_share'] = c_stat.rushing_TD / c_stat.team_rushing_TD
 
-c_stat['year'] = cstat_year
+c_stat['year'] = set_year
 c_stat = pd.concat([c_stat[['player', 'team', 'year', 'conference']], c_stat.iloc[:, 3:-1]], axis=1)
 c_stat = c_stat[(c_stat.rushing_ATT >= 10) | (c_stat.receiving_REC >= 10) | (c_stat.passing_ATT > 25)].reset_index(drop=True)
 # -
 
-append_to_db(c_stat, db_name, 'College_Stats', if_exist='append')
+# append_to_db(c_stat, db_name, 'College_Stats', if_exist='append')
 
 # # Pull Combine Data
 
@@ -124,7 +128,7 @@ comb_df = comb_df[comb_df.height!='Height'].reset_index(drop=True)
 comb_df.height = comb_df.height.apply(lambda x: 12*int(x.split('-')[0]) + int(x.split('-')[1]))
 comb_df = convert_to_float(comb_df)
 
-append_to_db(comb_df, db_name, 'Combine_Data_Raw', if_exist='append')
+# append_to_db(comb_df, db_name, 'Combine_Data_Raw', if_exist='append')
 
 # ## Get Player's Age as of Start of This Season
 
@@ -169,6 +173,33 @@ for p, a in zip(players, ages):
 
 append_to_db(birthdays, 'Season_Stats', 'Player_Birthdays', 'replace')
 # -
+
+# # Get College Player ADP
+
+# +
+y=2020
+def rookie_adp(adp_pos, y):
+    
+    URL = adp_url(adp_pos, y)
+    
+    # pulling historical player adp for runningbacks
+    data_adp = pd.read_html(URL)[1]
+    df_adp = clean_adp(data_adp, y).rename(columns={'year': 'draft_year'}).drop('team',axis=1)
+    df_adp['pos'] = adp_pos
+    
+    return df_adp
+
+rb_adp = rookie_adp('RB', y)
+wr_adp = rookie_adp('WR', y)
+te_adp = rookie_adp('TE', y)
+qb_adp = rookie_adp('QB', y)
+
+rookie_adp = pd.concat([rb_adp, wr_adp, te_adp, qb_adp], axis=0)
+rookie_adp = rookie_adp[['player', 'draft_year', 'pos', 'avg_pick']]
+rookie_adp
+# -
+
+append_to_db(rookie_adp, 'Season_Stats', 'Rookie_ADP', 'append')
 
 # ## Predict Missing Values
 
@@ -282,9 +313,11 @@ from difflib import SequenceMatcher
 comb_stats = pd.read_sql_query('''SELECT player, year draft_year, pos FROM combine_data_raw''', conn)
 draft = pd.read_sql_query('''SELECT player, year draft_year, pos, college FROM draft_positions''', conn)
 player_age = pd.read_sql_query(f'''SELECT player, pos, age, {set_year+1} as 'run_date' FROM Player_Birthdays ''', conn)
+rookie_adp = pd.read_sql_query('''SELECT * FROM Rookie_ADP''', conn)
 
 comb_stats = pd.merge(comb_stats, draft, on=['player', 'draft_year', 'pos'])
 comb_stats = pd.merge(comb_stats, player_age, on=['player', 'pos'])
+comb_stats = pd.merge(comb_stats, rookie_adp, on=['player', 'pos', 'draft_year'])
 
 cstats = pd.read_sql_query('''SELECT * FROM College_Stats''', conn)
 comb_stats = pd.merge(comb_stats, cstats, on=['player'])
@@ -306,7 +339,8 @@ for o, n in zip(old_name, new_name):
     comb_stats.loc[comb_stats.team==o, 'team'] = n
 comb_stats['team_match'] = comb_stats[['team', 'college']].apply(match_seq, axis=1)
 comb_stats = comb_stats[(comb_stats.team_match > 0.5) | (comb_stats.draft_year == set_year+1)].reset_index(drop=True)
-comb_stats = comb_stats[~((comb_stats.player=='Mike Williams') & (comb_stats.college=='Syracuse'))]
+
+comb_stats = comb_stats[~((comb_stats.player=='Mike Williams') & (comb_stats.college=='Clemson'))]
 comb_stats = comb_stats[~((comb_stats.player=='Mike Davis') & (comb_stats.college=='South Carolina'))]
 comb_stats = comb_stats[~((comb_stats.player=='Steve Smith') & (comb_stats.college=='USC'))]
 comb_stats = comb_stats[~((comb_stats.player=='Cedrick Wilson') & (comb_stats.college=='Boise St.'))]
@@ -317,6 +351,7 @@ comb_stats['season_age_scale'] = -comb_stats.season_age_scale.min() + comb_stats
 
 comb_stats['power5'] = 0
 comb_stats.loc[comb_stats.conference.isin(['SEC', 'Pac-10', 'Big 12', 'Big Ten', 'Pac-12', 'ACC']), 'power5'] = 1
+comb_stats.groupby('player').agg({'year':'count'}).sort_values(by='year')
 # -
 
 import matplotlib.pyplot as plt
@@ -324,7 +359,8 @@ plt.hist(comb_stats.season_age_scale);
 
 # +
 wr = comb_stats[comb_stats.pos=='WR'].reset_index(drop=True).copy()
-wr = wr[['player', 'draft_year', 'pos', 'college', 'conference', 'power5', 'age', 'year', 'season_age', 'season_age_scale',
+wr = wr[['player', 'draft_year', 'pos', 'college', 'conference', 'power5', 'age', 
+         'year', 'season_age', 'season_age_scale',
          'receiving_LONG', 'receiving_REC', 'receiving_TD', 'receiving_YDS',
          'receiving_YPR', 'team_receiving_LONG', 'team_receiving_REC', 'team_receiving_TD', 
          'team_receiving_YDS','rec_yd_mkt_share', 'rec_mkt_share', 'rec_td_mkt_share']]
@@ -349,13 +385,15 @@ for m in ['mean', 'max']:
     wr_agg.columns = [f'{c}_{m}' for c in wr_agg.columns]
     wr_stats = pd.concat([wr_stats, wr_agg], axis=1)
     
-wr_stats = wr_stats.reset_index().rename(columns={'draft_year': 'year'})
+wr_stats = wr_stats.reset_index()
 # -
 
-wr_stats = pd.merge(wr_stats, comb_df[comb_df.WR==1], on=['player', 'year'])
+comb_df = comb_df.rename(columns={'year': 'draft_year'})
+wr_stats = pd.merge(wr_stats, comb_df[comb_df.WR==1], on=['player', 'draft_year'])
 wr_stats = wr_stats.drop(['RB', 'TE', 'QB', 'WR'], axis=1)
+wr_stats = pd.merge(wr_stats, rookie_adp[rookie_adp.pos=='WR'], on=['player',  'draft_year'])
 
-# # User Inputs
+wr_stats.sort_values(by='draft_year')
 
 # # Load Packages
 
@@ -412,25 +450,13 @@ def clean_adp(data_adp, year):
     df_adp = df_adp.rename(columns=colnames_adp)
     
     return df_adp
-
-
 # -
 
 # # Running Backs
 
-# +
-url_adp_rush = 'http://www03.myfantasyleague.com/{}/adp?COUNT=100&POS=RB&ROOKIES=0&INJURED=1&CUTOFF=5&FRANCHISES=-1&IS_PPR=-1&IS_KEEPER=0&IS_MOCK=0&TIME='
-data_adp_rush = pd.DataFrame()
-rb_adp = pd.DataFrame()
 
-for year in range(2004, set_year+1):
-    url_year = url_adp_rush.format(str(year))
-    f = pd.read_html(url_year, header=0)[1]
-    f = f.assign(year=year)
-    f = clean_adp(f, year)
-    rb_adp = pd.concat([rb_adp, f], axis=0)
-    
-rb_adp = rb_adp.reset_index(drop=True)
+
+
 
 # +
 #==========
