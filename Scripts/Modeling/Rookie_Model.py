@@ -13,23 +13,27 @@
 #     name: python3
 # ---
 
+# +
 import numpy as np
 import pandas as pd
-from xgboost import XGBRegressor
-from lightgbm import LGBMRegressor
-from sklearn.linear_model import Lasso
-from sklearn.linear_model import Ridge
-from sklearn.linear_model import LinearRegression
-from sklearn.metrics import mean_squared_error
-from sklearn.model_selection import GridSearchCV
-from sklearn.model_selection import RandomizedSearchCV
-from sqlalchemy import create_engine
-from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import KFold
-from sklearn.model_selection import train_test_split
+import sqlite3
 import os
 from zHelper_Functions import *
-os.environ['KMP_DUPLICATE_LIB_OK']='True'
+
+from xgboost import XGBRegressor
+from lightgbm import LGBMRegressor
+from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
+from sklearn.linear_model import Lasso, Ridge, LinearRegression, ElasticNet
+from sklearn.neighbors import KNeighborsRegressor
+from sklearn.svm import LinearSVR
+
+from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.model_selection import GridSearchCV, KFold, train_test_split, RandomizedSearchCV
+from sklearn.preprocessing import StandardScaler
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+# -
 
 # # User Inputs
 
@@ -40,39 +44,13 @@ os.environ['KMP_DUPLICATE_LIB_OK']='True'
 
 # set core path
 path = f'/Users/{os.getlogin()}/Documents/Github/Fantasy_Football/'
-
-
 db_name = 'Model_Inputs.sqlite3'
 
 # set to position to analyze: 'RB', 'WR', 'QB', or 'TE'
 set_pos = 'Rookie_WR'
 
 # set the year
-set_year = 2019
-
-
-#==========
-# Postgres Database
-#==========
-
-# postgres login information
-pg_log = {
-    'USER': 'postgres',
-    'PASSWORD': 'Ctdim#1bf!!!!!',
-    'HOST': 'localhost',
-    'PORT': '5432', 
-    'DATABASE_NAME': 'fantasyfootball'
-}
-
-# create engine for connecting to database
-engine = create_engine('postgres+psycopg2://{}:{}@{}:{}/{}'.format(pg_log['USER'], pg_log['PASSWORD'], pg_log['HOST'],
-                                                                   pg_log['PORT'], pg_log['DATABASE_NAME']))
-
-# specify schema and table to write out intermediate results
-table_info = {
-    'engine': engine,
-    'schema': 'websitedev',
-}
+set_year = 2020
 
 #==========
 # Fantasy Point Values
@@ -89,43 +67,6 @@ rush_rec_td = 7
 ppr = 0.5
 fumble = -2
 
-# creating dictionary containing point values for each position
-pts_dict = {}
-pts_dict['QB'] = [pass_yd_per_pt, pass_td_pt, rush_yd_per_pt, rush_rec_td, int_pts, sacks, fumble]
-pts_dict['RB'] = [rush_yd_per_pt, rec_yd_per_pt, ppr, rush_rec_td, fumble]
-pts_dict['WR'] = [rec_yd_per_pt, ppr, rush_rec_td, fumble]
-pts_dict['TE'] = [rec_yd_per_pt, ppr, rush_rec_td, fumble]
-
-
-#==========
-# Model Settings
-#==========
-
-# correlation with target for initial feature reduction
-corr_cutoff = 0.15
-
-# VIF threshold to include remaining features
-vif_thresh = 10
-# -
-
-# # Load Packages
-
-# +
-# core packages
-import pandas as pd
-import numpy as np
-import os
-import sqlite3
-
-# jupyter specifications
-pd.options.mode.chained_assignment = None
-from IPython.core.interactiveshell import InteractiveShell
-# %matplotlib inline
-# %config InlineBackend.figure_format = 'retina'
-
-# plotting functions
-import matplotlib.pyplot as plt
-import seaborn as sns
 # -
 
 # # Pull In Data
@@ -133,150 +74,214 @@ import seaborn as sns
 # connect to database and pull in positional data
 conn = sqlite3.connect(path + 'Data/Databases/' + db_name)
 df = pd.read_sql_query('SELECT * FROM ' + set_pos + '_' + str(set_year), con=conn)
-bad_ap = df[(df.player == 'Adrian Peterson') & (df.avg_pick > 100)].index
-df = df.drop(bad_ap, axis=0).reset_index(drop=True)
 
 # +
 #=============
 # Create parameter dictionaries for each algorithm
 #=============
 
-lgbm_params = {
-    'n_estimators':[10, 20, 30, 40, 50, 60, 75],
-    'max_depth':[2, 3, 4, 5, 6, 7],
-    'feature_fraction':[0.5, 0.6, 0.7, 0.8, 0.9, 1],
-    'subsample': [0.5, 0.6, 0.7, 0.8, 0.9, 1],
-    'min_child_weight': [5, 10, 15, 20, 25, 30],
+models = {
+    'ridge': Ridge(random_state=1234),
+    'lasso': Lasso(random_state=1234),
+    'lgbm': LGBMRegressor(random_state=1234, n_jobs=-1),
+    'xgb': XGBRegressor(random_state=1234, nthread=-1),
+    'rf': RandomForestRegressor(random_state=1234, n_jobs=-1),
+    'enet': ElasticNet(random_state=1234),
+    'gbm': GradientBoostingRegressor(random_state=1234),
+    'knn': KNeighborsRegressor(n_jobs=-1),
+    'svr': LinearSVR()
 }
 
-xgb_params = {
-    'n_estimators': [20, 30, 40, 50, 60, 75], 
-    'max_depth': [2, 3, 4, 5, 6, 7], 
-    'subsample': [0.5, 0.6, 0.7, 0.8, 0.9, 1],
-    'min_child_weight': [10, 15, 20, 25, 30],
-    'feature_fraction':[0.5, 0.6, 0.7, 0.8, 0.9, 1]
-}
+params = {
+    'lgbm': {
+        'n_estimators':[10, 20, 30, 40, 50, 60, 75, 100, 150],
+        'max_depth':[2, 3, 4, 5, 6, 7, 8, 10, 15],
+        'colsample_bytree':[0.5, 0.6, 0.7, 0.8, 0.9, 1],
+        'subsample': [0.5, 0.6, 0.7, 0.8, 0.9, 1],
+        'min_child_weight': [0.1, 1, 5, 10, 15, 20, 25, 30, 40]
+    },
 
-rf_params = {
-    'n_estimators': [30, 40, 50, 60, 75, 100, 125, 150], 
-    'max_depth': [3, 4, 5, 6, 7], 
-    'min_samples_leaf': [1, 2, 3, 5, 7, 10],
-    'max_features':[0.5, 0.6, 0.7, 0.8, 0.9, 1]
-}
+    'xgb': {
+        'n_estimators': [20, 30, 40, 50, 60, 75, 100, 150], 
+        'max_depth': [2, 3, 4, 5, 6, 7, 8, 10, 15], 
+        'subsample': [0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1],
+        'min_child_weight': [0.1, 1, 5, 10, 15, 20, 25, 30, 40],
+        'colsample_bytree':[0.5, 0.6, 0.7, 0.8, 0.9, 1]
+    },
 
-catboost_params = {
-    'iterations': [10, 25, 50], 
-    'depth': [1, 2, 3, 4, 5, 10]
-}
+    'rf': {
+        'n_estimators': [50, 75, 100, 125, 150, 250], 
+        'max_depth': [3, 4, 5, 6, 7, 10, 12, 15, 20], 
+        'min_samples_leaf': [1, 2, 3, 5, 7, 10, 15],
+        'max_features':[0.5, 0.6, 0.7, 0.8, 0.9, 1]
+    },
 
-ridge_params = {
-    'alpha': [50, 100, 150, 200, 250, 300, 400, 500, 600, 700, 1000]
-}
+    'ridge': {
+        'alpha': np.arange(0.1, 1000, 0.5)
+    },
 
-lasso_params = {
-   # 'alpha': [0.5, 0.75, 0.8, .9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5]
-    'alpha': [1, 5, 10, 25, 50, 100, 150, 200, 250]
-}
+    'lasso': {
+        'alpha': np.arange(0.1, 1000, 0.5)
+    },
 
-lasso_pca_params = {
-    'alpha': [0.1, 0.2, 0.3, 0.4, 0.5, 0.75, 1, 1.5, 2]
+     'enet': {
+        'alpha': np.arange(0.1, 1000, 0.5),
+        'l1_ratio': np.arange(0.02, 0.98, 0.1)
+     },
+    
+    'gbm': {
+         'n_estimators': [50, 75, 100, 125, 150, 250], 
+        'max_depth': [3, 4, 5, 6, 7, 10, 12, 15, 20], 
+        'min_samples_leaf': [1, 2, 3, 5, 7, 10, 15],
+        'max_features':[0.5, 0.6, 0.7, 0.8, 0.9, 1]
+    },
+    
+    'knn': {
+        'n_neighbors': range(1, 50), 
+        'weights': ['distance', 'uniform'],
+        'algorithm': ['auto', 'ball_tree', 'kd_tree', 'brute']
+    },
+    
+    'svr': {
+        'C': np.arange(0.01, 1000, 10), 
+        'epsilon': np.arange(0.01, 100, 10)
+        }
+
 }
 
 
 # -
 
 def cv_estimate(est, X_train, y_train, n_folds=5):
-
-    cv = KFold(n_folds, random_state=1234)
-    val_scores = []
+    
+    # set up KFolds and empty lists to store results
+    cv = KFold(n_folds)
+    rmse_scores = []
+    r2_scores = []
     out_of_sample_pred = []
     all_y = []
+    ind = []
+    
+    # loop through each split and train / predict in and out of sample 
     for train, test in cv.split(X_train):
+        
+        # fit model
         est.fit(X_train.iloc[train, :], y_train[train])
+        
+        # predict the out of sample data points and append to list
         pred = est.predict(X_train.iloc[test, :])
-        rmse = np.sqrt(mean_squared_error(pred, y_train[test]))
-        val_scores.append(rmse)
         out_of_sample_pred.extend(pred)
+    
+        # get the rmse and r2 score of out of sample predictions
+        rmse_scores.append(np.sqrt(mean_squared_error(pred, y_train[test])))
+        r2_scores.append(r2_score(y_train[test], pred))
+        
+        # add in the y_act values
         all_y.extend(y_train[test])
+        
+        # append all the indexes in order
+        ind.extend(test)
 
-    result = np.mean(val_scores)
-    print('Val Score:', round(np.mean(val_scores), 2))
+    # take average of out of sample predictions
+    rmse_result = np.mean(rmse_scores)
+    r2_result = np.mean(r2_scores)
 
-    return out_of_sample_pred, all_y
+    # print results
+    print('RMSE Score:', round(np.mean(rmse_result), 2))
+    print('R2 Score:', round(np.mean(r2_result), 2))
+    
+    return out_of_sample_pred, all_y, rmse_result, r2_result, ind
 
 
 # +
 if set_pos == 'Rookie_RB':
-    metrics = ['rush_yd_per_game', 'rec_yd_per_game', 'rec_per_game', 'td_per_game']
+    metrics = ['rush_yd_per_game', 'rec_yd_per_game', 'rec_per_game', 'td_per_game', 'fp_per_game']
 elif set_pos == 'Rookie_WR':
-    metrics = ['rec_yd_per_game', 'rec_per_game', 'td_per_game']
+    metrics = ['rec_yd_per_game', 'rec_per_game', 'td_per_game', 'fp_per_game']
 
-models = [LGBMRegressor(), XGBRegressor(), Lasso(), Ridge()]
-model_label = ['LGBM', 'XGB', 'Lasso', 'Ridge']
-params = [lgbm_params, xgb_params, lasso_params, ridge_params]
+model_labels = ['lgbm', 'xgb', 'ridge', 'lasso', 'enet', 'rf', 'gbm', 'knn']
 
-results = pd.DataFrame()
-val_df = pd.DataFrame()
-y_df = pd.DataFrame()
+results = {}
 for y_label in metrics:
+    print(f'\n==============\nRunning {y_label}\n==============')
+    results[y_label] = {}
+    results[y_label]['test_pred'] = {}
+    results[y_label]['val_pred'] = {}
+    results[y_label]['val_y'] = {}
+    results[y_label]['val_error'] = []
     
+    # extract the train and predict dataframes
     predict = df[df.year==(set_year - 1)].reset_index(drop=True)
     train = df[df.year!=(set_year - 1)].reset_index(drop=True)
+    
+    # remove unnecessary columns
     to_drop = [m for m in metrics if m != y_label]
     to_drop.extend(['team'])
-    train = train.rename(columns={y_label: 'y_act'}).drop(to_drop, axis=1)
-    predict = predict.drop(to_drop, axis=1)
+    
+    # drop unnecessary columns
+    Xy = train.rename(columns={y_label: 'y_act'}).drop(to_drop, axis=1)
 
     # remove low correlation features
-    train, predict = corr_removal(train, predict, corr_cutoff=corr_cutoff)
+    Xy = corr_collinear_removal(Xy, corr_cutoff=0.05, collinear_cutoff=0.8, good_cols_ext=[])
+    predict = predict[Xy.drop('y_act', axis=1).columns]
 
-    # select only features with low vif for modeling
-    transformer = ReduceVIF(thresh=vif_thresh, scale=True, print_progress=False)
-    train_ = transformer.fit_transform(train.drop(['player'], axis=1), train.y_act)
-
-    # extract best columns and filter down df_predict
-    best_cols = list(train_.columns)
-    best_cols.extend(['player', 'year', 'avg_pick'])
-    best_cols = [c for c in best_cols if c != 'y_act']
-    predict = predict[best_cols]
-    predict = predict.loc[:,~predict.columns.duplicated()]
-
-    # add target and filter down df_train
-    best_cols = list(train_.columns)
-    best_cols.extend(['y_act', 'year', 'avg_pick'])
-    train = train[best_cols]
-    train = train.loc[:,~train.columns.duplicated()]
-
-    y = train.y_act
-    X = train.drop('y_act', axis=1)
+    y = Xy.y_act
+    X = Xy.drop(['y_act'], axis=1)
     
     val = []
     all_y = []
-    for i, model in enumerate(models):
-
-        grid = RandomizedSearchCV(model, params[i], cv=5, n_iter=20, random_state=1234,
-                                  scoring='neg_mean_squared_error')
+    for m in model_labels:
+        print(f'\n---------\nRunning {m}\n---------')        
         
-        if model_label == 'Ridge' or model_label == 'Lasso':
-            X = StandardScaler().fit_transform(X)
-        
+        if m in ('ridge', 'lasso', 'enet', 'svr', 'knn'):
+            X = pd.DataFrame(StandardScaler().fit_transform(X), columns=X.columns)
+            
+        # set up and run grid search model
+        grid = RandomizedSearchCV(models[m], params[m], cv=5, n_iter=30, scoring='neg_mean_squared_error', random_state=1234)
         grid.fit(X, y)
         best_model = grid.best_estimator_
-        p = best_model.predict(predict.drop('player', axis=1))
-           
-        results = pd.concat([results, pd.Series(p)], axis=1)
         
-        test, ys = cv_estimate(best_model, X, y)        
-        val.append(test)
-        all_y.append(ys)
+        # get the out of sample predictions for the train set with best model
+        val_pred, val_y, rmse, r2, ind = cv_estimate(best_model, X, y)
+        
+        # predict the test set
+        test_pred = best_model.predict(predict)
+        
+        # append the results to dictioary
+        results[y_label]['val_pred'][m] = val_pred
+        results[y_label]['val_y'][m] = val_y
+        results[y_label]['val_error'].append([m, rmse, r2])
+        results[y_label]['test_pred'][m] = test_pred
     
-    lr_predict, lr_y  = cv_estimate(LinearRegression(), train[['avg_pick', 'year']], y)
-    val.append(lr_predict)
-    all_y.append(lr_y)
-        
-    val_df = pd.concat([val_df, pd.DataFrame(val).T.mean(axis=1)], axis=1)
-    y_df = pd.concat([y_df, pd.DataFrame(all_y).T.mean(axis=1)], axis=1)
+    print(f'\n---------\nRunning LR with ADP\n---------')      
+    # run and append results using only ADP of the player
+    val_pred_adp, val_y, rmse, r2, ind = cv_estimate(LinearRegression(), train[['avg_pick']], y)
+    results[y_label]['val_pred']['lr_adp'] = val_pred_adp
+    results[y_label]['val_y']['lr_adp'] = val_y
+    results[y_label]['val_error'].append(['lr_adp', rmse, r2])
+    results[y_label]['test_pred']['lr_adp'] = test_pred
 # -
+
+val_results = pd.DataFrame()
+test_results= pd.DataFrame()
+for met in metrics:
+    df_met = pd.DataFrame(results['rec_yd_per_game']['val_error'], columns=['model', 'rmse', 'r2_score']).sort_values(by='rmse')
+    df_met = df_met[df_met.r2_score > 0]
+    df_met['total_r2'] = df_met.r2_score.sum()
+    df_met['wt'] = df_met.r2_score / df_met.total_r2
+
+    for i, row in df_met.iterrows():
+        if i == 0:
+            val_pred = np.array(results[met]['val_pred'][row.model])*row.wt
+            test_pred = np.array(results[met]['test_pred'][row.model])*row.wt
+        else:
+            val_pred = np.vstack([val_pred, np.array(results[met]['val_pred'][row.model])*row.wt])
+            test_pred = np.vstack([test_pred, np.array(results[met]['test_pred'][row.model])*row.wt])
+            
+    val_results = pd.concat([val_results, pd.Series(np.sum(val_pred, axis=0), name=met+'_pred')], axis=1)
+    test_results = pd.concat([test_results, pd.Series(np.sum(test_pred, axis=0), name=met+'_pred')], axis=1)
+
+val_results
 
 np.sqrt(np.mean((val_df - y_df)**2))
 
@@ -286,14 +291,16 @@ if set_pos == 'Rookie_RB':
 elif set_pos == 'Rookie_WR':
     pts = [.1, .5, 7]
 
-historical = pd.Series((val_df*pts).sum(axis=1).values, index=df[df.year!=2018].player)
+historical = pd.Series((val_df).sum(axis=1).values, index=df[df.year!=set_year-1].player)
 historical.sort_values().plot.barh(figsize=(5,20))
 # -
 
+
+
 df['year_exp'] = 0
-train_out = pd.concat([df.loc[df.year!=2018, ['player', 'year']].reset_index(drop=True),
+train_out = pd.concat([df.loc[df.year!=set_year-1, ['player', 'year']].reset_index(drop=True),
                        val_df,
-                       df.loc[df.year!=2018, ['pp_age', 'year_exp', 'avg_pick']].reset_index(drop=True), 
+                       df.loc[df.year!=set_year-1, ['pp_age', 'year_exp', 'avg_pick']].reset_index(drop=True), 
                        (y_df*pts).sum(axis=1)], axis=1)
 cols = ['player', 'year']
 m = ['pred_' + m for m in metrics]

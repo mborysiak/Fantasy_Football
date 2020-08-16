@@ -199,7 +199,7 @@ rookie_adp = rookie_adp[['player', 'draft_year', 'pos', 'avg_pick']]
 rookie_adp
 # -
 
-append_to_db(rookie_adp, 'Season_Stats', 'Rookie_ADP', 'append')
+# append_to_db(rookie_adp, 'Season_Stats', 'Rookie_ADP', 'append')
 
 # ## Predict Missing Values
 
@@ -288,8 +288,8 @@ comb_df = fill_metrics('bench_press', comb_df, pred_cols)
 # ## Predict Player Profiler Data
 
 # +
-rb = pd.read_sql_query('''SELECT * FROM Rookie_RB_Stats''', conn)
-wr = pd.read_sql_query('''SELECT * FROM Rookie_WR_Stats''', conn)
+rb = pd.read_sql_query('''SELECT * FROM Rookie_RB_Stats_Old''', conn)
+wr = pd.read_sql_query('''SELECT * FROM Rookie_WR_Stats_Old''', conn)
 
 pp = pd.concat([rb, wr], axis=0).reset_index(drop=True)
 X_cols = [c for c in comb_df if c not in ('year', 'player', 'Value', 'pp_age', 'QB', 'RB', 'TE', 'WR')]
@@ -357,6 +357,8 @@ comb_stats.groupby('player').agg({'year':'count'}).sort_values(by='year')
 import matplotlib.pyplot as plt
 plt.hist(comb_stats.season_age_scale);
 
+# # Split out and save WR
+
 # +
 wr = comb_stats[comb_stats.pos=='WR'].reset_index(drop=True).copy()
 wr = wr[['player', 'draft_year', 'pos', 'college', 'conference', 'power5', 'age', 
@@ -393,256 +395,111 @@ wr_stats = pd.merge(wr_stats, comb_df[comb_df.WR==1], on=['player', 'draft_year'
 wr_stats = wr_stats.drop(['RB', 'TE', 'QB', 'WR'], axis=1)
 wr_stats = pd.merge(wr_stats, rookie_adp[rookie_adp.pos=='WR'], on=['player',  'draft_year'])
 
-wr_stats.sort_values(by='draft_year')
+target_data = pd.read_sql_query('''SELECT player, year draft_year, rec_per_game, rec_yd_per_game, td_per_game 
+                                   FROM WR_Stats''', conn)
+wr_stats = pd.merge(wr_stats, target_data, on=['player', 'draft_year'], how='left')
+wr_stats['fp_per_game'] = (wr_stats[['rec_per_game', 'rec_yd_per_game', 'td_per_game']]*[0.5, 0.1, 7]).sum(axis=1)
+wr_stats.avg_pick = np.log(wr_stats.avg_pick)
 
-# # Load Packages
+draft = pd.read_sql_query('''SELECT player, pos, team FROM draft_positions''', conn)
+draft = draft[~((draft.player=='Anthony Miller') & (draft.team=='LAC'))]
+wr_stats = pd.merge(wr_stats, draft, on=['player', 'pos'])
 
-# +
-#==========
-# Clean the ADP data
-#==========
+# append_to_db(wr_stats, 'Season_Stats', 'Rookie_WR_Stats', 'replace')
 
-'''
-Cleaning the ADP data by selecting relevant features, and extracting the name and team
-from the combined string column. Note that the year is not shifted back because the 
-stats will be used to calculate FP/G for the rookie in that season, but will be removed
-prior to training. Thus, the ADP should match the year from the stats.
-'''
-
-def clean_adp(data_adp, year):
-
-    #--------
-    # Select relevant columns and clean special figures
-    #--------
-
-    data_adp['year'] = year
-
-    # set column names to what they are after pulling
-    df_adp = data_adp.iloc[:, 1:].rename(columns={
-        1: 'Player', 
-        2: 'Avg. Pick',
-        3: 'Min. Pick',
-        4: 'Max. Pick',
-        5: '# Drafts Selected In'
-    })
-
-    # selecting relevant columns and dropping na
-    df_adp = df_adp[['Player', 'year', 'Avg. Pick']].dropna()
-
-    # convert year to float and move back one year to match with stats
-    df_adp['year'] = df_adp.year.astype('float')
-
-    # selecting team and player name information from combined string
-    df_adp['Tm'] = df_adp.Player.apply(team_select)
-    df_adp['Player'] = df_adp.Player.apply(name_select)
-    df_adp['Player'] = df_adp.Player.apply(name_clean)
-
-    # format and rename columns
-    df_adp = df_adp[['Player', 'Tm', 'year', 'Avg. Pick']]
-
-    colnames_adp = {
-        'Player': 'player',
-        'Tm': 'team',
-        'year': 'year',
-        'Avg. Pick': 'avg_pick'
-    }
-
-    df_adp = df_adp.rename(columns=colnames_adp)
-    
-    return df_adp
-# -
-
-# # Running Backs
-
-
-
-
+# # Split out and Save RB
 
 # +
-#==========
-# Pulling in the Player Profiler statistics
-#==========
+rb = comb_stats[comb_stats.pos=='RB'].reset_index(drop=True).copy()
+rb = rb[['player', 'draft_year', 'pos', 'college', 'conference', 'power5', 'age', 
+         'year', 'season_age', 'season_age_scale','rec_yd_mkt_share', 'rec_mkt_share', 'rec_td_mkt_share',
+         'rush_yd_mkt_share', 'rush_td_mkt_share', 'att_mkt_share']]
+rb['total_yd_mkt_share'] = rb.rush_yd_mkt_share + rb.rec_yd_mkt_share
+rb['total_td_mkt_share'] = rb.rush_td_mkt_share + rb.rec_td_mkt_share
 
-'''
-Pull in the player profiler statistics and clean up any formatting issues. Follow by
-left joining the statistics to the existing player dataframe.
-'''
+rb['rec_dominator'] = (rb.rec_mkt_share + (rb.rec_mkt_share * 0.5 * rb.power5)) / rb.season_age_scale
+rb['rec_yd_dominator'] = (rb.rec_yd_mkt_share + (rb.rec_mkt_share* 0.5 * rb.power5)) /rb.season_age_scale
+rb['rec_td_dominator'] = (rb.rec_td_mkt_share + (rb.rec_mkt_share* 0.5 * rb.power5)) / rb.season_age_scale
 
-full_path = path + '/Data/OtherData/PlayerProfiler/{}/RB/'.format(set_year)
+rb['rush_yd_dominator'] = (rb.rush_yd_mkt_share + (rb.rush_yd_mkt_share * 0.5 * rb.power5)) / rb.season_age_scale
+rb['rush_td_dominator'] = (rb.rush_td_mkt_share + (rb.rush_td_mkt_share * 0.5 * rb.power5)) / rb.season_age_scale
 
-# loop through each file and merge together into single file
-data_pp = pd.DataFrame()
-for file in os.listdir(full_path):
-    f = pd.read_csv(full_path + file)
-    
-    try:
-        data_pp = pd.merge(data_pp, f.drop('Position', axis=1), 
-                           how='inner', left_on='Full Name', right_on='Full Name')
-    except:
-        data_pp = f
-        
-# convert all dashes to null
-data_pp = data_pp.replace("-", float('nan'))
+rb['total_yd_dominator'] = (rb.total_yd_mkt_share + (rb.total_yd_mkt_share * 0.5 * rb.power5)) / rb.season_age_scale
+rb['total_td_dominator'] = (rb.total_td_mkt_share + (rb.total_td_mkt_share * 0.5 * rb.power5)) / rb.season_age_scale
 
-colnames = {
-    'Full Name': 'player',
-    'Position': 'position',
-    'Draft Year': 'draft_year',
-    '20-Yard Shuttle': 'shuffle_20_yd',
-    'Athleticism Score': 'athlete_score',
-    'SPARQ-x': 'sparq',
-    '3-Cone Drill': 'three_cone',
-    'Bench Press': 'bench_press',
-    'Speed Score': 'speed_score',
-    '40-Yard Dash': 'forty',
-    'Broad Jump': 'broad_jump',
-    'Vertical Jump': 'vertical',
-    'Burst Score': 'burst_score',
-    'Agility Score': 'agility_score',
-    'Hand Size': 'hand_size',
-    'Age': 'pp_age',
-    'Arm Length': 'arm_length',
-    'Height (Inches)': 'height',
-    'Weight': 'weight',
-    'Draft Pick': 'draft_pick', 
-    'BMI': 'bmi',
-    'Breakout Age': 'breakout_age',
-    'College YPC': 'college_ypc',
-    'Breakout Year': 'breakout_year',
-    'College Dominator Rating': 'dominator_rating',
-    'College Target Share': 'college_tgt_share'
+agg_metr = {
+    'rec_dominator': 'mean',
+    'rec_yd_dominator': 'mean', 
+    'rec_td_dominator': 'mean',
+    'rec_mkt_share': 'mean',
+    'rec_yd_mkt_share': 'mean',
+    'rec_td_mkt_share': 'mean',
+    'rush_yd_dominator': 'mean', 
+    'rush_td_dominator': 'mean',
+    'rush_yd_mkt_share': 'mean',
+    'rush_td_mkt_share': 'mean',
+    'total_yd_mkt_share': 'mean',
+    'total_td_mkt_share': 'mean',
+    'total_yd_dominator': 'mean',
+    'total_td_dominator': 'mean',
+    'att_mkt_share': 'mean'
 }
 
-# rename columns
-data_pp = data_pp.rename(columns=colnames)
+rb_stats = rb.groupby(['player', 'draft_year']).agg(agg_metr)
+rb_stats.columns = [f'{c}_mean' for c in rb_stats.columns]    
+rb_stats = rb_stats.reset_index()
+# -
 
-# replace undrafted players draft slot with 7.33
-data_pp = data_pp.replace("Undrafted", 7.33)
-
-def draft_pick(col):
-    a = str(col).split('.')
-    x = [float(val) for val in a]
-    y = 32*x[0] + x[1] - 32
-    return y
-
-# create continuous draft pick number
-data_pp['draft_pick'] = data_pp['draft_pick'].apply(draft_pick)
-
-def weight_clean(col):
-    y = str(col).split(' ')[0]
-    y = float(y)
-    return y
-
-def arm_clean(x):
-    try:
-        return float(sum(Fraction(s) for s in x.split()))
-    except:
-        return x
-    
-def pct_clean(x):
-    try:
-        return float(x.replace('%', ''))
-    except:
-        return x
-
-# clean up the weight to remove lbs
-data_pp['weight'] = data_pp['weight'].apply(weight_clean)
-
-data_pp.arm_length = data_pp.arm_length.apply(arm_clean)
-data_pp.hand_size = data_pp.hand_size.apply(arm_clean)
-data_pp.three_cone = data_pp.three_cone.apply(pct_clean)
-data_pp.college_tgt_share = data_pp.college_tgt_share.apply(pct_clean)
-data_pp.dominator_rating = data_pp.dominator_rating.apply(pct_clean)
-
-# convert all columns to numeric
-data_pp.iloc[:, 2:] = data_pp.iloc[:, 2:].astype('float')
-
-# select only relevant columns before joining
-data_pp = data_pp[['player', 'pp_age', 'draft_year', 'shuffle_20_yd', 'athlete_score', 
-                   'sparq', 'three_cone', 'bench_press', 'speed_score', 'forty', 'broad_jump', 'vertical', 
-                   'burst_score', 'agility_score',  'hand_size', 'arm_length', 'height', 'weight', 
-                   'draft_pick', 'bmi', 'breakout_age', 'college_ypc', 'breakout_year', 'dominator_rating',
-                   'college_tgt_share']]
-
-new = data_pp[data_pp.draft_year == set_year]
-old = data_pp[data_pp.draft_year != set_year].dropna(thresh=15, axis=0)
-
-data_pp = pd.concat([new, old], axis=0).reset_index(drop=True)
-data_pp.pp_age = data_pp.pp_age - (set_year - data_pp.draft_year)
+rb_stats = pd.merge(rb_stats, comb_df[comb_df.RB==1], on=['player', 'draft_year'])
+rb_stats = rb_stats.drop(['RB', 'TE', 'QB', 'WR'], axis=1)
+rb_stats = pd.merge(rb_stats, rookie_adp[rookie_adp.pos=='RB'], on=['player',  'draft_year'])
 
 # +
-#===========
-# Pull out Rookie seasons from training dataframe
-#===========
+target_data = pd.read_sql_query('''SELECT player, year draft_year, rush_yd_per_game, rec_per_game, 
+                                          rec_yd_per_game, td_per_game 
+                                   FROM rb_stats''', conn)
+rb_stats = pd.merge(rb_stats, target_data, on=['player', 'draft_year'], how='left')
+rb_stats['fp_per_game'] = (rb_stats[['rush_yd_per_game', 'rec_per_game', 'rec_yd_per_game', 
+                                     'td_per_game']]*[0.1, 0.5, 0.1, 7]).sum(axis=1)
 
-'''
-Loop through each player and select their minimum year, which will likely be their 
-rookie season. Weird outliers will be removed later on.
-'''
-
-conn = sqlite3.connect('/Users/Mark/Documents/Github/Fantasy_Football/Data/Season_Stats.sqlite3')
-query = "SELECT * FROM RB_Stats A"
-rb = pd.read_sql_query(query, con=conn)
-
-rookies = pd.merge(data_pp, rb.drop('avg_pick', axis=1), how='left', left_on='player', right_on='player')
-rookies = rookies[(rookies.draft_year == set_year) | (rookies.draft_year == rookies.year)].reset_index(drop=True)
-
-rookies['total_td'] = rookies.rec_td + rookies.rush_td
-rookies['rush_yd_per_game'] = rookies.rush_yds / rookies.games
-rookies['rec_yd_per_game'] = rookies.rec_yds / rookies.games
-rookies['rec_per_game'] = rookies.receptions / rookies.games
-rookies['td_per_game'] = rookies.total_td / rookies.games
-
-cols = list(data_pp.columns)
-cols.extend(['rush_yd_per_game', 'rec_yd_per_game', 'rec_per_game', 'td_per_game'])
-
-rookies = rookies[cols]
-rookies.iloc[:, :-4] = rookies.iloc[:, :-4].fillna(rookies.iloc[:, :-4].median())
-
-rookies = pd.merge(rookies, rb_adp, how='inner', left_on=['player', 'draft_year'], right_on=['player', 'year'])
-rookies = rookies.drop('year', axis=1)
-
-adp_to_player_teams = {
-
-        'ARI': 'ARI',
-        'ATL': 'ATL',
-        'BAL': 'BAL',
-        'BUF': 'BUF',
-        'CAR': 'CAR',
-        'CHI': 'CHI',
-        'CIN': 'CIN',
-        'CLE': 'CLE',
-        'DAL': 'DAL',
-        'DEN': 'DEN',
-        'DET': 'DET',
-        'GBP': 'GNB',
-        'HOU': 'HOU',
-        'IND': 'IND',
-        'JAC': 'JAX',
-        'KCC': 'KAN',
-        'LAC': 'LAC',
-        'SDC': 'LAC',
-        'LAR': 'LAR',
-        'RAM': 'LAR',
-        'MIA': 'MIA',
-        'MIN': 'MIN',
-        'NEP': 'NWE',
-        'NOS': 'NOR',
-        'NYG': 'NYG',
-        'NYJ': 'NYJ',
-        'OAK': 'OAK',
-        'PHI': 'PHI',
-        'PIT': 'PIT',
-        'SEA': 'SEA',
-        'SFO': 'SFO',
-        'TBB': 'TAM',
-        'TEN': 'TEN',
-        'WAS': 'WAS', 
-        'STL': 'LAR'
-    }
-
-rookies['team'] = rookies['team'].map(adp_to_player_teams)
+rb_stats.avg_pick = np.log(rb_stats.avg_pick)
 # -
+
+draft = pd.read_sql_query('''SELECT player, pos, team FROM draft_positions''', conn)
+draft = draft[~((draft.player=='Adrian Peterson') & (draft.team=='CHI'))]
+rb_stats = pd.merge(rb_stats, draft, on=['player', 'pos'])
+
+append_to_db(rb_stats, 'Season_Stats', 'Rookie_RB_Stats', 'replace')
+
+# # Rough Modeling
+
+# +
+X = rb_stats[~rb_stats.rush_yd_per_game.isnull()].reset_index(drop=True)
+X = X.select_dtypes(exclude='object').drop(['rush_yd_per_game', 'rec_yd_per_game', 'rec_per_game', 'td_per_game', 'fp_per_game'], axis=1)
+sc = StandardScaler()
+X = pd.DataFrame(sc.fit_transform(X), columns=X.columns)
+
+X_test = rb_stats[rb_stats.rush_yd_per_game.isnull()].reset_index(drop=True)
+X_test = X_test.select_dtypes(exclude='object').drop(['rush_yd_per_game', 'rec_yd_per_game', 'rec_per_game', 'td_per_game', 'fp_per_game'], axis=1)
+X_test = pd.DataFrame(sc.transform(X_test), columns=X_test.columns)
+y = rb_stats.loc[~rb_stats.rush_yd_per_game.isnull(), 'fp_per_game'].reset_index(drop=True)
+
+# +
+from sklearn.linear_model import Ridge, Lasso
+from sklearn.model_selection import cross_val_score
+
+lr = Ridge(alpha=25)
+print(np.mean(np.sqrt(-cross_val_score(lr, X, y, scoring='neg_mean_squared_error', cv=10))))
+lr.fit(X, y)
+pd.Series(lr.coef_, index=X.columns).sort_values()
+pd.concat([rb_stats.loc[~rb_stats.rush_yd_per_game.isnull(), ['player', 'fp_per_game']].reset_index(drop=True),
+           pd.Series(lr.predict(X), name='pred')], axis=1).sort_values(by='pred', ascending=False).iloc[:25]
+# -
+
+pd.concat([rb_stats.loc[rb_stats.rush_yd_per_game.isnull(), 'player'].reset_index(drop=True),
+           pd.Series(lr.predict(X_test), name='pred')], axis=1).sort_values(by='pred', ascending=False).iloc[:25]
+
+# # Running Backs
 
 rookies.loc[:, 'log_draft_pick'] = np.log(rookies.draft_pick)
 rookies.loc[:, 'log_avg_pick'] = np.log(rookies.avg_pick)
@@ -655,209 +512,6 @@ rookies.loc[:, 'draft_pick_age'] = rookies.draft_pick / rookies.pp_age
 append_to_db(rookies, db_name='Season_Stats.sqlite3', table_name='Rookie_RB_Stats', if_exist='replace')
 
 # # Wide Receivers
-
-# +
-#==========
-# Pulling in the Player Profiler statistics
-#==========
-
-'''
-Pull in the player profiler statistics and clean up any formatting issues. Follow by
-left joining the statistics to the existing player dataframe.
-'''
-
-full_path = path + '/Data/OtherData/PlayerProfiler/{}/WR/'.format(set_year)
-
-# loop through each file and merge together into single file
-data_pp = pd.DataFrame()
-for file in os.listdir(full_path):
-    f = pd.read_csv(full_path + file)
-    
-    try:
-        data_pp = pd.merge(data_pp, f.drop('Position', axis=1), 
-                           how='inner', left_on='Full Name', right_on='Full Name')
-    except:
-        data_pp = f
-        
-# convert all dashes to null
-data_pp = data_pp.replace("-", float('nan'))
-
-colnames = {
-    'Full Name': 'player',
-    'Position': 'position',
-    'Draft Year': 'draft_year',
-    '20-Yard Shuttle': 'shuffle_20_yd',
-    'Athleticism Score': 'athlete_score',
-    'SPARQ-x': 'sparq',
-    '3-Cone Drill': 'three_cone',
-    'Bench Press': 'bench_press',
-    'Height-adjusted Speed Score': 'speed_score',
-    '40-Yard Dash': 'forty',
-    'Broad Jump': 'broad_jump',
-    'Vertical Jump': 'vertical',
-    'Burst Score': 'burst_score',
-    'Agility Score': 'agility_score',
-    'Hand Size': 'hand_size',
-    'Age': 'pp_age',
-    'Arm Length': 'arm_length',
-    'Height (Inches)': 'height',
-    'Weight': 'weight',
-    'Draft Pick': 'draft_pick', 
-    'BMI': 'bmi',
-    'Breakout Age': 'breakout_age',
-    'College YPR': 'college_ypr',
-    'Breakout Year': 'breakout_year',
-    'College Dominator Rating': 'dominator_rating',
-    'Catch Radius': 'catch_radius',
-}
-
-# rename columns
-data_pp = data_pp.rename(columns=colnames)
-
-# replace undrafted players draft slot with 7.33
-data_pp = data_pp.replace("Undrafted", 7.33)
-data_pp = data_pp.replace('Supplemental (2nd)', 2.15)
-
-
-def draft_pick(col):
-    a = str(col).split('.')
-    x = [float(val) for val in a]
-    y = 32*x[0] + x[1] - 32
-    return y
-
-# create continuous draft pick number
-data_pp['draft_pick'] = data_pp['draft_pick'].apply(draft_pick)
-
-def weight_clean(col):
-    y = str(col).split(' ')[0]
-    y = float(y)
-    return y
-
-def arm_clean(x):
-    try:
-        return float(sum(Fraction(s) for s in x.split()))
-    except:
-        return x
-    
-def pct_clean(x):
-    try:
-        return float(x.replace('%', ''))
-    except:
-        return x
-
-# clean up the weight to remove lbs
-data_pp['weight'] = data_pp['weight'].apply(weight_clean)
-
-data_pp.arm_length = data_pp.arm_length.apply(arm_clean)
-data_pp.hand_size = data_pp.hand_size.apply(arm_clean)
-data_pp.three_cone = data_pp.three_cone.apply(pct_clean)
-data_pp.dominator_rating = data_pp.dominator_rating.apply(pct_clean)
-
-# convert all columns to numeric
-try:
-    data_pp.iloc[:, 2:] = data_pp.iloc[:, 2:].astype('float')
-except:
-    pass
-
-# select only relevant columns before joining
-data_pp = data_pp[['player', 'pp_age', 'draft_year', 'shuffle_20_yd', 'athlete_score', 'sparq', 
-                   'three_cone', 'bench_press', 'draft_pick',
-                   'speed_score', 'forty', 'broad_jump', 'vertical', 'burst_score', 'agility_score',
-                   'hand_size', 'arm_length', 'height', 'weight',  'bmi', 'breakout_age' ,
-                   'college_ypr', 'breakout_year', 'dominator_rating']]
-
-new = data_pp[data_pp.draft_year == set_year]
-old = data_pp[data_pp.draft_year != set_year].dropna(thresh=10, axis=0)
-
-data_pp = pd.concat([new, old], axis=0).reset_index(drop=True)
-data_pp.pp_age = data_pp.pp_age - (set_year - data_pp.draft_year)
-
-# +
-url_adp_rec = 'http://www03.myfantasyleague.com/{}/adp?COUNT=100&POS=WR&ROOKIES=0&INJURED=1&CUTOFF=5&FRANCHISES=-1&IS_PPR=-1&IS_KEEPER=0&IS_MOCK=0&TIME='
-data_adp_rec = pd.DataFrame()
-wr_adp = pd.DataFrame()
-
-for year in range(2004, set_year+1):
-    url_year = url_adp_rec.format(str(year))
-    f = pd.read_html(url_year, header=0)[1]
-    f = f.assign(year=year)
-    f = clean_adp(f, year)
-    wr_adp = pd.concat([wr_adp, f], axis=0)
-    
-wr_adp = wr_adp.reset_index(drop=True)
-
-# +
-#===========
-# Pull out Rookie seasons from training dataframe
-#===========
-
-'''
-Loop through each player and select their minimum year, which will likely be their 
-rookie season. Weird outliers will be removed later on.
-'''
-
-conn = sqlite3.connect('/Users/Mark/Documents/Github/Fantasy_Football/Data/Season_Stats.sqlite3')
-query = "SELECT * FROM WR_Stats A"
-wr = pd.read_sql_query(query, con=conn)
-
-rookies = pd.merge(data_pp, wr.drop('avg_pick', axis=1), how='left', left_on='player', right_on='player')
-rookies = rookies[(rookies.draft_year == set_year) | (rookies.draft_year == rookies.year)].reset_index(drop=True)
-
-rookies['rec_yd_per_game'] = rookies.rec_yds / rookies.games
-rookies['rec_per_game'] = rookies.receptions / rookies.games
-rookies['td_per_game'] = rookies.rec_td / rookies.games
-
-cols = list(data_pp.columns)
-cols.extend(['rec_yd_per_game', 'rec_per_game', 'td_per_game'])
-
-rookies = rookies[cols]
-rookies.iloc[:, :-3] = rookies.iloc[:, :-3].fillna(rookies.iloc[:, :-3].median())
-
-rookies = pd.merge(rookies, wr_adp, how='inner', left_on=['player', 'draft_year'], right_on=['player', 'year'])
-rookies = rookies.drop('year', axis=1)
-
-
-adp_to_player_teams = {
-
-        'ARI': 'ARI',
-        'ATL': 'ATL',
-        'BAL': 'BAL',
-        'BUF': 'BUF',
-        'CAR': 'CAR',
-        'CHI': 'CHI',
-        'CIN': 'CIN',
-        'CLE': 'CLE',
-        'DAL': 'DAL',
-        'DEN': 'DEN',
-        'DET': 'DET',
-        'GBP': 'GNB',
-        'HOU': 'HOU',
-        'IND': 'IND',
-        'JAC': 'JAX',
-        'KCC': 'KAN',
-        'LAC': 'LAC',
-        'SDC': 'LAC',
-        'LAR': 'LAR',
-        'RAM': 'LAR',
-        'MIA': 'MIA',
-        'MIN': 'MIN',
-        'NEP': 'NWE',
-        'NOS': 'NOR',
-        'NYG': 'NYG',
-        'NYJ': 'NYJ',
-        'OAK': 'OAK',
-        'PHI': 'PHI',
-        'PIT': 'PIT',
-        'SEA': 'SEA',
-        'SFO': 'SFO',
-        'TBB': 'TAM',
-        'TEN': 'TEN',
-        'WAS': 'WAS', 
-        'STL': 'LAR'
-    }
-
-rookies['team'] = rookies['team'].map(adp_to_player_teams)
-# -
 
 rookies.loc[:, 'log_draft_pick'] = np.log(rookies.draft_pick)
 rookies.loc[:, 'log_avg_pick'] = np.log(rookies.avg_pick)

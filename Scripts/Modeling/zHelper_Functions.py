@@ -513,7 +513,7 @@ def append_to_db(df, db_name='Season_Stats', table_name='NA', if_exist='append')
 # Regression Functions
 # ================
 
-def corr_collinear_removal(df_train, corr_cutoff, collinear_cutoff):
+def corr_collinear_removal(df_train, corr_cutoff, collinear_cutoff, good_cols_ext=['player', 'avg_pick', 'year']):
     '''
     Function that removes low correlation features, followed by looping through
     the highest correlations in order and removing any features that are above
@@ -553,7 +553,7 @@ def corr_collinear_removal(df_train, corr_cutoff, collinear_cutoff):
             bad_cols.extend(collinear_cols)
 
     # add player, ADP, and year back to the features list and subset df_train
-    good_cols.extend(['player', 'avg_pick', 'year'])
+    good_cols.extend(good_cols_ext)
     df_train = df_train[good_cols]
     df_train = df_train.loc[:,~df_train.columns.duplicated()]
     

@@ -459,7 +459,7 @@ teammate adps compare to the current player.
 #--------
 
 # load prepared data
-conn = sqlite3.connect('/Users/Mark/Documents/Github/Fantasy_Football/Data/Season_Stats.sqlite3')
+conn = sqlite3.connect(f'/Users/{os.getlogin()}/Documents/Github/Fantasy_Football/Data/Databases/Season_Stats.sqlite3')
 
 rookie_rb = pd.read_sql_query("select * from rookie_rb_stats", conn)
 rookie_rb = rookie_rb.rename(columns={'draft_year': 'year'})
@@ -523,9 +523,10 @@ rookie_rb['teammate_diff_min_div'] = rookie_rb.avg_pick / rookie_rb['min_teammat
 rookie_rb['teammate_diff_avg_dv'] = rookie_rb.avg_pick / rookie_rb['avg_teammate']
 # -
 
+rookie_rb = draft_value(rookie_rb, 'RB')
 rookie_rb = qb_run(rookie_rb)
 
-append_to_db(rookie_rb, db_name='Model_Inputs.sqlite3', table_name='Rookie_RB_' + str(year), if_exist='replace')
+append_to_db(rookie_rb, db_name='Model_Inputs', table_name='Rookie_RB_' + str(year+1), if_exist='replace')
 
 # # Compile Rookie WR
 
@@ -545,8 +546,6 @@ teammate adps compare to the current player.
 #--------
 
 # load prepared data
-conn = sqlite3.connect('/Users/Mark/Documents/Github/Fantasy_Football/Data/Season_Stats.sqlite3')
-
 rookie_wr = pd.read_sql_query("select * from rookie_wr_stats", conn)
 rookie_wr = rookie_wr.rename(columns={'draft_year': 'year'})
 rookie_wr['year'] = rookie_wr['year'] - 1
@@ -605,4 +604,7 @@ rookie_wr['teammate_diff_min_div'] = rookie_wr.avg_pick / rookie_wr['min_teammat
 rookie_wr['teammate_diff_avg_dv'] = rookie_wr.avg_pick / rookie_wr['avg_teammate']
 # -
 
-append_to_db(rookie_wr, db_name='Model_Inputs.sqlite3', table_name='Rookie_WR_' + str(year), if_exist='replace')
+rookie_wr = draft_value(rookie_wr, 'WR')
+rookie_wr = qb_run(rookie_wr)
+
+append_to_db(rookie_wr, db_name='Model_Inputs', table_name='Rookie_WR_' + str(year+1), if_exist='replace')
