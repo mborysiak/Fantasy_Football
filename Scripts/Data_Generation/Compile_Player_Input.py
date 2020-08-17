@@ -608,3 +608,5 @@ rookie_wr = draft_value(rookie_wr, 'WR')
 rookie_wr = qb_run(rookie_wr)
 
 append_to_db(rookie_wr, db_name='Model_Inputs', table_name='Rookie_WR_' + str(year+1), if_exist='replace')
+
+

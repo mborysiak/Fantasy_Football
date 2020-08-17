@@ -216,15 +216,16 @@ for y_label in metrics:
     
     # remove unnecessary columns
     to_drop = [m for m in metrics if m != y_label]
-    to_drop.extend(['team'])
+    to_drop.extend(['team', 'games'])
     
     # drop unnecessary columns
     Xy = train.rename(columns={y_label: 'y_act'}).drop(to_drop, axis=1)
 
     # remove low correlation features
-    Xy = corr_collinear_removal(Xy, corr_cutoff=0.05, collinear_cutoff=0.8, good_cols_ext=[])
-    predict = predict[Xy.drop('y_act', axis=1).columns]
-
+    Xy = corr_collinear_removal(Xy, corr_cutoff=0.0, collinear_cutoff=1, good_cols_ext=[])
+    X_predict = predict[Xy.drop('y_act', axis=1).columns].copy()
+    print(Xy.columns)
+    
     y = Xy.y_act
     X = Xy.drop(['y_act'], axis=1)
     
@@ -234,10 +235,12 @@ for y_label in metrics:
         print(f'\n---------\nRunning {m}\n---------')        
         
         if m in ('ridge', 'lasso', 'enet', 'svr', 'knn'):
-            X = pd.DataFrame(StandardScaler().fit_transform(X), columns=X.columns)
+            sc = StandardScaler()
+            X = pd.DataFrame(sc.fit_transform(X), columns=X.columns)
+            X_predict = pd.DataFrame(sc.transform(X_predict), columns=X_predict.columns)
             
         # set up and run grid search model
-        grid = RandomizedSearchCV(models[m], params[m], cv=5, n_iter=30, scoring='neg_mean_squared_error', random_state=1234)
+        grid = RandomizedSearchCV(models[m], params[m], cv=5, n_iter=50, scoring='neg_mean_squared_error', random_state=1234)
         grid.fit(X, y)
         best_model = grid.best_estimator_
         
@@ -245,7 +248,7 @@ for y_label in metrics:
         val_pred, val_y, rmse, r2, ind = cv_estimate(best_model, X, y)
         
         # predict the test set
-        test_pred = best_model.predict(predict)
+        test_pred = best_model.predict(X_predict)
         
         # append the results to dictioary
         results[y_label]['val_pred'][m] = val_pred
@@ -259,14 +262,20 @@ for y_label in metrics:
     results[y_label]['val_pred']['lr_adp'] = val_pred_adp
     results[y_label]['val_y']['lr_adp'] = val_y
     results[y_label]['val_error'].append(['lr_adp', rmse, r2])
-    results[y_label]['test_pred']['lr_adp'] = test_pred
-# -
+    
+    lr = LinearRegression()
+    lr.fit(train[['avg_pick']], y)
+    results[y_label]['test_pred']['lr_adp'] = lr.predict(X_predict[['avg_pick']])
 
+# +
 val_results = pd.DataFrame()
 test_results= pd.DataFrame()
 for met in metrics:
-    df_met = pd.DataFrame(results['rec_yd_per_game']['val_error'], columns=['model', 'rmse', 'r2_score']).sort_values(by='rmse')
-    df_met = df_met[df_met.r2_score > 0]
+    df_met = pd.DataFrame(results[met]['val_error'], columns=['model', 'rmse', 'r2_score']).sort_values(by='rmse')
+    if df_met[df_met.r2_score > 0].shape[0] > 0:
+        df_met = df_met[df_met.r2_score > 0].reset_index(drop=True)
+    else:
+        df_met = df_met.sort_values(by='r2_score', ascending=False).iloc[:3].reset_index(drop=True)
     df_met['total_r2'] = df_met.r2_score.sum()
     df_met['wt'] = df_met.r2_score / df_met.total_r2
 
@@ -281,19 +290,26 @@ for met in metrics:
     val_results = pd.concat([val_results, pd.Series(np.sum(val_pred, axis=0), name=met+'_pred')], axis=1)
     test_results = pd.concat([test_results, pd.Series(np.sum(test_pred, axis=0), name=met+'_pred')], axis=1)
 
-val_results
+# pull out the stats columns
+stat_col = [m+'_pred' for m in metrics if m != 'fp_per_game']
 
-np.sqrt(np.mean((val_df - y_df)**2))
+# predict fantasy points based on stats only
+val_results['fp_per_game_pred_stat'] = (val_results[stat_col] * [0.1, 0.5, 7]).sum(axis=1)
+test_results['fp_per_game_pred_stat'] = (test_results[stat_col] * [0.1, 0.5, 7]).sum(axis=1)
 
-# +
-if set_pos == 'Rookie_RB':
-    pts = [.1, .1, .5, 7]
-elif set_pos == 'Rookie_WR':
-    pts = [.1, .5, 7]
-
-historical = pd.Series((val_df).sum(axis=1).values, index=df[df.year!=set_year-1].player)
-historical.sort_values().plot.barh(figsize=(5,20))
+# concat player name and ultimate points scored
+val_results = pd.concat([train.player, val_results, 
+                         pd.Series(results['fp_per_game']['val_y']['lgbm'], name='fp_act')], axis=1)
+test_results = pd.concat([predict.player, test_results], axis=1)
 # -
+
+r2_score(val_results.fp_act, np.mean([val_results.fp_per_game_pred_stat, val_results.fp_per_game_pred], axis=0))
+
+val_results.sort_values(by='fp_per_game_pred', ascending=False).iloc[:25]
+
+val_results.plot.scatter(x='fp_per_game_pred', y='fp_act')
+
+test_results.sort_values(by='fp_per_game_pred', ascending=False)
 
 
 

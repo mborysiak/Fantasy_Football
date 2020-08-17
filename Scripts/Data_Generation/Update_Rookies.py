@@ -44,7 +44,9 @@ def adp_url(adp_pos, y=set_year+1):
 
 # -
 
-# # Pull in College Stats
+# # Pull in Raw Data Sources
+
+# ## Pull in College Stats
 
 # +
 # # player usage data--earliest 2013
@@ -114,7 +116,7 @@ c_stat = c_stat[(c_stat.rushing_ATT >= 10) | (c_stat.receiving_REC >= 10) | (c_s
 
 # append_to_db(c_stat, db_name, 'College_Stats', if_exist='append')
 
-# # Pull Combine Data
+# ## Pull Combine Data
 
 COMBINE_PATH = f'https://www.pro-football-reference.com/play-index/nfl-combine-results.cgi?request=1&year_min={set_year+1}&year_max={set_year+1}&height_min=0&height_max=100&weight_min=140&weight_max=400&pos%5B%5D=QB&pos%5B%5D=WR&pos%5B%5D=TE&pos%5B%5D=RB&show=all&order_by=year_id'
 comb = pd.read_html(COMBINE_PATH)
@@ -174,7 +176,7 @@ for p, a in zip(players, ages):
 append_to_db(birthdays, 'Season_Stats', 'Player_Birthdays', 'replace')
 # -
 
-# # Get College Player ADP
+# ## Get College Player ADP
 
 # +
 y=2020
@@ -200,6 +202,8 @@ rookie_adp
 # -
 
 # append_to_db(rookie_adp, 'Season_Stats', 'Rookie_ADP', 'append')
+
+# # Begin Creating Cleaned up Datasets
 
 # ## Predict Missing Values
 
@@ -395,17 +399,25 @@ wr_stats = pd.merge(wr_stats, comb_df[comb_df.WR==1], on=['player', 'draft_year'
 wr_stats = wr_stats.drop(['RB', 'TE', 'QB', 'WR'], axis=1)
 wr_stats = pd.merge(wr_stats, rookie_adp[rookie_adp.pos=='WR'], on=['player',  'draft_year'])
 
-target_data = pd.read_sql_query('''SELECT player, year draft_year, rec_per_game, rec_yd_per_game, td_per_game 
+target_data = pd.read_sql_query('''SELECT player, games, year draft_year, rec_per_game, rec_yd_per_game, td_per_game 
                                    FROM WR_Stats''', conn)
 wr_stats = pd.merge(wr_stats, target_data, on=['player', 'draft_year'], how='left')
 wr_stats['fp_per_game'] = (wr_stats[['rec_per_game', 'rec_yd_per_game', 'td_per_game']]*[0.5, 0.1, 7]).sum(axis=1)
 wr_stats.avg_pick = np.log(wr_stats.avg_pick)
 
+# +
 draft = pd.read_sql_query('''SELECT player, pos, team FROM draft_positions''', conn)
 draft = draft[~((draft.player=='Anthony Miller') & (draft.team=='LAC'))]
-wr_stats = pd.merge(wr_stats, draft, on=['player', 'pos'])
+draft = draft[~(draft.player=='Laquon Treadwell')]
 
-# append_to_db(wr_stats, 'Season_Stats', 'Rookie_WR_Stats', 'replace')
+wr_stats = pd.merge(wr_stats, draft, on=['player', 'pos'])
+wr_stats.loc[(wr_stats.draft_year!=set_year+1) & (wr_stats.games.isnull()), ['player', 'games', 'rec_per_game', 'rec_yd_per_game']]
+# -
+
+wr_stats = wr_stats.loc[~(wr_stats.games.isnull()) | (wr_stats.draft_year==set_year+1), :].reset_index(drop=True)
+wr_stats = wr_stats.loc[(wr_stats.games > 5) | (wr_stats.draft_year==set_year+1), :].reset_index(drop=True)
+
+append_to_db(wr_stats, 'Season_Stats', 'Rookie_WR_Stats', 'replace')
 
 # # Split out and Save RB
 
