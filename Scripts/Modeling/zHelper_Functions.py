@@ -1090,8 +1090,6 @@ def searching(est, params, X_grid, y_grid, n_jobs=3, print_results=True):
     return est
 
 
-
-
 def create_distributions(self, prior_repeats=15, dist_size=1000, show_plots=False):
     
     # historical standard deviation and mean for actual results

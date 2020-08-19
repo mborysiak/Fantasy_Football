@@ -140,6 +140,9 @@ birthdays.columns = ['_', 'player', 'pos', 'team', 'birthday', '__']
 birthdays = birthdays[['player', 'pos', 'birthday']]
 birthdays = birthdays.iloc[1:, :]
 
+missing = pd.DataFrame([['AJ Dillon', 'RB', '1998-05-21']], columns=['player', 'pos', 'birthday'])
+birthdays = pd.concat([birthdays, missing], axis=0).reset_index(drop=True)
+
 run_date = dt.datetime(month=9, day=1, year=set_year+1)
 birthdays.birthday = (run_date - pd.to_datetime(birthdays.birthday))
 birthdays['age'] = birthdays.birthday.apply(lambda x: x.days / 365)
@@ -358,9 +361,6 @@ comb_stats.loc[comb_stats.conference.isin(['SEC', 'Pac-10', 'Big 12', 'Big Ten',
 comb_stats.groupby('player').agg({'year':'count'}).sort_values(by='year')
 # -
 
-import matplotlib.pyplot as plt
-plt.hist(comb_stats.season_age_scale);
-
 # # Split out and save WR
 
 # +
@@ -409,6 +409,7 @@ wr_stats.avg_pick = np.log(wr_stats.avg_pick)
 draft = pd.read_sql_query('''SELECT player, pos, team FROM draft_positions''', conn)
 draft = draft[~((draft.player=='Anthony Miller') & (draft.team=='LAC'))]
 draft = draft[~(draft.player=='Laquon Treadwell')]
+draft = draft[~(draft.player=='Tavon Austin')]
 
 wr_stats = pd.merge(wr_stats, draft, on=['player', 'pos'])
 wr_stats.loc[(wr_stats.draft_year!=set_year+1) & (wr_stats.games.isnull()), ['player', 'games', 'rec_per_game', 'rec_yd_per_game']]
@@ -460,14 +461,17 @@ agg_metr = {
 rb_stats = rb.groupby(['player', 'draft_year']).agg(agg_metr)
 rb_stats.columns = [f'{c}_mean' for c in rb_stats.columns]    
 rb_stats = rb_stats.reset_index()
-# -
+
+# +
+try: comb_df = comb_df.rename(columns={'year': 'draft_year'})
+except: pass
 
 rb_stats = pd.merge(rb_stats, comb_df[comb_df.RB==1], on=['player', 'draft_year'])
 rb_stats = rb_stats.drop(['RB', 'TE', 'QB', 'WR'], axis=1)
 rb_stats = pd.merge(rb_stats, rookie_adp[rookie_adp.pos=='RB'], on=['player',  'draft_year'])
 
 # +
-target_data = pd.read_sql_query('''SELECT player, year draft_year, rush_yd_per_game, rec_per_game, 
+target_data = pd.read_sql_query('''SELECT player, year draft_year, games, rush_yd_per_game, rec_per_game, 
                                           rec_yd_per_game, td_per_game 
                                    FROM rb_stats''', conn)
 rb_stats = pd.merge(rb_stats, target_data, on=['player', 'draft_year'], how='left')
@@ -480,6 +484,11 @@ rb_stats.avg_pick = np.log(rb_stats.avg_pick)
 draft = pd.read_sql_query('''SELECT player, pos, team FROM draft_positions''', conn)
 draft = draft[~((draft.player=='Adrian Peterson') & (draft.team=='CHI'))]
 rb_stats = pd.merge(rb_stats, draft, on=['player', 'pos'])
+rb_stats.loc[(rb_stats.draft_year!=set_year+1) & (rb_stats.games.isnull()),
+             ['player', 'games', 'rush_yd_per_game', 'rec_per_game', 'rec_yd_per_game']]
+
+rb_stats = rb_stats.loc[~(rb_stats.games.isnull()) | (rb_stats.draft_year==set_year+1), :].reset_index(drop=True)
+rb_stats = rb_stats.loc[(rb_stats.games > 5) | (rb_stats.draft_year==set_year+1), :].reset_index(drop=True)
 
 append_to_db(rb_stats, 'Season_Stats', 'Rookie_RB_Stats', 'replace')
 

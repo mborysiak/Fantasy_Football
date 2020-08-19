@@ -859,4 +859,4 @@ class FootballSimulation():
         avg_sal.loc[:, 'Expected Salary Diff'] = round(avg_sal.loc[:, 'Expected Salary Diff'], 1)
 
         return avg_sal
-            
+
