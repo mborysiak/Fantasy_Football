@@ -31,7 +31,7 @@ def adp_groupby(df, position):
     df_adp = pd.read_sql_query('''
         SELECT team, year, avg_pick FROM {0}_Stats
         UNION
-        SELECT team, draft_year-1 year, log_avg_pick avg_pick from Rookie_{0}_Stats
+        SELECT team, draft_year-1 year, avg_pick from Rookie_{0}_Stats
     '''.format(position), conn)
 
     # create teammate ADP metrics to see if top ranked player
@@ -219,7 +219,7 @@ df['ms_rush_yd'] = df['rush_yds'] / df['tm_rush_yds']
 df['ms_rush_td'] = df['rush_td'] / df['tm_rush_td']
 df['ms_rec_yd'] = df['rec_yds'] / df['tm_pass_yds']
 df['ms_tgts'] = df['tgt'] / df['tm_pass_att']
-df['rush_rec_ratio'] = df.rush_yds / df.rec_yds
+df['rush_rec_ratio'] = df.rush_yds / (df.rec_yds + 1.5)
 df['ms_rec_td'] = df['rec_td'] / df['tm_pass_td']
 
 df['ms_rush_yd_per_att'] = df['ms_rush_yd'] / df['ms_rush_att']

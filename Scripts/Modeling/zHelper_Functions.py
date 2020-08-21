@@ -222,8 +222,8 @@ def touch_game_filter(df, pos, set_pos, set_year):
     '''
     # split old and new to filter past years based on touches.
     # leave all new players in to ensure everyone gets a prediction
-    old = df[(df[pos[set_pos]['touch_filter']] > pos[set_pos]['req_touch']) & \
-             (df.games > pos[set_pos]['req_games']) & \
+    old = df[((df[pos[set_pos]['touch_filter']] > pos[set_pos]['req_touch']) | \
+             (df.games > pos[set_pos]['req_games'])) & \
              (df.year < set_year)].reset_index(drop=True)
     this_year = df[df.year>=set_year]
 
@@ -431,7 +431,7 @@ def features_target_v2(df, set_pos, year_start, year_split, median_features, sum
         past = past.join(past.groupby('player')[sum_features].sum(),on='player', rsuffix='_sum')
 
         for mf in median_features:
-            baseline = 0.25*past[mf].mean()
+            baseline = 0.01*past[mf].mean()
             past[mf + '_over_median'] = (past[mf]-past[mf + '_median']) / (past[mf + '_median'] + baseline)
 
         # adding the age features
@@ -830,12 +830,13 @@ def class_label(df, pct_off, act_ppg):
     return df
 
 
-def remove_classification_collinear(df, collinear_cutoff, keep_cols):
+def remove_classification_collinear(df, corr_cut, collinear_cutoff, keep_cols):
     
     means = df.groupby('y_act').agg('median').T
     means['mean_diff'] = abs((means[0] - means[1]) / np.mean([abs(means[0]), abs(means[1])]))
+    means = means[means.mean_diff > corr_cut]
     col_order = list(means.sort_values(by='mean_diff', ascending=False).index)
-    df_cor = df.corr()
+    df_cor = df.corr().loc[means.index, means.index]
 
     all_bad_cols = []
     all_good_cols = keep_cols
@@ -855,7 +856,7 @@ def remove_classification_collinear(df, collinear_cutoff, keep_cols):
     return df
 
 
-def class_validation(estimator, df_train_orig, df_predict, collinear_cutoff, use_smote,
+def class_validation(estimator, df_train_orig, df_predict, corr_cut, collinear_cutoff, use_smote,
                      skip_years=2, scale=False, pca=False, n_components=0.5):  
     
     from sklearn.metrics import matthews_corrcoef
@@ -866,7 +867,7 @@ def class_validation(estimator, df_train_orig, df_predict, collinear_cutoff, use
     #----------
 
     # remove collinear variables based on difference of means between the 0 and 1 labeled groups
-    df_train = remove_classification_collinear(df_train_orig, collinear_cutoff, ['player', 'avg_pick', 'year', 'y_act'])
+    df_train = remove_classification_collinear(df_train_orig, corr_cut, collinear_cutoff, ['player', 'avg_pick', 'year', 'y_act'])
 
     # set up array to save predictions and years to iterate through
     val_predictions = np.array([]) 

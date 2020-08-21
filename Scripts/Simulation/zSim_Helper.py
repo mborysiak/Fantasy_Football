@@ -1,3 +1,5 @@
+#%%
+
 # core packages
 import pandas as pd
 import numpy as np
@@ -860,3 +862,21 @@ class FootballSimulation():
 
         return avg_sal
 
+
+# %%
+# define point values for all statistical categories
+pass_yd_per_pt = 0.04 
+pass_td_pt = 4
+int_pts = -2
+sacks = -1
+rush_yd_per_pt = 0.1 
+rec_yd_per_pt = 0.1
+rush_rec_td = 7
+ppr = .5
+
+# creating dictionary containing point values for each position
+pts_dict = {}
+pts_dict['QB'] = [pass_yd_per_pt, pass_td_pt, rush_yd_per_pt, rush_rec_td, int_pts, sacks]
+pts_dict['RB'] = [rush_yd_per_pt, rec_yd_per_pt, ppr, rush_rec_td]
+pts_dict['WR'] = [rec_yd_per_pt, ppr, rush_rec_td]
+pts_dict['TE'] = [rec_yd_per_pt, ppr, rush_rec_td]

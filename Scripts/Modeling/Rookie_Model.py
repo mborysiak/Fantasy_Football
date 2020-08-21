@@ -268,10 +268,18 @@ for y_label in metrics:
             
             # set the cor and collin cutoff
             np.random.seed(i*3+i*17+j*27)
-            if y_label == 'td_per_game':
-                cor = np.random.choice(np.arange(0.1, 0.25, 0.01))
-            else:
-                cor = np.random.choice(np.arange(0.05, 0.35, 0.01))
+            
+            if set_pos == 'Rookie_WR':
+                if y_label == 'td_per_game':
+                    cor = np.random.choice(np.arange(0.1, 0.2, 0.01))
+                else:
+                    cor = np.random.choice(np.arange(0.05, 0.25, 0.01))
+            
+            elif set_pos == 'Rookie_RB':
+                if y_label == 'td_per_game':
+                    cor = np.random.choice(np.arange(0.1, 0.25, 0.01))
+                else:
+                    cor = np.random.choice(np.arange(0.05, 0.35, 0.01))
                 
             collin = np.random.choice(np.arange(0.5, 0.95, 0.02))
         
@@ -314,97 +322,24 @@ for y_label in metrics:
     
     print(f'\n---------\nRunning LR with ADP\n---------')      
     # run and append results using only ADP of the player
-    val_pred_adp, val_y, rmse, r2, ind = cv_estimate(LinearRegression(), 'None', 0, 1, X[['avg_pick']], y)
+    val_pred_adp, val_y, rmse, r2, ind = cv_estimate(LinearRegression(), 'None', 0, 1, X_train[['avg_pick']], y)
     results[y_label]['val_pred']['lr_adp'] = val_pred_adp
     results[y_label]['val_y']['lr_adp'] = val_y
     results[y_label]['val_error'].append(['lr_adp', rmse, r2])
     
     lr = LinearRegression()
-    lr.fit(train[['avg_pick']], y)
+    lr.fit(X_train[['avg_pick']], y)
     results[y_label]['test_pred']['lr_adp'] = lr.predict(X_predict[['avg_pick']])
-
-# +
-# if set_pos == 'Rookie_RB':
-#     metrics = ['rush_yd_per_game', 'rec_yd_per_game', 'rec_per_game', 'td_per_game', 'fp_per_game']
-# elif set_pos == 'Rookie_WR':
-#     metrics = ['rec_yd_per_game', 'rec_per_game', 'td_per_game', 'fp_per_game']
-
-# model_labels = ['lgbm', 'xgb', 'ridge', 'lasso', 'enet', 'rf', 'gbm', 'knn']
-
-# results = {}
-# for y_label in metrics:
-#     print(f'\n==============\nRunning {y_label}\n==============')
-#     results[y_label] = {}
-#     results[y_label]['test_pred'] = {}
-#     results[y_label]['val_pred'] = {}
-#     results[y_label]['val_y'] = {}
-#     results[y_label]['val_error'] = []
-    
-#     # extract the train and predict dataframes
-#     predict = df[df.year==(set_year - 1)].reset_index(drop=True)
-#     train = df[df.year!=(set_year - 1)].reset_index(drop=True)
-    
-#     # remove unnecessary columns
-#     to_drop = [m for m in metrics if m != y_label]
-#     to_drop.extend(['team', 'games'])
-    
-#     # drop unnecessary columns
-#     Xy = train.rename(columns={y_label: 'y_act'}).drop(to_drop, axis=1)
-
-# #     # remove low correlation features
-# #     Xy = corr_collinear_removal(Xy, corr_cutoff=0.0, collinear_cutoff=1, good_cols_ext=[])
-# #     X_predict = predict[Xy.drop('y_act', axis=1).columns].copy()
-# #     print(Xy.columns)
-    
-#     y = Xy.y_act
-#     X = Xy.drop(['y_act'], axis=1)
-    
-#     val = []
-#     all_y = []
-#     for m in model_labels:
-#         print(f'\n---------\nRunning {m}\n---------')        
-        
-#         if m in ('ridge', 'lasso', 'enet', 'svr', 'knn'):
-#             sc = StandardScaler()
-#             X = pd.DataFrame(sc.fit_transform(X), columns=X.columns)
-#             X_predict = pd.DataFrame(sc.transform(X_predict), columns=X_predict.columns)
-            
-#         # set up and run grid search model
-#         grid = RandomizedSearchCV(models[m], params[m], cv=5, n_iter=50, scoring='neg_mean_squared_error', random_state=1234)
-#         grid.fit(X, y)
-#         best_model = grid.best_estimator_
-        
-#         # get the out of sample predictions for the train set with best model
-#         val_pred, val_y, rmse, r2, ind = cv_estimate(best_model, X, y)
-        
-#         # predict the test set
-#         test_pred = best_model.predict(X_predict)
-        
-#         # append the results to dictioary
-#         results[y_label]['val_pred'][m] = val_pred
-#         results[y_label]['val_y'][m] = val_y
-#         results[y_label]['val_error'].append([m, rmse, r2])
-#         results[y_label]['test_pred'][m] = test_pred
-    
-#     print(f'\n---------\nRunning LR with ADP\n---------')      
-#     # run and append results using only ADP of the player
-#     val_pred_adp, val_y, rmse, r2, ind = cv_estimate(LinearRegression(), train[['avg_pick']], y)
-#     results[y_label]['val_pred']['lr_adp'] = val_pred_adp
-#     results[y_label]['val_y']['lr_adp'] = val_y
-#     results[y_label]['val_error'].append(['lr_adp', rmse, r2])
-    
-#     lr = LinearRegression()
-#     lr.fit(train[['avg_pick']], y)
-#     results[y_label]['test_pred']['lr_adp'] = lr.predict(X_predict[['avg_pick']])
 
 # +
 val_results = pd.DataFrame()
 test_results= pd.DataFrame()
 for met in metrics:
     df_met = pd.DataFrame(results[met]['val_error'], columns=['model', 'rmse', 'r2_score']).sort_values(by='rmse')
-    df_met = df_met[df_met.model != 'lr_adp']
+    
     if df_met[df_met.r2_score > 0].shape[0] > 0:
         df_met = df_met[df_met.r2_score > 0].reset_index(drop=True)
+        df_met['r2_score'] = df_met.r2_score - df_met.r2_score.min()
     else:
         df_met = df_met.sort_values(by='r2_score', ascending=False).iloc[:3].reset_index(drop=True)
     df_met['total_r2'] = df_met.r2_score.sum()
@@ -439,7 +374,7 @@ test_results = pd.concat([predict.player, test_results], axis=1).sort_values(by=
 
 r2_score(val_results.fp_act, np.mean([val_results.fp_per_game_pred_stat, val_results.fp_per_game_pred], axis=0))
 
-val_results.sort_values(by='fp_per_game_pred', ascending=False).iloc[:25]
+val_results.sort_values(by='fp_per_game_pred', ascending=False).iloc[:30]
 
 test_results
 
@@ -493,7 +428,7 @@ def test_model(trace, test_observation, max_bound):
     mean_loc = np.dot(var_means, test_observation)
     
     # create truncated distribution
-    lower, upper = 0, np.mean([mean_loc, max_bound]) * 1.3
+    lower, upper = 0,  max_bound * 1.2
     trunc_dist = stats.truncnorm((lower - mean_loc) / sd_value, (upper - mean_loc) / sd_value, 
                                   loc=mean_loc, scale=sd_value)
     estimates = trunc_dist.rvs(1000)
@@ -528,7 +463,7 @@ def test_model(trace, test_observation, max_bound):
 # -
 
 
-val_results['chk'] = 1.3*(val_results.fp_per_game_pred + val_results.fp_act.max()) / 2
+val_results['chk'] = 1.2*( val_results.fp_act.max()) 
 val_results[val_results.chk < val_results.fp_act]
 
 dists = []
@@ -540,9 +475,17 @@ for i in range(len(test_results)):
     dists.append(estimates)
 
 output = pd.concat([test_results.player, pd.DataFrame(dists)], axis=1)
-output = output.assign(pos='WR')
+output = output.assign(pos=set_pos.split('_')[1])
 order_cols = ['player', 'pos']
 order_cols.extend([i for i in range(1000)])
 output = output[order_cols]
+output.iloc[:, 2:] = np.uint32(output.iloc[:, 2:] * 16)
+players = tuple(output.player)
+
+
+# +
+conn_sim = sqlite3.connect(f'{path}/Data/Databases/Simulation.sqlite3')
+conn_sim.cursor().execute(f'''DELETE FROM Version1_{set_year} WHERE player in {players}''')
+conn_sim.commit()
 
 append_to_db(output, 'Simulation', f'Version1_{set_year}', 'append')

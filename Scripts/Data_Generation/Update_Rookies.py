@@ -418,7 +418,7 @@ wr_stats.loc[(wr_stats.draft_year!=set_year+1) & (wr_stats.games.isnull()), ['pl
 wr_stats = wr_stats.loc[~(wr_stats.games.isnull()) | (wr_stats.draft_year==set_year+1), :].reset_index(drop=True)
 wr_stats = wr_stats.loc[(wr_stats.games > 5) | (wr_stats.draft_year==set_year+1), :].reset_index(drop=True)
 
-append_to_db(wr_stats, 'Season_Stats', 'Rookie_WR_Stats', 'replace')
+# append_to_db(wr_stats, 'Season_Stats', 'Rookie_WR_Stats', 'replace')
 
 # # Split out and Save RB
 

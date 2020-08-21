@@ -47,6 +47,8 @@ from zHelper_Functions import *
 
 import pandas_bokeh
 pandas_bokeh.output_notebook()
+
+pd.set_option('display.max_columns', 999)
 # +
 #==========
 # General Setting
@@ -95,8 +97,8 @@ pts_dict['TE'] = [rec_yd_per_pt, ppr, rush_rec_td]
 #==========
 
 pos['QB']['req_touch'] = 50
-pos['RB']['req_touch'] = 40
-pos['WR']['req_touch'] = 35
+pos['RB']['req_touch'] = 50
+pos['WR']['req_touch'] = 50
 pos['TE']['req_touch'] = 30
 
 pos['QB']['req_games'] = 8
@@ -106,17 +108,17 @@ pos['TE']['req_games'] = 8
 
 pos['QB']['earliest_year'] = 1998
 pos['RB']['earliest_year'] = 1998
-pos['WR']['earliest_year'] = 2008
+pos['WR']['earliest_year'] = 1998
 pos['TE']['earliest_year'] = 1998
 
 pos['QB']['skip_years'] = 10
 pos['RB']['skip_years'] = 10
-pos['WR']['skip_years'] = 2
+pos['WR']['skip_years'] = 10
 pos['TE']['skip_years'] = 10
 
 pos['QB']['features'] = 'v1'
 pos['RB']['features'] = 'v2'
-pos['WR']['features'] = 'v1'
+pos['WR']['features'] = 'v2'
 pos['TE']['features'] = 'v1'
 
 pos['QB']['minimizer'] = 'forest_minimize'
@@ -131,7 +133,7 @@ pos['TE']['test_years'] = 2
 
 pos['QB']['use_ay'] = False
 pos['RB']['use_ay'] = False
-pos['WR']['use_ay'] = True
+pos['WR']['use_ay'] = False
 pos['TE']['use_ay'] = False
 
 output = pd.DataFrame({
@@ -148,6 +150,7 @@ output = pd.DataFrame({
     'minimizer': [pos[set_pos]['minimizer']],
     'adp_ppg_low': [None],
     'adp_ppg_high': [None],
+    'year_exp_cut': [None],
     'test_years': [pos[set_pos]['test_years']],
     'model': [None],
     'rmse_validation': [None],
@@ -174,6 +177,7 @@ output_class = pd.DataFrame({
     'pct_off': [None], 
     'adp_ppg_low': [None],
     'adp_ppg_high': [None],
+    'year_exp_cut': [None],
     'test_years': [pos[set_pos]['test_years']],
     'model': [None],
     'val_score': [None],
@@ -213,6 +217,8 @@ df, df_train_results, df_test_results = touch_game_filter(df, pos, set_pos, set_
 
 # calculate FP for a given set of scoring values
 df = calculate_fp(df, pts_dict, pos=set_pos).reset_index(drop=True)
+
+
 # -
 
 # # Breakout Models
@@ -226,16 +232,65 @@ df = calculate_fp(df, pts_dict, pos=set_pos).reset_index(drop=True)
 # - Leave out part of dataset for validation?: Yes, leave out testing dataset and use to determine final model params
 # - How many breakout variables?
 
+def features_target_v2(df, set_pos, year_start, year_split, median_features, sum_features, max_features, 
+                       age_features, target_feature):
+    
+    import pandas as pd
+
+    new_df = pd.DataFrame()
+    years = range(year_start+1, int(df.year.max()+1))
+
+    for year in years:
+
+        # adding the median features
+        past = df[df['year'] <= year]
+        past = add_exp_metrics(past, set_pos)
+
+        # join in the median, max, and sum features
+        past = past.join(past.groupby('player')[median_features].median(), on='player', rsuffix='_median')
+        past = past.join(past.groupby('player')[max_features].max(),on='player', rsuffix='_max')
+        past = past.join(past.groupby('player')[sum_features].sum(),on='player', rsuffix='_sum')
+
+        for mf in median_features:
+            baseline = 0.01*past[mf].mean()
+            past[mf + '_over_median'] = (past[mf]-past[mf + '_median']) / (past[mf + '_median'] + baseline)
+
+        # adding the age features
+        suffix = '/ age'
+        for feature in age_features:
+            feature_label = ' '.join([feature, suffix])
+            past[feature_label] = past[feature] / past['age']
+
+        # adding the values for target feature
+        year_n = past[past["year"] == year]
+        year_n_plus_one = df[df['year'] == year+1][['player', target_feature]].rename(columns={target_feature: 'y_act'})
+        year_n = pd.merge(year_n, year_n_plus_one, how='left', left_on='player', right_on='player')
+        new_df = new_df.append(year_n)
+
+    # creating dataframes to export
+    new_df = new_df.sort_values(by=['player', 'year']).reset_index(drop=True)
+    rolling_stats = new_df.groupby('player')[median_features].rolling(3).mean().fillna(method='bfill').reset_index(drop=True)
+    rolling_stats.columns = [c + '_rolling' for c in rolling_stats.columns]
+    new_df = pd.concat([new_df, rolling_stats], axis=1)
+
+    df_train = new_df[new_df.year < year_split].reset_index(drop=True)
+    df_predict = new_df[new_df.year >= year_split].reset_index(drop=True)
+    df_train = df_train.sort_values(['year', 'fp_per_game'], ascending=True).reset_index(drop=True)
+    
+    return df_train, df_predict
+
+
 # +
 #==============
 # Create Break-out Probability Features
 #==============
 
 breakout_metric = 'fp_per_game'
-act_ppg = '>12'
+act_ppg = '>=12'
 pct_off = '>0.15'
 adp_ppg_high = '<100'
 adp_ppg_low = '>=0'
+year_exp_cut = '>2'
 
 #==============
 # Create Break-out Probability Features
@@ -258,6 +313,10 @@ df_train_orig,df_predict_orig, lr = get_adp_predictions(df_train_orig, df_predic
 df_train_orig = adp_filter(df_train_orig, adp_ppg_low, adp_ppg_high)
 df_predict_orig = adp_filter(df_predict_orig, adp_ppg_low, adp_ppg_high)
 
+# filter to year_exp cutoff
+df_train_orig = df_train_orig[eval(f'df_train_orig.year_exp{year_exp_cut}')].reset_index(drop=True)
+df_predict_orig = df_predict_orig[eval(f'df_predict_orig.year_exp{year_exp_cut}')].reset_index(drop=True)
+
 # generate labels for prediction based on cutoffs
 df_train_orig = class_label(df_train_orig, pct_off, act_ppg)
 df_predict_orig = class_label(df_predict_orig, pct_off, act_ppg)
@@ -278,9 +337,10 @@ print('Max Test Year:', df_predict_orig.year.max())
 # -
 
 import seaborn as sns
-idx = abs(df_train_orig.corr()['y_act'].dropna()).sort_values(ascending=False).index[:25]
+idx = abs(df_train_orig.corr('spearman')['y_act'].dropna()).sort_values(ascending=False).index[:25]
 f, ax = plt.subplots(figsize=(15, 15))
-sns.heatmap(df_train_orig.corr().loc[idx, idx], cmap='coolwarm', robust=True, annot=True, fmt=".2f",annot_kws={'size':10})
+sns.heatmap(df_train_orig.corr('spearman').loc[idx, idx], cmap='coolwarm', 
+            robust=True, annot=True, fmt=".2f",annot_kws={'size':10})
 
 
 def val_results(models, val, combined, test):
@@ -332,6 +392,7 @@ class_search_space = {
         Real(0.001, 10000, "log_uniform", name='reg_lambda'),
         Real(0.001, 100, 'log_uniform', name='reg_alpha'),
         Integer(1, min_samples, name='min_data_in_leaf'),
+        Real(0.0001, 0.1, 'log_uniform', name='corr_cut'),
         Real(0.4, 0.8, name='collinear_cutoff'),
         Integer(0, 1, name='scale'),
         Integer(0, 1, name='pca'),
@@ -350,6 +411,7 @@ class_search_space = {
         Real(0.0001, 1, 'log_uniform', name='gamma'),
         Real(0.001, 10000, "log_uniform", name='reg_lambda'),
         Real(0.001, 100, 'log_uniform', name='reg_alpha'),
+        Real(0.0001, 0.1, 'log_uniform', name='corr_cut'),
         Real(0.4, 0.8, name='collinear_cutoff'),
         Integer(0, 1, name='scale'),
         Integer(0, 1, name='pca'),
@@ -360,6 +422,7 @@ class_search_space = {
         
     'lr': [
         Real(0.00001, 100000000, 'log_uniform', name='C'),
+        Real(0.0001, 0.1, 'log_uniform', name='corr_cut'),
         Real(0.4, 0.8, name='collinear_cutoff'),
         Integer(0, 1, name='scale'),
         Integer(0, 1, name='pca'),
@@ -374,6 +437,7 @@ class_search_space = {
         Integer(1, min_samples, name='min_samples_leaf'),
         Real(0.01, 1, name='max_features'),
         Integer(2, 50, name='min_samples_split'),
+        Real(0.0001, 0.1, 'log_uniform', name='corr_cut'),
         Real(0.4, 0.8, name='collinear_cutoff'),
         Integer(0, 1, name='scale'),
         Integer(0, 1, name='pca'),
@@ -388,6 +452,7 @@ class_search_space = {
         Integer(1, min_samples, name='min_samples_leaf'),
         Real(0.01, 1, name='max_features'),
         Integer(2, 50, name='min_samples_split'),
+        Real(0.0001, 0.1, 'log_uniform', name='corr_cut'),
         Real(0.4, 0.8, name='collinear_cutoff'),
         Integer(0, 1, name='scale'),
         Integer(0, 1, name='pca'),
@@ -400,6 +465,7 @@ class_search_space = {
         Integer(1, min_samples, name='n_neighbors'),
         Categorical(['distance', 'uniform'], name='weights'),
         Categorical(['auto', 'ball_tree', 'kd_tree', 'brute'], name='algorithm'),
+        Real(0.0001, 0.1, 'log_uniform', name='corr_cut'),
         Real(0.4, 0.8, name='collinear_cutoff'),
         Integer(0, 1, name='scale'),
         Integer(0, 1, name='pca'),
@@ -410,6 +476,7 @@ class_search_space = {
     
     'svr': [
         Real(0.0001, 1000, 'log_uniform', name='C'),
+        Real(0.0001, 0.1, 'log_uniform', name='corr_cut'),
         Real(0.4, 0.8, name='collinear_cutoff'),
         Integer(0, 1, name='scale'),
         Integer(0, 1, name='pca'),
@@ -438,9 +505,10 @@ def calc_f1_score(**args):
     
     n_components = args['n_components']
     collinear_cutoff = args['collinear_cutoff']
+    corr_cut = args['corr_cut']
     zero_weight = args['zero_weight']
     
-    for arg in ['scale', 'pca', 'collinear_cutoff', 'use_smote', 'zero_weight', 'n_components']:
+    for arg in ['scale', 'pca', 'corr_cut', 'collinear_cutoff', 'use_smote', 'zero_weight', 'n_components']:
         del args[arg]
 
     #----------
@@ -477,7 +545,8 @@ def calc_f1_score(**args):
             cv_split = train_fold[train_fold.year == m]
             
             # remove collinear variables based on difference of means between the 0 and 1 labeled groups
-            train_split = remove_classification_collinear(train_split, collinear_cutoff, ['player', 'avg_pick', 'year', 'y_act'])
+            train_split = remove_classification_collinear(train_split, corr_cut, collinear_cutoff, 
+                                                          ['player', 'avg_pick', 'year', 'y_act'])
             cv_split = cv_split[train_split.columns]
 
             # set up the estimator
@@ -516,7 +585,8 @@ def calc_f1_score(**args):
 #         roll_split = df_train[df_train.year == m]
         
 #         # remove collinear variables based on difference of means between the 0 and 1 labeled groups
-#         train_split = remove_classification_collinear(train_split, collinear_cutoff, ['player', 'avg_pick', 'year', 'y_act'])
+#         train_split = remove_classification_collinear(train_split, corr_cut, collinear_cutoff, 
+#                                                       ['player', 'avg_pick', 'year', 'y_act'])
 #         roll_split = roll_split[train_split.columns]
 
 #         # set up the estimator
@@ -550,7 +620,8 @@ def calc_f1_score(**args):
     #==========
     
     # remove collinear variables based on difference of means between the 0 and 1 labeled groups
-    df_train = remove_classification_collinear(df_train, collinear_cutoff, ['player', 'avg_pick', 'year', 'y_act'])
+    df_train = remove_classification_collinear(df_train, corr_cut, collinear_cutoff, 
+                                               ['player', 'avg_pick', 'year', 'y_act'])
     df_predict = df_predict[df_train.columns]
     
     # splitting the train and validation sets into X_train, y_train, X_val and y_val
@@ -644,6 +715,7 @@ for m_num, model in enumerate(list(class_models.keys())):
     output_class.loc[0, 'pct_off'] = pct_off
     output_class.loc[0, 'adp_ppg_high'] = adp_ppg_high
     output_class.loc[0, 'adp_ppg_low'] = adp_ppg_low
+    output_class.loc[0, 'year_exp_cut'] = year_exp_cut
     output_class.loc[0, 'model'] = model
     output_class.loc[0, 'earliest_year'] = df_train_orig.year.min()
     output_class.loc[0, 'val_score'] = -opt_scores[best_idx]
@@ -658,9 +730,9 @@ for m_num, model in enumerate(list(class_models.keys())):
     append_to_db(output_class, db_name='ParamTracking', table_name='ClassParamTracking', if_exist='append')
     max_pkey = pd.read_sql_query("SELECT max(pkey) FROM ClassParamTracking", param_conn).values[0][0]
 
-    save_pickle(params_output, path + f'Data/Model_Params_Class/{max_pkey}.p')
-    save_pickle(df_train_orig, path + f'Data/Model_Datasets_Class/{max_pkey}.p')    
-    save_pickle(class_search_space[model], path + f'Data/Bayes_Space_Class/{max_pkey}.p')
+    save_pickle(params_output, path + f'Model_Outputs/Model_Params_Class/{max_pkey}.p')
+    save_pickle(df_train_orig, path + f'Model_Outputs/Model_Datasets_Class/{max_pkey}.p')    
+    save_pickle(class_search_space[model], path + f'Model_Outputs/Bayes_Space_Class/{max_pkey}.p')
 # -
 
 # # Regression Models
@@ -695,8 +767,8 @@ search_space = {
         Real(0.001, 10000, "log_uniform", name='reg_lambda'),
         Real(0.001, 100, 'log_uniform', name='reg_alpha'),
         Integer(1, min_samples, name='min_data_in_leaf'),
-        Real(0, .3, name='corr_cutoff'),
-        Real(.4, 0.8, name='collinear_cutoff'),
+        Real(0.05, 0.35, name='corr_cutoff'),
+        Real(0.5, 0.95, name='collinear_cutoff'),
         Integer(0, 1, name='scale'),
         Integer(0, 1, name='pca'),
         Real(0.01, 0.5, name='n_components')
@@ -712,8 +784,8 @@ search_space = {
         Real(0.0001, 1, 'log_uniform', name='gamma'),
         Real(0.001, 10000, "log_uniform", name='reg_lambda'),
         Real(0.001, 100, 'log_uniform', name='reg_alpha'),
-        Real(0, .3, name='corr_cutoff'),
-        Real(.4, 0.8, name='collinear_cutoff'),
+        Real(0.05, 0.35, name='corr_cutoff'),
+        Real(0.5, 0.95, name='collinear_cutoff'),
         Integer(0, 1, name='scale'),
         Integer(0, 1, name='pca'),
         Real(0.01, 0.5, name='n_components')
@@ -722,8 +794,8 @@ search_space = {
     
     'ridge': [
         Real(0.001, 100000, 'log_uniform', name='alpha'),
-        Real(0, .3, name='corr_cutoff'),
-        Real(.4, 0.8, name='collinear_cutoff'),
+        Real(0.05, 0.35, name='corr_cutoff'),
+        Real(0.5, 0.95, name='collinear_cutoff'),
         Integer(0, 1, name='scale'),
         Integer(0, 1, name='pca'),
         Real(0.01, 0.5, name='n_components')
@@ -731,8 +803,8 @@ search_space = {
     
     'lasso': [
         Real(0.001, 1000, 'log_uniform', name='alpha'),
-        Real(0, .6, name='corr_cutoff'),
-        Real(.4, 0.8, name='collinear_cutoff'),
+        Real(0.05, 0.35, name='corr_cutoff'),
+        Real(0.5, 0.95, name='collinear_cutoff'),
         Integer(0, 1, name='scale'),
         Integer(0, 1, name='pca'),
         Real(0.01, 0.5, name='n_components')
@@ -744,8 +816,8 @@ search_space = {
         Integer(1, min_samples, name='min_samples_leaf'),
         Real(0.01, 1, name='max_features'),
         Integer(2, 50, name='min_samples_split'),
-        Real(0, .3, name='corr_cutoff'),
-        Real(.4, 0.8, name='collinear_cutoff'),
+       Real(0.05, 0.35, name='corr_cutoff'),
+        Real(0.5, 0.95, name='collinear_cutoff'),
         Integer(0, 1, name='scale'),
         Integer(0, 1, name='pca'),
         Real(0.01, 0.5, name='n_components')
@@ -754,8 +826,8 @@ search_space = {
     'enet': [
         Real(0.001, 10000, 'log_uniform', name='alpha'),
         Real(0.02, 0.98, name='l1_ratio'),
-        Real(0, .3, name='corr_cutoff'),
-        Real(.4, 0.8, name='collinear_cutoff'),
+        Real(0.05, 0.35, name='corr_cutoff'),
+        Real(0.5, 0.95, name='collinear_cutoff'),
         Integer(0, 1, name='scale'),
         Integer(0, 1, name='pca'),
         Real(0.01, 0.5, name='n_components')
@@ -767,8 +839,8 @@ search_space = {
         Integer(1, min_samples, name='min_samples_leaf'),
         Real(0.01, 1, name='max_features'),
         Integer(2, 50, name='min_samples_split'),
-        Real(0, .3, name='corr_cutoff'),
-        Real(.4, 0.8, name='collinear_cutoff'),
+        Real(0.05, 0.35, name='corr_cutoff'),
+        Real(0.5, 0.95, name='collinear_cutoff'),
         Integer(0, 1, name='scale'),
         Integer(0, 1, name='pca'),
         Real(0.01, 0.5, name='n_components')
@@ -778,8 +850,8 @@ search_space = {
         Integer(1, min_samples, name='n_neighbors'),
         Categorical(['distance', 'uniform'], name='weights'),
         Categorical(['auto', 'ball_tree', 'kd_tree', 'brute'], name='algorithm'),
-        Real(0, .3, name='corr_cutoff'),
-        Real(.4, 0.8, name='collinear_cutoff'),
+        Real(0.05, 0.35, name='corr_cutoff'),
+        Real(0.5, 0.95, name='collinear_cutoff'),
         Integer(0, 1, name='scale'),
         Integer(0, 1, name='pca'),
         Real(0.01, 0.5, name='n_components')
@@ -788,8 +860,8 @@ search_space = {
     'svr': [
         Real(0.0001, 10000, 'log_uniform', name='C'),
         Real(0.005, 100, 'log_uniform', name='epsilon'),
-        Real(0, .3, name='corr_cutoff'),
-        Real(.4, 0.8, name='collinear_cutoff'),
+        Real(0.05, 0.35, name='corr_cutoff'),
+        Real(0.5, 0.95, name='collinear_cutoff'),
         Integer(0, 1, name='scale'),
         Integer(0, 1, name='pca'),
         Real(0.01, 0.5, name='n_components')
@@ -939,7 +1011,7 @@ def calc_rmse(**args):
     cv_score = round(np.sqrt(mean_squared_error(cv_predictions, y_cvs)), 3)
     opt_score = round(np.mean([cv_score]), 3)
     
-    val_adp_score = round(np.sqrt(mean_squared_error(adp_predictions, y_rolls)))
+    val_adp_score = round(np.sqrt(mean_squared_error(adp_predictions, y_rolls)), 3)
         
     test_score = round(np.sqrt(mean_squared_error(test_predict, y_test)), 3)
     test_adp_score = round(np.sqrt(mean_squared_error(test_adp, y_test)), 3)
@@ -981,7 +1053,8 @@ def calc_rmse(**args):
 #================
 
 pos[set_pos]['metrics'].append('fp_per_game')
-pos[set_pos]['metrics'].append('pct_off')
+# pos[set_pos]['metrics'].append('pct_off')
+pos[set_pos]['metrics'] = list(set(pos[set_pos]['metrics']))
 
 for metric in pos[set_pos]['metrics']:
     
@@ -1007,6 +1080,10 @@ for metric in pos[set_pos]['metrics']:
     
     # get the adp predictions and merge back to the training dataframe
     df_train, df_predict, lr = get_adp_predictions(df_train, df_predict, 1)
+    
+    # filter to year_exp cutoff
+    df_train = df_train[eval(f'df_train.year_exp{year_exp_cut}')].reset_index(drop=True)
+    df_predict = df_predict[eval(f'df_predict.year_exp{year_exp_cut}')].reset_index(drop=True)
 
 #     # filter to adp cutoffs
 #     df_train = adp_filter(df_train, adp_ppg_low, adp_ppg_high)
@@ -1078,7 +1155,8 @@ for metric in pos[set_pos]['metrics']:
         output.loc[0, 'earliest_year'] = df_train_orig.year.min()
         output.loc[0, 'adp_ppg_low'] = adp_ppg_low
         output.loc[0, 'adp_ppg_high'] = adp_ppg_high
-        
+        output.loc[0, 'year_exp_cut'] = year_exp_cut
+
 #         # print out the validation results
 #         _ = val_results(models_list, opt_scores, opt_scores, test_scores)
 
@@ -1088,8 +1166,6 @@ for metric in pos[set_pos]['metrics']:
         append_to_db(output, db_name='ParamTracking', table_name='RegParamTracking', if_exist='append')
         max_pkey = pd.read_sql_query("SELECT max(pkey) FROM RegParamTracking", param_conn).values[0][0]
 
-        save_pickle(params_output, path + f'Data/Model_Params/{max_pkey}.p')
-        save_pickle(df_train, path + f'Data/Model_Datasets/{max_pkey}.p')    
-        save_pickle(search_space[model], path + f'Data/Bayes_Space/{max_pkey}.p')
-# -
-
+        save_pickle(params_output, path + f'Model_Outputs/Model_Params/{max_pkey}.p')
+        save_pickle(df_train, path + f'Model_Outputs/Model_Datasets/{max_pkey}.p')    
+        save_pickle(search_space[model], path + f'Model_Outputs/Bayes_Space/{max_pkey}.p')
