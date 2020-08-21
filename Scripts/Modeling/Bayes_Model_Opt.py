@@ -58,7 +58,7 @@ pd.set_option('display.max_columns', 999)
 path = f'/Users/{os.getlogin()}/Documents/Github/Fantasy_Football/'
 
 # set to position to analyze: 'RB', 'WR', 'QB', or 'TE'
-set_pos = 'RB'
+set_pos = 'QB'
 
 # set year to analyze
 set_year = 2020
@@ -96,27 +96,27 @@ pts_dict['TE'] = [rec_yd_per_pt, ppr, rush_rec_td]
 # Model Settings
 #==========
 
-pos['QB']['req_touch'] = 50
+pos['QB']['req_touch'] = 75
 pos['RB']['req_touch'] = 50
 pos['WR']['req_touch'] = 50
-pos['TE']['req_touch'] = 30
+pos['TE']['req_touch'] = 40
 
 pos['QB']['req_games'] = 8
 pos['RB']['req_games'] = 8
 pos['WR']['req_games'] = 8
 pos['TE']['req_games'] = 8
 
-pos['QB']['earliest_year'] = 1998
+pos['QB']['earliest_year'] = 2004 # first year QBR available
 pos['RB']['earliest_year'] = 1998
 pos['WR']['earliest_year'] = 1998
 pos['TE']['earliest_year'] = 1998
 
-pos['QB']['skip_years'] = 10
+pos['QB']['skip_years'] = 6
 pos['RB']['skip_years'] = 10
 pos['WR']['skip_years'] = 10
 pos['TE']['skip_years'] = 10
 
-pos['QB']['features'] = 'v1'
+pos['QB']['features'] = 'v2'
 pos['RB']['features'] = 'v2'
 pos['WR']['features'] = 'v2'
 pos['TE']['features'] = 'v1'
@@ -217,8 +217,6 @@ df, df_train_results, df_test_results = touch_game_filter(df, pos, set_pos, set_
 
 # calculate FP for a given set of scoring values
 df = calculate_fp(df, pts_dict, pos=set_pos).reset_index(drop=True)
-
-
 # -
 
 # # Breakout Models
@@ -232,65 +230,17 @@ df = calculate_fp(df, pts_dict, pos=set_pos).reset_index(drop=True)
 # - Leave out part of dataset for validation?: Yes, leave out testing dataset and use to determine final model params
 # - How many breakout variables?
 
-def features_target_v2(df, set_pos, year_start, year_split, median_features, sum_features, max_features, 
-                       age_features, target_feature):
-    
-    import pandas as pd
-
-    new_df = pd.DataFrame()
-    years = range(year_start+1, int(df.year.max()+1))
-
-    for year in years:
-
-        # adding the median features
-        past = df[df['year'] <= year]
-        past = add_exp_metrics(past, set_pos)
-
-        # join in the median, max, and sum features
-        past = past.join(past.groupby('player')[median_features].median(), on='player', rsuffix='_median')
-        past = past.join(past.groupby('player')[max_features].max(),on='player', rsuffix='_max')
-        past = past.join(past.groupby('player')[sum_features].sum(),on='player', rsuffix='_sum')
-
-        for mf in median_features:
-            baseline = 0.01*past[mf].mean()
-            past[mf + '_over_median'] = (past[mf]-past[mf + '_median']) / (past[mf + '_median'] + baseline)
-
-        # adding the age features
-        suffix = '/ age'
-        for feature in age_features:
-            feature_label = ' '.join([feature, suffix])
-            past[feature_label] = past[feature] / past['age']
-
-        # adding the values for target feature
-        year_n = past[past["year"] == year]
-        year_n_plus_one = df[df['year'] == year+1][['player', target_feature]].rename(columns={target_feature: 'y_act'})
-        year_n = pd.merge(year_n, year_n_plus_one, how='left', left_on='player', right_on='player')
-        new_df = new_df.append(year_n)
-
-    # creating dataframes to export
-    new_df = new_df.sort_values(by=['player', 'year']).reset_index(drop=True)
-    rolling_stats = new_df.groupby('player')[median_features].rolling(3).mean().fillna(method='bfill').reset_index(drop=True)
-    rolling_stats.columns = [c + '_rolling' for c in rolling_stats.columns]
-    new_df = pd.concat([new_df, rolling_stats], axis=1)
-
-    df_train = new_df[new_df.year < year_split].reset_index(drop=True)
-    df_predict = new_df[new_df.year >= year_split].reset_index(drop=True)
-    df_train = df_train.sort_values(['year', 'fp_per_game'], ascending=True).reset_index(drop=True)
-    
-    return df_train, df_predict
-
-
 # +
 #==============
 # Create Break-out Probability Features
 #==============
 
 breakout_metric = 'fp_per_game'
-act_ppg = '>=12'
+act_ppg = '>=18'
 pct_off = '>0.15'
 adp_ppg_high = '<100'
 adp_ppg_low = '>=0'
-year_exp_cut = '>2'
+year_exp_cut = '>3'
 
 #==============
 # Create Break-out Probability Features
@@ -754,7 +704,7 @@ models = {
 # +
 df_train, df_predict = get_train_predict(df, pos[set_pos]['metrics'][0], 
                                          pos, set_pos, set_year, pos[set_pos]['earliest_year'], pos[set_pos]['features'])
-min_samples = int(0.25*df_train[df_train.year <= df_train.year.min() + pos[set_pos]['skip_years']].shape[0])
+min_samples = int(0.2*df_train[df_train.year <= df_train.year.min() + pos[set_pos]['skip_years']].shape[0])
 
 search_space = {
     'lgbm': [
@@ -1052,11 +1002,12 @@ def calc_rmse(**args):
 # Run Optimization
 #================
 
+if 'fp_per_game' in pos[set_pos]['metrics']:
+    pos[set_pos]['metrics'].remove('fp_per_game')
 pos[set_pos]['metrics'].append('fp_per_game')
-# pos[set_pos]['metrics'].append('pct_off')
-pos[set_pos]['metrics'] = list(set(pos[set_pos]['metrics']))
 
 for metric in pos[set_pos]['metrics']:
+    print(metric)
     
     opt_scores = []
     val_adp_scores = []
@@ -1169,3 +1120,5 @@ for metric in pos[set_pos]['metrics']:
         save_pickle(params_output, path + f'Model_Outputs/Model_Params/{max_pkey}.p')
         save_pickle(df_train, path + f'Model_Outputs/Model_Datasets/{max_pkey}.p')    
         save_pickle(search_space[model], path + f'Model_Outputs/Bayes_Space/{max_pkey}.p')
+# -
+

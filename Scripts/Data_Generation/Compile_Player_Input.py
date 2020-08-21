@@ -363,6 +363,8 @@ for col in df.columns:
 
 df = draft_value(df, 'QB')
 
+df.loc[df.player == 'Case Keenum', 'year_exp'] = df.loc[df.player == 'Case Keenum', 'year_exp'] + 5
+
 append_to_db(df, db_name='Model_Inputs', table_name='QB_' + str(year+1), if_exist='replace')
 
 # # Compile TE

@@ -7,11 +7,10 @@ import random
 import matplotlib.pyplot as plt
 import pandas.io.formats.style
 import copy
+import os 
 
 # sql packages
-import sqlalchemy
-import psycopg2
-from sqlalchemy import create_engine
+import sqlite3
 
 # linear optimization
 from cvxopt import matrix
@@ -24,40 +23,20 @@ class FootballSimulation():
     # Creating Player Distributions for Given Settings
     #==========
     
-    def __init__(self, pts_dict, table_info, set_year, iterations):
+    def __init__(self, pts_dict, conn_sim, table_vers, set_year, iterations):
         
         # create empty dataframe to store player point distributions
-        tree_output = pd.DataFrame()
-        for pos in ['aQB', 'bRB', 'cWR', 'dTE']:
+        pos_update = {'QB': 'aQB', 'RB': 'bRB', 'WR': 'cWR', 'TE': 'dTE'}
+        self.data = pd.read_sql_query(f'''SELECT * FROM {table_vers}_{set_year}''', conn_sim)
+        self.data['pos'] = self.data['pos'].map(pos_update)
 
-            # extract the train and test data for passing into the tree algorithm
-            train, test = self._data_pull(pts_dict, pos, table_info, set_year)
-
-            # obtain the cluster standard deviation + the mixed prediction / cluster mean
-            results = self._tree_cluster(train, test, pos)
-
-            # append the results for each position into single dataframe
-            tree_output = pd.concat([tree_output, results], axis=0)
-
-        tree_output = tree_output.reset_index(drop=True)
-
-        # loop through each row in tree output and create a normal distribution
-        data_list = []
-        for row in tree_output.iterrows():
-            dist = list(np.uint16(np.random.normal(loc=row[1]['PredMean'], 
-                                                   scale=row[1]['ClusterStd'], size=iterations*2).clip(min=0)*16))
-            data_list.append(dist)
-
-        # create the player, position, point distribution dataframe
-        self.data = pd.concat([tree_output.player, pd.DataFrame(data_list), tree_output.pos], axis=1)
-
-        # add salaries to the dataframe and set index to player
-        salaries = pd.read_sql_query('SELECT * FROM {}."salaries_{}"'.format(table_info['schema'], str(set_year)), table_info['engine'])
-        self.sal = salaries
-        self.data = pd.merge(self.data, salaries, how='inner', left_on='player', right_on='player')
+        # # add salaries to the dataframe and set index to player
+        # salaries = pd.read_sql_query(f'''SELECT * FROM salaries_{str(set_year)}''', conn_sim)
+        # self.sal = salaries
+        # self.data = pd.merge(self.data, salaries, how='inner', left_on='player', right_on='player')
         
-        # pull in injury risk information
-        self.inj = pd.read_sql_query('SELECT * FROM {}."injuries_{}"'.format(table_info['schema'], str(set_year)), table_info['engine'])
+        # # pull in injury risk information
+        # self.inj = pd.read_sql_query(f'''SELECT * FROM injuries_{set_year} ''', conn_sim)
         
         # add flex data
         flex = self.data[self.data.pos.isin(['bRB', 'cWR', 'dTE'])]
@@ -111,120 +90,6 @@ class FootballSimulation():
         test.loc[:, 'pred'] = (test[pred_cols] * pts_list).sum(axis=1)
         
         return train, test
-
-    @staticmethod
-    def _searching(est, pos, X_grid, y_grid, n_jobs=1):
-        '''
-        Function to perform GridSearchCV and return the test RMSE, as well as the 
-        optimized and fitted model
-        '''
-        from sklearn.model_selection import GridSearchCV
-        from sklearn.model_selection import cross_val_score
-
-         #=========
-        # Set the RF search params for each position
-        #=========
-
-        params = {}
-
-        params['QB'] = {
-            'max_depth': [4, 5],
-            'min_samples_split': [2],
-            'min_samples_leaf': [15, 20, 25],
-            'splitter': ['random']
-        }
-
-        params['RB'] = {
-            'max_depth': [5, 6, 7],
-            'min_samples_split': [2],
-            'min_samples_leaf': [15, 20, 25],
-            'splitter': ['random']
-        }
-
-        params['WR'] = {
-            'max_depth': [4, 5, 6],
-            'min_samples_split': [2],
-            'min_samples_leaf': [20, 25, 30],
-            'splitter': ['random']
-        }
-
-
-        params['TE'] = {
-            'max_depth': [4, 5],
-            'min_samples_split': [2],
-            'min_samples_leaf': [15, 20, 25],
-            'splitter': ['random']
-        }
-
-        # set up GridSearch object
-        Search = GridSearchCV(estimator=est,
-                              param_grid=params[pos[1:]],
-                              scoring='neg_mean_squared_error',
-                              n_jobs=n_jobs,
-                              cv=3,
-                              return_train_score=False,
-                              iid=False)
-
-        # try all combination of parameters with the fit
-        search_results = Search.fit(X_grid, y_grid)
-
-        # extract best estimator parameters and create model object with them
-        best_params = search_results.cv_results_['params'][search_results.best_index_]
-        est.set_params(**best_params)
-
-        # fit the optimal estimator with the data
-        est.fit(X_grid, y_grid)
-
-        return est
-
-
-    def _tree_cluster(self, train, test, pos):
-
-        # create df for clustering by selecting numeric values and dropping y_act
-        X_train = train.select_dtypes(include=['float', 'int', 'uint8']).drop('y_act', axis=1)
-        X_test = test.select_dtypes(include=['float', 'int', 'uint8'])
-        y = train.y_act
-
-        #----------
-        # Train the Decision Tree with GridSearch optimization
-        #----------
-
-        from sklearn.tree import DecisionTreeRegressor
-
-        # train decision tree with _searching method
-        dtree = self._searching(DecisionTreeRegressor(random_state=1), pos, X_train, y)
-
-        #----------
-        # Calculate each cluster's mean and standard deviation
-        #----------
-
-        # pull out the training clusters and cbind with the actual points scored
-        train_results = pd.concat([pd.Series(dtree.apply(X_train), name='Cluster'), y], axis=1)
-
-        # calculate the average and standard deviation of points scored by cluster
-        train_results = train_results.groupby('Cluster', as_index=False).agg({'y_act': ['mean', 'std']})
-        train_results.columns = ['Cluster', 'ClusterMean', 'ClusterStd']
-
-        #----------
-        # Add the cluster to test results and resulting group mean / std: Player | Pred | StdDev
-        #----------
-
-        # grab the player, prediction, and add cluster to dataset
-        test_results = pd.concat([test[['player', 'pred']], 
-                                  pd.Series(dtree.apply(X_test), name='Cluster')], axis=1)
-
-        # merge the test results with the train result on cluster to add mean cluster and std
-        test_results = pd.merge(test_results, train_results, how='inner', left_on='Cluster', right_on='Cluster')
-
-        # calculate an overall prediction mean and add position to dataset
-        test_results.loc[:, 'PredMean'] = (0.75*test_results.pred + 0.25*test_results.ClusterMean)
-        test_results.loc[:, 'pos'] = pos
-
-        # pull out relevant results for creating distributions
-        test_results = test_results[['player', 'pos', 'PredMean', 'ClusterStd']]
-        
-        return test_results
-
     
     def return_data(self):
         '''
@@ -864,6 +729,16 @@ class FootballSimulation():
 
 
 # %%
+
+# connection for simulation and specific table
+path = f'c:/Users/{os.getlogin()}/Documents/Github/Fantasy_Football/'
+conn_sim = sqlite3.connect(f'{path}/Data/Databases/Simulation.sqlite3')
+table_vers = 'Version1'
+set_year = 2019
+
+# number of iteration to run
+iterations = 1000
+
 # define point values for all statistical categories
 pass_yd_per_pt = 0.04 
 pass_td_pt = 4
@@ -880,3 +755,7 @@ pts_dict['QB'] = [pass_yd_per_pt, pass_td_pt, rush_yd_per_pt, rush_rec_td, int_p
 pts_dict['RB'] = [rush_yd_per_pt, rec_yd_per_pt, ppr, rush_rec_td]
 pts_dict['WR'] = [rec_yd_per_pt, ppr, rush_rec_td]
 pts_dict['TE'] = [rec_yd_per_pt, ppr, rush_rec_td]
+
+# instantiate simulation class and add salary information to data
+sim = FootballSimulation(pts_dict, conn_sim, table_vers, set_year, iterations)
+# %%

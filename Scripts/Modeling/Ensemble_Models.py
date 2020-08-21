@@ -67,10 +67,20 @@ param_conn = sqlite3.connect(path + 'Data/Databases/ParamTracking.sqlite3')
 # set for true if last year in dataset is validation or false if final predict
 val_run = False
 
-# RB <= 2 year
-class_id = (15, 21)
-reg_id_stat = (73, 108)
-reg_id_fp = (109, 117)
+# QB <= 3 year
+class_id = (29, 35)
+reg_id_stat = (163, 216)
+reg_id_fp = (217, 225)
+
+# # RB <= 2 year
+# class_id = (15, 21)
+# reg_id_stat = (73, 108)
+# reg_id_fp = (109, 117)
+
+# # RB > 2 year
+# class_id = (22, 28)
+# reg_id_stat = (118, 153)
+# reg_id_fp = (154, 162)
 
 # # WR <= 2 years
 # class_id = (1, 7)
@@ -364,7 +374,7 @@ def run_class_ensemble(best_models, df_train_results, df_test_results, pos=pos):
     results['ty_proba'][num_rows+1] = ty_proba_ensemble
 
     val_ensemble['pred_check'] = 0
-    val_ensemble.loc[val_ensemble.pred >= 0.5, 'pred_check'] = 1
+    val_ensemble.loc[val_ensemble.pred >= 0.25, 'pred_check'] = 1
     acc_score = round(matthews_corrcoef(val_ensemble.y_act, val_ensemble.pred_check), 3)
     new_result = pd.DataFrame({'Iteration': [num_rows+1], 'Model': 'Ensemble', 'F1Score': acc_score})
     summary = pd.concat([summary, new_result], axis=0)
@@ -875,7 +885,7 @@ df_train_results = df_train_results.loc[:, ~df_train_results.columns.duplicated(
 df_test_results = df_test_results.loc[:, ~df_test_results.columns.duplicated()]
 
 # +
-df_test_results['avg_pred'] = df_test_results[['avg_pick_pred', 'pred_fp_per_game', 'pred_fp_per_game_stat']].mean(axis=1)
+df_test_results['avg_pred'] = df_test_results[[ 'pred_fp_per_game', 'pred_fp_per_game_stat']].mean(axis=1)
 
 if val_run: 
     print('Test R2: %0.3f' % r2_score(df_test_results.y_act, df_test_results.avg_pred))
@@ -884,14 +894,14 @@ if val_run:
     print('ADP RMSE: %0.3f' % np.sqrt(mean_squared_error(df_test_results.y_act, df_test_results.avg_pick_pred)))
 # -
 
-df_train_results['avg_pred'] = df_train_results[['avg_pick_pred', 'pred_fp_per_game', 'pred_fp_per_game_stat']].mean(axis=1)
+df_train_results['avg_pred'] = df_train_results[[ 'pred_fp_per_game', 'pred_fp_per_game_stat']].mean(axis=1)
 print('Val R2: %0.3f' % r2_score(df_train_results.y_act, df_train_results.avg_pred))
 print('Val RMSE: %0.3f' % np.sqrt(mean_squared_error(df_train_results.y_act, df_train_results.avg_pred)))
 print('Val R2: %0.3f' % r2_score(df_train_results.y_act, df_train_results.avg_pick_pred))
 print('val RMSE: %0.3f' % np.sqrt(mean_squared_error(df_train_results.y_act, df_train_results.avg_pick_pred)))
 
 df_test_results = df_test_results.sort_values(by='avg_pred', ascending=False).reset_index(drop=True)
-df_test_results.loc[:17, ['player', 'avg_pick_pred', 'avg_pred', 'pred_fp_per_game_stat', 'class_fp_per_game', 'y_act']]
+df_test_results.loc[:17, ['player', 'avg_pick_pred', 'avg_pred', 'pred_fp_per_game', 'pred_fp_per_game_stat', 'class_fp_per_game', 'y_act']]
 
 # +
 from sklearn.linear_model import LinearRegression
