@@ -65,17 +65,22 @@ param_conn = sqlite3.connect(path + 'Data/Databases/ParamTracking.sqlite3')
 #==========
 
 # set for true if last year in dataset is validation or false if final predict
-val_run = False
+val_run = True
 
-# QB <= 3 year
-class_id = (29, 35)
-reg_id_stat = (163, 216)
-reg_id_fp = (217, 225)
+# # QB <= 3 year
+# class_id = (29, 35)
+# reg_id_stat = (163, 216)
+# reg_id_fp = (217, 225)
 
-# # RB <= 2 year
-# class_id = (15, 21)
-# reg_id_stat = (73, 108)
-# reg_id_fp = (109, 117)
+# # QB > 3 year
+# class_id = (36, 42)
+# reg_id_stat = (226, 279)
+# reg_id_fp = (280, 288)
+
+# RB <= 2 year
+class_id = (15, 21)
+reg_id_stat = (73, 108)
+reg_id_fp = (109, 117)
 
 # # RB > 2 year
 # class_id = (22, 28)
@@ -91,6 +96,16 @@ reg_id_fp = (217, 225)
 # class_id = (8, 14)
 # reg_id_stat = (37, 63)
 # reg_id_fp = (64, 72)
+
+# # TE <= 3 year
+# class_id = (43, 49)
+# reg_id_stat = (289, 315)
+# reg_id_fp = (316, 324)
+
+# # TE > 3 year
+# class_id = (50, 56)
+# reg_id_stat = (325, 351)
+# reg_id_fp = (352, 360)
 
 #==========
 # Fantasy Point Values
@@ -885,7 +900,7 @@ df_train_results = df_train_results.loc[:, ~df_train_results.columns.duplicated(
 df_test_results = df_test_results.loc[:, ~df_test_results.columns.duplicated()]
 
 # +
-df_test_results['avg_pred'] = df_test_results[[ 'pred_fp_per_game', 'pred_fp_per_game_stat']].mean(axis=1)
+df_test_results['avg_pred'] = df_test_results[['avg_pick_pred', 'pred_fp_per_game', 'pred_fp_per_game_stat']].mean(axis=1)
 
 if val_run: 
     print('Test R2: %0.3f' % r2_score(df_test_results.y_act, df_test_results.avg_pred))
@@ -894,7 +909,7 @@ if val_run:
     print('ADP RMSE: %0.3f' % np.sqrt(mean_squared_error(df_test_results.y_act, df_test_results.avg_pick_pred)))
 # -
 
-df_train_results['avg_pred'] = df_train_results[[ 'pred_fp_per_game', 'pred_fp_per_game_stat']].mean(axis=1)
+df_train_results['avg_pred'] = df_train_results[['avg_pick_pred','pred_fp_per_game', 'pred_fp_per_game_stat']].mean(axis=1)
 print('Val R2: %0.3f' % r2_score(df_train_results.y_act, df_train_results.avg_pred))
 print('Val RMSE: %0.3f' % np.sqrt(mean_squared_error(df_train_results.y_act, df_train_results.avg_pred)))
 print('Val R2: %0.3f' % r2_score(df_train_results.y_act, df_train_results.avg_pick_pred))
@@ -1068,15 +1083,15 @@ pd.read_sql_query('''SELECT * FROM Version1_2019''', conn_sim)
 
 # # 2020
 
+vers = 'Version2'
+
 # +
 conn_sim = sqlite3.connect(f'{path}/Data/Databases/Simulation.sqlite3')
-conn_sim.cursor().execute(f'''DELETE FROM Version1_{set_year} WHERE player in {players}''')
+conn_sim.cursor().execute(f'''DELETE FROM {vers}_{set_year} WHERE player in {players}''')
 conn_sim.commit()
 
-append_to_db(output, 'Simulation', f'Version1_{set_year}', 'append')
+append_to_db(output, 'Simulation', f'{vers}_{set_year}', 'append')
 # -
 
 conn_sim = sqlite3.connect(f'{path}/Data/Databases/Simulation.sqlite3')
-pd.read_sql_query('''SELECT * FROM Version1_2020''', conn_sim)
-
-
+pd.read_sql_query(f'''SELECT * FROM {vers}_2020''', conn_sim)

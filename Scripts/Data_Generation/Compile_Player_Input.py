@@ -528,8 +528,6 @@ rookie_rb['teammate_diff_avg_dv'] = rookie_rb.avg_pick / rookie_rb['avg_teammate
 rookie_rb = draft_value(rookie_rb, 'RB')
 rookie_rb = qb_run(rookie_rb)
 
-rookie_rb.shape
-
 append_to_db(rookie_rb, db_name='Model_Inputs', table_name='Rookie_RB_' + str(year+1), if_exist='replace')
 
 # # Compile Rookie WR

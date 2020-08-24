@@ -58,7 +58,7 @@ pd.set_option('display.max_columns', 999)
 path = f'/Users/{os.getlogin()}/Documents/Github/Fantasy_Football/'
 
 # set to position to analyze: 'RB', 'WR', 'QB', or 'TE'
-set_pos = 'QB'
+set_pos = 'TE'
 
 # set year to analyze
 set_year = 2020
@@ -236,7 +236,7 @@ df = calculate_fp(df, pts_dict, pos=set_pos).reset_index(drop=True)
 #==============
 
 breakout_metric = 'fp_per_game'
-act_ppg = '>=18'
+act_ppg = '>=10'
 pct_off = '>0.15'
 adp_ppg_high = '<100'
 adp_ppg_low = '>=0'

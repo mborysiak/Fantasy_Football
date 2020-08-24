@@ -112,6 +112,8 @@ c_stat['rush_td_mkt_share'] = c_stat.rushing_TD / c_stat.team_rushing_TD
 c_stat['year'] = set_year
 c_stat = pd.concat([c_stat[['player', 'team', 'year', 'conference']], c_stat.iloc[:, 3:-1]], axis=1)
 c_stat = c_stat[(c_stat.rushing_ATT >= 10) | (c_stat.receiving_REC >= 10) | (c_stat.passing_ATT > 25)].reset_index(drop=True)
+
+c_stat = c_stat.player.apply(name_clean)
 # -
 
 # append_to_db(c_stat, db_name, 'College_Stats', if_exist='append')
@@ -121,6 +123,7 @@ c_stat = c_stat[(c_stat.rushing_ATT >= 10) | (c_stat.receiving_REC >= 10) | (c_s
 COMBINE_PATH = f'https://www.pro-football-reference.com/play-index/nfl-combine-results.cgi?request=1&year_min={set_year+1}&year_max={set_year+1}&height_min=0&height_max=100&weight_min=140&weight_max=400&pos%5B%5D=QB&pos%5B%5D=WR&pos%5B%5D=TE&pos%5B%5D=RB&show=all&order_by=year_id'
 comb = pd.read_html(COMBINE_PATH)
 
+# +
 comb_df = comb[0]
 comb_df = comb_df[['Year', 'Player', 'Pos', 'Age', 'Height', 'Wt', '40YD', 
                    'Vertical', 'BenchReps', 'Broad Jump', '3Cone', 'Shuttle']]
@@ -129,6 +132,9 @@ comb_df.columns = ['year', 'player', 'pos', 'pp_age', 'height', 'weight', 'forty
 comb_df = comb_df[comb_df.height!='Height'].reset_index(drop=True)
 comb_df.height = comb_df.height.apply(lambda x: 12*int(x.split('-')[0]) + int(x.split('-')[1]))
 comb_df = convert_to_float(comb_df)
+
+comb_df.player = comb_df.player.apply(name_clean)
+# -
 
 # append_to_db(comb_df, db_name, 'Combine_Data_Raw', if_exist='append')
 
@@ -139,9 +145,7 @@ birthdays = pd.read_html('https://nflbirthdays.com/')[0]
 birthdays.columns = ['_', 'player', 'pos', 'team', 'birthday', '__']
 birthdays = birthdays[['player', 'pos', 'birthday']]
 birthdays = birthdays.iloc[1:, :]
-
-missing = pd.DataFrame([['AJ Dillon', 'RB', '1998-05-21']], columns=['player', 'pos', 'birthday'])
-birthdays = pd.concat([birthdays, missing], axis=0).reset_index(drop=True)
+birthdays.player = birthdays.player.apply(name_clean)    
 
 run_date = dt.datetime(month=9, day=1, year=set_year+1)
 birthdays.birthday = (run_date - pd.to_datetime(birthdays.birthday))
@@ -176,6 +180,7 @@ ages = [27, 24.8, 25, 22.7]
 for p, a in zip(players, ages):
     birthdays.loc[birthdays.player==p, 'age'] = a
 
+
 append_to_db(birthdays, 'Season_Stats', 'Player_Birthdays', 'replace')
 # -
 
@@ -201,9 +206,11 @@ qb_adp = rookie_adp('QB', y)
 
 rookie_adp = pd.concat([rb_adp, wr_adp, te_adp, qb_adp], axis=0)
 rookie_adp = rookie_adp[['player', 'draft_year', 'pos', 'avg_pick']]
-rookie_adp
+rookie_adp.player = rookie_adp.player.apply(name_clean)
 # -
 
+# conn.cursor().execute(f'''delete from Rookie_ADP where draft_year={set_year+1}''')
+# conn.commit()
 # append_to_db(rookie_adp, 'Season_Stats', 'Rookie_ADP', 'append')
 
 # # Begin Creating Cleaned up Datasets

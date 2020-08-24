@@ -32,7 +32,14 @@ def player_format(data):
 
 # removing un-needed characters
 def name_clean(col):
-    char_remove = re.sub('[\*\+\%\,]', '', str(col)).rstrip().lstrip()
+    char_remove = re.sub('[\*\+\%\,]', '', str(col))
+    char_remove = char_remove.replace('III', '')
+    char_remove = char_remove.replace('II', '')
+    char_remove = char_remove.replace('.', '')
+    char_remove = char_remove.replace('Jr', '')
+    char_remove = char_remove.replace('Jr.', '')
+    char_remove = char_remove.rstrip().lstrip()
+    
     return char_remove
 
 

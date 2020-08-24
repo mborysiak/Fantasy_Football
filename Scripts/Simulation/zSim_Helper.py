@@ -30,66 +30,29 @@ class FootballSimulation():
         self.data = pd.read_sql_query(f'''SELECT * FROM {table_vers}_{set_year}''', conn_sim)
         self.data['pos'] = self.data['pos'].map(pos_update)
 
-        # # add salaries to the dataframe and set index to player
-        # salaries = pd.read_sql_query(f'''SELECT * FROM salaries_{str(set_year)}''', conn_sim)
-        # self.sal = salaries
-        # self.data = pd.merge(self.data, salaries, how='inner', left_on='player', right_on='player')
+        # add salaries to the dataframe and set index to player
+        salaries = pd.read_sql_query(f'''SELECT player, salary
+                                         FROM Salaries
+                                         WHERE year={set_year}''', conn_sim)
+        self.sal = salaries
+        self.data = pd.merge(self.data, salaries, how='left', left_on='player', right_on='player')
+        self.data.salary = self.data.salary.fillna(1)
         
-        # # pull in injury risk information
-        # self.inj = pd.read_sql_query(f'''SELECT * FROM injuries_{set_year} ''', conn_sim)
+
+        # pull in injury risk information
+        self.inj = pd.read_sql_query(f'''SELECT player, mean_risk 
+                                         FROM Injuries 
+                                         WHERE year={set_year} ''', conn_sim)
         
         # add flex data
         flex = self.data[self.data.pos.isin(['bRB', 'cWR', 'dTE'])]
         flex.loc[:, 'pos'] = 'eFLEX'
-        self.data = pd.concat([self.data, flex])
+        self.data = pd.concat([self.data, flex], axis=0)
         
         # reset index
+        self.data = self.data.sort_values(by=['pos', 'salary'], ascending=[True, False])
         self.data = self.data.set_index('player')
 
-
-    @staticmethod
-    def _data_pull(pts_dict, pos, table_info, set_year=2018):
-
-        '''
-        This function reads in all raw statistical predictions from the ensemble model for a given
-        position group and then converts it into predicted points scored based on a given scoring system.
-
-        Input: Database connection to pull stored raw statistical data, a dictionary containing points
-               per statistical category, and a position to pull.
-        Return: A dataframe with a player, their raw statistical projections and the predicted points
-                scored for a given scoring system.
-        '''
-
-        import pandas as pd
-
-        #--------
-        # Connect to Database and Pull Player Data
-        #--------
-
-        train = pd.read_sql_query('SELECT * FROM {}."{}_Train_{}"' \
-                                             .format(table_info['schema'], pos[1:], str(set_year)), table_info['engine'])
-        test = pd.read_sql_query('SELECT * FROM {}."{}_Test_{}"' \
-                                            .format(table_info['schema'], pos[1:], str(set_year)), table_info['engine'])
-
-        #--------
-        # Calculate Fantasy Points for Given Scoring System
-        #-------- 
-
-        # extract points list and get the idx of point attributes based on length of list
-        pts_list = pts_dict[pos[1:]]
-        c_idx = len(pts_list) + 2
-
-        # calculate the y_act metrics based on actual stat categories and provided pts list
-        act_cols = [c for c in train.columns if 'act' in c]
-        train['y_act'] = (train[act_cols] * pts_list).sum(axis=1)
-        train = train.drop(act_cols, axis=1)
-        
-        # multiply stat categories by corresponding point values
-        pred_cols = [c for c in train.columns if 'pred' in c]
-        train.loc[:, 'pred'] = (train[pred_cols] * pts_list).sum(axis=1)
-        test.loc[:, 'pred'] = (test[pred_cols] * pts_list).sum(axis=1)
-        
-        return train, test
     
     def return_data(self):
         '''
@@ -728,34 +691,53 @@ class FootballSimulation():
         return avg_sal
 
 
-# %%
+# # %%
 
-# connection for simulation and specific table
-path = f'c:/Users/{os.getlogin()}/Documents/Github/Fantasy_Football/'
-conn_sim = sqlite3.connect(f'{path}/Data/Databases/Simulation.sqlite3')
-table_vers = 'Version1'
-set_year = 2019
+# # connection for simulation and specific table
+# path = f'c:/Users/{os.getlogin()}/Documents/Github/Fantasy_Football/'
+# conn_sim = sqlite3.connect(f'{path}/Data/Databases/Simulation.sqlite3')
+# table_vers = 'Version1'
+# set_year = 2019
 
-# number of iteration to run
-iterations = 1000
+# # number of iteration to run
+# iterations = 1000
 
-# define point values for all statistical categories
-pass_yd_per_pt = 0.04 
-pass_td_pt = 4
-int_pts = -2
-sacks = -1
-rush_yd_per_pt = 0.1 
-rec_yd_per_pt = 0.1
-rush_rec_td = 7
-ppr = .5
+# # define point values for all statistical categories
+# pass_yd_per_pt = 0.04 
+# pass_td_pt = 4
+# int_pts = -2
+# sacks = -1
+# rush_yd_per_pt = 0.1 
+# rec_yd_per_pt = 0.1
+# rush_rec_td = 7
+# ppr = .5
 
-# creating dictionary containing point values for each position
-pts_dict = {}
-pts_dict['QB'] = [pass_yd_per_pt, pass_td_pt, rush_yd_per_pt, rush_rec_td, int_pts, sacks]
-pts_dict['RB'] = [rush_yd_per_pt, rec_yd_per_pt, ppr, rush_rec_td]
-pts_dict['WR'] = [rec_yd_per_pt, ppr, rush_rec_td]
-pts_dict['TE'] = [rec_yd_per_pt, ppr, rush_rec_td]
+# # creating dictionary containing point values for each position
+# pts_dict = {}
+# pts_dict['QB'] = [pass_yd_per_pt, pass_td_pt, rush_yd_per_pt, rush_rec_td, int_pts, sacks]
+# pts_dict['RB'] = [rush_yd_per_pt, rec_yd_per_pt, ppr, rush_rec_td]
+# pts_dict['WR'] = [rec_yd_per_pt, ppr, rush_rec_td]
+# pts_dict['TE'] = [rec_yd_per_pt, ppr, rush_rec_td]
 
-# instantiate simulation class and add salary information to data
-sim = FootballSimulation(pts_dict, conn_sim, table_vers, set_year, iterations)
+# # instantiate simulation class and add salary information to data
+# sim = FootballSimulation(pts_dict, conn_sim, table_vers, set_year, iterations)
+
+# # set league information, included position requirements, number of teams, and salary cap
+# league_info = {}
+# league_info['pos_require'] = {'QB': 1, 'RB': 2, 'WR': 2, 'TE': 1, 'FLEX': 2}
+# league_info['num_teams'] = 12
+# league_info['initial_cap'] = 293
+# league_info['salary_cap'] = 293
+
+# to_drop = {}
+# to_drop['players'] = []
+
+# to_drop['salaries'] = []
+
+# # input information for players and their associated salaries selected by your team
+# to_add = {}
+# to_add['players'] = []
+# to_add['salaries'] = []
+
+# sim.run_simulation(league_info, to_drop, to_add, iterations=iterations)
 # %%

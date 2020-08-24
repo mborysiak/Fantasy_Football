@@ -47,7 +47,7 @@ path = f'/Users/{os.getlogin()}/Documents/Github/Fantasy_Football/'
 db_name = 'Model_Inputs.sqlite3'
 
 # set to position to analyze: 'RB', 'WR', 'QB', or 'TE'
-set_pos = 'Rookie_RB'
+set_pos = 'Rookie_WR'
 
 # set the year
 set_year = 2020
@@ -239,7 +239,7 @@ for y_label in metrics:
     
     # extract the train and predict dataframes
     predict = df[df.year==(set_year - 1)].reset_index(drop=True)
-    train = df[df.year!=(set_year - 1)].reset_index(drop=True)
+    train = df[df.year < (set_year - 1)].reset_index(drop=True)
     
     # remove unnecessary columns
     to_drop = [m for m in metrics if m != y_label]
@@ -271,7 +271,7 @@ for y_label in metrics:
             
             if set_pos == 'Rookie_WR':
                 if y_label == 'td_per_game':
-                    cor = np.random.choice(np.arange(0.1, 0.2, 0.01))
+                    cor = np.random.choice(np.arange(0.02, 0.12, 0.01))
                 else:
                     cor = np.random.choice(np.arange(0.05, 0.25, 0.01))
             
@@ -483,9 +483,14 @@ output.iloc[:, 2:] = np.uint32(output.iloc[:, 2:] * 16)
 players = tuple(output.player)
 
 
+vers = 'Version1'
+
 # +
 conn_sim = sqlite3.connect(f'{path}/Data/Databases/Simulation.sqlite3')
-conn_sim.cursor().execute(f'''DELETE FROM Version1_{set_year} WHERE player in {players}''')
+conn_sim.cursor().execute(f'''DELETE FROM {vers}_{set_year} WHERE player in {players}''')
 conn_sim.commit()
 
-append_to_db(output, 'Simulation', f'Version1_{set_year}', 'append')
+append_to_db(output, 'Simulation', f'{vers}_{set_year}', 'append')
+# -
+
+

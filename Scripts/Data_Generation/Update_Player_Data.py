@@ -20,7 +20,7 @@ import sqlite3
 import os
 
 # last year's statistics and adp to pull and append to database
-year = 2019
+year = 2018
 
 # update True means delete data associated with current year and re-write (e.g. update ADP)
 update = True
@@ -323,10 +323,6 @@ df_rb['rush_att_per_game'] = df_rb.rush_att / df_rb.games
 #==========
 
 df_adp_rush = clean_adp(data_adp_rush, year)
-# -
-
-find_missing = pd.merge(df_adp_rush, df_rb, on='player', how='left')
-list(find_missing.loc[find_missing.games.isnull(), 'player'].values)
 
 # +
 all_rb = pd.read_sql_query("select * from rb_stats", con=conn)
@@ -547,6 +543,9 @@ df_rb.loc[:, 'age'] = np.log(df_rb.age)
 df_rb = df_rb.sort_values(by=['year', 'avg_pick'], ascending=[False, True]).reset_index(drop=True)
 # -
 
+find_missing = pd.merge(df_adp_rush, df_rb, on='player', how='left')
+list(find_missing.loc[find_missing.team_y.isnull(), 'player'])
+
 # conn.cursor().execute('''delete from rb_stats where year={}'''.format(year))
 # conn.commit()
 # append_to_db(df_rb, db_name='Season_Stats', table_name='RB_Stats', if_exist='append')
@@ -624,6 +623,25 @@ df_wr.loc[:, 'age'] = np.log(df_wr.age)
 
 # sort values and reset index
 df_wr = df_wr.sort_values(by=['year', 'avg_pick'], ascending=[False, True]).reset_index(drop=True)
+# -
+
+find_missing = pd.merge(df_adp_rec, df_wr, on='player', how='left')
+list(find_missing.loc[find_missing.team_y.isnull(), 'player'])
+
+# +
+all_wr = pd.read_sql_query("select * from wr_stats", con=conn)
+aj = all_wr[(all_wr.player=="AJ Green")].mean()*0.85
+aj  = aj[df_wr.columns]
+aj.player="AJ Green"
+aj.team = 'CIN'
+aj.age = 32
+aj.pos = 'WR'
+aj.games = 14
+aj.games_started = 14
+aj.year = 2019
+
+
+df_wr = pd.concat([df_wr, pd.DataFrame(aj).T], axis=0)
 # -
 
 conn.cursor().execute('''delete from wr_stats where year={}'''.format(year))
