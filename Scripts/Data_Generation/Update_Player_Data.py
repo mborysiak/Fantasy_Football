@@ -20,7 +20,7 @@ import sqlite3
 import os
 
 # last year's statistics and adp to pull and append to database
-year = 2018
+year = 2019
 
 # update True means delete data associated with current year and re-write (e.g. update ADP)
 update = True
@@ -286,7 +286,7 @@ df_rush['player'] = df_rush.player.apply(name_clean)
 # cleaning player name and stat categories
 df_rec = df_rec.rename(columns = colnames_rec)
 df_rec['player'] = df_rec.player.apply(name_clean)
-df_rec['catch_pct'] = df_rec.catch_pct.apply(name_clean)
+df_rec['catch_pct'] = df_rec.catch_pct.apply(num_clean)
 
 # removing nonsense rows
 df_rush = df_rush[df_rush.games != 'G'].reset_index(drop=True)
@@ -313,7 +313,7 @@ df_rb['total_touches'] = df_rb.rush_att + df_rb.receptions
 df_rb['total_td'] = df_rb.rush_td + df_rb.rec_td
 df_rb['td_per_game'] = df_rb.total_td / df_rb.games
 df_rb['total_yds'] = df_rb.rush_yds + df_rb.rec_yds
-df_rb['total_yds_per_game'] = df_rb.total_yds / df_rb.games
+df_rb['total_yd_per_game'] = df_rb.total_yds / df_rb.games
 df_rb['yds_per_touch'] = df_rb.total_yds / df_rb.total_touches
 df_rb['rush_att_per_game'] = df_rb.rush_att / df_rb.games
 
@@ -395,7 +395,8 @@ df_rb = df_rb[['player', 'pos', 'team', 'year', 'age', 'avg_pick',
                'new_team', 'rush_att', 'rush_yds', 'rush_yd_per_att', 'rush_att_per_game', 'rush_yd_per_game',
                'rush_td', 'tgt', 'receptions', 'rec_yds', 'yd_per_rec', 'rec_td',
                'long_rec', 'long_rush', 'rec_per_game', 'rec_yd_per_game', 'catch_pct', 'total_yds',
-               'total_td', 'total_touches', 'td_per_game', 'yds_per_touch', 'fmb', 'games', 'games_started']]
+               'total_td', 'total_touches', 'td_per_game', 'total_yd_per_game',
+               'yds_per_touch', 'fmb', 'games', 'games_started']]
 
 # +
 #==========
@@ -452,11 +453,11 @@ rz_rush = rz_rush.rename(columns=col_names_rush)
 
 # remove percent signs from columns
 for col in ['rz_20_catch_pct', 'rz_20_tgt_pct', 'rz_10_catch_pct', 'rz_10_tgt_pct']:
-    rz_rec[col] = rz_rec[col].apply(name_clean)
+    rz_rec[col] = rz_rec[col].apply(num_clean)
     
 # remove percent signs from columns
 for col in ['rz_20_rush_pct', 'rz_10_rush_pct', 'rz_5_rush_pct']:
-    rz_rush[col] = rz_rush[col].apply(name_clean)
+    rz_rush[col] = rz_rush[col].apply(num_clean)
     
 # add year to the data
 rz_rush['year'] = year
@@ -644,9 +645,9 @@ aj.year = 2019
 df_wr = pd.concat([df_wr, pd.DataFrame(aj).T], axis=0)
 # -
 
-conn.cursor().execute('''delete from wr_stats where year={}'''.format(year))
-conn.commit()
-append_to_db(df_wr, db_name='Season_Stats', table_name='WR_Stats', if_exist='append')
+# conn.cursor().execute('''delete from wr_stats where year={}'''.format(year))
+# conn.commit()
+# append_to_db(df_wr, db_name='Season_Stats', table_name='WR_Stats', if_exist='append')
 
 # # Update QB
 
@@ -796,7 +797,7 @@ df_rz_pass = df_rz_pass[df_rz_pass.player != 'Player']
 
 # remove percent signs from columns
 for col in ['rz_20_complete_pct', 'rz_10_complete_pct']:
-    df_rz_pass[col] = df_rz_pass[col].apply(name_clean)
+    df_rz_pass[col] = df_rz_pass[col].apply(num_clean)
     
 # remove percent signs from columns
 for col in df_rz_pass.columns:

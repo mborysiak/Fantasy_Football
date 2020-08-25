@@ -29,6 +29,9 @@ def player_format(data):
     df = df[pd.notnull(df['Player'])]
     return df
 
+def num_clean(col):
+    char_remove = re.sub('[\*\+\%\,]', '', str(col))
+    return char_remove
 
 # removing un-needed characters
 def name_clean(col):
@@ -39,7 +42,7 @@ def name_clean(col):
     char_remove = char_remove.replace('Jr', '')
     char_remove = char_remove.replace('Jr.', '')
     char_remove = char_remove.rstrip().lstrip()
-    
+
     return char_remove
 
 

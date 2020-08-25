@@ -33,7 +33,7 @@ np.random.seed(1234)
 # connection for simulation and specific table
 path = f'c:/Users/{os.getlogin()}/Documents/Github/Fantasy_Football/'
 conn_sim = sqlite3.connect(f'{path}/Data/Databases/Simulation.sqlite3')
-table_vers = 'Version1'
+table_vers = 'Version2'
 set_year = 2020
 
 # number of iteration to run
@@ -152,7 +152,7 @@ rb_picked = {
     'Alvin Kamara': 0,
     'Derrick Henry': 61,
     'Miles Sanders': 31,
-    'Clyde Edwards-Helaire': 0,
+    'Clyde Edwards-Helaire': 99,
     'Kenyan Drake': 23,
     'Nick Chubb': 0,
     'Aaron Jones': 0,
@@ -167,6 +167,7 @@ rb_picked = {
     'James Conner': 26,
     'Jonathan Taylor': 0,
     'Devin Singletary': 0,
+    'Ronald Jones': 0,
     "D'Andre Swift": 0,
     'Kareem Hunt': 0,
     'Cam Akers': 0,
@@ -174,7 +175,7 @@ rb_picked = {
     'Raheem Mostert': 0,
     'Tarik Cohen': 0,
     'Mark Ingram': 0,
-    'J.K. Dobbins': 0,
+    'JK Dobbins': 0,
     'Kerryon Johnson': 0,
     'Phillip Lindsay': 0,
     'Darrell Henderson': 0,
@@ -225,7 +226,7 @@ rb_picked = {
 }
 
 wr_picked = {
-    'Michael Thomas': 0,
+    'Michael Thomas': 105,
     'Davante Adams': 0,
     'DeAndre Hopkins': 0,
     'Tyreek Hill': 0,
@@ -233,28 +234,30 @@ wr_picked = {
     'Chris Godwin': 26,
     'Mike Evans': 0,
     'Kenny Golladay': 0,
-    'D.J. Moore': 0,
+    'DJ Moore': 0,
     'Allen Robinson': 0,
     'Adam Thielen': 0,
     'JuJu Smith-Schuster': 0,
     'Amari Cooper': 0,
     'Courtland Sutton': 0,
     'Calvin Ridley': 0,
-    'A.J. Brown': 33,
+    'AJ Brown': 33,
     'Robert Woods': 0,
     'Tyler Lockett': 0,
     'Cooper Kupp': 0,
     'Keenan Allen': 0,
-    'T.Y. Hilton': 0,
+    'TY Hilton': 0,
     'Terry McLaurin': 11,
     'Jarvis Landry': 0,
     'Tyler Boyd': 0,
+    'DK Metcalf': 0,
     'DeVante Parker': 0,
     'Marquise Brown': 0,
     'Michael Gallup': 0,
     'Stefon Diggs': 0,
     'Deebo Samuel': 0,
     'Marvin Jones': 0,
+    'AJ Green': 0,
     'Diontae Johnson': 0,
     'Brandin Cooks': 0,
     'Jamison Crowder': 0,
@@ -344,10 +347,10 @@ te_picked = {
     'Jared Cook': 0,
     'Dallas Goedert': 0,
     'Mike Gesicki': 0,
-    'T.J. Hockenson': 0,
+    'TJ Hockenson': 0,
     'Jonnu Smith': 0,
     'Darren Fells': 0,
-    'O.J. Howard': 0,
+    'OJ Howard': 0,
     'Dawson Knox': 0,
     'Blake Jarwin': 0,
     'Gerald Everett': 0,
@@ -368,7 +371,7 @@ te_picked = {
     'Tyler Eifert': 0,
     'Cameron Brate': 0,
     'Nick Boyle': 0,
-    'C.J. Uzomah': 0,
+    'CJ Uzomah': 0,
     'Vance McDonald': 0,
     'Ryan Griffin': 0,
     'Maxx Williams': 0
@@ -387,39 +390,106 @@ for posit in ['qb', 'rb', 'wr', 'te']:
 to_add = {}
 to_add['players'] = []
 to_add['salaries'] = []
+# team_picks = {
+#     'Alvin Kamara': 50, 
+#     'Nick Chubb': 33,
+#     'Michael Thomas': 105,
+#     'Mark Andrews': 40,
+#     'DK Metcalf': 24,
+#     'Cam Akers': 20,
+#     'Deshaun Watson': 11,
+#     'Julian Edelman': 7
+# }
+
 team_picks = {
     'Alvin Kamara': 50, 
     'Nick Chubb': 33,
-    # 'Michael Thomas': 105,
-    # 'Mark Andrews': 40,
-    # 'Jonathan Taylor': 31,
-    # 'Cam Akers': 20,
-    # 'Deshaun Watson': 11,
-    # 'CeeDee Lamb': 3
+    'Mark Andrews': 40,
+    'DK Metcalf': 25,
+    # 'DJ Moore': 64,
+    # 'Cam Akers': 18,
+    # 'Daniel Jones': 1,
+    # 'David Montgomery': 
 }
 
-import time
-start =time.time()
+
 for p, s in team_picks.items():
     to_add['players'].append(p)
     to_add['salaries'].append(s)
-print(time.time()-start)
 
-results = sim.run_simulation(league_info, to_drop, to_add, iterations=iterations)
-avg_sal = sim.show_most_selected(to_add, iterations, num_show=30)
-avg_sal.style.bar_excel(color_positive='#5FBA7D')
-
+# avg_sal.style.bar_excel(color_positive='#5FBA7D')
 
 # %%
-team_pts = d[(d.index.isin(team_picks.keys())) & (d.pos!='eFLEX')].drop(['pos', 'salary'], axis=1).sum(axis=0)
-team_pts = team_pts * (11/16) + 150 + 275
-print(f'20th Percentile: {np.percentile(team_pts, 20)}')
-print(f'Team Mean: {team_pts.mean()}')
-print(f'80th Percentile: {np.percentile(team_pts, 80)}')
+# team_pts = d[(d.index.isin(team_picks.keys())) & (d.pos!='eFLEX')].drop(['pos', 'salary'], axis=1).sum(axis=0)
+# team_pts = team_pts * (11/16) + 150 + 275
+# print(f'20th Percentile: {np.percentile(team_pts, 20)}')
+# print(f'Team Mean: {team_pts.mean()}')
+# print(f'80th Percentile: {np.percentile(team_pts, 80)}')
 
-plt.figure(figsize(8, 8))
-sns.distplot(team_pts, hist = True, kde = True, bins = 19,
-                hist_kws = {'edgecolor': 'k', 'color': 'darkblue'},
-            kde_kws = {'linewidth' : 4},
-            label = 'Estimated Dist.');
-# %%
+# plt.figure(figsize(8, 8))
+# sns.distplot(team_pts, hist = True, kde = True, bins = 19,
+#                 hist_kws = {'edgecolor': 'k', 'color': 'darkblue'},
+#             kde_kws = {'linewidth' : 4},
+#             label = 'Estimated Dist.');
+
+
+#%%
+import dash
+import dash_core_components as dcc
+import dash_html_components as html 
+import plotly.express as px
+from dash.dependencies import Input, Output, State
+
+
+external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
+
+app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
+
+
+# results = sim.run_simulation(league_info, to_drop, to_add, iterations=iterations)
+# avg_sal = sim.show_most_selected(to_add, iterations, num_show=30)
+# avg_sal = avg_sal.sort_values(by='Percent Drafted').reset_index()
+# avg_sal.columns = ['Player', 'PercentDrafted', 'AverageSalary', 'ExpectedSalaryDiff']
+# fig = px.bar(avg_sal, y="Player", x="PercentDrafted", orientation='h',  width=400, height=1200)
+
+test_dict = {'Alvin Kamara': 0,
+             'Nick Chubb': 0}
+
+app.layout = html.Div([
+    dcc.Input(id='player-update', type='text', value='Alvin Kamara'),
+    dcc.Input(id='salary-update', type='text', value='95'),
+    html.Button(id='submit-button-state', n_clicks=0, children='Submit'),
+    dcc.Graph(
+        id='draft-results',
+        figure = {
+            "layout": {
+                "title": "My Dash Graph",
+                "height": 800,
+                "width": 600
+                }}),
+     html.Div(id='output-state') 
+])
+
+@app.callback([Output('draft-results', 'figure'),
+              Output('output-state', 'children')],
+              [Input('submit-button-state', 'n_clicks')],
+              [State('player-update', 'value'),
+               State('salary-update', 'value')]
+)
+def update_output(n_clicks, p_update, s_update):
+    
+    if n_clicks == 0:
+        return dash.no_update
+    
+    else:
+
+        results = sim.run_simulation(league_info, to_drop, to_add, iterations=iterations)
+        avg_sal = sim.show_most_selected(to_add, iterations, num_show=30)
+        avg_sal = avg_sal.sort_values(by='Percent Drafted').reset_index()
+        avg_sal.columns = ['Player', 'PercentDrafted', 'AverageSalary', 'ExpectedSalaryDiff']
+        fig = px.bar(avg_sal, y="Player", x="PercentDrafted", orientation='h')
+        
+        return fig#, f'{p_update} now values at {s_update}'
+
+if __name__ == '__main__':
+    app.run_server(debug=True)

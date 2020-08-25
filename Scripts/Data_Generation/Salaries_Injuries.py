@@ -147,6 +147,8 @@ if snake:
     salary_final['year'] = str(year) + '_snake'
 else:
     salary_final['year'] = year
+    
+salary_final.player = salary_final.player.apply(name_clean)
 
 # +
 if snake:
@@ -190,8 +192,10 @@ for col in ['pct_miss_one', 'proj_games_missed', 'pct_per_game']:
 inj['mean_risk'] = inj.iloc[:, 1:].mean(axis=1)
 inj = inj[['player', 'mean_risk']].sort_values(by='mean_risk').reset_index(drop=True)
 
+inj.player = inj.player.apply(name_clean)
+
 # adjust specific players if needed
-pts = [1, 1, 1, 2, 1]
+pts = [1, 1, 1, 1, 1]
 players = ['Kerryon Johnson', 'Tyreek Hill', 'Todd Gurley', 'Deebo Samuel', 'Miles Sanders']
 for pt, pl in zip(pts, players):
     inj.loc[inj.player==pl, 'mean_risk'] = inj.loc[inj.player==pl, 'mean_risk'] + pt

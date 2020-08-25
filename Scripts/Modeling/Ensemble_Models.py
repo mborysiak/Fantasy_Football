@@ -65,7 +65,7 @@ param_conn = sqlite3.connect(path + 'Data/Databases/ParamTracking.sqlite3')
 #==========
 
 # set for true if last year in dataset is validation or false if final predict
-val_run = True
+val_run = False
 
 # # QB <= 3 year
 # class_id = (29, 35)
@@ -77,20 +77,20 @@ val_run = True
 # reg_id_stat = (226, 279)
 # reg_id_fp = (280, 288)
 
-# RB <= 2 year
-class_id = (15, 21)
-reg_id_stat = (73, 108)
-reg_id_fp = (109, 117)
+# # RB <= 2 year
+# class_id = (15, 21)
+# reg_id_stat = (73, 108)
+# reg_id_fp = (109, 117)
 
 # # RB > 2 year
 # class_id = (22, 28)
 # reg_id_stat = (118, 153)
 # reg_id_fp = (154, 162)
 
-# # WR <= 2 years
-# class_id = (1, 7)
-# reg_id_stat = (1, 27)
-# reg_id_fp = (28, 36)
+# WR <= 2 years
+class_id = (1, 7)
+reg_id_stat = (1, 27)
+reg_id_fp = (28, 36)
 
 # # WR > 2 years
 # class_id = (8, 14)
@@ -1095,3 +1095,5 @@ append_to_db(output, 'Simulation', f'{vers}_{set_year}', 'append')
 
 conn_sim = sqlite3.connect(f'{path}/Data/Databases/Simulation.sqlite3')
 pd.read_sql_query(f'''SELECT * FROM {vers}_2020''', conn_sim)
+
+

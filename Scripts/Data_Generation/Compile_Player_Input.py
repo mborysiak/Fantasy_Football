@@ -22,6 +22,7 @@ import os
 import pandas as pd
 import numpy as np
 from zData_Functions import *
+pd.set_option('display.max_columns', None)
 
 
 # # Helper Functions
@@ -239,6 +240,8 @@ df = adp_groupby(df, 'RB')
 df = draft_value(df, 'RB')
 df = qb_run(df)
 
+
+df[df.year==2019].describe()
 
 append_to_db(df, db_name='Model_Inputs', table_name='RB_' + str(year+1), if_exist='replace')
 
@@ -610,5 +613,3 @@ rookie_wr = draft_value(rookie_wr, 'WR')
 rookie_wr = qb_run(rookie_wr)
 
 append_to_db(rookie_wr, db_name='Model_Inputs', table_name='Rookie_WR_' + str(year+1), if_exist='replace')
-
-
