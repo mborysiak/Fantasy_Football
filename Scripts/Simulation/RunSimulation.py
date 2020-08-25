@@ -402,7 +402,7 @@ to_add['salaries'] = []
 # }
 
 team_picks = {
-    'Alvin Kamara': 50, 
+    'Alvin Kamara': 55, 
     'Nick Chubb': 33,
     'Mark Andrews': 40,
     'DK Metcalf': 25,
@@ -435,6 +435,7 @@ for p, s in team_picks.items():
 
 #%%
 import dash
+import dash_table
 import dash_core_components as dcc
 import dash_html_components as html 
 import plotly.express as px
@@ -452,8 +453,8 @@ app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 # avg_sal.columns = ['Player', 'PercentDrafted', 'AverageSalary', 'ExpectedSalaryDiff']
 # fig = px.bar(avg_sal, y="Player", x="PercentDrafted", orientation='h',  width=400, height=1200)
 
-test_dict = {'Alvin Kamara': 0,
-             'Nick Chubb': 0}
+pick_df = pd.DataFrame({'player': [i for i in rb_picked.keys()],
+                        'salary': [j for j in rb_picked.values()]})
 
 app.layout = html.Div([
     dcc.Input(id='player-update', type='text', value='Alvin Kamara'),
@@ -467,11 +468,16 @@ app.layout = html.Div([
                 "height": 800,
                 "width": 600
                 }}),
-     html.Div(id='output-state') 
+    #  html.Div(id='output-state'),
+     dash_table.DataTable(
+                            id='table',
+                            columns=[{"name": i, "id": i} for i in pick_df.columns],
+                            data=pick_df.to_dict('records'),
+                        )
 ])
 
 @app.callback([Output('draft-results', 'figure'),
-              Output('output-state', 'children')],
+              Output('table', 'data')],
               [Input('submit-button-state', 'n_clicks')],
               [State('player-update', 'value'),
                State('salary-update', 'value')]
@@ -483,13 +489,16 @@ def update_output(n_clicks, p_update, s_update):
     
     else:
 
-        results = sim.run_simulation(league_info, to_drop, to_add, iterations=iterations)
+        pick_df.loc[pick_df.player == p_update, 'salary'] = int(s_update)
+        _ = sim.run_simulation(league_info, to_drop, to_add, iterations=iterations)
         avg_sal = sim.show_most_selected(to_add, iterations, num_show=30)
         avg_sal = avg_sal.sort_values(by='Percent Drafted').reset_index()
         avg_sal.columns = ['Player', 'PercentDrafted', 'AverageSalary', 'ExpectedSalaryDiff']
         fig = px.bar(avg_sal, y="Player", x="PercentDrafted", orientation='h')
         
-        return fig#, f'{p_update} now values at {s_update}'
+        subset_sal = pick_df[pick_df.salary > 0]
+
+        return fig, subset_sal.to_dict('records')
 
 if __name__ == '__main__':
     app.run_server(debug=True)
