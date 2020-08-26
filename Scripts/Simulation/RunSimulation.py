@@ -94,330 +94,34 @@ league_info['num_teams'] = 12
 league_info['initial_cap'] = 293
 league_info['salary_cap'] = 293
 
-pick_dict = {}
-for p in d.index:
-    pick_dict[p]=0
+player_list = []
+for pl, row in d[['pos']].iterrows():
+    if row.pos != 'eFLEX':
+        player_list.append([pl, row.pos[1:], 0])
 
+pick_df = pd.DataFrame(player_list, columns=['Player', 'Position', 'Salary'])
 #------------------
 # For Beta Keepers
 #------------------
 
-#%%
-
 # input information for players and their associated salaries selected by other teams
-qb_picked = {
-    'Lamar Jackson': 11,
-    'Patrick Mahomes': 26,
-    'Deshaun Watson': 0,
-    'Kyler Murray': 13,
-    'Dak Prescott': 0,
-    'Russell Wilson': 0,
-    'Josh Allen': 0,
-    'Drew Brees': 0,
-    'Tom Brady': 0,
-    'Matt Ryan': 0,
-    'Aaron Rodgers': 0,
-    'Carson Wentz': 0,
-    'Matthew Stafford': 0,
-    'Daniel Jones': 0,
-    'Mitchell Trubisky': 0,
-    'Sam Darnold': 0,
-    'Baker Mayfield': 0,
-    'Drew Lock': 0,
-    'Dwayne Haskins': 0,
-    'Kyle Allen': 0,
-    'Mason Rudolph': 0,
-    'Jared Goff': 0,
-    'Kirk Cousins': 0,
-    'Jameis Winston': 0,
-    'Philip Rivers': 0,
-    'Andy Dalton': 0,
-    'Ryan Tannehill': 0,
-    'Cam Newton': 0,
-    'Derek Carr': 0,
-    'Ryan Fitzpatrick': 0,
-    'Jimmy Garoppolo': 0,
-    'Marcus Mariota': 0,
-    'Teddy Bridgewater': 0,
-    'Jacoby Brissett': 0,
-    'Nick Foles': 0,
-    'Case Keenum': 0
-}
-
-rb_picked = {
+keepers = {
     'Christian McCaffrey': 97,
     'Saquon Barkley': 126,
-    'Ezekiel Elliott': 0,
     'Dalvin Cook': 80,
-    'Alvin Kamara': 0,
     'Derrick Henry': 61,
     'Miles Sanders': 31,
     'Clyde Edwards-Helaire': 99,
     'Kenyan Drake': 23,
-    'Nick Chubb': 0,
-    'Aaron Jones': 0,
-    'Joe Mixon': 0,
-    'Austin Ekeler': 0,
-    'Leonard Fournette': 0,
-    'Chris Carson': 0,
-    'David Johnson': 0,
-    'Todd Gurley': 37,
     "Le'Veon Bell": 0,
-    'Melvin Gordon': 0,
     'James Conner': 26,
-    'Jonathan Taylor': 0,
-    'Devin Singletary': 0,
-    'Ronald Jones': 0,
-    "D'Andre Swift": 0,
-    'Kareem Hunt': 0,
-    'Cam Akers': 0,
-    'David Montgomery': 0,
-    'Raheem Mostert': 0,
-    'Tarik Cohen': 0,
-    'Mark Ingram': 0,
-    'JK Dobbins': 0,
-    'Kerryon Johnson': 0,
-    'Phillip Lindsay': 0,
-    'Darrell Henderson': 0,
-    'James White': 0,
-    'Jordan Howard': 0,
-    'Matt Breida': 0,
-    'Zack Moss': 0,
-    'Tevin Coleman': 0,
-    'Alexander Mattison': 0,
-    'Latavius Murray': 0,
-    "Ke'Shawn Vaughn": 0,
-    'AJ Dillon': 0,
-    'Joshua Kelley': 0,
-    'Eno Benjamin': 0,
-    'DeeJay Dallas': 0,
-    'Sony Michel': 0,
-    'Dare Ogunbowale': 0,
-    'Nyheim Hines': 0,
-    'Boston Scott': 0,
-    'Jaylen Samuels': 0,
-    'Chase Edmonds': 0,
-    'Ryquell Armstead': 0,
-    'Royce Freeman': 0,
-    'Rashaad Penny': 0,
-    'Tony Pollard': 0,
-    'Malcolm Brown': 0,
-    'Justice Hill': 0,
-    'Gus Edwards': 0,
-    'Mike Boone': 0,
-    'Darwin Thompson': 0,
-    'Reggie Bonnafon': 0,
-    'Damien Williams': 0,
-    'Marlon Mack': 0,
-    'Duke Johnson': 0,
-    'Adrian Peterson': 0,
-    'Carlos Hyde': 0,
-    'Brian Hill': 0,
-    'Jamaal Williams': 0,
-    'Chris Thompson': 0,
-    'Jerick McKinnon': 0,
-    'Rex Burkhead': 0,
-    'Frank Gore': 0,
-    'DeAndre Washington': 0,
-    'Giovani Bernard': 0,
-    'Jalen Richard': 0,
-    'Dion Lewis': 0,
-    'Wayne Gallman': 0
-}
-
-wr_picked = {
-    'Michael Thomas': 105,
-    'Davante Adams': 0,
-    'DeAndre Hopkins': 0,
-    'Tyreek Hill': 0,
-    'Julio Jones': 0,
     'Chris Godwin': 26,
-    'Mike Evans': 0,
-    'Kenny Golladay': 0,
-    'DJ Moore': 0,
-    'Allen Robinson': 0,
-    'Adam Thielen': 0,
-    'JuJu Smith-Schuster': 0,
-    'Amari Cooper': 0,
-    'Courtland Sutton': 0,
-    'Calvin Ridley': 0,
     'AJ Brown': 33,
-    'Robert Woods': 0,
-    'Tyler Lockett': 0,
-    'Cooper Kupp': 0,
-    'Keenan Allen': 0,
-    'TY Hilton': 0,
     'Terry McLaurin': 11,
-    'Jarvis Landry': 0,
-    'Tyler Boyd': 0,
-    'DK Metcalf': 0,
-    'DeVante Parker': 0,
-    'Marquise Brown': 0,
-    'Michael Gallup': 0,
-    'Stefon Diggs': 0,
-    'Deebo Samuel': 0,
-    'Marvin Jones': 0,
-    'AJ Green': 0,
-    'Diontae Johnson': 0,
-    'Brandin Cooks': 0,
-    'Jamison Crowder': 0,
-    'Julian Edelman': 0,
-    'Christian Kirk': 0,
-    'Preston Williams': 0,
-    'Sterling Shepard': 0,
-    'Golden Tate': 0,
-    'Robby Anderson': 0,
-    'Darius Slayton': 0,
-    'John Brown': 0,
-    'Jerry Jeudy': 0,
-    'Justin Jefferson': 0,
-    'Mecole Hardman': 0,
-    'Mike Williams': 0,
-    'Emmanuel Sanders': 0,
-    'Curtis Samuel': 0,
-    'CeeDee Lamb': 0,
-    'Tee Higgins': 0,
-    'Quintez Cephus': 0,
-    'Jalen Reagor': 0,
-    'Denzel Mims': 0,
-    'Brandon Aiyuk': 0,
-    'Tyler Johnson': 0,
-    'KJ Hamler': 0,
-    'Devin Duvernay': 0,
-    'Chase Claypool': 0,
-    'Van Jefferson': 0,
-    'Anthony Miller': 0,
-    'James Washington': 0,
-    'Allen Lazard': 0,
-    'Steven Sims': 0,
-    'Russell Gage': 0,
-    'Auden Tate': 0,
-    'Zach Pascal': 0,
-    'Marquez Valdes-Scantling': 0,
-    "Tre'Quan Smith": 0,
-    'Kendrick Bourne': 0,
-    'Kelvin Harmon': 0,
-    'Miles Boykin': 0,
-    'JJ Arcega-Whiteside': 0,
-    'Andy Isabella': 0,
-    'Olabisi Johnson': 0,
-    'Dante Pettis': 0,
-    'Jakobi Meyers': 0,
-    'Keke Coutee': 0,
-    'Trey Quinn': 0,
-    'Justin Watson': 0,
-    'Scott Miller': 0,
-    'Will Fuller': 0,
-    'Larry Fitzgerald': 0,
-    'Sammy Watkins': 0,
-    'Alshon Jeffery': 0,
-    'Dede Westbrook': 0,
-    'Breshad Perriman': 0,
-    'John Ross': 0,
-    'Randall Cobb': 0,
-    'Corey Davis': 0,
-    'Cole Beasley': 0,
-    'Josh Reynolds': 0,
-    'Mohamed Sanu': 0,
-    'Chris Conley': 0,
-    'Kenny Stills': 0,
-    'Danny Amendola': 0,
-    'Demarcus Robinson': 0,
-    'Adam Humphries': 0,
-    'Albert Wilson': 0,
-    'Willie Snead': 0,
-    'Phillip Dorsett': 0,
-    'Cordarrelle Patterson': 0,
-    'Marquise Goodwin': 0,
-    'Allen Hurns': 0,
-    'Tajae Sharpe': 0,
-    'Rashard Higgins': 0
+    'Lamar Jackson': 11,
+    'Patrick Mahomes': 26,
+    'Kyler Murray': 13,
 }
-
-te_picked = {
-    'Travis Kelce': 0,
-    'George Kittle': 0,
-    'Mark Andrews': 0,
-    'Zach Ertz': 0,
-    'Evan Engram': 0,
-    'Tyler Higbee': 0,
-    'Noah Fant': 0,
-    'Hayden Hurst': 0,
-    'Hunter Henry': 0,
-    'Jared Cook': 0,
-    'Dallas Goedert': 0,
-    'Mike Gesicki': 0,
-    'TJ Hockenson': 0,
-    'Jonnu Smith': 0,
-    'Darren Fells': 0,
-    'OJ Howard': 0,
-    'Dawson Knox': 0,
-    'Blake Jarwin': 0,
-    'Gerald Everett': 0,
-    'Ian Thomas': 0,
-    'Jacob Hollister': 0,
-    'Kaden Smith': 0,
-    'Jordan Akins': 0,
-    'Logan Thomas': 0,
-    'Jeremy Sprinkle': 0,
-    'Ricky Seals-Jones': 0,
-    'Drew Sample': 0,
-    'Austin Hooper': 0,
-    'Jack Doyle': 0,
-    'Greg Olsen': 0,
-    'Eric Ebron': 0,
-    'Jimmy Graham': 0,
-    'Kyle Rudolph': 0,
-    'Tyler Eifert': 0,
-    'Cameron Brate': 0,
-    'Nick Boyle': 0,
-    'CJ Uzomah': 0,
-    'Vance McDonald': 0,
-    'Ryan Griffin': 0,
-    'Maxx Williams': 0
-}
-
-to_drop = {}
-to_drop['players'] = []
-to_drop['salaries'] = []
-for posit in ['qb', 'rb', 'wr', 'te']:
-    for p, s in globals()[f'{posit}_picked'].items():
-        if s > 0:
-            to_drop['players'].append(p)
-            to_drop['salaries'].append(s)
-
-# input information for players and their associated salaries selected by your team
-to_add = {}
-to_add['players'] = []
-to_add['salaries'] = []
-# team_picks = {
-#     'Alvin Kamara': 50, 
-#     'Nick Chubb': 33,
-#     'Michael Thomas': 105,
-#     'Mark Andrews': 40,
-#     'DK Metcalf': 24,
-#     'Cam Akers': 20,
-#     'Deshaun Watson': 11,
-#     'Julian Edelman': 7
-# }
-
-team_picks = {
-    'Alvin Kamara': 55, 
-    'Nick Chubb': 33,
-    'Mark Andrews': 40,
-    'DK Metcalf': 25,
-    # 'DJ Moore': 64,
-    # 'Cam Akers': 18,
-    # 'Daniel Jones': 1,
-    # 'David Montgomery': 
-}
-
-
-for p, s in team_picks.items():
-    to_add['players'].append(p)
-    to_add['salaries'].append(s)
-
-# avg_sal.style.bar_excel(color_positive='#5FBA7D')
 
 # %%
 # team_pts = d[(d.index.isin(team_picks.keys())) & (d.pos!='eFLEX')].drop(['pos', 'salary'], axis=1).sum(axis=0)
@@ -441,64 +145,147 @@ import dash_html_components as html
 import plotly.express as px
 from dash.dependencies import Input, Output, State
 
-
+# set up dash with external stylesheets
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
-
 app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 
+# set up dataframe for Data Table for My Team
+my_team_list = []
+for k, v in league_info['pos_require'].items():
+    for i in range(v):
+        my_team_list.append([k, None, None])
+my_team_df = pd.DataFrame(my_team_list, columns=['Position', 'Player', 'Salary'])
 
-# results = sim.run_simulation(league_info, to_drop, to_add, iterations=iterations)
-# avg_sal = sim.show_most_selected(to_add, iterations, num_show=30)
-# avg_sal = avg_sal.sort_values(by='Percent Drafted').reset_index()
-# avg_sal.columns = ['Player', 'PercentDrafted', 'AverageSalary', 'ExpectedSalaryDiff']
-# fig = px.bar(avg_sal, y="Player", x="PercentDrafted", orientation='h',  width=400, height=1200)
+# input cells
+player_input = dcc.Input(id='player-update', type='text', value='Alvin Kamara')
+salary_input = dcc.Input(id='salary-update', type='text', value='95')
 
-pick_df = pd.DataFrame({'player': [i for i in rb_picked.keys()],
-                        'salary': [j for j in rb_picked.values()]})
+# create radio button for my other or other team
+radio_team = dcc.RadioItems(
+                id='team-radio',
+                options=[{'label': i, 'value': i} for i in ['My Team', 'Other Teams']],
+                value='My Team',
+                labelStyle={'display': 'inline-block'}
+            )
+
+# submit button
+submit_button = html.Button(id='submit-button-state', n_clicks=0, children='Submit')
+
+# player salary graph object
+gr = dcc.Graph(id='draft-results-graph',
+               figure = {"layout": {"title": "My Dash Graph",
+                                    "height": 800,
+                                    "width": 600
+                                    }})
+
+# set up all players drafted DataTable
+subset_sal = pick_df[pick_df.Salary > 0]
+drafted_player_table =  dash_table.DataTable(
+                            id='draft-results-table',
+                            columns=[{"name": i, "id": i} for i in pick_df.columns],
+                            data=subset_sal.to_dict('records'),
+                        )
+
+ # set up my team  drafted DataTable
+my_team_table =  dash_table.DataTable(
+                            id='my-team-table',
+                            columns=[{"name": i, "id": i} for i in my_team_df.columns],
+                            data=my_team_df.to_dict('records'),
+                        )
 
 app.layout = html.Div([
-    dcc.Input(id='player-update', type='text', value='Alvin Kamara'),
-    dcc.Input(id='salary-update', type='text', value='95'),
-    html.Button(id='submit-button-state', n_clicks=0, children='Submit'),
-    dcc.Graph(
-        id='draft-results',
-        figure = {
-            "layout": {
-                "title": "My Dash Graph",
-                "height": 800,
-                "width": 600
-                }}),
-    #  html.Div(id='output-state'),
-     dash_table.DataTable(
-                            id='table',
-                            columns=[{"name": i, "id": i} for i in pick_df.columns],
-                            data=pick_df.to_dict('records'),
-                        )
+
+     html.Div([
+         html.Div([
+            html.H4('Enter Draft Picks'),
+            player_input, salary_input, html.Br(), html.Br(),
+            radio_team, html.Br(),
+            submit_button, html.Hr(),
+            html.H4('My Team'),
+            my_team_table, html.Br(), html.Hr(),
+            html.H4('Drafted Players'), 
+            drafted_player_table
+            ], className="five columns"),
+
+            html.Div([
+                html.H4('Recommended Picks'),  
+                gr
+            ], className="seven columns")
+       
+       ], className="row2") ,        
+         
 ])
 
-@app.callback([Output('draft-results', 'figure'),
-              Output('table', 'data')],
-              [Input('submit-button-state', 'n_clicks')],
+
+def update_to_drop(pick_df):
+
+    to_drop = {}
+    to_drop['players'] = []
+    to_drop['salaries'] = []
+    for _, row in pick_df.iterrows():
+        if row.Salary > 0:
+            to_drop['players'].append(row.Player)
+            to_drop['salaries'].append(row.Salary)
+
+    return to_drop
+
+
+def update_to_add(my_team_df):
+    
+    to_add = {}
+    to_add['players'] = []
+    to_add['salaries'] = []
+    for _, row in my_team_df.iterrows():
+        if row.Player is not None:
+            to_add['players'].append(row.Player)
+            to_add['salaries'].append(row.Salary)
+
+    return to_add
+
+
+
+@app.callback([Output('draft-results-graph', 'figure'),
+               Output('draft-results-table', 'data'),
+               Output('my-team-table', 'data')],
+              [Input('submit-button-state', 'n_clicks'),
+               Input('team-radio', 'value')],
               [State('player-update', 'value'),
                State('salary-update', 'value')]
 )
-def update_output(n_clicks, p_update, s_update):
+def update_output(n_clicks, team_radio, p_update, s_update):
     
-    if n_clicks == 0:
-        return dash.no_update
-    
-    else:
+    if n_clicks == 0 or n_clicks is None:
+        return dash.no_update, dash.no_update, dash.no_update
 
-        pick_df.loc[pick_df.player == p_update, 'salary'] = int(s_update)
+    else:
+        
+        # update the player + salary that have been picked
+        if team_radio == 'Other Teams':
+            pick_df.loc[pick_df.Player == p_update, 'Salary'] = int(s_update)
+
+        elif team_radio == 'My Team': 
+            pos_picked = list(pick_df.loc[pick_df.Player == p_update, 'Position'])[0]
+            idx = my_team_df[(my_team_df.Position==pos_picked) & (my_team_df.Player.isnull())].index[0]
+            my_team_df.loc[my_team_df.index==idx, ['Player', 'Salary']] = [p_update, int(s_update)]
+
+        to_drop = update_to_drop(pick_df)
+        to_add = update_to_add(my_team_df)
+
+        # run the simulation
         _ = sim.run_simulation(league_info, to_drop, to_add, iterations=iterations)
+        
+        # get the results dataframe structured
         avg_sal = sim.show_most_selected(to_add, iterations, num_show=30)
         avg_sal = avg_sal.sort_values(by='Percent Drafted').reset_index()
         avg_sal.columns = ['Player', 'PercentDrafted', 'AverageSalary', 'ExpectedSalaryDiff']
+
+        # create the figure
         fig = px.bar(avg_sal, y="Player", x="PercentDrafted", orientation='h')
         
-        subset_sal = pick_df[pick_df.salary > 0]
+        # show drafted players
+        subset_sal = pick_df[pick_df.Salary > 0]
 
-        return fig, subset_sal.to_dict('records')
+        return fig, subset_sal.to_dict('records'), my_team_df.to_dict('records')
 
 if __name__ == '__main__':
     app.run_server(debug=True)
