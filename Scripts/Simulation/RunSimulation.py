@@ -144,6 +144,8 @@ import dash_core_components as dcc
 import dash_html_components as html 
 import plotly.express as px
 from dash.dependencies import Input, Output, State
+from plotly.subplots import make_subplots
+import plotly.graph_objects as go
 
 # set up dash with external stylesheets
 external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
@@ -171,12 +173,38 @@ radio_team = dcc.RadioItems(
 # submit button
 submit_button = html.Button(id='submit-button-state', n_clicks=0, children='Submit')
 
+#---------------
+# Plotting Functions
+#---------------
+
+# Creating two subplots
+fig = make_subplots(rows=1, cols=2, specs=[[{}, {}]], shared_xaxes=False,
+                    shared_yaxes=True, vertical_spacing=0.001)
+
+def create_bar(x_val, y_val, orient='h', color_str='rgba(50, 171, 96, 0.6)'):
+    
+    marker_set = dict(color=color_str, line=dict(color=color_str, width=1))
+    return go.Bar(x=x_val, y=y_val, marker=marker_set, orientation=orient)
+
+def create_fig_layout(fig1, fig2):
+    
+    # Create the plot layout
+    fig = make_subplots(rows=1, cols=2, specs=[[{}, {}]], shared_xaxes=False,
+                        shared_yaxes=True, vertical_spacing=0.001)
+
+    fig.append_trace(fig1, 1, 1)
+    fig.append_trace(fig2, 1, 2)
+
+    fig.update_layout(autosize=True, height=800, margin=dict(l=0, r=25, b=0, t=0, pad=0))
+
+    return fig
+
+pick_bar_init = create_bar( [100],['Mark'])
+sal_bar_init = create_bar([100], ['Mark'])
+fig = create_fig_layout(pick_bar_init, sal_bar_init)
+
 # player salary graph object
-gr = dcc.Graph(id='draft-results-graph',
-               figure = {"layout": {"title": "My Dash Graph",
-                                    "height": 800,
-                                    "width": 600
-                                    }})
+gr = dcc.Graph(id='draft-results-graph', figure=fig)
 
 # set up all players drafted DataTable
 subset_sal = pick_df[pick_df.Salary > 0]
@@ -279,9 +307,11 @@ def update_output(n_clicks, team_radio, p_update, s_update):
         avg_sal = avg_sal.sort_values(by='Percent Drafted').reset_index()
         avg_sal.columns = ['Player', 'PercentDrafted', 'AverageSalary', 'ExpectedSalaryDiff']
 
-        # create the figure
-        fig = px.bar(avg_sal, y="Player", x="PercentDrafted", orientation='h')
-        
+        # Creating two subplots and merging into single figure
+        pick_bar = create_bar( list(avg_sal.PercentDrafted),list(avg_sal.Player))
+        sal_bar = create_bar(list(avg_sal.AverageSalary), list(avg_sal.Player))
+        fig = create_fig_layout(pick_bar, sal_bar)
+
         # show drafted players
         subset_sal = pick_df[pick_df.Salary > 0]
 
