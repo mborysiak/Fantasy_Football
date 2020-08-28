@@ -88,31 +88,33 @@ league_info['salary_cap'] = 293
 player_list = []
 for pl, row in d[['Position']].iterrows():
     if row.Position != 'FLEX':
-        player_list.append([pl, row.Position, 0])
+        player_list.append([row.Position, pl, 0])
 
-pick_df = pd.DataFrame(player_list, columns=['Player', 'Position', 'Salary'])
+pick_df = pd.DataFrame(player_list, columns=['Position', 'Player', 'Salary'])
+pick_df['My Team'] = 'No'
+
 #------------------
 # For Beta Keepers
 #------------------
 
 # input information for players and their associated salaries selected by other teams
 keepers = {
-    # 'Christian McCaffrey': 97,
-    # 'Saquon Barkley': 126,
-    # 'Dalvin Cook': 80,
-    # 'Derrick Henry': 61,
-    # 'Miles Sanders': 31,
-    # 'Kenyan Drake': 23,
-    # 'James Conner': 26,
-    # 'Chris Godwin': 26,
-    # 'AJ Brown': 33,
-    # 'Terry McLaurin': 11,
-    # 'Lamar Jackson': 11,
-    # 'Patrick Mahomes': 26,
+    'Christian McCaffrey': 97,
+    'Saquon Barkley': 126,
+    'Dalvin Cook': 80,
+    'Derrick Henry': 61,
+    'Miles Sanders': 31,
+    'Kenyan Drake': 23,
+    'James Conner': 26,
+    'Chris Godwin': 26,
+    'AJ Brown': 33,
+    'Terry McLaurin': 11,
+    'Lamar Jackson': 11,
+    'Patrick Mahomes': 26,
 }
 
 # # 2019 keepers
-keepers = {
+# keepers = {
     # 'Patrick Mahomes': 11,
     # 'Christian McCaffrey': 82,
     # 'Saquon Barkley': 111,
@@ -127,7 +129,7 @@ keepers = {
     # 'Adam Thielen': 35,
     # 'Tyler Lockett': 11,
     # 'Travis Kelce': 55,
-}
+# }
 
 for p, s in keepers.items():
     pick_df.loc[pick_df.Player==p, 'Salary'] = s
@@ -151,16 +153,11 @@ app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 # Submit Data Entry
 #==========================
 
-# input cells
-player_input = dcc.Input(id='player-update', type='text', value=None)
-salary_input = dcc.Input(id='salary-update', type='text', value=None)
-
 # submit button
 red_button_style = {'background-color': 'red',
                     'color': 'white',
                     'height': '150',
-                    'width': '300',
-                    'margin-left': '50px'}
+                    'width': '100%'}
 submit_button = html.Button(id='submit-button-state', n_clicks=0, children='Refresh Top Picks', style=red_button_style)
 
 
@@ -169,11 +166,17 @@ submit_button = html.Button(id='submit-button-state', n_clicks=0, children='Refr
 #============================
 
 # set up all players drafted DataTable
-subset_sal = pick_df[pick_df.Salary > 0]
 drafted_player_table =  dash_table.DataTable(
                             id='draft-results-table',
                             columns=[{"name": i, "id": i} for i in pick_df.columns],
-                            data=subset_sal.to_dict('records'),
+                            data=pick_df.to_dict('records'),
+                            editable=True,
+                            filter_action='native',
+                            sort_action='native',
+                                style_table={
+                                            'height': '800',
+                                            'overflowY': 'auto',
+                                        }
                         )
 
 
@@ -200,7 +203,7 @@ my_team_table =  dash_table.DataTable(
 def create_bar(x_val, y_val, orient='h', color_str='rgba(50, 171, 96, 0.6)', text=None):
     
     marker_set = dict(color=color_str, line=dict(color=color_str, width=1))
-    return go.Bar(x=x_val, y=y_val, marker=marker_set, orientation=orient, text=text)
+    return go.Bar(x=x_val, y=y_val, marker=marker_set, orientation=orient, text=text, showlegend=False)
 
 
 def create_fig_layout(fig1, fig2):
@@ -209,8 +212,7 @@ def create_fig_layout(fig1, fig2):
     
     # Change the bar mode
     fig.update_layout(barmode='group', autosize=True, height=800, margin=dict(l=0, r=25, b=0, t=15, pad=0),
-                      uniformtext_minsize=25, uniformtext_mode='hide'
-                      )
+                      uniformtext_minsize=25, uniformtext_mode='hide')
     fig.update_traces(texttemplate='%{text:.2s}', textposition='outside')
 
     return fig
@@ -278,8 +280,8 @@ def create_pt_dist(my_team_df, proport, remaining_sal):
     hist_data = [team_dist.projection.values]
     group_labels = [''] # name of the dataset
 
-    fig_hist = ff.create_distplot(hist_data, group_labels, bin_size=10)
-    fig_hist.update_layout(autosize=True, height=250, margin=dict(l=0, r=0, b=0, t=15, pad=0), showlegend=False)
+    fig_hist = ff.create_distplot(hist_data, group_labels, bin_size=10, show_rug=False)
+    fig_hist.update_layout(autosize=True, height=200, margin=dict(l=0, r=0, b=0, t=0, pad=0), showlegend=False)
 
     return  fig_hist, pt_percentiles
 
@@ -290,8 +292,8 @@ def create_pt_dist(my_team_df, proport, remaining_sal):
 # bar chart creation
 pick_bar_init = create_bar( [100],['Mark'])
 sal_bar_init = create_bar([100], ['Mark'])
-fig = create_fig_layout(pick_bar_init, sal_bar_init)
-gr = dcc.Graph(id='draft-results-graph', figure=fig)
+bar_fig = create_fig_layout(pick_bar_init, sal_bar_init)
+bar_gr = dcc.Graph(id='draft-results-graph', figure=bar_fig)
 
 # histogram creation
 hist_fig = create_pt_dist(my_team_df, proport, remaining_sal=league_info['salary_cap'])
@@ -306,23 +308,24 @@ app.layout = html.Div([
 
      html.Div([
          html.Div([
-            html.H5('My Team'),
-            my_team_table, html.Br(),
-            html.Div(id='team-info'), hist_gr,  html.Hr(),
-            html.H5("Other Team's Draft Picks"),
-            player_input, salary_input,  html.Hr(),
-           drafted_player_table,
-            ], className="five columns"),
+            html.H5("Enter Draft Pick Information"),
+            drafted_player_table,
+            ], className="four columns"),
 
             html.Div([
-                html.Div([
-                    html.H5('Recommended Picks')
-                 ], className='three columns'),
-                 html.Div([
-                     submit_button
-                 ], className='two columnss'),
-                gr, 
-            ], className="seven columns")
+                html.H5('My Team'),
+                my_team_table, html.Hr(),
+                submit_button, html.Hr(),
+                html.H5('Team Information'),
+                html.Div(id='team-info'),
+                html.Hr(),
+                hist_gr,  
+            ], className='four columns'),
+
+            html.Div([
+                html.H5('Recommended Picks'),
+                bar_gr
+            ], className="four columns")
        
        ], className="row2") ,        
          
@@ -333,12 +336,12 @@ app.layout = html.Div([
 # Update Functions
 #============================
 
-def update_to_drop(pick_df):
+def update_to_drop(drafted_df):
 
     to_drop = {}
     to_drop['players'] = []
     to_drop['salaries'] = []
-    for _, row in pick_df.iterrows():
+    for _, row in drafted_df.iterrows():
         if row.Salary > 0:
             to_drop['players'].append(row.Player)
             to_drop['salaries'].append(row.Salary)
@@ -352,7 +355,7 @@ def update_to_add(my_team_df):
     to_add['players'] = []
     to_add['salaries'] = []
     for _, row in my_team_df.iterrows():
-        if row.Player is not None:
+        if row.Player is not None and row.Player!='':
             to_add['players'].append(row.Player)
             to_add['salaries'].append(row.Salary)
 
@@ -362,30 +365,27 @@ def update_to_add(my_team_df):
 
 @app.callback([Output('draft-results-graph', 'figure'),
                Output('team-points-graph', 'figure'),
-               Output('draft-results-table', 'data'),
-               Output('team-info', 'children')
-               ],
-              [Input('submit-button-state', 'n_clicks')
-               
-               ],
-              [State('my-team-table', 'data'),
-               State('my-team-table', 'columns'),
-                  State('player-update', 'value'),
-               State('salary-update', 'value')]
+               Output('team-info', 'children'),
+               Output('my-team-table', 'data')],
+              [Input('submit-button-state', 'n_clicks')],
+              [State('draft-results-table', 'data'),
+               State('draft-results-table', 'columns')]
 )
-def update_output(n_clicks, my_team_data, my_team_columns, p_update, s_update):
+def update_output(n_clicks, drafted_data, drafted_columns):
 
-    my_team_df_raw = pd.DataFrame(my_team_data, columns=[c['name'] for c in my_team_columns])
-    my_team_df = my_team_df_raw.copy().dropna()
-    my_team_df = my_team_df[(my_team_df.Player != '')]
-    my_team_df['Salary'] = my_team_df['Salary'].astype('int')
-    
-    # update the player + salary that have been picked
-    if p_update is not None and s_update is not None:
-        pick_df.loc[pick_df.Player == p_update, 'Salary'] = int(s_update)
+    # get the list of drafted players
+    drafted_df = pd.DataFrame(drafted_data, columns=[c['name'] for c in drafted_columns])
+    drafted_df.Salary = drafted_df.Salary.astype('int')
 
-    to_drop = update_to_drop(pick_df)
-    to_add = update_to_add(my_team_df)
+    # update my team df to return
+    my_team_update = my_team_df.copy()
+    my_team_select = drafted_df[drafted_df['My Team']=='Yes'].reset_index(drop=True)
+    drafted_df = drafted_df[drafted_df['My Team']=='No'].reset_index(drop=True)
+    my_team_update = pd.merge(my_team_update[['Position']], my_team_select, how='left', on=['Position'])
+
+    # get lists of to_drop and to_add players
+    to_drop = update_to_drop(drafted_df)
+    to_add = update_to_add(my_team_update)
 
     # run the simulation
     _, inflation = sim.run_simulation(league_info, to_drop, to_add, iterations=iterations)
@@ -402,20 +402,19 @@ def update_output(n_clicks, my_team_data, my_team_columns, p_update, s_update):
     pick_bar = create_bar( list(avg_sal.PercentDrafted),list(avg_sal.Player), text=pick_text)
     sal_bar = create_bar(list(avg_sal.AverageSalary), list(avg_sal.Player), 
                          color_str='rgba(250, 190, 88, 1)', text=sal_text)
-    fig = create_fig_layout(sal_bar, pick_bar)
+    gr_fig = create_fig_layout(sal_bar, pick_bar)
 
     # show drafted players
-    subset_sal = pick_df[pick_df.Salary > 0].copy()
     remain_sal = league_info['salary_cap'] - np.sum(to_add['salaries'])
     
     # histogram creation
-    hist_fig, pt_perc = create_pt_dist(my_team_df_raw, proport, remaining_sal=remain_sal)
+    hist_fig, pt_perc = create_pt_dist(my_team_update, proport, remaining_sal=remain_sal)
     output_str = f"Mean Team Pts: {pt_perc['50']}-----Inflation Percent: {round(inflation,2)}-----Remaining Salary:{remain_sal}"
     
     # save out csv of status
-    pick_df.to_csv('c:/Users/mborysia/Desktop/Status_Save.csv', index=False)
+    drafted_df.to_csv('c:/Users/mborysia/Desktop/Status_Save.csv', index=False)
 
-    return fig, hist_fig, subset_sal.to_dict('records'), output_str
+    return gr_fig, hist_fig, output_str
 
 if __name__ == '__main__':
-    app.run_server(debug=False)
+    app.run_server(debug=True)
