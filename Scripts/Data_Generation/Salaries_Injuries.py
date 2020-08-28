@@ -144,12 +144,18 @@ test_model(normal_trace, salaries.loc[1,['salary']], 105);
 
 # +
 year = 2020
-league = 'nv'
+league = 'snake'
 
-salary_final = pd.read_csv(f'{path}/OtherData/Salaries/salaries_{year}_{league}.csv')
+try:
+    salary_final = pd.read_csv(f'{path}/OtherData/Salaries/salaries_{year}_{league}.csv')
+except:
+    salary_final = pd.read_csv(f'{path}/OtherData/Salaries/salaries_{year}_beta.csv')
 salary_final['year'] = year
 salary_final['league'] = league
 salary_final.player = salary_final.player.apply(name_clean)
+
+if league=='snake':
+    salary_final['salary'] =1
 
 # +
 conn_sim = sqlite3.connect(f'{path}/Databases/Simulation.sqlite3')

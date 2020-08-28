@@ -35,7 +35,7 @@ path = f'c:/Users/{os.getlogin()}/Documents/Github/Fantasy_Football/'
 conn_sim = sqlite3.connect(f'{path}/Data/Databases/Simulation.sqlite3')
 table_vers = 'Version2'
 set_year = 2020
-league='nv'
+league='beta'
 
 # number of iteration to run
 iterations = 500
@@ -80,7 +80,7 @@ proport = proport[['Position', 'Wts']]
 
 # set league information, included position requirements, number of teams, and salary cap
 league_info = {}
-league_info['pos_require'] = {'QB': 2, 'RB': 2, 'WR': 2, 'TE': 1, 'FLEX': 1}
+league_info['pos_require'] = {'QB': 1, 'RB': 2, 'WR': 2, 'TE': 1, 'FLEX': 2}
 league_info['num_teams'] = 12
 league_info['initial_cap'] = 293
 league_info['salary_cap'] = 293
@@ -112,22 +112,22 @@ keepers = {
 }
 
 # # 2019 keepers
-# keepers = {
-#     'Patrick Mahomes': 11,
-#     'Christian McCaffrey': 82,
-#     'Saquon Barkley': 111,
-#     'Ezekiel Elliott': 100,
-#     'Miles Sanders': 31,
-#     'Joe Mixon': 55,
-#     'James Conner': 11,
-#     'Michael Thomas': 55,
-#     'Davante Adams': 60,
-#     'Tyreek Hill': 35,
-#     'Chris Godwin': 11,
-#     'Adam Thielen': 35,
-#     'Tyler Lockett': 11,
-#     'Travis Kelce': 55,
-# }
+keepers = {
+    # 'Patrick Mahomes': 11,
+    # 'Christian McCaffrey': 82,
+    # 'Saquon Barkley': 111,
+    # 'Ezekiel Elliott': 100,
+    # 'Miles Sanders': 31,
+    # 'Joe Mixon': 55,
+    # 'James Conner': 11,
+    # 'Michael Thomas': 55,
+    # 'Davante Adams': 60,
+    # 'Tyreek Hill': 35,
+    # 'Chris Godwin': 11,
+    # 'Adam Thielen': 35,
+    # 'Tyler Lockett': 11,
+    # 'Travis Kelce': 55,
+}
 
 for p, s in keepers.items():
     pick_df.loc[pick_df.Player==p, 'Salary'] = s
@@ -418,4 +418,4 @@ def update_output(n_clicks, my_team_data, my_team_columns, p_update, s_update):
     return fig, hist_fig, subset_sal.to_dict('records'), output_str
 
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    app.run_server(debug=False)
