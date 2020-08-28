@@ -41,11 +41,17 @@ keepers = ['Alvin Kamara', 'Nick Chubb', 'Michael Thomas', 'Damien Williams'
            'Devonta Freeman', 'Saquon Barkley', 'Tyreek Hill', 'Chris Godwin', 
            'Travis Kelce', 'Christian McCaffrey', 'James Conner', 'Joe Mixon', 
            'Tarik Cohen', 'Sony Michel']
+results['keeper'] = 0
 
-results = results[~results.player.isin(keepers)]
+results
+
+results.loc[results.player.isin(keepers), 'keeper'] = 1
 salaries = pd.merge(salaries, results, on='player')
+salaries['league'] = 'beta'
 
 salaries.plot.scatter(x='salary', y='draft_amount')
+
+
 
 # +
 import pymc3 as pm
@@ -138,27 +144,17 @@ test_model(normal_trace, salaries.loc[1,['salary']], 105);
 
 # +
 year = 2020
-snake = False
+league = 'nv'
 
-salary_final = pd.read_csv(f'{path}/OtherData/Salaries/salaries_{year}.csv')
-
-if snake:
-    salary_final['salary'] = 1
-    salary_final['year'] = str(year) + '_snake'
-else:
-    salary_final['year'] = year
-    
+salary_final = pd.read_csv(f'{path}/OtherData/Salaries/salaries_{year}_{league}.csv')
+salary_final['year'] = year
+salary_final['league'] = league
 salary_final.player = salary_final.player.apply(name_clean)
 
 # +
-if snake:
-    conn_sim = sqlite3.connect(f'{path}/Databases/Simulation.sqlite3')
-    conn_sim.cursor().execute(f'''DELETE FROM Salaries WHERE year={str(year) + '_snake'}''')
-    conn_sim.commit()
-else:
-    conn_sim = sqlite3.connect(f'{path}/Databases/Simulation.sqlite3')
-    conn_sim.cursor().execute(f'''DELETE FROM Salaries WHERE year={year}''')
-    conn_sim.commit()
+conn_sim = sqlite3.connect(f'{path}/Databases/Simulation.sqlite3')
+conn_sim.cursor().execute(f'''DELETE FROM Salaries WHERE year={year} AND league='{league}' ''')
+conn_sim.commit()
     
 append_to_db(salary_final,'Simulation', 'Salaries', 'append')
 # -

@@ -23,7 +23,7 @@ class FootballSimulation():
     # Creating Player Distributions for Given Settings
     #==========
     
-    def __init__(self, pts_dict, conn_sim, table_vers, set_year, iterations):
+    def __init__(self, pts_dict, conn_sim, table_vers, set_year, league, iterations):
         
         # create empty dataframe to store player point distributions
         pos_update = {'QB': 'aQB', 'RB': 'bRB', 'WR': 'cWR', 'TE': 'dTE'}
@@ -33,7 +33,8 @@ class FootballSimulation():
         # add salaries to the dataframe and set index to player
         salaries = pd.read_sql_query(f'''SELECT player, salary
                                          FROM Salaries
-                                         WHERE year={set_year}''', conn_sim)
+                                         WHERE year={set_year}
+                                               AND league='{league}' ''', conn_sim)
         self.sal = salaries
         self.data = pd.merge(self.data, salaries, how='left', left_on='player', right_on='player')
         self.data.salary = self.data.salary.fillna(1)
@@ -191,7 +192,7 @@ class FootballSimulation():
         self._inflation = inflation
         self._sal = self.data.reset_index()[['player', 'salary']].drop_duplicates().set_index('player')
 
-        return self.counts
+        return self.counts, inflation, 
     
     #==========
     # Helper Functions for the Simulation Loop

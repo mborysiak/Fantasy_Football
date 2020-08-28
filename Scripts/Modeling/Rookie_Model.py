@@ -47,7 +47,7 @@ path = f'/Users/{os.getlogin()}/Documents/Github/Fantasy_Football/'
 db_name = 'Model_Inputs.sqlite3'
 
 # set to position to analyze: 'RB', 'WR', 'QB', or 'TE'
-set_pos = 'Rookie_WR'
+set_pos = 'Rookie_RB'
 
 # set the year
 set_year = 2020
@@ -483,7 +483,7 @@ output.iloc[:, 2:] = np.uint32(output.iloc[:, 2:] * 16)
 players = tuple(output.player)
 
 
-vers = 'Version1'
+vers = 'Version2'
 
 # +
 conn_sim = sqlite3.connect(f'{path}/Data/Databases/Simulation.sqlite3')
