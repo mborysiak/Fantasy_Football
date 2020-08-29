@@ -165,18 +165,39 @@ submit_button = html.Button(id='submit-button-state', n_clicks=0, children='Refr
 # Build out Dash Tables
 #============================
 
+main_color = '40, 110, 132'
+main_color_rgb = f'rgb({main_color})'
+main_color_rgba = f'rgba({main_color}, 0.8)'
+
 # set up all players drafted DataTable
 drafted_player_table =  dash_table.DataTable(
                             id='draft-results-table',
-                            columns=[{"name": i, "id": i} for i in pick_df.columns],
+
+                            columns=[{'id': c, 'name': c, 'editable': (c == 'Salary')} for c in pick_df.columns if c != 'My Team'] +
+                                     [{'id': c, 'name': c,'presentation': 'dropdown', 'editable': (c == 'My Team')} for c in pick_df.columns if c == 'My Team'],
                             data=pick_df.to_dict('records'),
-                            editable=True,
                             filter_action='native',
                             sort_action='native',
-                                style_table={
-                                            'height': '800',
+                            style_table={
+                                            'height': '800px',
                                             'overflowY': 'auto',
-                                        }
+                                        },
+                            style_cell={'textAlign': 'left'},
+                            dropdown={
+                                    'My Team': {
+                                        'options': [
+                                            {'label': i, 'value': i} for i in ['Yes', 'No']
+                                        ]
+                                    }},
+                            style_data_conditional=[{
+                                        'if': {'column_editable': False},
+                                        'backgroundColor': 'rgb(230, 230, 230)',
+                                    }],
+                            style_header={
+                                        'backgroundColor': main_color_rgb,
+                                        'fontWeight': 'bold',
+                                        'color': 'white'
+                                    }
                         )
 
 
@@ -190,9 +211,18 @@ my_team_df = pd.DataFrame(my_team_list, columns=['Position', 'Player', 'Salary']
  # set up my team  drafted DataTable
 my_team_table =  dash_table.DataTable(
                             id='my-team-table',
-                            columns=[{"name": i, "id": i} for i in my_team_df.columns],
+                            columns=[{"name": i, "id": i, 'editable': False} for i in my_team_df.columns],
                             data=my_team_df.to_dict('records'),
-                            editable=True
+                            style_cell={'textAlign': 'left'},
+                            style_header={
+                                        'backgroundColor': main_color_rgb,
+                                        'fontWeight': 'bold',
+                                        'color': 'white'
+                                    },
+                            style_data_conditional=[{
+                                        'if': {'column_editable': False},
+                                        'backgroundColor': 'rgb(230, 230, 230)',
+                                    }],
                         )
 
 
@@ -200,7 +230,7 @@ my_team_table =  dash_table.DataTable(
 # Plotting Functions
 #==========================
 
-def create_bar(x_val, y_val, orient='h', color_str='rgba(50, 171, 96, 0.6)', text=None):
+def create_bar(x_val, y_val, orient='h', color_str=main_color_rgba, text=None):
     
     marker_set = dict(color=color_str, line=dict(color=color_str, width=1))
     return go.Bar(x=x_val, y=y_val, marker=marker_set, orientation=orient, text=text, showlegend=False)
@@ -280,7 +310,7 @@ def create_pt_dist(my_team_df, proport, remaining_sal):
     hist_data = [team_dist.projection.values]
     group_labels = [''] # name of the dataset
 
-    fig_hist = ff.create_distplot(hist_data, group_labels, bin_size=10, show_rug=False)
+    fig_hist = ff.create_distplot(hist_data, group_labels, bin_size=10, show_rug=False, colors=[main_color_rgba])
     fig_hist.update_layout(autosize=True, height=200, margin=dict(l=0, r=0, b=0, t=0, pad=0), showlegend=False)
 
     return  fig_hist, pt_percentiles
@@ -336,12 +366,12 @@ app.layout = html.Div([
 # Update Functions
 #============================
 
-def update_to_drop(drafted_df):
+def update_to_drop(df):
 
     to_drop = {}
     to_drop['players'] = []
     to_drop['salaries'] = []
-    for _, row in drafted_df.iterrows():
+    for _, row in df.iterrows():
         if row.Salary > 0:
             to_drop['players'].append(row.Player)
             to_drop['salaries'].append(row.Salary)
@@ -349,24 +379,60 @@ def update_to_drop(drafted_df):
     return to_drop
 
 
-def update_to_add(my_team_df):
+def update_to_add(df):
     
     to_add = {}
     to_add['players'] = []
     to_add['salaries'] = []
-    for _, row in my_team_df.iterrows():
-        if row.Player is not None and row.Player!='':
+    for _, row in df.iterrows():
+        if row.Player is not None and row.Player!='' and row.Salary > 0:
             to_add['players'].append(row.Player)
             to_add['salaries'].append(row.Salary)
 
     return to_add
 
+def team_fill(df, df2):
+    '''
+    INPUT
+    -----
+    df: blank team template to be filled in with chosen players
+    df2: chosen players dataframe
+
+    OUTPUT
+    ------
+    Dataframe filled in with selected player information
+    '''
+    # loop through chosen players dataframe
+    for _, row in df2.iterrows():
+
+        # pull out the current position and find min position index not filled (if any)
+        cur_pos = row.Position
+        min_idx = df.loc[(df.Position==cur_pos) & (df.Player.isnull())].index.min()
+
+        # if position still needs to be filled, fill it
+        if min_idx is not np.nan:
+            df.loc[min_idx, ['Player', 'Salary']] = [row.Player, row.Salary]
+
+        # if normal positions filled, fill in the FLEX if applicable
+        elif cur_pos in ('RB', 'WR', 'TE'):
+            cur_pos = 'FLEX'
+            min_idx = df.loc[(df.Position==cur_pos) & (df.Player.isnull())].index.min()
+            if min_idx is not np.nan:
+                df.loc[min_idx, ['Player', 'Salary']] = [row.Player, row.Salary]
+
+            # otherwise, fill in the Bench
+            else:
+                bench = pd.DataFrame(['Bench', row.Player, row.Salary]).T
+                bench.columns = ['Position', 'Player', 'Salary']
+                df = pd.concat([df, bench], axis=0)
+    return df
+
 
 
 @app.callback([Output('draft-results-graph', 'figure'),
                Output('team-points-graph', 'figure'),
-               Output('team-info', 'children'),
-               Output('my-team-table', 'data')],
+               Output('my-team-table', 'data'),
+               Output('team-info', 'children')],
               [Input('submit-button-state', 'n_clicks')],
               [State('draft-results-table', 'data'),
                State('draft-results-table', 'columns')]
@@ -380,8 +446,9 @@ def update_output(n_clicks, drafted_data, drafted_columns):
     # update my team df to return
     my_team_update = my_team_df.copy()
     my_team_select = drafted_df[drafted_df['My Team']=='Yes'].reset_index(drop=True)
-    drafted_df = drafted_df[drafted_df['My Team']=='No'].reset_index(drop=True)
-    my_team_update = pd.merge(my_team_update[['Position']], my_team_select, how='left', on=['Position'])
+    drafted_df = drafted_df[drafted_df['My Team']!='Yes'].reset_index(drop=True)
+
+    my_team_update = team_fill(my_team_update, my_team_select)
 
     # get lists of to_drop and to_add players
     to_drop = update_to_drop(drafted_df)
@@ -408,13 +475,14 @@ def update_output(n_clicks, drafted_data, drafted_columns):
     remain_sal = league_info['salary_cap'] - np.sum(to_add['salaries'])
     
     # histogram creation
-    hist_fig, pt_perc = create_pt_dist(my_team_update, proport, remaining_sal=remain_sal)
+    hist_fig, pt_perc = create_pt_dist(my_team_update[my_team_update.Position!='Bench'], 
+                                       proport, remaining_sal=remain_sal)
     output_str = f"Mean Team Pts: {pt_perc['50']}-----Inflation Percent: {round(inflation,2)}-----Remaining Salary:{remain_sal}"
     
     # save out csv of status
     drafted_df.to_csv('c:/Users/mborysia/Desktop/Status_Save.csv', index=False)
 
-    return gr_fig, hist_fig, output_str
+    return gr_fig, hist_fig, my_team_update.to_dict('records'), output_str
 
 if __name__ == '__main__':
     app.run_server(debug=True)
