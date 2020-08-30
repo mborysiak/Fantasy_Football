@@ -87,10 +87,10 @@ val_run = False
 # reg_id_stat = (118, 153)
 # reg_id_fp = (154, 162)
 
-# WR <= 2 years
-class_id = (1, 7)
-reg_id_stat = (1, 27)
-reg_id_fp = (28, 36)
+# # WR <= 2 years
+# class_id = (1, 7)
+# reg_id_stat = (1, 27)
+# reg_id_fp = (28, 36)
 
 # # WR > 2 years
 # class_id = (8, 14)
@@ -102,10 +102,10 @@ reg_id_fp = (28, 36)
 # reg_id_stat = (289, 315)
 # reg_id_fp = (316, 324)
 
-# # TE > 3 year
-# class_id = (50, 56)
-# reg_id_stat = (325, 351)
-# reg_id_fp = (352, 360)
+# TE > 3 year
+class_id = (50, 56)
+reg_id_stat = (325, 351)
+reg_id_fp = (352, 360)
 
 #==========
 # Fantasy Point Values
@@ -900,7 +900,7 @@ df_train_results = df_train_results.loc[:, ~df_train_results.columns.duplicated(
 df_test_results = df_test_results.loc[:, ~df_test_results.columns.duplicated()]
 
 # +
-df_test_results['avg_pred'] = df_test_results[['avg_pick_pred', 'pred_fp_per_game', 'pred_fp_per_game_stat']].mean(axis=1)
+df_test_results['avg_pred'] = df_test_results[[ 'pred_fp_per_game', 'pred_fp_per_game_stat']].mean(axis=1)
 
 if val_run: 
     print('Test R2: %0.3f' % r2_score(df_test_results.y_act, df_test_results.avg_pred))
@@ -909,7 +909,7 @@ if val_run:
     print('ADP RMSE: %0.3f' % np.sqrt(mean_squared_error(df_test_results.y_act, df_test_results.avg_pick_pred)))
 # -
 
-df_train_results['avg_pred'] = df_train_results[['avg_pick_pred','pred_fp_per_game', 'pred_fp_per_game_stat']].mean(axis=1)
+df_train_results['avg_pred'] = df_train_results[['pred_fp_per_game', 'pred_fp_per_game_stat']].mean(axis=1)
 print('Val R2: %0.3f' % r2_score(df_train_results.y_act, df_train_results.avg_pred))
 print('Val RMSE: %0.3f' % np.sqrt(mean_squared_error(df_train_results.y_act, df_train_results.avg_pred)))
 print('Val R2: %0.3f' % r2_score(df_train_results.y_act, df_train_results.avg_pick_pred))
@@ -1070,20 +1070,18 @@ players = tuple(output.player)
 
 # # 2019
 
-# +
-conn_sim = sqlite3.connect(f'{path}/Data/Databases/Simulation.sqlite3')
-conn_sim.cursor().execute(f'''DELETE FROM Version1_{set_year-1} WHERE player in {players}''')
-conn_sim.commit()
+# conn_sim = sqlite3.connect(f'{path}/Data/Databases/Simulation.sqlite3')
+# conn_sim.cursor().execute(f'''DELETE FROM Version1_{set_year-1} WHERE player in {players}''')
+# conn_sim.commit()
+#
+# append_to_db(output, 'Simulation', f'Version1_{set_year-1}', 'append')
 
-append_to_db(output, 'Simulation', f'Version1_{set_year-1}', 'append')
-# -
-
-conn_sim = sqlite3.connect(f'{path}/Data/Databases/Simulation.sqlite3')
-pd.read_sql_query('''SELECT * FROM Version1_2019''', conn_sim)
+# conn_sim = sqlite3.connect(f'{path}/Data/Databases/Simulation.sqlite3')
+# pd.read_sql_query('''SELECT * FROM Version1_2019''', conn_sim)
 
 # # 2020
 
-vers = 'Version2'
+vers = 'Version3'
 
 # +
 conn_sim = sqlite3.connect(f'{path}/Data/Databases/Simulation.sqlite3')
@@ -1094,6 +1092,13 @@ append_to_db(output, 'Simulation', f'{vers}_{set_year}', 'append')
 # -
 
 conn_sim = sqlite3.connect(f'{path}/Data/Databases/Simulation.sqlite3')
-pd.read_sql_query(f'''SELECT * FROM {vers}_2020''', conn_sim)
+chk = pd.read_sql_query(f'''SELECT * FROM {vers}_2020''', conn_sim)
+chk
+
+# ## Create New Vers
+
+# conn_sim = sqlite3.connect(f'{path}/Data/Databases/Simulation.sqlite3')
+# new_vers = pd.read_sql_query(f'''SELECT * FROM Version2_2020''', conn_sim)
+# append_to_db(new_vers, 'Simulation', 'Version3_2020')
 
 

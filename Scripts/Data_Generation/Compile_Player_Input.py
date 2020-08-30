@@ -191,6 +191,10 @@ for col in df.columns:
         df[col] = df[col].astype('float')
     except:
         pass
+    
+    
+df = df[~((df.player=='Damien Williams') & (df.year==2019))].reset_index(drop=True)
+df = df[~((df.player=='Derrius Guice') & (df.year==2019))].reset_index(drop=True)
 
 # +
 #==========
@@ -241,7 +245,7 @@ df = draft_value(df, 'RB')
 df = qb_run(df)
 
 
-df[df.year==2019].describe()
+df.describe()
 
 append_to_db(df, db_name='Model_Inputs', table_name='RB_' + str(year+1), if_exist='replace')
 
@@ -496,6 +500,15 @@ for col in df.columns:
     except:
         pass
     
+    
+#====================
+
+df = df[~((df.player=='Damien Williams') & (df.year==2019))].reset_index(drop=True)
+df = df[~((df.player=='Derrius Guice') & (df.year==2019))].reset_index(drop=True)
+
+#====================
+
+    
 #--------
 # Create team based stats
 #--------
@@ -613,3 +626,5 @@ rookie_wr = draft_value(rookie_wr, 'WR')
 rookie_wr = qb_run(rookie_wr)
 
 append_to_db(rookie_wr, db_name='Model_Inputs', table_name='Rookie_WR_' + str(year+1), if_exist='replace')
+
+

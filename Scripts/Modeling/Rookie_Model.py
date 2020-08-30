@@ -463,9 +463,6 @@ def test_model(trace, test_observation, max_bound):
 # -
 
 
-val_results['chk'] = 1.2*( val_results.fp_act.max()) 
-val_results[val_results.chk < val_results.fp_act]
-
 dists = []
 for i in range(len(test_results)):
     print(test_results.loc[i, 'player'])
@@ -483,7 +480,7 @@ output.iloc[:, 2:] = np.uint32(output.iloc[:, 2:] * 16)
 players = tuple(output.player)
 
 
-vers = 'Version2'
+vers = 'Version3'
 
 # +
 conn_sim = sqlite3.connect(f'{path}/Data/Databases/Simulation.sqlite3')

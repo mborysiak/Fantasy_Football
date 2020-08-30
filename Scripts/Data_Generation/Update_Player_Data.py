@@ -547,6 +547,8 @@ df_rb = df_rb.sort_values(by=['year', 'avg_pick'], ascending=[False, True]).rese
 find_missing = pd.merge(df_adp_rush, df_rb, on='player', how='left')
 list(find_missing.loc[find_missing.team_y.isnull(), 'player'])
 
+df_adp_rush
+
 # conn.cursor().execute('''delete from rb_stats where year={}'''.format(year))
 # conn.commit()
 # append_to_db(df_rb, db_name='Season_Stats', table_name='RB_Stats', if_exist='append')

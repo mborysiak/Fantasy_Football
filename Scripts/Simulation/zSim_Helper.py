@@ -330,7 +330,7 @@ class FootballSimulation():
         salaries = data.salary.values*inflation
 
         # calculate salary skews for each player's salary
-        salary_skews = self._skews(salaries, iterations*2)
+        salary_skews = self._skews(salaries, 1000)
 
         # extract the number of counts for each position for later creating A matrix
         pos_counts = list(data.pos.value_counts().sort_index())
@@ -348,7 +348,7 @@ class FootballSimulation():
         _salaries = salaries.reshape(-1,1)
 
         # create a skews normal distribution of uncertainty for salaries
-        skews = (skewnorm.rvs(5, size=iterations*2)*.1).reshape(1, -1)
+        skews = (skewnorm.rvs(5, size=1000)*.1).reshape(1, -1)
 
         # create a p x m matrix with dot product, where p is the number of players
         # and m is the number of skewed uncertainties, e.g. 320 players x 10000 skewed errors
@@ -371,7 +371,7 @@ class FootballSimulation():
         #----------
         
         # calculate the mean points predicted for each player
-        mean_pts = data.iloc[:, 0:iterations*2].mean(axis=1).reset_index()
+        mean_pts = data.iloc[:, 0:1000].mean(axis=1).reset_index()
         mean_pts = pd.concat([data.pos.reset_index(drop=True), mean_pts], axis=1)
         mean_pts = mean_pts.sort_values(by=['pos', 0], ascending=[True, False])
 
@@ -411,7 +411,7 @@ class FootballSimulation():
         # create a poisson distribution of injury risk for each player (clip at 16 games)
         pois = []
         for val in inj.mean_risk:
-            pois.append(np.random.poisson(val, iterations*2))
+            pois.append(np.random.poisson(val, 1000))
         inj_dist = pd.concat([inj.player, pd.DataFrame(pois).astype('uint8').clip(upper=16, axis=0)], axis=1)
         
         # ensure that the injury distributions are in the same row order as the points dataset
@@ -537,7 +537,7 @@ class FootballSimulation():
         Return: Randomly selected array of points and salaries + skews for a given trial
         '''
         # select random number between 0 and sise of distributions
-        ran_num = random.randint(0, iterations*2-1)
+        ran_num = random.randint(0, 1000-1)
 
         # pull out a random column of points and convert to points per game
         ppg = data.iloc[:, ran_num] / 16
@@ -667,7 +667,7 @@ class FootballSimulation():
         # create a dataframe of counts drafted for each player
         counts_df = pd.DataFrame.from_dict(self.counts['names'], orient='index').rename(columns={0: 'Percent Drafted'})
         counts_df = counts_df.sort_values(by='Percent Drafted', 
-                                    ascending=False)[len(to_add['players']):].head(30) / iterations
+                                    ascending=False)[len(to_add['players']):].head(num_show) / iterations
 
         # pull out the salary that each player was drafted at from dictionary
         avg_sal = {}

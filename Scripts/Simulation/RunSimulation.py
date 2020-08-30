@@ -33,12 +33,12 @@ np.random.seed(1234)
 # connection for simulation and specific table
 path = f'c:/Users/{os.getlogin()}/Documents/Github/Fantasy_Football/'
 conn_sim = sqlite3.connect(f'{path}/Data/Databases/Simulation.sqlite3')
-table_vers = 'Version2'
+table_vers = 'Version3'
 set_year = 2020
-league='beta'
+league='nv'
 
 # number of iteration to run
-iterations = 500
+iterations = 1000
 
 # define point values for all statistical categories
 pass_yd_per_pt = 0.04 
@@ -50,13 +50,21 @@ rec_yd_per_pt = 0.1
 rush_rec_td = 7
 ppr = .5
 
+# set league information, included position requirements, number of teams, and salary cap
+league_info = {}
+league_info['pos_require'] = {'QB': 1, 'RB': 1, 'WR': 1, 'TE': 1, 'FLEX': 4}
+league_info['num_teams'] = 12
+league_info['initial_cap'] = 293
+league_info['salary_cap'] = 100
+
+flex_pos = ['RB', 'WR', 'TE']
+
 # creating dictionary containing point values for each position
 pts_dict = {}
 pts_dict['QB'] = [pass_yd_per_pt, pass_td_pt, rush_yd_per_pt, rush_rec_td, int_pts, sacks]
 pts_dict['RB'] = [rush_yd_per_pt, rec_yd_per_pt, ppr, rush_rec_td]
 pts_dict['WR'] = [rec_yd_per_pt, ppr, rush_rec_td]
 pts_dict['TE'] = [rec_yd_per_pt, ppr, rush_rec_td]
-
 
 #==================
 # Initialize the Simluation Class
@@ -69,21 +77,35 @@ sim = FootballSimulation(pts_dict, conn_sim, table_vers, set_year, league, itera
 d = sim.return_data()
 d = d.rename(columns={'pos': 'Position', 'salary': 'Salary'})
 d.Position = d.Position.apply(lambda x: x[1:])
-proport = d[d.Salary > 1].copy().reset_index(drop=True)
-proport = proport.groupby('Position').agg({'Salary': 'mean'})
+
+if league == 'nv':
+    d.loc[(d.Position=='QB') & (d.Salary==1), 'Salary'] = 3
+
+# pull out the positional salary and rank order in to cut out top players from flex
+proport = d.loc[:, ['Position', 'Salary']].reset_index()
+proport = proport.sort_values(by=['Position', 'Salary'], ascending=[True, False])
+proport['PosCnts'] = proport.groupby('Position').cumcount() + 1
+
+# determine the number of players required at each position
+league_req = pd.DataFrame([league_info['pos_require']]).T.reset_index()
+league_req.columns =['Position', 'NumReq']
+league_req.NumReq = league_req.NumReq * league_info['num_teams']
+
+# merge the number of players required for each pos to cut ot of flex options
+proport = pd.merge(proport, league_req, on='Position')
+remove_flex = proport.loc[(proport.PosCnts <= proport.NumReq) & (proport.Position.isin(flex_pos)), ['player']]
+proport = proport[~((proport.Position=='FLEX') & (proport.player.isin(remove_flex.player)))]
+
+# redetermine the position counts by salary after removing top players to filter to starters
+proport['PosCnts'] = proport.groupby('Position').cumcount() + 1
+proport = proport[proport.PosCnts <= proport.NumReq].reset_index(drop=True)
 
 # get the proportion of salary by position
+proport = proport.groupby('Position').agg({'Salary': 'mean'})
 proport['total'] = proport.Salary.sum()
 proport['Wts'] = proport.Salary / proport.total
 proport = proport.reset_index()
 proport = proport[['Position', 'Wts']]
-
-# set league information, included position requirements, number of teams, and salary cap
-league_info = {}
-league_info['pos_require'] = {'QB': 1, 'RB': 2, 'WR': 2, 'TE': 1, 'FLEX': 2}
-league_info['num_teams'] = 12
-league_info['initial_cap'] = 293
-league_info['salary_cap'] = 293
 
 #------------------
 # For Beta Keepers
@@ -91,36 +113,36 @@ league_info['salary_cap'] = 293
 
 # input information for players and their associated salaries selected by other teams
 keepers = {
-    'Christian McCaffrey': 97,
-    'Saquon Barkley': 126,
-    'Dalvin Cook': 80,
-    'Derrick Henry': 61,
-    'Miles Sanders': 31,
-    'Kenyan Drake': 23,
-    'James Conner': 26,
-    'Chris Godwin': 26,
-    'AJ Brown': 33,
-    'Terry McLaurin': 11,
-    'Lamar Jackson': 11,
-    'Patrick Mahomes': 26,
+    # 'Christian McCaffrey': 97,
+    # 'Saquon Barkley': 126,
+    # 'Dalvin Cook': 80,
+    # 'Derrick Henry': 61,
+    # 'Miles Sanders': 31,
+    # 'Kenyan Drake': 23,
+    # 'James Conner': 26,
+    # 'Chris Godwin': 26,
+    # 'AJ Brown': 33,
+    # 'Terry McLaurin': 11,
+    # 'Lamar Jackson': 11,
+    # 'Patrick Mahomes': 26,
 }
 
 # # 2019 keepers
 # keepers = {
-    # 'Patrick Mahomes': 11,
-    # 'Christian McCaffrey': 82,
-    # 'Saquon Barkley': 111,
-    # 'Ezekiel Elliott': 100,
-    # 'Miles Sanders': 31,
-    # 'Joe Mixon': 55,
-    # 'James Conner': 11,
-    # 'Michael Thomas': 55,
-    # 'Davante Adams': 60,
-    # 'Tyreek Hill': 35,
-    # 'Chris Godwin': 11,
-    # 'Adam Thielen': 35,
-    # 'Tyler Lockett': 11,
-    # 'Travis Kelce': 55,
+#     'Patrick Mahomes': 11,
+#     'Christian McCaffrey': 82,
+#     'Saquon Barkley': 111,
+#     'Ezekiel Elliott': 100,
+#     'Miles Sanders': 31,
+#     'Joe Mixon': 55,
+#     'James Conner': 11,
+#     'Michael Thomas': 55,
+#     'Davante Adams': 60,
+#     'Tyreek Hill': 35,
+#     'Chris Godwin': 11,
+#     'Adam Thielen': 35,
+#     'Tyler Lockett': 11,
+#     'Travis Kelce': 55,
 # }
 
 import dash
@@ -297,7 +319,9 @@ drafted_player_table =  dash_table.DataTable(
                                         'options': [
                                             {'label': i, 'value': i} for i in ['Yes', 'No']
                                         ]
-                                    }},
+                                    }
+                                    # 'style': {'backgroundColor': 'white', 'color': 'black'}
+                                    },
                             style_data_conditional=[{
                                         'if': {'column_editable': False},
                                         'backgroundColor': 'rgb(230, 230, 230)',
@@ -380,14 +404,14 @@ def create_bar(x_val, y_val, orient='h', color_str=main_color_rgba, text=None):
     return go.Bar(x=x_val, y=y_val, marker=marker_set, orientation=orient, text=text, showlegend=False)
 
 
-def create_fig_layout(fig1, fig2):
+def create_fig_layout(fig1, fig2, fig3):
     '''
     Function to combine bar charts into a single figure
     '''
-    fig = go.Figure(data=[fig1, fig2])
+    fig = go.Figure(data=[fig1, fig2, fig3])
     
     # Change the bar mode
-    fig.update_layout(barmode='group', autosize=True, height=800, 
+    fig.update_layout(barmode='group', autosize=True, height=1600, 
                       margin=dict(l=0, r=25, b=0, t=15, pad=0),
                       uniformtext_minsize=25, uniformtext_mode='hide')
     fig.update_traces(texttemplate='%{text:.2s}', textposition='outside')
@@ -486,7 +510,7 @@ def update_to_add(df):
     return to_add
 
 
-def expected_pts(team_template, my_team_select, test_template):
+def expected_pts(team_template, my_team_select, test_template, sal):
     '''
     INPUT: Blank team template dataframe, dataframe of selected players, and the X_test
            template the auto formats the one-hot-encoding for points prediction
@@ -501,13 +525,13 @@ def expected_pts(team_template, my_team_select, test_template):
 
     # copy the blank team template
     my_team_template = team_template.copy()
-
+    
     # determine the remaining salary for the team across positions
-    remain_base, _ = salary_proportions(my_team_template, proport, league_info['initial_cap'])
+    remain_base, selected_base = salary_proportions(my_team_template, proport, sal)
     
     # create the X prediction for the base case and determine point distribution
     X_base = create_X_test(remain_base, test_template)
-    team_dist_base = create_pt_dist(X_base, pd.DataFrame(), lr_mean, lr_std)
+    team_dist_base = create_pt_dist(X_base, selected_base, lr_mean, lr_std)
 
     # loop through each player in selected players
     exp_pts = []
@@ -516,7 +540,7 @@ def expected_pts(team_template, my_team_select, test_template):
         # get the team dataframe filled with only the current player
         my_team_template = team_template.copy()
         cur_player = team_fill(my_team_template, pd.DataFrame(row).T)
-        remain_pl, selected_pl = salary_proportions(cur_player, proport, league_info['initial_cap']-row.Salary)
+        remain_pl, selected_pl = salary_proportions(cur_player, proport, sal-row.Salary)
         
         # predict points scored by the current player and all other blanks
         X_pl = create_X_test(remain_pl, test_template)
@@ -597,14 +621,19 @@ def update_output(n_clicks, drafted_data, drafted_columns):
     # get the results dataframe structured
     avg_sal = sim.show_most_selected(to_add, iterations, num_show=30)
     avg_sal = avg_sal.sort_values(by='Percent Drafted').reset_index()
-    avg_sal = avg_sal.iloc[-20:]
     avg_sal.columns = ['Player', 'PercentDrafted', 'AverageSalary', 'ExpectedSalaryDiff']
 
+    avail_pts = pd.merge(avg_sal, d[d.Position!='FLEX'].reset_index()[['player', 'Position']].rename(columns={'player': 'Player'}), on='Player')
+    avail_pts = avail_pts[['Position', 'Player', 'AverageSalary']].rename(columns={'AverageSalary': 'Salary'})
+    avail_pts = expected_pts(my_team_update, avail_pts[['Position', 'Player', 'Salary']], test_template, remain_sal)
+    avg_sal = pd.merge(avg_sal, avail_pts, on='Player')
+
     # Creating two subplots and merging into single figure
-    (pl, pc_dr, av_sl) = list(avg_sal.Player), list(avg_sal.PercentDrafted), avg_sal.AverageSalary
+    (pl, pc_dr, av_sl, pt) = avg_sal.Player, avg_sal.PercentDrafted, avg_sal.AverageSalary, avg_sal['Points Added']
     pick_bar = create_bar(pc_dr, pl, text=pc_dr)
     sal_bar = create_bar(av_sl, pl, color_str='rgba(250, 190, 88, 1)', text=av_sl)
-    gr_fig = create_fig_layout(sal_bar, pick_bar)
+    pt_bar = create_bar(pt, pl, color_str='rgba(250, 128, 114, 1)', text=pt)
+    gr_fig = create_fig_layout(sal_bar, pick_bar, pt_bar)
 
     # histogram creation
     remain_pos, selected_df = salary_proportions(my_team_update, proport, remain_sal)
@@ -614,9 +643,13 @@ def update_output(n_clicks, drafted_data, drafted_columns):
     hist_fig = create_hist(cur_team_dist)
 
     if my_team_select.shape[0] > 0:
-        team_pts_added = expected_pts(my_team_template, my_team_select[['Position', 'Player', 'Salary']], test_template)
+        team_pts_added = expected_pts(my_team_template, my_team_select[['Position', 'Player', 'Salary']], test_template, league_info['initial_cap'])
         my_team_update = pd.merge(my_team_update.drop('Points Added', axis=1), team_pts_added, on='Player', how='left')
         my_team_update['Points Added'] = my_team_update['Points Added'].fillna(0)
+
+        # team_pts_added = expected_pts(my_team_update, my_team_select[['Position', 'Player', 'Salary']], test_template, remaining_sal)
+        # my_team_update = pd.merge(my_team_update.drop('Points Added', axis=1), team_pts_added, on='Player', how='left')
+        # my_team_update['Base Points Added'] = my_team_update['Base Points Added'].fillna(0)
 
     # update team information table
     team_info_update = pd.DataFrame({'Mean Points': [int(cur_team_dist.mean())], 
@@ -627,6 +660,6 @@ def update_output(n_clicks, drafted_data, drafted_columns):
     drafted_df.to_csv('c:/Users/mborysia/Desktop/Status_Save.csv', index=False)
 
     return gr_fig, hist_fig, my_team_update.to_dict('records'), team_info_update.to_dict('records')
+
 if __name__ == '__main__':
-    app.run_server(debug=True)
-# %%
+    app.run_server(debug=False)
