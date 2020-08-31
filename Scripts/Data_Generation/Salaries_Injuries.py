@@ -26,12 +26,17 @@ path = f'/Users/{os.getlogin()}/Documents/Github/Fantasy_Football/Data/'
 
 # # 2019 Salary + Actuals
 
-results = pd.read_csv(f'{path}/OtherData/Salaries/salaries_2019_results_raw.csv', header=None)
-results.columns = ['player', 'draft_amount']
+results = pd.read_csv(f'{path}/OtherData/Salaries/salaries_2020_results_nv.csv', header=None)
+results.columns = ['player', 'salary']
 results = results.dropna()
 results = results[results.player != 'PLAYER'].reset_index(drop=True)
 results.player = results.player.apply(lambda x: x.split(',')[0][:-3].rstrip().lstrip())
-results.draft_amount = results.draft_amount.astype('float')
+results.salary = results.salary.astype('float')
+results.player = results.player.apply(name_clean)
+results['year'] = 2020
+results['league'] = 'nv_results'
+
+append_to_db(results, 'Simulation', 'Salaries', 'append')
 
 salaries = pd.read_csv(f'{path}/OtherData/Salaries/salaries_2019.csv')
 
