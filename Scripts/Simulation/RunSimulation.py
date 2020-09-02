@@ -35,7 +35,7 @@ path = f'c:/Users/{os.getlogin()}/Documents/Github/Fantasy_Football/'
 conn_sim = sqlite3.connect(f'{path}/Data/Databases/Simulation.sqlite3')
 table_vers = 'Version3'
 set_year = 2020
-league='nv'
+league='nv_results'
 
 # number of iteration to run
 iterations = 1000
@@ -52,10 +52,10 @@ ppr = .5
 
 # set league information, included position requirements, number of teams, and salary cap
 league_info = {}
-league_info['pos_require'] = {'QB': 1, 'RB': 1, 'WR': 1, 'TE': 1, 'FLEX': 4}
+league_info['pos_require'] = {'QB': 2, 'RB': 2, 'WR': 2, 'TE': 1, 'FLEX': 1}
 league_info['num_teams'] = 12
 league_info['initial_cap'] = 293
-league_info['salary_cap'] = 100
+league_info['salary_cap'] = 293
 
 flex_pos = ['RB', 'WR', 'TE']
 
