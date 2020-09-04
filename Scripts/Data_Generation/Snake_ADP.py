@@ -82,7 +82,7 @@ def pick_likelihood(row):
     max_adp = row[3]
 
     # calculate the approximate standard deviation using Range information
-    adp_std = (max_adp - min_adp) / 4
+    adp_std = (max_adp - min_adp) / 5
 
     # calculate a truncated normal distribution based on min/max ADP
     trunc_dist = stats.truncnorm((min_adp - adp) /  adp_std, 
@@ -102,30 +102,6 @@ def pick_likelihood(row):
     return np.transpose(np.array([idx, unique, counts]))
 
 
-#-----------------
-# Get the Picks associated with each Start Draft Slot
-#-----------------
-
-def get_picks(initial_pick, num_teams=12, third_reverse=True):
-
-    teams = [i for i in range(1, num_teams+1)]
-    teams_rev=list(reversed(teams))
-        
-    draft_order = teams.copy()
-    draft_order.extend(teams_rev)
-    if third_reverse:
-        draft_order.extend(teams_rev)
-    
-    for i in range(10):
-        draft_order.extend(teams)
-        draft_order.extend(teams_rev)
-    
-    draft_order = pd.DataFrame(draft_order, columns=['team_num'])
-    draft_order['pick_num'] = range(1, len(draft_order)+1)
-
-    return list(draft_order.loc[draft_order.team_num==initial_pick, 'pick_num'].values)
-
-
 #----------------
 # Get player ADP
 #----------------
@@ -137,7 +113,7 @@ adp = adp[['Position(s)', 'Player', 'ADP', 'Min Pick', 'Max Pick']]
 adp.columns = ['pos', 'player', 'adp', 'min_pick', 'max_pick']
 
 # clean up the name
-adp.player = adp.player.apply(lambda x: x.split(',')[1].rstrip() + ' ' + x.split(',')[0].lstrip())
+adp.player = adp.player.apply(lambda x: x.split(',')[1].rstrip().lstrip() + ' ' + x.split(',')[0].lstrip().rstrip())
 
 # select top 240 players (20 rounds)
 adp = adp.iloc[:240].reset_index()
@@ -150,33 +126,26 @@ output = adp[['player', 'Salary']].copy()
 output['year'] = 2020
 output['league'] = 'nffc'
 
-append_to_db(output, 'Simulation', 'Salaries', 'append')
+# append_to_db(output, 'Simulation', 'Salaries', 'append')
 
-# #----------------
-# # Get player ADP Distribution
-# #----------------
+#----------------
+# Get player ADP Distribution
+#----------------
 
-# # calculate distribution for each pick for each player
-# pick_prob_df = np.empty(shape=(1,3))
-# for _, row in adp[['index', 'min_pick', 'adp', 'max_pick']].iterrows():
-#     pick_prob_df = np.vstack((pick_prob_df, pick_likelihood(row)))
+# calculate distribution for each pick for each player
+pick_prob_df = np.empty(shape=(1,3))
+for _, row in adp[['index', 'min_pick', 'adp', 'max_pick']].iterrows():
+    pick_prob_df = np.vstack((pick_prob_df, pick_likelihood(row)))
 
-# #----------------
-# # Use Player Pick-Prob to adjust "Salaries"
-# #----------------
+# convert random distributions to likelihood of a player being picked at a given slot
+pick_prob_df = pd.DataFrame(pick_prob_df, columns=['index', 'pick', 'pick_prob'])
+for c in ['index', 'pick', 'pick_prob']:
+    pick_prob_df[c] = pick_prob_df[c].astype('int')
 
-# my_picks = get_picks(5)
+pick_prob_df = pd.merge(adp[['player', 'pos', 'adp', 'index']], pick_prob_df, on='index').iloc[1:]
+pick_prob_df = pick_prob_df.drop('index', axis=1)
 
-# # convert random distributions to likelihood of a player being picked at a given slot
-# pick_prob_df = pd.DataFrame(pick_prob_df, columns=['index', 'pick', 'pick_prob'])
-# pick_prob_df = pick_prob_df[pick_prob_df.pick.isin(my_picks)].groupby('index').agg({'pick_prob': 'sum'}).reset_index()
-
-# # subtract prob from 1 so that very likely picks will drop the salary when multiplied
-# pick_prob_df.pick_prob = 1 - (pick_prob_df.pick_prob / 1000)
-# adp = pd.merge(adp, pick_prob_df, on='index')
-
-# adp['SalaryAdj'] = adp.Salary * adp.pick_prob 
-# salary_cap = adp.loc[adp.index.isin(my_picks), 'Salary'].sum() 
+append_to_db(pick_prob_df, 'Simulation', 'PickProb', 'replace')
 
 
 

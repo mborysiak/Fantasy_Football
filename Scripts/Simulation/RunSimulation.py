@@ -33,9 +33,9 @@ np.random.seed(1234)
 # connection for simulation and specific table
 path = f'c:/Users/{os.getlogin()}/Documents/Github/Fantasy_Football/'
 conn_sim = sqlite3.connect(f'{path}/Data/Databases/Simulation.sqlite3')
-table_vers = 'Version3'
+table_vers = 'Version4'
 set_year = 2020
-league='nv_results'
+league='beta'
 
 # number of iteration to run
 iterations = 1000
@@ -52,7 +52,7 @@ ppr = .5
 
 # set league information, included position requirements, number of teams, and salary cap
 league_info = {}
-league_info['pos_require'] = {'QB': 2, 'RB': 2, 'WR': 2, 'TE': 1, 'FLEX': 1}
+league_info['pos_require'] = {'QB': 1, 'RB': 2, 'WR': 2, 'TE': 1, 'FLEX': 2}
 league_info['num_teams'] = 12
 league_info['initial_cap'] = 293
 league_info['salary_cap'] = 293
@@ -113,18 +113,31 @@ proport = proport[['Position', 'Wts']]
 
 # input information for players and their associated salaries selected by other teams
 keepers = {
-    # 'Christian McCaffrey': 97,
-    # 'Saquon Barkley': 126,
-    # 'Dalvin Cook': 80,
-    # 'Derrick Henry': 61,
-    # 'Miles Sanders': 31,
-    # 'Kenyan Drake': 23,
-    # 'James Conner': 26,
-    # 'Chris Godwin': 26,
-    # 'AJ Brown': 33,
-    # 'Terry McLaurin': 11,
-    # 'Lamar Jackson': 11,
-    # 'Patrick Mahomes': 26,
+    'Christian McCaffrey': 97,
+    'Derrick Henry': 61,
+
+    'Saquon Barkley': 126,
+    'DJ Chark': 35,
+
+    'Dalvin Cook': 80,
+    'Darren Waller': 11,
+    
+    'Kenyan Drake': 23,
+    'Terry McLaurin': 11,
+
+    'James Conner': 26,
+    'Allen Robinson': 31,
+
+    'Lamar Jackson': 11,
+    'Austin Ekeler': 30,
+
+    'Courtland Sutton': 11,
+    'Miles Sanders': 31,
+
+    'Tyreek Hill': 56,
+    'Chris Godwin': 26,
+
+    'Adrian Peterson': 26
 }
 
 # # 2019 keepers
@@ -663,3 +676,5 @@ def update_output(n_clicks, drafted_data, drafted_columns):
 
 if __name__ == '__main__':
     app.run_server(debug=False)
+
+# %%

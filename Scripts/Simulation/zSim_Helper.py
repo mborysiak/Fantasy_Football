@@ -23,7 +23,7 @@ class FootballSimulation():
     # Creating Player Distributions for Given Settings
     #==========
     
-    def __init__(self, pts_dict, conn_sim, table_vers, set_year, league, iterations):
+    def __init__(self, pts_dict, conn_sim, table_vers, set_year, league, iterations, pick_prob_df=None):
         
         # create empty dataframe to store player point distributions
         pos_update = {'QB': 'aQB', 'RB': 'bRB', 'WR': 'cWR', 'TE': 'dTE'}
@@ -35,10 +35,19 @@ class FootballSimulation():
                                          FROM Salaries
                                          WHERE year={set_year}
                                                AND league='{league}' ''', conn_sim)
-        self.sal = salaries
-        self.data = pd.merge(self.data, salaries, how='left', left_on='player', right_on='player')
-        self.data.salary = self.data.salary.fillna(1)
-        
+
+        if pick_prob_df is not None:
+            salaries = pd.merge(salaries, pick_prob_df, on='player')
+            salaries.salary = salaries.salary * np.exp(salaries.pick_prob)
+            salaries = salaries.drop('pick_prob', axis=1)
+            # salaries['salary'] = 1
+            self.sal = salaries
+            self.data = pd.merge(self.data, salaries, how='inner', left_on='player', right_on='player')
+
+        else:
+            self.sal = salaries
+            self.data = pd.merge(self.data, salaries, how='left', left_on='player', right_on='player')
+            self.data.salary = self.data.salary.fillna(1)
 
         # pull in injury risk information
         self.inj = pd.read_sql_query(f'''SELECT player, mean_risk 

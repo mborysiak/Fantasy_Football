@@ -354,7 +354,7 @@ def run_class_ensemble(best_models, df_train_results, df_test_results, pos=pos):
     # create the summary dataframe
     summary = class_create_summary(results, keep_first=False)
 
-    best_results = summary[summary.F1Score >= 0.1*summary.F1Score.max()].copy()
+    best_results = summary[summary.F1Score >= 0.05*summary.F1Score.max()].copy()
     best_results.F1Score = best_results.F1Score - best_results.F1Score.min()
     sum_score = best_results.F1Score.sum()
     best_results['Weighting'] = best_results.F1Score / sum_score
@@ -389,7 +389,7 @@ def run_class_ensemble(best_models, df_train_results, df_test_results, pos=pos):
     results['ty_proba'][num_rows+1] = ty_proba_ensemble
 
     val_ensemble['pred_check'] = 0
-    val_ensemble.loc[val_ensemble.pred >= 0.25, 'pred_check'] = 1
+    val_ensemble.loc[val_ensemble.pred >= 0.5, 'pred_check'] = 1
     acc_score = round(matthews_corrcoef(val_ensemble.y_act, val_ensemble.pred_check), 3)
     new_result = pd.DataFrame({'Iteration': [num_rows+1], 'Model': 'Ensemble', 'F1Score': acc_score})
     summary = pd.concat([summary, new_result], axis=0)
@@ -1081,7 +1081,7 @@ players = tuple(output.player)
 
 # # 2020
 
-vers = 'Version3'
+vers = 'Version4'
 
 # +
 conn_sim = sqlite3.connect(f'{path}/Data/Databases/Simulation.sqlite3')
@@ -1099,6 +1099,6 @@ chk
 
 # conn_sim = sqlite3.connect(f'{path}/Data/Databases/Simulation.sqlite3')
 # new_vers = pd.read_sql_query(f'''SELECT * FROM Version2_2020''', conn_sim)
-# append_to_db(new_vers, 'Simulation', 'Version3_2020')
+# append_to_db(new_vers, 'Simulation', 'Version4_2020')
 
 
