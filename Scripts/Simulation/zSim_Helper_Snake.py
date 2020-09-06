@@ -23,31 +23,17 @@ class FootballSimulation():
     # Creating Player Distributions for Given Settings
     #==========
     
-    def __init__(self, pts_dict, conn_sim, table_vers, set_year, league, iterations, pick_prob_df=None):
+    def __init__(self, pts_dict, conn_sim, table_vers, set_year, league, iterations, initial_pick=None):
         
         # create empty dataframe to store player point distributions
         pos_update = {'QB': 'aQB', 'RB': 'bRB', 'WR': 'cWR', 'TE': 'dTE'}
         self.data = pd.read_sql_query(f'''SELECT * FROM {table_vers}_{set_year}''', conn_sim)
         self.data['pos'] = self.data['pos'].map(pos_update)
 
-        # add salaries to the dataframe and set index to player
-        salaries = pd.read_sql_query(f'''SELECT player, salary
-                                         FROM Salaries
-                                         WHERE year={set_year}
-                                               AND league='{league}' ''', conn_sim)
-
-        if pick_prob_df is not None:
-            salaries = pd.merge(salaries, pick_prob_df, on='player')
-            salaries.salary = salaries.salary * np.exp(salaries.pick_prob)
-            salaries = salaries.drop('pick_prob', axis=1)
-            # salaries['salary'] = 1
-            self.sal = salaries
-            self.data = pd.merge(self.data, salaries, how='inner', left_on='player', right_on='player')
-
-        else:
-            self.sal = salaries
-            self.data = pd.merge(self.data, salaries, how='left', left_on='player', right_on='player')
-            self.data.salary = self.data.salary.fillna(1)
+        if initial_pick is not None:
+            self.is_snake = True
+            self.pick_prob = pd.read_sql_query('''SELECT * FROM PickProb''', conn_sim)
+            self.my_picks = self._get_picks(initial_pick)
 
         # pull in injury risk information
         self.inj = pd.read_sql_query(f'''SELECT player, mean_risk 
@@ -58,24 +44,64 @@ class FootballSimulation():
         flex = self.data[self.data.pos.isin(['bRB', 'cWR', 'dTE'])]
         flex.loc[:, 'pos'] = 'eFLEX'
         self.data = pd.concat([self.data, flex], axis=0)
-        
-        # reset index
-        self.data = self.data.sort_values(by=['pos', 'salary'], ascending=[True, False])
-        self.data = self.data.set_index('player')
-
     
+    
+    #================
+    # Initialize Datasets
+    #================
+
     def return_data(self):
         '''
         Returns self.data if necessary.
         '''
         return self.data
+
     
+    def return_picks(self):
+        '''
+        Returns self.data if necessary.
+        '''
+        return self.my_picks
+
+    @staticmethod
+    def _get_picks(initial_pick, num_teams=12, third_reverse=True):
+        '''
+        INPUT: Initial pick. number of teams in the draft, and whether the third
+               round is reversed or not
+
+        OUTPUT: A list of the team's selections throughout the draft based on the parameters
+        '''
+
+        # create a list of the team integer values and also reverse it for back-tracking selection
+        teams = [i for i in range(1, num_teams+1)]
+        teams_rev=list(reversed(teams))
+            
+        # initialize the draft order and extend first back-word selection
+        draft_order = teams.copy()
+        draft_order.extend(teams_rev)
+
+        # if third round reverse is used, extend another reverse selection
+        if third_reverse:
+            draft_order.extend(teams_rev)
+        
+        # loop through all 10 iterations of alternating forward and backwards selections
+        for i in range(10):
+            draft_order.extend(teams)
+            draft_order.extend(teams_rev)
+        
+        # create running total of picks assigned to each team
+        draft_order = pd.DataFrame(draft_order, columns=['team_num'])
+        draft_order['pick_num'] = range(1, len(draft_order)+1)
+
+        # select relevant picks for the initial pick selection
+        return list(draft_order.loc[draft_order.team_num==initial_pick, 'pick_num'].values)
+
     
     #==========
     # Running the Simulation for Given League Settings and Keepers
     #==========
     
-    def run_simulation(self, league_info, to_drop, to_add, iterations=500):        
+    def run_simulation(self, league_info, to_drop, to_add, pick_num, iterations=500):        
         '''
         Method that runs the actual simulation and returns the results.
         
@@ -94,38 +120,27 @@ class FootballSimulation():
         data = self.data.copy()
         league_info = copy.deepcopy(league_info)
         inj = self.inj.copy()
-        
-        # pull out min salary from data
-        min_salary = data.salary.min()
-        
-        # if the total + the minimum salary 
-        if np.sum(to_add['salaries']) + min_salary > league_info['salary_cap']:
-            print('''The selected salaries equal {}, the cheapest projected
-                     player costs {}, and the max salary cap is {}.  
-                     
-                     As a result, no player is able to be selected from the optimization.
-                     Select lower salaries or increase the salary cap to continue.'''.format(np.sum(to_add['salaries']), 
-                                                                                             min_salary,
-                                                                                             league_info['salary_cap']))
-            return [], []
-        
-        # give an extra dollar to prevent errors with minimum salaried players
-        league_info['salary_cap'] = league_info['salary_cap'] + 1
+        my_picks = [p for p in self.my_picks if p >= pick_num]
        
         # drop other selected players + calculate inflation metrics
-        data, drop_proj_sal, drop_act_sal = self._drop_players(data, league_info, to_drop)
+        data = self._drop_players(data)
         
         # drop your selected players + calculate inflation metrics
-        data, league_info, to_add, add_proj_sal, add_act_sal = self._add_players(data, league_info, to_add)
+        data, league_info, to_add = self._add_players(data, league_info, to_add)
         
+        remain_pos = [v for k, v in league_info['pos_require'].items() if v != 0]
         pos_require = list(league_info['pos_require'].values())
-        
-        # calculate inflation based on drafted players and their salaries
-        inflation, total_cap = self._calc_inflation(league_info, drop_proj_sal, drop_act_sal, add_proj_sal, add_act_sal)
-        print('Current Inflation:', round(inflation, 2))
+        pos_counts = list(data.pos.value_counts().sort_index())
 
-        # determine salaries, skew distributions, and number of players for each position
-        data, salaries, salary_skews, pos_counts = self._pull_salary_poscounts(data, inflation, iterations)
+        pick_prob_df = self.pick_prob[self.pick_prob.adp >= my_picks[0]].copy().reset_index(drop=True)
+        pick_prob_df, data_unique, player_prob_df = self._get_relevant_player_prob(pick_prob_df, data, my_picks, pos_require)
+
+        # use the data unique to bring down data projections to only relevant players and properly order
+        data = pd.merge(data, data_unique, on=['player', 'pos']).set_index('player')
+        data = data.sort_values(by=['pos', 'adp'], ascending=[True, True])
+        
+        # get the counts of players for each position
+        pos_counts = list(data.pos.value_counts().sort_index())
         
         # calculate the injury distributions
         data, inj_dist, replace_val = self._injury_replacement(data, league_info, inj, iterations)
@@ -133,9 +148,12 @@ class FootballSimulation():
         #--------
         # Initialize Matrix and Results Dictionary for Simulation
         #--------
+
+        # get the pick array matrix for Ax=B
+        pick_array = self._create_pick_matrix(pick_prob_df, data_unique, my_picks)
         
         # generate the A matrix for the simulation constraints
-        A = self._Amatrix(pos_counts, league_info['pos_require'])
+        A = self._Amatrix(pos_counts, league_info['pos_require'], self.is_snake, pick_array)
 
         # pull out the names of all players and set to names
         names = data.index
@@ -146,16 +164,12 @@ class FootballSimulation():
         results = {}
         results['names'] = []
         results['points'] = []
-        results['salary'] = []
 
         # create empty dictionaries
         counts = {}
         counts['names'] = pd.Series(0, index=dict_names).to_dict()
         counts['points'] = pd.Series(0, index=dict_names).to_dict()
-        counts['salary'] = pd.Series(0, index=dict_names).to_dict()
         
-        # shuffle the random data--both salary skews and the point projections
-        _ = [np.random.shuffle(row) for row in salary_skews]
         inj_dist = self._df_shuffle(inj_dist)
         data = self._df_shuffle(data)
                 
@@ -168,27 +182,15 @@ class FootballSimulation():
     
             # every N trials, randomly shuffle each run in salary skews and data
             if i % (iterations / 10) == 0:
-                _ = [np.random.shuffle(row) for row in salary_skews]
                 inj_dist = self._df_shuffle(inj_dist)
                 data = self._df_shuffle(data)
             
             # pull out a random selection of points and salaries
-            points, salaries_tmp = self._random_select(data, salaries, salary_skews, 
-                                                       inj_dist, replace_val, iterations)
-            
-            # adjust salaries to ensure they don't go over the total cap
-            # first sum of the salaries of unique players (exclude flex)
-            sum_salaries = np.sum(salaries_tmp[:len(data.index.unique())])
-            
-            # sum up the salaries with total already spent
-            all_money = add_act_sal + drop_act_sal + sum_salaries
-            
-            # calculate an inflation or deflation metric and multiply by salaries
-            factor = total_cap / all_money
-            salaries_tmp = salaries_tmp * factor
+            points = self._random_select(data, inj_dist, replace_val, iterations)
+            salaries_tmp = np.array([1 for p in points])
 
             # run linear integer optimization
-            x = self._run_opt(A, points, salaries_tmp, league_info['salary_cap'], pos_require)
+            x = self._run_opt(A, points, salaries_tmp, league_info['salary_cap'], pos_require, my_picks)
 
             # pull out and store the selected names, points, and salaries
             results, self.counts, trial_counts = self._pull_results(x, names, points, salaries_tmp, 
@@ -197,11 +199,11 @@ class FootballSimulation():
         # format the results after the simulation loop is finished
         self.results = self._format_results(results)
 
-        # add self version of variable for output calculations
-        self._inflation = inflation
-        self._sal = self.data.reset_index()[['player', 'salary']].drop_duplicates().set_index('player')
 
-        return self.counts, inflation, 
+        close_picks = list(data_unique.loc[data_unique.adp <= my_picks[0]*1.75, 'player'].values)
+        top_picks = {k: v for k, v in sorted(self.counts['names'].items(), key=lambda item: item[1]) if k in close_picks}
+
+        return top_picks
     
     #==========
     # Helper Functions for the Simulation Loop
@@ -211,24 +213,9 @@ class FootballSimulation():
     # Salary (+Inflation) and Keeper Setup
     #--------
     
-    def add_salaries(self, salaries):
-        '''
-        Input: Salaries for all players in the dataset.
-        Return: The self.data dataframe that has salaries appended to it.
-        '''
-        #--------
-        # Merge salaries and points on names to ensure matches
-        #--------
-        
-        # merge the salary and prediction data together on player
-        self.data = pd.merge(self.data, salaries, how='inner', left_on='player', right_on='player')
-        
-        # sort values and move player to the index of the dataframe
-        self.data = self.data.sort_values(by=['pos', 'salary'], ascending=[True, False]).set_index('player')
-    
     
     @staticmethod
-    def _drop_players(data, league_info, to_drop):
+    def _drop_players(data):
         '''
         Drops a list of players that are chosen as by other teams and calculates actual 
         salary vs. expected salary for inflation calculation.
@@ -246,12 +233,8 @@ class FootballSimulation():
         # find players from data that will be dropped and remove them from other data
         drop_data = data[data.index.isin(to_drop['players'])]
         other_data = data.drop(drop_data.index, axis=0)
-        
-        # pull out the projected and actual salaries for the players that are being kept
-        drop_proj_salary = drop_data.salary.reset_index().drop_duplicates().sum().salary
-        drop_act_salary = np.sum(to_drop['salaries'])
 
-        return other_data, drop_proj_salary, drop_act_salary
+        return other_data
     
     
     @staticmethod
@@ -267,20 +250,9 @@ class FootballSimulation():
         '''
         
         # pull data for players that have been added to your team and split out other players
-        add_data = data[data.index.isin(to_add['players'])]
-        other_data = data.drop(add_data.index, axis=0)
+        add_data = data[data.player.isin(to_add['players'])].sort_values(by='pos')
+        other_data = data[~data.player.isin(to_add['players'])].sort_values(by='pos')
 
-        # pull out the salaries of your players and sum
-        add_proj_salary =  add_data.salary.reset_index().drop_duplicates().sum().salary
-        add_act_salary = np.sum(to_add['salaries'])
-
-        # update the salary for your team to subtract out drafted player's salaries
-        league_info['salary_cap'] = float(league_info['salary_cap'] - add_act_salary)
-        print('Remaining Salary:', league_info['salary_cap'])
-        
-        # add the mean points scored by the players who have been added
-        to_add['points'] = -1.0*(add_data.drop(['pos', 'salary'],axis=1).mean(axis=1).values)
-        
         # create list of letters to append to position for proper indexing
         letters = ['a', 'b', 'c', 'd', 'e']
 
@@ -291,7 +263,7 @@ class FootballSimulation():
             pos_label = letters[i]+pos
 
             # loop through each player that has been selected  
-            for player in list(add_data[add_data.pos==pos_label].index):
+            for player in list(add_data.loc[add_data.pos==pos_label, 'player']):
 
                 # if the position is still required to be filled:
                 if league_info['pos_require'][pos] > 0:
@@ -300,27 +272,15 @@ class FootballSimulation():
                     league_info['pos_require'][pos] = league_info['pos_require'][pos] - 1
 
                     # and remove that player from consideration for filling other positions
-                    add_data = add_data[add_data.index != player]
+                    add_data = add_data[add_data.player != player]
         
         print('Remaining Positions Required:', league_info['pos_require'])
-        return other_data, league_info, to_add, add_proj_salary, add_act_salary
+
+        # add the mean points scored by the players who have been added
+        to_add['points'] = -1.0*(add_data.drop(['pos'],axis=1).mean(axis=1).values)
+
+        return other_data, league_info, to_add
     
-    
-    @staticmethod
-    def _calc_inflation(league_info, drop_proj_sal, drop_act_sal, add_proj_sal, add_act_sal):
-        '''
-        Method to calculate inflation based on players selected and the expected salaries.
-        '''
-        # add up the total actual and projected salaries for all keepers
-        projected_salary = drop_proj_sal + add_proj_sal
-        actual_salary = drop_act_sal + add_act_sal
-        
-        # calculate the salary inflation due to the keepers
-        total_cap = league_info['num_teams'] * league_info['initial_cap']
-        inflation = (total_cap-actual_salary) / (total_cap-projected_salary)
-        
-        return inflation, total_cap
-        
         
     def _pull_salary_poscounts(self, data, inflation, iterations):
         '''
@@ -345,25 +305,6 @@ class FootballSimulation():
         pos_counts = list(data.pos.value_counts().sort_index())
         
         return data, salaries, salary_skews, pos_counts
-        
-        
-    @staticmethod
-    def _skews(salaries, iterations):
-        '''
-        Input: Internal method that accepts the salaries input for each player in the dataset.
-        Return: Right skewed salary uncertainties, scaled to the actual salary of the player.
-        '''
-        # pull out the salary column and convert to numpy array
-        _salaries = salaries.reshape(-1,1)
-
-        # create a skews normal distribution of uncertainty for salaries
-        skews = (skewnorm.rvs(5, size=1000)*.1).reshape(1, -1)
-
-        # create a p x m matrix with dot product, where p is the number of players
-        # and m is the number of skewed uncertainties, e.g. 320 players x 10000 skewed errors
-        salary_skews = np.dot(_salaries, skews)
-
-        return salary_skews
     
     
     @staticmethod
@@ -404,7 +345,11 @@ class FootballSimulation():
         replace_val = data.replace_val
         
         # drop salary from the points dataframe and reset the columns from 0 to N-1, leaving the replacement columns
-        data = data.drop(['pos', 'salary', 'replace_val'], axis=1)
+        try:
+            data = data.drop(['pos', 'salary', 'replace_val'], axis=1)
+        except:
+            data = data.drop(['pos', 'adp', 'replace_val'], axis=1)
+            
         cols = [i for i in range(0, len(data.columns))]
         data.columns = cols
         
@@ -430,13 +375,78 @@ class FootballSimulation():
         # return the updated dataset with replacement points and injury distribution dataset
         return data, inj_dist, replace_val
 
+
+    @staticmethod
+    def _get_relevant_player_prob(pick_prob_df, data, my_picks, pos_require):
+        '''
+        INPUT: Dataframe containing every player-pick-probability combination
+               based on ADP for the league, the player-points dataframe,
+               and all picks in the draft based on initial pick
+
+        OUTPUT: Dataframe that contains players able to be selected for each
+                pick in the draft based on given probability cutoff and a dataframe
+                containing unique player-position-adp data.
+        '''
+        # create a dataframe of player probability for being drafted in the current slot
+        player_prob_df = pick_prob_df[(pick_prob_df.pick >= my_picks[0]) & \
+            (pick_prob_df.adp <= my_picks[0]*3)].groupby('player').agg({'pick_prob': 'sum'})
+
+        # narrow down the player list for each potential selection based on their probability of being 
+        # drafted near a specific slot. note the filter is determined empirically to prevent infeasible ilp solutions.
+        pick_prob_df = pick_prob_df.loc[(pick_prob_df.pick.isin(my_picks)) & \
+            (pick_prob_df.pick_prob >= np.sum(pos_require)*1.5 - 3), 
+            ['player', 'adp', 'pick']].reset_index(drop=True)
+
+        # mrege with data to get the position for each player and sort by position / adp
+        pick_prob_df = pd.merge(data[['player', 'pos']], pick_prob_df, on='player')
+        pick_prob_df = pick_prob_df.sort_values(by=['pos', 'adp'], ascending=[True, True])
+
+        # extract a dataframe of each player | pos| adp without duplicates for pick prob
+        data_unique = pick_prob_df[['player', 'pos', 'adp']].drop_duplicates()
+
+        # set a flag for creating the pick array sparse matrix to calculate Ax=b
+        pick_prob_df['flag'] = 1
+        pick_prob_df = pick_prob_df[['player', 'pos', 'pick', 'flag']]
+
+        return pick_prob_df, data_unique, player_prob_df
+
         
     #--------
     # Setting up and Running the Simulation
     #--------
-    
+
     @staticmethod
-    def _Amatrix(pos_counts, pos_require):
+    def _create_pick_matrix(pick_prob_df, data_unique, my_picks):
+        '''
+        INPUT: Pick probability dataframe, unique player-adp dataframe, and list containing
+               all relevant picks for a given team.
+
+        OUTPUT: A numpy sparse matrix that indicates whether a player is available to be selected
+                for at each point in the draft (m_picks x n_players). This matrix will be appended
+                to the A matrix that will also contain positional equality constraints (Ax=b)
+        '''
+        # intialize empty array for pick flags
+        pick_array = np.empty(shape=(0,len(data_unique)))
+
+        # loop through each pick and merge the unique player dataset
+        # with players who have the potential to be selected at each pick
+        for i in my_picks:
+
+            # perform left join with flag and fill 0's to indicate if a player is able to be selected
+            tmp = pd.merge(data_unique, pick_prob_df.loc[pick_prob_df.pick==i, ['player', 'pos', 'flag']],
+                        how='left', on=['player', 'pos']).fillna(0)
+            
+            # append flag values to array vertically
+            to_add = tmp.flag.values
+            pick_array = np.vstack([pick_array, to_add])
+
+        # convert all to binary flags
+        pick_array = pick_array.astype('int')
+
+        return pick_array
+        
+    @staticmethod
+    def _Amatrix(pos_counts, pos_require, is_snake=False, pick_array=None):
         '''
         This function creates the A matrix that is critical for the ILP solution being equal
         to the positional constraints specified. I identified the given pattern empirically:
@@ -483,6 +493,14 @@ class FootballSimulation():
         # convert A into a matrix for integer optimization
         A = matrix(A, size=(len(vec), np.sum(pos_counts)), tc='d')
 
+        # if completing a snake draft, extend the dataset to have the pick array
+        # that contains flags for each player for each round
+        if is_snake:
+            A = np.array(A)
+            A = np.vstack([A, pick_array])
+
+            A = matrix(A, tc='d')
+
         return A
     
     
@@ -503,7 +521,7 @@ class FootballSimulation():
     
     
     @staticmethod
-    def _run_opt(A, points, salaries, salary_cap, pos_require):
+    def _run_opt(A, points, salaries, salary_cap, pos_require, my_picks):
         '''
         This function sets up and solves the integer Linear Programming problem 
         c = n x 1 -- c is the vector of points to be optimized
@@ -529,8 +547,11 @@ class FootballSimulation():
         # generate the h matrix with the salary cap constraint
         h = matrix(salary_cap, size=(1,1), tc='d')
 
-        # generate the b matrix with the number of position constraints
-        b = matrix(pos_require, size=(len(pos_require), 1), tc='d')
+        # generate the b matrix with the number of position constraints + pick constraints
+        b_vec = pos_require.copy()
+        num_picks = len(my_picks)*[1]
+        b_vec.extend(num_picks)
+        b = matrix(b_vec, size=(len(b_vec), 1), tc='d')
 
         # solve the integer LP problem
         (status, x) = ilp(c, G, h, A=A, b=b, B=set(range(0, len(points))))
@@ -538,7 +559,7 @@ class FootballSimulation():
         return x
     
     @staticmethod
-    def _random_select(data, salaries, salary_skews, inj_dist, replace_val, iterations):
+    def _random_select(data, inj_dist, replace_val, iterations):
         '''
         Random column selection for trial in simulation
         
@@ -558,12 +579,8 @@ class FootballSimulation():
         # plus the number of games missed times replacement level value
         points = -1.0*((ppg.values) * (16-inj_adjust.values) + \
                        (inj_adjust.values * pd.concat([replace_val, ppg], axis=1).min(axis=1).values))
-
-        # pull out a random skew and add to the original salaries
-        salaries_tmp = salaries + salary_skews[:, ran_num]
-        salaries_tmp = salaries_tmp.astype('double')
         
-        return points, salaries_tmp
+        return points
     
     
     #==========
@@ -592,9 +609,6 @@ class FootballSimulation():
         points_ = list(points[x])
         points_.extend(to_add['points'])
         
-        salaries_ = list(salaries[x])
-        salaries_.extend(to_add['salaries'])
-        
         for i, p in enumerate(names_):
 
             counts['names'][p] += 1
@@ -603,15 +617,10 @@ class FootballSimulation():
                 counts['points'][p] = []
             counts['points'][p].append(points_[i])
 
-            if counts['salary'][p] == 0:
-                counts['salary'][p] = []
-            counts['salary'][p].append(salaries_[i])
-
         # pull out the corresponding names, points, and salaries for chosen players
         # to append to the higher level results dataframes
         results['names'].append(names_)
         results['points'].append(points_)
-        results['salary'].append(salaries_)
 
         return results, counts, trial_counts
     
@@ -630,11 +639,9 @@ class FootballSimulation():
         name_results = pd.DataFrame(results['names'])
         point_results = pd.DataFrame(results['points'])*-1
         total_points = point_results.sum(axis=1)
-        salary_results = pd.DataFrame(results['salary'])
-        total_salary = salary_results.sum(axis=1)
         
         # concatenate names, points, and salaries altogether
-        results_df = pd.concat([name_results, total_points, total_salary, point_results, salary_results], axis=1)
+        results_df = pd.concat([name_results, total_points, point_results], axis=1)
         
         # rename columns to numbers
         results_df.columns = range(0, results_df.shape[1])
@@ -703,51 +710,54 @@ class FootballSimulation():
 
 # # %%
 
-# # connection for simulation and specific table
-# path = f'c:/Users/{os.getlogin()}/Documents/Github/Fantasy_Football/'
-# conn_sim = sqlite3.connect(f'{path}/Data/Databases/Simulation.sqlite3')
-# table_vers = 'Version1'
-# set_year = 2019
+# connection for simulation and specific table
+path = f'c:/Users/{os.getlogin()}/Documents/Github/Fantasy_Football/'
+conn_sim = sqlite3.connect(f'{path}/Data/Databases/Simulation.sqlite3')
+table_vers = 'Version1'
+set_year = 2019
 
-# # number of iteration to run
-# iterations = 1000
+league='nffc'
+initial_pick = 1
 
-# # define point values for all statistical categories
-# pass_yd_per_pt = 0.04 
-# pass_td_pt = 4
-# int_pts = -2
-# sacks = -1
-# rush_yd_per_pt = 0.1 
-# rec_yd_per_pt = 0.1
-# rush_rec_td = 7
-# ppr = .5
+# number of iteration to run
+iterations = 100
 
-# # creating dictionary containing point values for each position
-# pts_dict = {}
-# pts_dict['QB'] = [pass_yd_per_pt, pass_td_pt, rush_yd_per_pt, rush_rec_td, int_pts, sacks]
-# pts_dict['RB'] = [rush_yd_per_pt, rec_yd_per_pt, ppr, rush_rec_td]
-# pts_dict['WR'] = [rec_yd_per_pt, ppr, rush_rec_td]
-# pts_dict['TE'] = [rec_yd_per_pt, ppr, rush_rec_td]
+# define point values for all statistical categories
+pass_yd_per_pt = 0.04 
+pass_td_pt = 4
+int_pts = -2
+sacks = -1
+rush_yd_per_pt = 0.1 
+rec_yd_per_pt = 0.1
+rush_rec_td = 7
+ppr = .5
 
-# # instantiate simulation class and add salary information to data
-# sim = FootballSimulation(pts_dict, conn_sim, table_vers, set_year, iterations)
+# creating dictionary containing point values for each position
+pts_dict = {}
+pts_dict['QB'] = [pass_yd_per_pt, pass_td_pt, rush_yd_per_pt, rush_rec_td, int_pts, sacks]
+pts_dict['RB'] = [rush_yd_per_pt, rec_yd_per_pt, ppr, rush_rec_td]
+pts_dict['WR'] = [rec_yd_per_pt, ppr, rush_rec_td]
+pts_dict['TE'] = [rec_yd_per_pt, ppr, rush_rec_td]
 
-# # set league information, included position requirements, number of teams, and salary cap
-# league_info = {}
-# league_info['pos_require'] = {'QB': 1, 'RB': 2, 'WR': 2, 'TE': 1, 'FLEX': 2}
-# league_info['num_teams'] = 12
-# league_info['initial_cap'] = 293
-# league_info['salary_cap'] = 293
+# instantiate simulation class and add salary information to data
+sim = FootballSimulation(pts_dict, conn_sim, table_vers, set_year, league, iterations, initial_pick)
 
-# to_drop = {}
-# to_drop['players'] = []
+# set league information, included position requirements, number of teams, and salary cap
+league_info = {}
+league_info['pos_require'] = {'QB': 1, 'RB': 2, 'WR': 2, 'TE': 1, 'FLEX': 2}
+league_info['num_teams'] = 12
+league_info['initial_cap'] = 293
+league_info['salary_cap'] = 293
 
-# to_drop['salaries'] = []
+to_drop = {}
+to_drop['players'] = []
 
-# # input information for players and their associated salaries selected by your team
-# to_add = {}
-# to_add['players'] = []
-# to_add['salaries'] = []
+# input information for players and their associated salaries selected by your team
+to_add = {}
+to_add['players'] = ['Christian McCaffrey']
 
-# sim.run_simulation(league_info, to_drop, to_add, iterations=iterations)
+my_p = sim.return_picks()
+
+results = sim.run_simulation(league_info, to_drop, to_add, pick_num=0, iterations=iterations)
+results
 # %%

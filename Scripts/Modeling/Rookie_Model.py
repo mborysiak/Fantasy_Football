@@ -374,9 +374,9 @@ test_results = pd.concat([predict.player, test_results], axis=1).sort_values(by=
 
 r2_score(val_results.fp_act, np.mean([val_results.fp_per_game_pred_stat, val_results.fp_per_game_pred], axis=0))
 
-val_results.sort_values(by='fp_per_game_pred', ascending=False).iloc[:30]
+val_results.sort_values(by='fp_per_game_pred', ascending=False).iloc[:12, [0, 5, 7]]
 
-test_results
+test_results.iloc[:6,[0, 5]]
 
 # +
 import pymc3 as pm
@@ -480,7 +480,7 @@ output.iloc[:, 2:] = np.uint32(output.iloc[:, 2:] * 16)
 players = tuple(output.player)
 
 
-vers = 'Version3'
+vers = 'Version4'
 
 # +
 conn_sim = sqlite3.connect(f'{path}/Data/Databases/Simulation.sqlite3')

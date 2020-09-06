@@ -2,12 +2,18 @@
 
 import pandas as pd
 import sqlite3
+from cvxopt import matrix
+from cvxopt.glpk import ilp
+import numpy as np
+
 # connection for simulation and specific table
 path = f'c:/Users/{os.getlogin()}/Documents/Github/Fantasy_Football/'
 conn_sim = sqlite3.connect(f'{path}/Data/Databases/Simulation.sqlite3')
 table_vers = 'Version3'
 set_year = 2020
 league='nffc'
+
+pick_prob_master = pd.read_sql_query('''SELECT * FROM PickProb''', conn_sim)
 
 # create empty dataframe to store player point distributions
 pos_update = {'QB': 'aQB', 'RB': 'bRB', 'WR': 'cWR', 'TE': 'dTE'}
@@ -20,9 +26,9 @@ inj = pd.read_sql_query(f'''SELECT player, mean_risk
                                     WHERE year={set_year} ''', conn_sim)
 
 # add flex data
-flex = data[data.pos.isin(['bRB', 'cWR', 'dTE'])]
+flex = data[data.pos.isin([ 'bRB', 'cWR', 'dTE'])]
 flex.loc[:, 'pos'] = 'eFLEX'
-data = pd.concat([data, flex], axis=0)
+data_master = pd.concat([data, flex], axis=0)
 
 def get_picks(initial_pick, num_teams=12, third_reverse=True):
 
@@ -44,40 +50,84 @@ def get_picks(initial_pick, num_teams=12, third_reverse=True):
     return list(draft_order.loc[draft_order.team_num==initial_pick, 'pick_num'].values)
 
 
+#%%
+
 #----------------
 # Use Player Pick-Prob to adjust "Salaries"
 #----------------
 
-initial_pick=1
-my_picks = get_picks(initial_pick)[1:]
+pos_left = {'aQB': 1,
+            'bRB': 2,
+            'cWR': 3,
+            'dTE': 1,
+            'eFLEX': 2}
+pos_require = [v for k, v in pos_left.items() if v!=0]
+pos_list = [k for k, v in pos_left.items() if v!=0]
 
-pick_prob_df = pd.read_sql_query('''SELECT * FROM PickProb''', conn_sim)
-pick_prob_df = pick_prob_df.loc[(pick_prob_df.pick.isin(my_picks)) & \
-    (pick_prob_df.pick_prob >= 10), 
-    ['player', 'adp', 'pick']].reset_index(drop=True)
+data = data_master[data_master.pos.isin(pos_list)].copy().reset_index(drop=True)
 
-pick_prob_df = pd.merge(data[['player', 'pos']], pick_prob_df, on='player')
-pick_prob_df = pick_prob_df.sort_values(by=['pos', 'adp'], ascending=[True, True])
+# get the picks for the starting draft position
+initial_pick=12
+my_picks = get_picks(initial_pick)[(9-np.sum(pos_require)):]
 
-data_unique = pick_prob_df[['player', 'pos', 'adp']].drop_duplicates()
+
+def get_relevant_player_prob(pick_prob_master, data, my_picks):
+
+    # create a dataframe of player probability for being drafted in the current slot
+    player_prob_df = pick_prob_master[(pick_prob_master.pick >= my_picks[0]) & \
+        (pick_prob_master.adp <= my_picks[0]*3)].groupby('player').agg({'pick_prob': 'sum'})
+
+    # narrow down the player list for each potential selection based on their probability of being 
+    # drafted near a specific slot. note the filter is determined empirically to prevent infeasible ilp solutions.
+    pick_prob_df = pick_prob_master.copy()
+    pick_prob_df = pick_prob_df.loc[(pick_prob_df.pick.isin(my_picks)) & \
+        (pick_prob_df.pick_prob >= np.sum(pos_require)*1.5 - 3), 
+        ['player', 'adp', 'pick']].reset_index(drop=True)
+
+    # mrege with data to get the position for each player and sort by position / adp
+    pick_prob_df = pd.merge(data[['player', 'pos']], pick_prob_df, on='player')
+    pick_prob_df = pick_prob_df.sort_values(by=['pos', 'adp'], ascending=[True, True])
+
+    # extract a dataframe of each player | pos| adp without duplicates for pick prob
+    data_unique = pick_prob_df[['player', 'pos', 'adp']].drop_duplicates()
+
+    # set a flag for creating the pick array sparse matrix to calculate Ax=b
+    pick_prob_df['flag'] = 1
+    pick_prob_df = pick_prob_df[['player', 'pos', 'pick', 'flag']]
+
+    return pick_prob_df, data_unique
+
+
+
+def create_pick_matrix(pick_prob_df, data_unique, my_picks):
+
+    # intialize empty array for pick flags
+    pick_array = np.empty(shape=(0,len(data_unique)))
+
+    # loop through each pick and merge the unique player dataset
+    # with players who have the potential to be selected at each pick
+    for i in my_picks:
+        tmp = pd.merge(data_unique, pick_prob_df.loc[pick_prob_df.pick==i, ['player', 'pos', 'flag']],
+                    how='left', on=['player', 'pos']).fillna(0)
+        to_add = tmp.flag.values#[:-1]
+        # to_add = np.append(0, to_add)
+
+        pick_array = np.vstack([pick_array, to_add])
+        print(i, pick_array.shape)
+
+    pick_array = pick_array.astype('int')
+
+    return pick_array
+
+pick_prob_df = pick_prob_master[pick_prob_master.adp >= my_picks[0]].copy().reset_index(drop=True)
+pick_prob_df, data_unique = get_relevant_player_prob(pick_prob_master, data, my_picks)
+
+# use the data unique to bring down data projections and properly order
 data = pd.merge(data, data_unique, on=['player', 'pos']).set_index('player')
 data = data.sort_values(by=['pos', 'adp'], ascending=[True, True])
 
-pick_prob_df['flag'] = 1
-pick_prob_df = pick_prob_df[['player', 'pos', 'pick', 'flag']]
-
-
-pick_array = np.empty(shape=(0,len(data_unique)))
-for i in my_picks:
-    tmp = pd.merge(data_unique, pick_prob_df.loc[pick_prob_df.pick==i, ['player', 'pos', 'flag']],
-                how='left', on=['player', 'pos']).fillna(0)
-    to_add = tmp.flag.values#[:-1]
-    # to_add = np.append(0, to_add)
-
-    pick_array = np.vstack([pick_array, to_add])
-    print(i, pick_array.shape)
-
-pick_array = pick_array.astype('int')
+# get the pick array matrix for Ax=B
+pick_array = create_pick_matrix(pick_prob_df, data_unique, my_picks)
 
 #%%
 '''
@@ -85,7 +135,7 @@ This function creates the A matrix that is critical for the ILP solution being e
 to the positional constraints specified. I identified the given pattern empirically:
 1. Repeat the vector [1, 0, 0, 0, ...] N times for each player for a given position.
     The number of trailing zeros is equal to p-1 positions to draft.
-2. After the above vector is repeated N times for a given player, append a 0 before
+2. After the above0vector is repeated N times for a given player, append a 0 before
     repeating the same pattern for the next player. Repeat for all players up until the 
     last position.
 3. for the last poition, repeat the pattern N-1 times and append a 1 at the end.
@@ -93,18 +143,15 @@ This pattern allows the b vector, e.g. [1, 2, 2, 1] to set the constraints on th
 selected by the ILP solution.
 '''
 
-from cvxopt import matrix
-from cvxopt.glpk import ilp
-import numpy as np
 
 results = {}
 for p in data.index.unique():
     results[p] = 0
 
 for j in range(2,500):
-    pos_require = [1, 1, 3, 1, 1]
+   
     pos_counts = list(data.pos.value_counts().sort_index())
-    points = -1*data.iloc[:, j]
+    points = -1*data.iloc[:, j]/100
     salaries = np.array([1 for p in points])
 
     #--------
@@ -183,5 +230,8 @@ for j in range(2,500):
         results[p] += 1
 
 # %%
-{k: v for k, v in sorted(results.items(), key=lambda item: item[1])}
+close_picks = list(data_unique.loc[data_unique.adp <= my_picks[0]*1.75, 'player'].values)
+{k: v for k, v in sorted(results.items(), key=lambda item: item[1]) if k in close_picks}
+# %%
+data_unique.loc[data_unique.player.isin(close_picks), ['player', 'adp']].drop_duplicates().sort_values(by='adp').iloc[:50]
 # %%

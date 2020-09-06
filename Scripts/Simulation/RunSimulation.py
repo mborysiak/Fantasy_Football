@@ -137,7 +137,10 @@ keepers = {
     'Tyreek Hill': 56,
     'Chris Godwin': 26,
 
-    'Adrian Peterson': 26
+    'Adrian Peterson': 26,
+
+    'George Kittle': 48,
+    'Kareem Hunt': 16
 }
 
 # # 2019 keepers
