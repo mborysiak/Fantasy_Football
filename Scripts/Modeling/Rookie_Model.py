@@ -47,7 +47,7 @@ path = f'/Users/{os.getlogin()}/Documents/Github/Fantasy_Football/'
 db_name = 'Model_Inputs.sqlite3'
 
 # set to position to analyze: 'RB', 'WR', 'QB', or 'TE'
-set_pos = 'Rookie_RB'
+set_pos = 'Rookie_WR'
 
 # set the year
 set_year = 2020
@@ -374,9 +374,20 @@ test_results = pd.concat([predict.player, test_results], axis=1).sort_values(by=
 
 r2_score(val_results.fp_act, np.mean([val_results.fp_per_game_pred_stat, val_results.fp_per_game_pred], axis=0))
 
-val_results.sort_values(by='fp_per_game_pred', ascending=False).iloc[:12, [0, 5, 7]]
+val_results.sort_values(by='fp_per_game_pred', ascending=False).iloc[:40]
 
-test_results.iloc[:6,[0, 5]]
+test_results
+
+val_results['mean_pred'] = (val_results.fp_per_game_pred + val_results.fp_per_game_pred_stat)/2
+val_results['grp'] = 0
+val_results.loc[val_results.mean_pred > 8, 'grp'] = 1
+val_results.groupby('grp').agg({'fp_act': 'mean', 'mean_pred': 'mean'})
+
+val_results.groupby('')
+
+val_results.plot.scatter(x='mean_pred', y='fp_act')
+
+val_results.loc[(val_results.fp_act > 10) & (val_results.mean_pred > 8)].shape
 
 # +
 import pymc3 as pm

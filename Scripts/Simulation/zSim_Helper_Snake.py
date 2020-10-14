@@ -123,7 +123,7 @@ class FootballSimulation():
         my_picks = [p for p in self.my_picks if p >= pick_num]
        
         # drop other selected players + calculate inflation metrics
-        data = self._drop_players(data)
+        data = self._drop_players(data, to_drop)
         
         # drop your selected players + calculate inflation metrics
         data, league_info, to_add = self._add_players(data, league_info, to_add)
@@ -211,7 +211,7 @@ class FootballSimulation():
         top_picks = pd.merge(top_picks, player_prob_df, left_index=True, right_index=True)
         top_picks = pd.merge(top_picks, data_unique[['player', 'adp']].drop_duplicates().set_index('player'),
                              left_index=True, right_index=True)
-        return top_picks
+        return top_picks.reset_index()
     
     #==========
     # Helper Functions for the Simulation Loop
@@ -223,7 +223,7 @@ class FootballSimulation():
     
     
     @staticmethod
-    def _drop_players(data):
+    def _drop_players(data, to_drop):
         '''
         Drops a list of players that are chosen as by other teams and calculates actual 
         salary vs. expected salary for inflation calculation.
@@ -237,12 +237,8 @@ class FootballSimulation():
         #--------
         # Dropping Other Team's Players
         #--------
-        
-        # find players from data that will be dropped and remove them from other data
-        drop_data = data[data.index.isin(to_drop['players'])]
-        other_data = data.drop(drop_data.index, axis=0)
 
-        return other_data
+        return data[~data.player.isin(to_drop['players'])].reset_index(drop=True)
     
     
     @staticmethod
@@ -692,70 +688,66 @@ class FootballSimulation():
 
 # # %%
 
-# connection for simulation and specific table
-path = f'c:/Users/{os.getlogin()}/Documents/Github/Fantasy_Football/'
-conn_sim = sqlite3.connect(f'{path}/Data/Databases/Simulation.sqlite3')
-table_vers = 'Version4'
-set_year = 2020
-initial_pick = 1
-league='nffc'
+# # connection for simulation and specific table
+# path = f'c:/Users/{os.getlogin()}/Documents/Github/Fantasy_Football/'
+# conn_sim = sqlite3.connect(f'{path}/Data/Databases/Simulation.sqlite3')
+# table_vers = 'Version4'
+# set_year = 2020
+# initial_pick = 2
+# league='nffc'
 
-# number of iteration to run
-iterations = 500
+# # number of iteration to run
+# iterations = 500
 
-# define point values for all statistical categories
-pass_yd_per_pt = 0.04 
-pass_td_pt = 4
-int_pts = -2
-sacks = -1
-rush_yd_per_pt = 0.1 
-rec_yd_per_pt = 0.1
-rush_rec_td = 7
-ppr = .5
+# # define point values for all statistical categories
+# pass_yd_per_pt = 0.04 
+# pass_td_pt = 4
+# int_pts = -2
+# sacks = -1
+# rush_yd_per_pt = 0.1 
+# rec_yd_per_pt = 0.1
+# rush_rec_td = 7
+# ppr = .5
 
-# creating dictionary containing point values for each position
-pts_dict = {}
-pts_dict['QB'] = [pass_yd_per_pt, pass_td_pt, rush_yd_per_pt, rush_rec_td, int_pts, sacks]
-pts_dict['RB'] = [rush_yd_per_pt, rec_yd_per_pt, ppr, rush_rec_td]
-pts_dict['WR'] = [rec_yd_per_pt, ppr, rush_rec_td]
-pts_dict['TE'] = [rec_yd_per_pt, ppr, rush_rec_td]
+# # creating dictionary containing point values for each position
+# pts_dict = {}
+# pts_dict['QB'] = [pass_yd_per_pt, pass_td_pt, rush_yd_per_pt, rush_rec_td, int_pts, sacks]
+# pts_dict['RB'] = [rush_yd_per_pt, rec_yd_per_pt, ppr, rush_rec_td]
+# pts_dict['WR'] = [rec_yd_per_pt, ppr, rush_rec_td]
+# pts_dict['TE'] = [rec_yd_per_pt, ppr, rush_rec_td]
 
-# instantiate simulation class and add salary information to data
-sim = FootballSimulation(pts_dict, conn_sim, table_vers, set_year, league, iterations, initial_pick)
+# # instantiate simulation class and add salary information to data
+# sim = FootballSimulation(pts_dict, conn_sim, table_vers, set_year, league, iterations, initial_pick)
 
-# set league information, included position requirements, number of teams, and salary cap
-league_info = {}
-league_info['pos_require'] = {'QB': 3, 'RB': 6, 'WR': 9, 'TE': 3, 'FLEX': 0}
-league_info['num_teams'] = 12
-league_info['initial_cap'] = 293
-league_info['salary_cap'] = 293
+# # set league information, included position requirements, number of teams, and salary cap
+# league_info = {}
+# league_info['pos_require'] = {'QB': 3, 'RB': 5, 'WR': 8, 'TE': 3, 'FLEX': 0}
+# league_info['num_teams'] = 12
+# league_info['initial_cap'] = 293
+# league_info['salary_cap'] = 293
 
-to_drop = {}
-to_drop['players'] = []
+# to_drop = {}
+# to_drop['players'] = []
 
-# input information for players and their associated salaries selected by your team
-to_add = {}
-to_add['players'] = ['Christian McCaffrey', 'Lamar Jackson', 'Jonathan Taylor',
-                     'Cooper Kupp', 'Matt Ryan', 'Hunter Henry', 'CeeDee Lamb',
-                     'Antonio Gibson', 'Golden Tate', 'Anthony Miller',
-                     'Anthony McFarland', 'Larry Fitzgerald', 'Dallas Goedert',
-                     'Sammy Watkins']
+# # input information for players and their associated salaries selected by your team
+# to_add = {}
+# to_add['players'] = ['Saquon Barkley', 'George Kittle', 'DK Metcalf', 'Zach Ertz',
+#                      'Raheem Mostert', 'Diontae Johnson', 'Matt Ryan', 'Antonio Gibson',
+#                      'Baker Mayfield', 'Golden Tate', 'Drew Brees', 'Curtis Samuel',
+#                      'Bradon Aiyuk', 'James Washington']
 
-num_pos = [v for k, v in league_info['pos_require'].items()]
+# num_pos = [v for k, v in league_info['pos_require'].items()]
 
-my_p = sim.return_picks()
-pick_num = my_p[len(to_add['players'])]
+# my_p = sim.return_picks()
+# pick_num = my_p[len(to_add['players'])]
 
-result = None
-prob_filter = 1
-while result is None and prob_filter < 20:
-    try:
-        result = sim.run_simulation(league_info, to_drop, to_add, pick_num=pick_num, prob_filter=prob_filter, iterations=iterations)
-    except:
-        prob_filter += 1
-        print(prob_filter)
+# result = None
+# prob_filter = 1
+# while result is None and prob_filter < 20:
+#     try:
+#         result = sim.run_simulation(league_info, to_drop, to_add, pick_num=pick_num, prob_filter=prob_filter, iterations=iterations)
+#     except:
+#         prob_filter += 1
+#         print(prob_filter)
 
-result
-# %%
-filt
-# %%
+# result

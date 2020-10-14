@@ -13,6 +13,8 @@
 #     name: python3
 # ---
 
+#%%
+
 # # Reading in Old Salary Data
 
 import pandas as pd
@@ -22,139 +24,135 @@ import sqlite3
 from zData_Functions import *
 
 # set core path
-path = f'/Users/{os.getlogin()}/Documents/Github/Fantasy_Football/Data/'
+PATH = f'/Users/{os.getlogin()}/Documents/Github/Fantasy_Football/Data/'
+YEAR = 2020
+LEAGUE = 'beta'
+FNAME = f'{LEAGUE}_{YEAR}_results'
 
-# # 2019 Salary + Actuals
 
-results = pd.read_csv(f'{path}/OtherData/Salaries/salaries_2020_results_nv.csv', header=None)
-results.columns = ['player', 'salary']
-results = results.dropna()
-results = results[results.player != 'PLAYER'].reset_index(drop=True)
-results.player = results.player.apply(lambda x: x.split(',')[0][:-3].rstrip().lstrip())
-results.salary = results.salary.astype('float')
-results.player = results.player.apply(name_clean)
-results['year'] = 2020
-results['league'] = 'nv_results'
-
-append_to_db(results, 'Simulation', 'Salaries', 'append')
-
-salaries = pd.read_csv(f'{path}/OtherData/Salaries/salaries_2019.csv')
-
-keepers = ['Alvin Kamara', 'Nick Chubb', 'Michael Thomas', 'Damien Williams'
-           'Mike Evans', 'Robert Woods', 'Tyler Lockett', 'Patrick Mahomes',
-           'Adam Thielen', 'Ezekiel Elliott', 'Davante Adams', 'Adrian Peterson',
-           'Devonta Freeman', 'Saquon Barkley', 'Tyreek Hill', 'Chris Godwin', 
-           'Travis Kelce', 'Christian McCaffrey', 'James Conner', 'Joe Mixon', 
-           'Tarik Cohen', 'Sony Michel']
-results['keeper'] = 0
-
-results
-
-results.loc[results.player.isin(keepers), 'keeper'] = 1
-salaries = pd.merge(salaries, results, on='player')
-salaries['league'] = 'beta'
-
-salaries.plot.scatter(x='salary', y='draft_amount')
+conn_sim = sqlite3.connect(f'{PATH}/Databases/Simulation.sqlite3')
+conn_stats = sqlite3.connect(f'{PATH}/Databases/Season_Stats.sqlite3')
 
 
 
-# +
-import pymc3 as pm
-
-formula = 'draft_amount ~ salary'
-
-# Context for the model
-with pm.Model() as normal_model:
+def clean_results(path, fname, year, league, team_split=True):
     
-    # The prior for the data likelihood is a Normal Distribution
-    family = pm.glm.families.Normal()
-    
-    # Creating the model requires a formula and data (and optionally a family)
-    pm.GLM.from_formula(formula, data = salaries, family = family)
-    
-    # Perform Markov Chain Monte Carlo sampling letting PyMC3 choose the algorithm
-    normal_trace = pm.sample(draws=2000, chains = 2, tune = 500)
+    # read in csv file
+    results = pd.read_csv(f'{path}/OtherData/Salaries/{fname}.csv')
 
-# +
-from IPython.core.pylabtools import figsize
-import seaborn as sns
-import scipy.stats as stats
+    # drop null rows from formatting and nonsense rows
+    results = results.dropna(subset=['actual_salary'])
+    results = results[results.player!='PLAYER'].reset_index(drop=True)
 
-# Make a new prediction from the test set and compare to actual value
-def test_model(trace, test_observation, max_bound):
-    
-    # Print out the test observation data
-    print('Test Observation:')
-    print(test_observation)
-    var_dict = {}
-    for variable in trace.varnames:
-        var_dict[variable] = trace[variable]
+    # fill in all non-keeper player flags
+    results.loc[results.is_keeper.isnull(), 'is_keeper'] = 0
 
-    # Results into a dataframe
-    var_weights = pd.DataFrame(var_dict)
+    if team_split:
+        results.player = results.player.apply(lambda x: x.split(',')[0])
+        results.player = results.player.apply(lambda x: x.split('\xa0')[0])
     
-    # Standard deviation of the likelihood
-    sd_value = var_weights['sd'].mean()
+    # convert salary columns to float after stripping $ and remove bad player name formatting
+    results.actual_salary = results.actual_salary.apply(lambda x: float(x.replace('$', '')))
+    results.player = results.player.apply(name_clean)
     
-    # Add in intercept term
-    test_observation['Intercept'] = 1
+    results['year'] = year
+    results['league'] = league
     
-    # Align weights and test observation
-    var_weights = var_weights[test_observation.index]
+    return results
 
-    # Means for all the weights
-    var_means = var_weights.mean(axis=0)
-
-    # Location of mean for observation
-    mean_loc = np.dot(var_means, test_observation)
-    
-    # create truncated distribution
-    lower, upper = 0,  max_bound * 1.2
-    trunc_dist = stats.truncnorm((lower - mean_loc) / sd_value, (upper - mean_loc) / sd_value, 
-                                  loc=mean_loc, scale=sd_value)
-    estimates = trunc_dist.rvs(1000)
-
-    # Plot all the estimates
-    plt.figure(figsize(8, 8))
-    sns.distplot(estimates, hist = True, kde = True, bins = 19,
-                 hist_kws = {'edgecolor': 'k', 'color': 'darkblue'},
-                kde_kws = {'linewidth' : 4},
-                label = 'Estimated Dist.')
-    
-    # Plot the mean estimate
-    plt.vlines(x = mean_loc, ymin = 0, ymax = 0.1, 
-               linestyles = '--', colors = 'red',
-               label = 'Pred Estimate',
-               linewidth = 2.5)
-    
-    plt.legend(loc = 1)
-    plt.title('Density Plot for Test Observation');
-    plt.xlabel('Grade'); plt.ylabel('Density');
-    
-    # Prediction information
-    print('Average Estimate = %0.4f' % mean_loc)
-    print('5%% Estimate = %0.4f    95%% Estimate = %0.4f' % (np.percentile(estimates, 5),
-                                       np.percentile(estimates, 95)))
-    
-    plt.show()
-    
-    return estimates
+results = clean_results(PATH, FNAME, YEAR, LEAGUE)
+# append_to_db(results, 'Simulation', 'Actual_Salaries', 'append')
 
 
-# -
+##########################################
 
-test_model(normal_trace, salaries.loc[1,['salary']], 105);
+#%%
 
-# # Pushing Salaries to Simulation Database
+actual_sal = pd.read_sql_query(f'''SELECT *
+                                FROM Actual_Salaries 
+                                WHERE League='{LEAGUE}' ''', conn_sim)
+base_sal = pd.read_sql_query(f'''SELECT player, salary, year
+                                 FROM Salaries 
+                                 WHERE League='{LEAGUE}' ''', conn_sim)
+player_age = pd.read_sql_query('''SELECT * FROM player_birthdays''', conn_stats)   
+osu = pd.read_sql_query('''SELECT DISTINCT player, 1 as is_OSU 
+                           FROM college_stats
+                           where team='Ohio State' ''', conn_stats)
+rookies = pd.read_sql_query('''SELECT player, draft_year year FROM rookie_adp''', conn_stats)
+rookies['is_rookie'] = 1
+# 
+salaries = pd.merge(actual_sal, base_sal, on=['player', 'year'])
+salaries = pd.merge(salaries, player_age, on=['player'])
+salaries = pd.merge(salaries, rookies, on=['player', 'year'], how='left')
+salaries = pd.merge(salaries, osu, on=['player'], how='left')
+salaries.is_rookie = salaries.is_rookie.fillna(0)
+salaries.is_OSU = salaries.is_OSU.fillna(0)
 
-# +
-year = 2020
-league = 'snake'
+keepers = salaries.loc[salaries.is_keeper==1, ['player', 'salary', 'actual_salary', 'year']].copy()
+keepers['value'] = keepers.salary - keepers.actual_salary
+inflation = keepers.groupby('year').agg({'value': 'sum'}).reset_index()
+inflation['inflation'] = 1 + (inflation.value / 3600)
 
-try:
-    salary_final = pd.read_csv(f'{path}/OtherData/Salaries/salaries_{year}_{league}.csv')
-except:
-    salary_final = pd.read_csv(f'{path}/OtherData/Salaries/salaries_{year}_beta.csv')
+salaries = pd.merge(salaries, inflation, on='year')
+salaries = salaries[salaries.is_keeper==0].reset_index(drop=True)
+
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.linear_model import Ridge, Lasso
+from sklearn.model_selection import cross_val_score, cross_val_predict
+from sklearn.metrics import mean_squared_error
+from sklearn.preprocessing import StandardScaler
+from lightgbm import LGBMRegressor
+from xgboost import XGBRegressor
+
+X = salaries[['inflation', 'salary', 'pos',  'is_rookie', 'is_OSU']] 
+X = pd.concat([X, pd.get_dummies(X.pos, drop_first=True)], axis=1).drop('pos', axis=1)
+X['rookie_rb'] = X.RB * X.is_rookie
+X = X.drop('is_rookie', axis=1)
+
+# X['stud'] = 0
+# X.loc[X.salary > 80, 'stud'] = 1 
+
+# X['filler'] = 0
+# X.loc[X.salary < 10, 'filler'] = 1 
+
+# X = pd.DataFrame(StandardScaler().fit_transform(X), columns=X.columns)
+y = salaries.actual_salary
+
+# m = RandomForestRegressor(n_estimators=50, max_depth=4, min_samples_leaf=1)
+# m = LGBMRegressor(n_estimators=50, max_depth=5, reg_lambda=10)
+m = Ridge(alpha=1)
+mse = np.mean(np.sqrt(-cross_val_score(m, X, y, cv=10, scoring='neg_mean_squared_error')))
+inf_baseline = np.sqrt(mean_squared_error(salaries.actual_salary*salaries.inflation, salaries.salary))
+baseline = np.sqrt(mean_squared_error(salaries.actual_salary, salaries.salary))
+print('Model',  round(mse, 3))
+print('Inflation Baseline',  round(inf_baseline, 3))
+print('Baseline',  round(baseline, 3))
+
+m.fit(X, y)
+pred_sal = cross_val_predict(m, X, y, cv=10)
+#########################################
+salaries = pd.concat([salaries, pd.Series(pred_sal, name='pred_salary')], axis=1)
+pred_results = salaries[['player', 'year', 'actual_salary', 'pred_salary']]
+pred_results['sal_diff'] = abs(pred_results.pred_salary - pred_results.actual_salary)
+pred_results.sort_values(by='sal_diff', ascending=False).iloc[:50]
+
+#%%
+
+output = pred_results[['player', 'pred_salary', 'year']]
+output = output.rename(columns={'pred_salary': 'salary'})
+output.salary = output.salary.astype('int')
+output = output[output.year==2020]
+keepers = keepers.loc[keepers.year==2020, ['player', 'actual_salary', 'year']]
+keepers = keepers.rename(columns={'actual_salary': 'salary'})
+output = pd.concat([output, keepers], axis=0)
+output['league'] = LEAGUE + 'pred'
+append_to_db(output,'Simulation', 'Salaries', 'append')
+
+#%%
+
+
+
+salary_final = pd.read_csv(f'{path}/OtherData/Salaries/salaries_{year}_{league}.csv')
 salary_final['year'] = year
 salary_final['league'] = league
 salary_final.player = salary_final.player.apply(name_clean)
@@ -174,7 +172,6 @@ append_to_db(salary_final,'Simulation', 'Salaries', 'append')
 
 # +
 from sklearn.preprocessing import StandardScaler
-
 year = 2020
 
 # read in the injury predictor file
@@ -216,3 +213,5 @@ conn_sim.commit()
 append_to_db(inj, 'Simulation', 'Injuries', 'append')
 
 
+
+# %%

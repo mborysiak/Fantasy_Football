@@ -35,7 +35,7 @@ path = f'c:/Users/{os.getlogin()}/Documents/Github/Fantasy_Football/'
 conn_sim = sqlite3.connect(f'{path}/Data/Databases/Simulation.sqlite3')
 table_vers = 'Version4'
 set_year = 2020
-league='beta'
+league='betapred'
 
 # number of iteration to run
 iterations = 1000

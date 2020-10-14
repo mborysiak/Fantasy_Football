@@ -87,10 +87,10 @@ val_run = False
 # reg_id_stat = (118, 153)
 # reg_id_fp = (154, 162)
 
-# # WR <= 2 years
-# class_id = (1, 7)
-# reg_id_stat = (1, 27)
-# reg_id_fp = (28, 36)
+# WR <= 2 years
+class_id = (1, 7)
+reg_id_stat = (1, 27)
+reg_id_fp = (28, 36)
 
 # # WR > 2 years
 # class_id = (8, 14)
@@ -102,10 +102,10 @@ val_run = False
 # reg_id_stat = (289, 315)
 # reg_id_fp = (316, 324)
 
-# TE > 3 year
-class_id = (50, 56)
-reg_id_stat = (325, 351)
-reg_id_fp = (352, 360)
+# # TE > 3 year
+# class_id = (50, 56)
+# reg_id_stat = (325, 351)
+# reg_id_fp = (352, 360)
 
 #==========
 # Fantasy Point Values
@@ -900,7 +900,7 @@ df_train_results = df_train_results.loc[:, ~df_train_results.columns.duplicated(
 df_test_results = df_test_results.loc[:, ~df_test_results.columns.duplicated()]
 
 # +
-df_test_results['avg_pred'] = df_test_results[[ 'pred_fp_per_game', 'pred_fp_per_game_stat']].mean(axis=1)
+df_test_results['avg_pred'] = df_test_results[['avg_pick_pred', 'pred_fp_per_game', 'pred_fp_per_game_stat']].mean(axis=1)
 
 if val_run: 
     print('Test R2: %0.3f' % r2_score(df_test_results.y_act, df_test_results.avg_pred))
@@ -909,7 +909,7 @@ if val_run:
     print('ADP RMSE: %0.3f' % np.sqrt(mean_squared_error(df_test_results.y_act, df_test_results.avg_pick_pred)))
 # -
 
-df_train_results['avg_pred'] = df_train_results[['pred_fp_per_game', 'pred_fp_per_game_stat']].mean(axis=1)
+df_train_results['avg_pred'] = df_train_results[['avg_pick_pred', 'pred_fp_per_game', 'pred_fp_per_game_stat']].mean(axis=1)
 print('Val R2: %0.3f' % r2_score(df_train_results.y_act, df_train_results.avg_pred))
 print('Val RMSE: %0.3f' % np.sqrt(mean_squared_error(df_train_results.y_act, df_train_results.avg_pred)))
 print('Val R2: %0.3f' % r2_score(df_train_results.y_act, df_train_results.avg_pick_pred))
@@ -922,8 +922,10 @@ df_test_results.loc[:17, ['player', 'avg_pick_pred', 'avg_pred', 'pred_fp_per_ga
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import StandardScaler
 
-X_train = df_train_results[['class_fp_per_game',  'avg_pred']]
-X_test = df_test_results[['class_fp_per_game', 'avg_pred']]
+model_cols = ['class_fp_per_game', 'pred_rec_yd_per_game', 'pred_td_per_game',]
+
+X_train = df_train_results[model_cols]
+X_test = df_test_results[model_cols]
 y = df_train_results.y_act
 
 scale = StandardScaler()
@@ -938,8 +940,8 @@ test_pred_plus_class = lr.predict(X_test)
 print('Coefficients:', lr.coef_)
 
 pred_plus_class_err = np.mean(np.sqrt(-1*(cross_val_score(lr, X_train, y, cv=10, scoring='neg_mean_squared_error'))))
-pred_only_err = np.sqrt(mean_squared_error(df_train_results.y_act, df_train_results.pred_fp_per_game))
-adp_pred_err = np.sqrt(mean_squared_error(df_train_results.y_act, df_train_results.avg_pick_pred))
+adp_pred_err = np.mean(np.sqrt(-1*(cross_val_score(lr, df_train_results[['avg_pick_pred']], y, cv=10, scoring='neg_mean_squared_error'))))
+pred_only_err = np.mean(np.sqrt(-1*(cross_val_score(lr, df_train_results[['pred_fp_per_game']], y, cv=10, scoring='neg_mean_squared_error'))))
 
 if val_run:
     test_adp_err = np.sqrt(mean_squared_error(df_test_results.y_act, df_test_results.avg_pick_pred))
@@ -967,19 +969,129 @@ if val_run:
 import pymc3 as pm
 
 data = pd.concat([X_train, y], axis=1)
-formula = 'y_act ~ class_fp_per_game + avg_pred'
+formula = 'y_act ~ ' + '+'.join(model_cols)
 
 # Context for the model
-with pm.Model() as normal_model:
+with pm.Model() as model:
     
-    # The prior for the data likelihood is a Normal Distribution
-    family = pm.glm.families.Normal()
+    alpha = pm.Normal('alpha', 10, 10)
+    betas = pm.Normal('betas', 0, 5, shape=len(model_cols))
     
-    # Creating the model requires a formula and data (and optionally a family)
-    pm.GLM.from_formula(formula, data = data, family = family)
+    mu = alpha + pm.math.dot(X_train, betas)
+    sigma = pm.HalfNormal('sigma', 10)
+     
+    Y_obs = pm.TruncatedNormal('Y_obs', mu=mu, sd=sigma, lower=0, observed=y.values)
     
     # Perform Markov Chain Monte Carlo sampling letting PyMC3 choose the algorithm
-    normal_trace = pm.sample(draws=2000, chains = 2, tune = 500)
+    normal_trace = pm.sample(draws=1000, chains = 4, tune = 500)
+# -
+
+# Context for the model
+with pm.Model() as test_model:
+    
+    alpha = pm.Normal('alpha', 10, 10)
+    betas = pm.Normal('betas', 0, 5, shape=len(model_cols))
+    
+    mu = alpha + pm.math.dot(X_test, betas)
+    sigma = pm.HalfNormal('sigma', 10)
+     
+    Y_obs = pm.TruncatedNormal('Y_obs', mu=mu, sd=sigma, lower=0, observed=np.empty(len(X_test)))
+
+with model:
+    ppc = pm.sample_posterior_predictive(normal_trace, random_seed = 1900)
+
+
+def test_model(trace, test_observation, max_bound):
+    import scipy.stats as stats
+
+    var_dict = {}
+    for variable in trace.varnames:
+        var_dict[variable] = trace[variable]
+
+    mean_loc = np.dot(var_dict['betas'].mean(axis=0), test_observation) + var_dict['alpha'].mean()
+    sd_value = var_dict['sigma'].mean()
+
+    # create truncated distribution
+    lower, upper = 0,  max_bound * 1.05
+    trunc_dist = stats.truncnorm((lower - mean_loc) / sd_value, (upper - mean_loc) / sd_value, 
+                                  loc=mean_loc, scale=sd_value)
+    estimates = trunc_dist.rvs(4000)
+    
+    return estimates
+
+
+est2 = []
+for _, row in X_train.iterrows():
+    est2.append( test_model(normal_trace, row, df_train_results.y_act.max()) )
+est2 = np.transpose(np.asarray(est2))
+
+
+def calc_95_perc(estimates):
+
+    lowers = []
+    highers = []
+    for i in range(len(df_train_results)):
+        actual_ppg = df_train_results.loc[i, 'act_fp_per_game']
+        cur_estimates = estimates[:,i]
+        upper_perc = np.percentile(cur_estimates, 80)
+        lower_perc = np.percentile(cur_estimates, 20)
+        is_lower = actual_ppg < lower_perc
+        is_higher = actual_ppg > upper_perc
+        lowers.append(is_lower)
+        highers.append(is_higher)
+
+    print('Low Misses: %0.3f' % (np.asarray(lowers).sum() / len(lowers)))
+    print('High Misses: %0.3f' % (np.asarray(highers).sum() / len(highers)))
+
+    return lowers, highers
+
+
+lowers, highers = calc_95_perc(ppc['Y_obs'])
+
+lowers2, highers2 = calc_95_perc(est2)
+
+df_train_results.iloc[-10:, :]
+
+k = 154
+plt.hist(est2[:,k], alpha=0.5, color='blue', bins=10);
+plt.hist(ppc['Y_obs'][:, k], alpha=0.5, color='red', bins=10);
+plt.vlines(df_train_results.loc[k, 'y_act'], 0, 1500);
+
+np.percentile(ppc['Y_obs'][:, k], 95)
+
+# +
+from IPython.core.pylabtools import figsize
+import seaborn as sns
+import scipy.stats as stats
+
+
+for i in range(32):
+    print('Player: ', df_test_results.loc[i, 'player'])
+    estimates = ppc['Y_obs'][:,i]
+
+    # Plot all the estimates
+    plt.figure()
+    sns.distplot(estimates, hist = True, kde = True, bins = 19,
+                 hist_kws = {'edgecolor': 'k', 'color': 'darkblue'},
+                kde_kws = {'linewidth' : 4},
+                label = 'Estimated Dist.')
+
+    # Plot the mean estimate
+    plt.vlines(x = estimates.mean(), ymin = 0, ymax = 0.1, 
+               linestyles = '--', colors = 'red',
+               label = 'Pred Estimate',
+               linewidth = 2.5)
+
+    plt.legend(loc = 1)
+    plt.title('Density Plot for Test Observation');
+    plt.xlabel('Grade'); plt.ylabel('Density');
+
+    # Prediction information
+    print('Average Estimate = %0.4f' % estimates.mean())
+    print('5%% Estimate = %0.4f    95%% Estimate = %0.4f    Std Devation Estimate = %0.4f' % (np.percentile(estimates, 5),
+                                       np.percentile(estimates, 95), estimates.std()/estimates.mean()))
+
+    plt.show()
 
 # +
 from IPython.core.pylabtools import figsize
@@ -1039,8 +1151,8 @@ def test_model(trace, test_observation, max_bound):
     
     # Prediction information
     print('Average Estimate = %0.4f' % mean_loc)
-    print('5%% Estimate = %0.4f    95%% Estimate = %0.4f' % (np.percentile(estimates, 5),
-                                       np.percentile(estimates, 95)))
+    print('5%% Estimate = %0.4f    95%% Estimate = %0.4f    Std Devation Estimate = %0.4f' % (np.percentile(estimates, 5),
+                                       np.percentile(estimates, 95), estimates.std()/estimates.mean()))
     
     plt.show()
     
@@ -1050,6 +1162,7 @@ def test_model(trace, test_observation, max_bound):
 # -
 
 dists = []
+np.random.seed(123546)
 for i in range(len(df_test_results)):
     print(df_test_results.loc[i, ['player', 'avg_pick_pred', 'y_act']])
     estimates = test_model(normal_trace, 
@@ -1067,7 +1180,6 @@ output = output[order_cols]
 output.iloc[:, 2:] = np.uint32(output.iloc[:, 2:] * 16)
 players = tuple(output.player)
 # -
-
 # # 2019
 
 # conn_sim = sqlite3.connect(f'{path}/Data/Databases/Simulation.sqlite3')
