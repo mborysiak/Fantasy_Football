@@ -47,7 +47,7 @@ path = f'/Users/{os.getlogin()}/Documents/Github/Fantasy_Football/'
 db_name = 'Model_Inputs.sqlite3'
 
 # set to position to analyze: 'RB', 'WR', 'QB', or 'TE'
-set_pos = 'Rookie_WR'
+set_pos = 'Rookie_RB'
 
 # set the year
 set_year = 2020
@@ -74,6 +74,41 @@ fumble = -2
 # connect to database and pull in positional data
 conn = sqlite3.connect(path + 'Data/Databases/' + db_name)
 df = pd.read_sql_query('SELECT * FROM ' + set_pos + '_' + str(set_year), con=conn)
+
+from pandasgui import show
+gui = show(df)
+
+
+# +
+def get_adp_predict(df, y_met):
+    
+    from sklearn.linear_model import LinearRegression
+    from sklearn.model_selection import cross_val_predict
+
+    X = df[['avg_pick']]
+    y = df[y_met]
+    
+    lr = LinearRegression()
+    pred = cross_val_predict(lr, X, y, cv=10)
+    pred = pd.Series(pred, name='adp_pred')
+    
+    return pred
+
+adp_pred = get_adp_predict(df, 'fp_per_game')
+df = pd.concat([df, adp_pred], axis=1)
+df['y_diff_off'] = df.fp_per_game - df.adp_pred
+df['y_pct_off'] = (df.fp_per_game - df.adp_pred) / df.adp_pred
+
+# +
+# lr = Ridge(alpha=10)
+# X = df.drop(['player', 'pos', 'team', 'rush_yd_per_game', 'rec_yd_per_game',
+#              'rec_per_game', 'td_per_game', 'fp_per_game', 'games'], axis=1)
+# X = pd.DataFrame(StandardScaler().fit_transform(X), columns=X.columns)
+# y = df.fp_per_game
+
+# lr.fit(X,y)
+# coef = pd.Series(lr.coef_, index=X.columns)
+# coef[abs(coef)>0.01].sort_values()[:30]
 
 # +
 #=============
@@ -221,7 +256,8 @@ def random_param(m, i):
 
 # +
 if set_pos == 'Rookie_RB':
-    metrics = ['rush_yd_per_game', 'rec_yd_per_game', 'rec_per_game', 'td_per_game', 'fp_per_game']
+#     metrics = ['rush_yd_per_game', 'rec_yd_per_game', 'rec_per_game', 'td_per_game', 'fp_per_game']
+    metrics = ['y_diff_off', 'y_pct_off']
 elif set_pos == 'Rookie_WR':
     metrics = ['rec_yd_per_game', 'rec_per_game', 'td_per_game', 'fp_per_game']
 
@@ -243,7 +279,8 @@ for y_label in metrics:
     
     # remove unnecessary columns
     to_drop = [m for m in metrics if m != y_label]
-    to_drop.extend(['team', 'player', 'pos', 'games'])
+    to_drop.extend(['team', 'player', 'pos', 'games',
+                    'rush_yd_per_game', 'rec_yd_per_game', 'rec_per_game', 'td_per_game', 'fp_per_game'])
     
     # drop unnecessary columns
     Xy = train.rename(columns={y_label: 'y_act'}).drop(to_drop, axis=1)
@@ -279,7 +316,7 @@ for y_label in metrics:
                 if y_label == 'td_per_game':
                     cor = np.random.choice(np.arange(0.1, 0.25, 0.01))
                 else:
-                    cor = np.random.choice(np.arange(0.05, 0.35, 0.01))
+                    cor = np.random.choice(np.arange(0.01, 0.2, 0.01))
                 
             collin = np.random.choice(np.arange(0.5, 0.95, 0.02))
         
@@ -320,16 +357,16 @@ for y_label in metrics:
         results[y_label]['val_error'].append([m, rmse, r2])
         results[y_label]['test_pred'][m] = test_pred
     
-    print(f'\n---------\nRunning LR with ADP\n---------')      
-    # run and append results using only ADP of the player
-    val_pred_adp, val_y, rmse, r2, ind = cv_estimate(LinearRegression(), 'None', 0, 1, X_train[['avg_pick']], y)
-    results[y_label]['val_pred']['lr_adp'] = val_pred_adp
-    results[y_label]['val_y']['lr_adp'] = val_y
-    results[y_label]['val_error'].append(['lr_adp', rmse, r2])
+#     print(f'\n---------\nRunning LR with ADP\n---------')      
+#     # run and append results using only ADP of the player
+#     val_pred_adp, val_y, rmse, r2, ind = cv_estimate(LinearRegression(), 'None', 0, 1, X_train[['avg_pick']], y)
+#     results[y_label]['val_pred']['lr_adp'] = val_pred_adp
+#     results[y_label]['val_y']['lr_adp'] = val_y
+#     results[y_label]['val_error'].append(['lr_adp', rmse, r2])
     
-    lr = LinearRegression()
-    lr.fit(X_train[['avg_pick']], y)
-    results[y_label]['test_pred']['lr_adp'] = lr.predict(X_predict[['avg_pick']])
+#     lr = LinearRegression()
+#     lr.fit(X_train[['avg_pick']], y)
+#     results[y_label]['test_pred']['lr_adp'] = lr.predict(X_predict[['avg_pick']])
 
 # +
 val_results = pd.DataFrame()
@@ -378,16 +415,7 @@ val_results.sort_values(by='fp_per_game_pred', ascending=False).iloc[:40]
 
 test_results
 
-val_results['mean_pred'] = (val_results.fp_per_game_pred + val_results.fp_per_game_pred_stat)/2
-val_results['grp'] = 0
-val_results.loc[val_results.mean_pred > 8, 'grp'] = 1
-val_results.groupby('grp').agg({'fp_act': 'mean', 'mean_pred': 'mean'})
-
-val_results.groupby('')
-
 val_results.plot.scatter(x='mean_pred', y='fp_act')
-
-val_results.loc[(val_results.fp_act > 10) & (val_results.mean_pred > 8)].shape
 
 # +
 import pymc3 as pm

@@ -12,8 +12,8 @@
 #     language: python
 #     name: python3
 # ---
+#%%
 
-# # User Inputs
 
 # +
 import sqlite3
