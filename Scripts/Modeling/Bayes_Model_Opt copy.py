@@ -55,7 +55,7 @@ db_path = f'{root_path}/Data/Databases/'
 dm = DataManage(db_path)
 
 # set to position to analyze: 'RB', 'WR', 'QB', or 'TE'
-set_pos = 'QB'
+set_pos = 'WR'
 
 # set year to analyze
 set_year = 2020
@@ -86,8 +86,8 @@ pts_dict['TE'] = [rec_yd_per_pt, ppr, rush_rec_td]
 # Model Settings
 #==========
 
-pos['QB']['req_touch'] = 75
-pos['RB']['req_touch'] = 50
+pos['QB']['req_touch'] = 250
+pos['RB']['req_touch'] = 60
 pos['WR']['req_touch'] = 50
 pos['TE']['req_touch'] = 40
 
@@ -101,20 +101,15 @@ pos['RB']['earliest_year'] = 1998
 pos['WR']['earliest_year'] = 1998
 pos['TE']['earliest_year'] = 1998
 
-pos['QB']['val_start'] = 2010
-pos['RB']['val_start'] = 2010
-pos['WR']['val_start'] = 2010
-pos['TE']['val_start'] = 2010
+pos['QB']['val_start'] = 2012
+pos['RB']['val_start'] = 2012
+pos['WR']['val_start'] = 2012
+pos['TE']['val_start'] = 2012
 
 pos['QB']['features'] = 'v2'
 pos['RB']['features'] = 'v2'
-pos['WR']['features'] = 'v2'
+pos['WR']['features'] = 'v1'
 pos['TE']['features'] = 'v1'
-
-pos['QB']['minimizer'] = 'forest_minimize'
-pos['RB']['minimizer'] = 'forest_minimize'
-pos['WR']['minimizer'] = 'forest_minimize'
-pos['TE']['minimizer'] = 'forest_minimize'
 
 pos['QB']['test_years'] = 1
 pos['RB']['test_years'] = 1
@@ -137,12 +132,10 @@ output = pd.DataFrame({
    # 'skip_years': [pos[set_pos]['skip_years']],
     'use_ay': [pos[set_pos]['use_ay']],
     'features': [pos[set_pos]['features']],
-    'minimizer': [pos[set_pos]['minimizer']],
     'adp_ppg_low': [None],
     'adp_ppg_high': [None],
     'year_exp_cut': [None],
     'test_years': [pos[set_pos]['test_years']],
-    'model': [None],
     'rmse_validation': [None],
     'rmse_validation_adp': [None],
     'rmse_test': [None],
@@ -161,7 +154,6 @@ output_class = pd.DataFrame({
     'earliest_year': [None],
   #  'skip_years': [pos[set_pos]['skip_years']],
     'features': [pos[set_pos]['features']],
-    'minimizer': pos[set_pos]['minimizer'],
     'use_ay': [pos[set_pos]['use_ay']],
     'act_ppg': [None],
     'pct_off': [None], 
@@ -197,103 +189,113 @@ df, df_train_results, df_test_results = touch_game_filter(df, pos, set_pos, set_
 # calculate FP for a given set of scoring values
 df = calculate_fp(df, pts_dict, pos=set_pos).reset_index(drop=True)
 df['rules_change'] = np.where(df.year>=2010, 1, 0)
-# df = df.loc[df.year_exp <= 5].reset_index(drop=True)
+df = df.loc[df.year_exp <= 3].reset_index(drop=True)
 
-# get the train and prediction dataframes for FP per game
-df_train, df_predict = get_train_predict(df, 'fp_per_game', pos, set_pos, 
-                                        set_year-pos[set_pos]['test_years'], 
-                                        pos[set_pos]['earliest_year'], pos[set_pos]['features'])
-# df_predict = df_predict.dropna(subset=['y_act']).reset_index(drop=True)
+# rookie_wr = dm.read('''SELECT * FROM Rookie_WR_Stats''', 'Season_Stats')
+# rookie_drop = ['pos', 'team', 'avg_pick', 'games', 'fp_per_game']
+# rookie_drop.extend(pos[set_pos]['metrics'])
+# rookie_wr = rookie_wr.drop(rookie_drop, axis=1)
+# df = pd.merge(df, rookie_wr, on='player')
 
-skm = SciKitModel(df_train)
-X, y = skm.Xy_split(y_metric='y_act', to_drop=['player', 'team', 'pos', 'last_year'])
-
-
-#%%
-pred = []
-scores = {}
-models = {}
-
-# set up the ADP model pipe
-pipe = skm.model_pipe([skm.piece('feature_select'), skm.piece('std_scale'), skm.piece('lr')])
-params = skm.default_params(pipe)
-params['feature_select__cols'] =[['avg_pick'], ['avg_pick', 'year']]
-
-# fit and append the ADP model
-best_model, r2, oof_pred, oof_actuals = skm.time_series_cv(pipe, X, y, params, n_iter=5,
-                                                       col_split='year', time_split=pos[set_pos]['val_start'])
-
-pred.append(oof_pred)
-scores['adp'] = r2
-models['adp'] = best_model
-
-for m in ['ridge', 'svr', 'lasso', 'enet', 'lgbm', 'xgb', 'knn', 'gbm', 'rf',]:
-
-    print('\n============\n')
-    print(m)
-
-    # set up the model pipe and get the default search parameters
-    pipe = skm.model_pipe([skm.piece('std_scale'), 
-                           skm.piece('feature_drop'),
-                           skm.piece('select_perc'),
-                           skm.feature_union([skm.piece('agglomeration'), skm.piece('k_best'), skm.piece('pca')]),
-                           skm.piece(m)])
-    params = skm.default_params(pipe, 'rand')
-
-    # run the model with parameter search
-    best_models, r2, oof_pred, oof_actuals = skm.time_series_cv(pipe, X, y, params, n_iter=50,
-                                                            col_split='year', time_split=pos[set_pos]['val_start'])
-
-    # append the results and the best models for each fold
-    pred.append(oof_pred)
-    scores[m] = r2
-    models[m] = best_models
-
-X_stack = pd.DataFrame([p['combined'] for p in pred]).T
-X_stack.columns = scores.keys()
-y_stack = pd.Series(oof_actuals)
+# set up blank dictionaries for all metrics
+pred = {}; actual = {}; scores = {}; models = {}
 
 #%%
 
-X_stack_shuf = X_stack.sample(frac=1, random_state=1234).reset_index(drop=True)
-y_stack_shuf = y_stack.sample(frac=1, random_state=1234).reset_index(drop=True)
+# append fp_per_game to the metrics and ensure unique values
+pos[set_pos]['metrics'].append('fp_per_game')
+pos[set_pos]['metrics'] = list(dict.fromkeys(pos[set_pos]['metrics']))
 
-stack_pipe = skm.model_pipe([skm.piece('k_best'), skm.piece('lasso')])
-stack_params = skm.default_params(stack_pipe)
-stack_params['k_best__k'] = range(1, X_stack.shape[1])
+for met in pos[set_pos]['metrics']:
 
-best_model = skm.random_search(stack_pipe, X_stack, y_stack, stack_params, cv=3, n_iter=250)
+    print(f'\nRunning Metric {met}\n=========================\n')
 
-# print the OOS scores for ADP and model stack
-print('ADP Score\n--------')
-_, _ = skm.val_scores(skm.piece('lr')[1], X_stack[['adp']], y_stack, cv=3)
+    # get the train and prediction dataframes for FP per game
+    df_train, df_predict = get_train_predict(df, met, pos, set_pos, 
+                                            set_year-pos[set_pos]['test_years'], 
+                                            pos[set_pos]['earliest_year'], pos[set_pos]['features'])
+    # df_predict = df_predict.dropna(subset=['y_act']).reset_index(drop=True)
+    print('Shape of Train Set', df_train.shape)
+    skm = SciKitModel(df_train)
+    X, y = skm.Xy_split(y_metric='y_act', to_drop=['player', 'team', 'pos', 'last_year'])
 
-print('\nStack Score\n--------')
-_, _ = skm.val_scores(best_model, X_stack, y_stack, cv=3)
+    # set up the ADP model pipe
+    pipe = skm.model_pipe([skm.piece('feature_select'), skm.piece('std_scale'), skm.piece('lr')])
+    params = skm.default_params(pipe)
+    params['feature_select__cols'] =[['avg_pick'], ['avg_pick', 'year']]
 
-imp_cols = X_stack.columns[best_model['k_best'].get_support()]
-skm.print_coef(best_model, imp_cols)
+    # fit and append the ADP model
+    best_model, r2, oof_pred, oof_actuals = skm.time_series_cv(pipe, X, y, params, n_iter=5,
+                                                        col_split='year', time_split=pos[set_pos]['val_start'])
+
+    # append all of the metric outputs
+    pred[f'{met}_adp'] = oof_pred; actual[f'{met}_adp'] = oof_actuals
+    scores[f'{met}_adp'] = r2; models[f'{met}_adp'] = best_model
+
+    #---------------
+    # Model Training loop
+    #---------------
+
+    # loop through each potential model
+    model_list = ['ridge', 'svr', 'lasso', 'enet', 'lgbm', 'xgb', 'knn', 'gbm', 'rf']
+    for m in model_list:
+
+        print('\n============\n')
+        print(m)
+
+        # set up the model pipe and get the default search parameters
+        pipe = skm.model_pipe([skm.piece('feature_drop'),
+                                skm.piece('std_scale'), 
+                            skm.piece('select_perc'),
+                            skm.feature_union([skm.piece('agglomeration'), skm.piece('k_best'), skm.piece('pca')]),
+                            skm.piece(m)])
+        params = skm.default_params(pipe, 'rand')
+        params['feature_drop__col'] = [['avg_pick', 'avg_pick_median']]
+        # run the model with parameter search
+        best_models, r2, oof_pred, oof_actuals = skm.time_series_cv(pipe, X, y, params, n_iter=50,
+                                                                col_split='year', time_split=pos[set_pos]['val_start'])
+
+        # append the results and the best models for each fold
+        pred[f'{met}_{m}'] = oof_pred; actual[f'{met}_{m}'] = oof_actuals
+        scores[f'{met}_{m}'] = r2; models[f'{met}_{m}'] = best_models
 
 #%%
 
-stacked_models = [(k, skm.ensemble_pipe(v)) for k,v in models.items()]
-stack = skm.stack_pipe(stacked_models, best_model)
-stack.fit(X,y)
+output = df_predict[['player', 'avg_pick']]
+for met in pos[set_pos]['metrics']:
 
-pd.concat([df_predict[['player', 'avg_pick']], pd.Series(stack.predict(df_predict[X.columns]), name='pred')], axis=1).sort_values(by='avg_pick')
+    print(f'\nRunning Metric {met}')
+
+    # get the X and y values for stack trainin for the current metric
+    X_stack, y_stack = skm.X_y_stack(met, pred, actual)
+
+    # get the model pipe for stacking setup and train it on meta features
+    stack_pipe = skm.model_pipe([skm.piece('k_best'), skm.piece('ridge')])
+    best_model = skm.best_stack(stack_pipe, X_stack, y_stack)
+
+    # create the full stack pipe with meta estimators followed by stacked model
+    stacked_models = [(k, skm.ensemble_pipe(v)) for k,v in models.items() if met in k]
+    stack = skm.stack_pipe(stacked_models, best_model)
+    
+    # fit and predict for the current metric
+    df_train, df_predict = get_train_predict(df, met, pos, set_pos, 
+                                             set_year-pos[set_pos]['test_years'], 
+                                             pos[set_pos]['earliest_year'], pos[set_pos]['features'])
+    
+    X, y = SciKitModel(df_train).Xy_split(y_metric='y_act', to_drop=['player', 'team', 'pos', 'last_year'])
+    stack.fit(X,y)
+    prediction = pd.Series(np.round(stack.predict(df_predict[X.columns]), 2), name=f'pred_{met}')
+    output = pd.concat([output, prediction], axis=1)
+
+output = output.sort_values(by='avg_pick')
+pts_cols = [c for c in output.columns if 'fp' not in c and 'pred' in c]
+output['pred_fp_per_game_stat'] = (output[pts_cols] * pts_dict[set_pos]).sum(axis=1)
+output
 
 #%%
 
-cv_time = skm.cv_time_splits('year', X, pos[set_pos]['val_start'])
-val_pred = pd.Series(skm.cv_predict_time(stack, X, y, cv_time), name='val_pred').reset_index(drop=True)
-labels = skm.return_labels(['player', 'year', 'y_act'], 'time').reset_index(drop=True)
 
-mean_test_pred = X_stack.mean(axis=1)
-mean_test_pred.name = 'mean_test_pred'
-adp_pred = X_stack[['adp']]
 
-chk = pd.concat([labels, val_pred, mean_test_pred, adp_pred], axis=1)
-chk
 #%%
 #==============
 # Create Break-out Probability Features
