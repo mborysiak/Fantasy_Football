@@ -1,39 +1,31 @@
-# ---
-# jupyter:
-#   jupytext:
-#     formats: ipynb,py:light
-#     text_representation:
-#       extension: .py
-#       format_name: light
-#       format_version: '1.5'
-#       jupytext_version: 1.5.2
-#   kernelspec:
-#     display_name: Python 3
-#     language: python
-#     name: python3
-# ---
-
+#%%
 # set to 1 year prior to current (i.e. the year that has stats)
 # will auto update updates to current year for drafting
 year = 2019
 
-import sqlite3
+from ff.db_operations import DataManage
+from ff import general, data_clean as dc
+
+# set the root path and database management object
+root_path = general.get_main_path('Fantasy_Football')
+db_path = f'{root_path}/Data/Databases/'
+dm = DataManage(db_path)
+
 import os
 import pandas as pd
 import numpy as np
 from zData_Functions import *
 pd.set_option('display.max_columns', None)
 
-
 # # Helper Functions
 
 def adp_groupby(df, position):
 
-    df_adp = pd.read_sql_query('''
-        SELECT team, year, avg_pick FROM {0}_Stats
+    df_adp = dm.read(f'''
+        SELECT team, year, avg_pick FROM {position}_Stats
         UNION
-        SELECT team, draft_year-1 year, avg_pick from Rookie_{0}_Stats
-    '''.format(position), conn)
+        SELECT team, draft_year-1 year, avg_pick from Rookie_{position}_Stats
+    ''', 'Season_Stats')
 
     # create teammate ADP metrics to see if top ranked player
     min_teammate = df_adp.groupby(['team', 'year'], group_keys=False)['avg_pick'].agg(np.min).reset_index().rename(columns={'avg_pick': 'min_teammate'})
@@ -65,7 +57,7 @@ def year_exp(df):
 
 def qb_run(df):
 
-    qb_run = pd.read_sql_query('SELECT * FROM QB_Stats', con=conn)
+    qb_run = dm.read('SELECT * FROM QB_Stats', 'Season_Stats')
     qb_run = qb_run[['team', 'qb_avg_pick', 'year', 'rush_att', 'rush_yds', 'rush_td', 'long_rush', 'rush_yd_per_att',
                     'rz_20_pass_complete', 'rz_20_pass_att','rz_20_complete_pct', 
                     'rz_20_pass_yds', 'rz_20_pass_td', 'rz_20_int',
@@ -88,6 +80,8 @@ def qb_run(df):
     print(df.isnull().sum()[df.isnull().sum()>0])
     df.fillna(0,inplace=True)
     print('')
+
+    df = per_game_rz(df)
     print(df.isnull().sum()[df.isnull().sum()>0])
     
     return df
@@ -95,13 +89,13 @@ def qb_run(df):
 
 def draft_value(df, pos):
     
-    early_draft = pd.read_sql_query(f'''SELECT player, year min_year, nfl_draft_value 
+    early_draft = dm.read(f'''SELECT player, year min_year, nfl_draft_value 
                                          FROM Draft_Positions a
                                          JOIN (SELECT Pick, Value nfl_draft_value 
                                                FROM Draft_Values) b
                                                ON a.Pick=b.Pick
                                          WHERE pos='{pos}'
-                                               AND year <= 1998 ''', conn)
+                                               AND year <= 1998 ''', 'Season_Stats')
 
     earliest = early_draft.groupby('player').agg({'min_year': 'min',
                                                   'nfl_draft_value': 'max'}).reset_index()
@@ -112,13 +106,13 @@ def draft_value(df, pos):
     early_min = pd.merge(early_min, early_draft, on='player')
 
 
-    draft_val = pd.read_sql_query(f'''SELECT player, team, year min_year, nfl_draft_value 
+    draft_val = dm.read(f'''SELECT player, team, year min_year, nfl_draft_value 
                                      FROM Draft_Positions a
                                      JOIN (SELECT Pick, Value nfl_draft_value 
                                            FROM Draft_Values) b
                                            ON a.Pick=b.Pick
                                      WHERE pos='{pos}'
-                                           and year >= 1999''', conn)
+                                           and year >= 1999''', 'Season_Stats')
 
 
     dups = draft_val.groupby('player').agg('count')
@@ -155,6 +149,16 @@ def draft_value(df, pos):
     
     return df
 
+
+def per_game_rz(df):
+    for c in df.columns:
+        if 'rz_' in c and 'pct' not in c:
+            df[f'{c}_per_game'] = df[c] / df['games']
+
+    return df
+
+#%%
+
 # # Compile RB
 
 # +
@@ -169,7 +173,6 @@ allow for grouped statistics generation.
 '''
 
 # load prepared data
-conn = sqlite3.connect(f'/Users/{os.getlogin()}/Documents/Github/Fantasy_Football/Data/Databases/Season_Stats.sqlite3')
 query = ''' 
     SELECT * 
     FROM RB_Stats A 
@@ -180,7 +183,7 @@ query = '''
     LEFT JOIN Team_Drafts F ON A.team = F.team AND A.year = F.year 
     '''
 
-df = pd.read_sql_query(query, con=conn)
+df = dm.read(query, 'Season_Stats')
 
 # remove duplicated columns
 df = df.loc[:, ~df.columns.duplicated()]
@@ -242,13 +245,14 @@ df['rz_total_td_ratio'] = df.rec_td / df.total_rz_att
 
 df = adp_groupby(df, 'RB')
 df = draft_value(df, 'RB')
+
+df = per_game_rz(df)
 df = qb_run(df)
 
+#%%
+dm.write_to_db(df, db_name='Model_Inputs', table_name='RB_' + str(year+1), if_exist='replace')
 
-df.describe()
-
-append_to_db(df, db_name='Model_Inputs', table_name='RB_' + str(year+1), if_exist='replace')
-
+#%%
 # # Compile WR
 
 # +
@@ -263,7 +267,6 @@ allow for grouped statistics generation.
 '''
 
 # load prepared data
-conn = sqlite3.connect(f'/Users/{os.getlogin()}/Documents/Github/Fantasy_Football/Data/Databases/Season_Stats.sqlite3')
 query = ''' 
     SELECT * 
     FROM WR_Stats A 
@@ -273,7 +276,7 @@ query = '''
     INNER JOIN QB_PosPred E ON A.team = E.team AND A.year = E.year
     INNER JOIN Team_Drafts F ON A.team = F.team AND A.year = F.year'''
 
-df = pd.read_sql_query(query, con=conn)
+df = dm.read(query, 'Season_Stats')
 
 # remove duplicated columns
 df = df.loc[:, ~df.columns.duplicated()]
@@ -321,10 +324,14 @@ df['avail_yds_x_newteam'] = df['available_yds'] * df['new_team']
 
 df = adp_groupby(df, 'WR')
 df = draft_value(df, 'WR')
+df = per_game_rz(df)
 df = qb_run(df)
 
-append_to_db(df, db_name='Model_Inputs', table_name='WR_' + str(year+1), if_exist='replace')
+#%%
 
+dm.write_to_db(df, db_name='Model_Inputs', table_name='WR_' + str(year+1), if_exist='replace')
+
+#%%
 # # Compile QB
 
 # +
@@ -339,7 +346,6 @@ allow for grouped statistics generation.
 '''
 
 # load prepared data
-conn = sqlite3.connect(f'/Users/{os.getlogin()}/Documents/Github/Fantasy_Football/Data/Databases/Season_Stats.sqlite3')
 query = ''' 
     SELECT * 
     FROM QB_Stats A 
@@ -350,7 +356,7 @@ query = '''
      INNER JOIN Team_Drafts F ON A.team = F.team AND A.year = F.year
     '''
 
-df = pd.read_sql_query(query, con=conn)
+df = dm.read(query, 'Season_Stats')
 
 # remove duplicated columns
 df = df.loc[:, ~df.columns.duplicated()]
@@ -369,11 +375,14 @@ for col in df.columns:
 # -
 
 df = draft_value(df, 'QB')
-
+df = per_game_rz(df)
 df.loc[df.player == 'Case Keenum', 'year_exp'] = df.loc[df.player == 'Case Keenum', 'year_exp'] + 5
 
-append_to_db(df, db_name='Model_Inputs', table_name='QB_' + str(year+1), if_exist='replace')
+#%%
 
+dm.write_to_db(df, db_name='Model_Inputs', table_name='QB_' + str(year+1), if_exist='replace')
+
+#%%
 # # Compile TE
 
 # +
@@ -388,7 +397,6 @@ allow for grouped statistics generation.
 '''
 
 # load prepared data
-conn = sqlite3.connect(f'/Users/{os.getlogin()}/Documents/Github/Fantasy_Football/Data/Databases/Season_Stats.sqlite3')
 query = ''' 
     SELECT * 
     FROM TE_Stats A 
@@ -398,7 +406,7 @@ query = '''
     INNER JOIN QB_PosPred E ON A.team = E.team AND A.year = E.year
     INNER JOIN Team_Drafts F ON A.team = F.team AND A.year = F.year'''
 
-df = pd.read_sql_query(query, con=conn)
+df = dm.read(query, 'Season_Stats')
 
 # remove duplicated columns
 df = df.loc[:, ~df.columns.duplicated()]
@@ -446,10 +454,13 @@ df['avail_yds_x_newteam'] = df['available_yds'] * df['new_team']
 
 df = adp_groupby(df, 'WR')
 df = draft_value(df, 'TE')
+df = per_game_rz(df)
 df = qb_run(df)
 
-append_to_db(df, db_name='Model_Inputs', table_name='TE_' + str(year+1), if_exist='replace')
+#%%
+dm.write_to_db(df, db_name='Model_Inputs', table_name='TE_' + str(year+1), if_exist='replace')
 
+#%%
 # # Compile Rookie RB
 
 # +

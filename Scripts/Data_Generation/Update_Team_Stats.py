@@ -1,117 +1,25 @@
-# ---
-# jupyter:
-#   jupytext:
-#     formats: ipynb,py:light
-#     text_representation:
-#       extension: .py
-#       format_name: light
-#       format_version: '1.5'
-#       jupytext_version: 1.5.2
-#   kernelspec:
-#     display_name: Python 3
-#     language: python
-#     name: python3
-# ---
-
+#%%
 # # User Inputs
 
 # +
-year = 2019
+year = 2020
 
-path = '/Users/Mark/Documents/Github/Fantasy_Football/'
-db_name = 'Season_Stats'
-# -
+from ff.db_operations import DataManage
+from ff import general, data_clean as dc
+
+# set the root path and database management object
+root_path = general.get_main_path('Fantasy_Football')
+db_path = f'{root_path}/Data/Databases/'
+dm = DataManage(db_path)
 
 # # Load Packages
 
 import pandas as pd
 import numpy as np
-import os
-import sqlite3
 from zData_Functions import *
 import re
 
-# # Update Team Efficiency
-
-# +
-team_off = pd.read_html('https://www.footballoutsiders.com/stats/teamoff')[0].iloc[:, 1:]
-
-colnames_team_off = {
-    1: 'team',
-    2: 'overall_dvoa',
-    3: 'last_year',
-    4: 'weighted',
-    5: 'rank',
-    6: 'pass_off',
-    7: 'pass_rank',
-    8: 'rush_off',
-    9: 'rush_rank',
-    10: 'non_adj',
-    11: 'non_adj_2',
-    12: 'non_adj_3',
-    13: 'variance',
-    14: 'var_rank',
-    15: 'schedule_diff',
-    16: 'sched_rank'
-}
-
-team_off.columns = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
-team_off = team_off.rename(columns=colnames_team_off).dropna().reset_index(drop=True)
-team_off['year'] = year
-    
-    
-cols = ['overall_dvoa', 'pass_off', 'rush_off', 'variance' , 'schedule_diff']
-for col in cols:
-    team_off[col] = team_off[col].apply(name_clean)
-    
-team_off = team_off[['team', 'year', 'overall_dvoa', 'last_year', 'pass_off', 
-                     'rush_off', 'variance', 'schedule_diff']]
-
-team_convert = {
-    'ARI': 'ARI',
-    'ATL': 'ATL',
-    'BAL': 'BAL',
-    'BUF': 'BUF',
-    'CAR': 'CAR',
-    'CHI': 'CHI',
-    'CIN': 'CIN',
-    'CLE': 'CLE',
-    'DAL': 'DAL',
-    'DEN': 'DEN',
-    'DET': 'DET',
-    'GB': 'GNB',
-    'HOU': 'HOU',
-    'IND': 'IND',
-    'JAX': 'JAX',
-    'KC': 'KAN',
-    'LACH': 'LAC',
-    'SD': 'LAC',
-    'LAC': 'LAC',
-    'LAR': 'LAR', 
-    'LARM': 'LAR',
-    'STL': 'LAR',
-    'MIA': 'MIA',
-    'MIN': 'MIN',
-    'NE': 'NWE',
-    'NO': 'NOR',
-    'NYG': 'NYG',
-    'NYJ': 'NYJ',
-    'OAK': 'LVR',
-    'LVR': 'LVR',
-    'PHI': 'PHI',
-    'PIT': 'PIT',
-    'SEA': 'SEA',
-    'SF': 'SFO',
-    'TB': 'TAM',
-    'TEN': 'TEN',
-    'WAS': 'WAS'
-}
-
-team_off['team'] = team_off.team.map(team_convert)
-# -
-
-# append_to_db(team_off, db_name=db_name, table_name='Team_Efficiency', if_exist='append')
-
+#%%
 # # Update Traditional Team Stats
 
 # +
@@ -275,7 +183,6 @@ df_fd['team'] = team_names
 
 df_fd.team = df_fd.team.map(team_to_abb)
 
-# +
 #==========
 # Merging All Team Data
 #==========
@@ -290,99 +197,13 @@ df_team.iloc[:, 1:] = df_team.iloc[:, 1:].astype('float')
 # -
 
 df_team
+#%%
+# write out the running back data
 
-# append_to_db(df_team, db_name=db_name, table_name='Team_Offensive_Stats', if_exist='append')
+dm.delete_from_db('Season_Stats', 'Team_Offensive_Stats', f"year={year}")
+dm.write_to_db(df_team, 'Season_Stats', 'Team_Offensive_Stats', if_exist='append')
 
-# # Update Offensive Line
-
-[c[1] for c in oline.columns]
-
-# +
-oline = pd.read_html('https://www.footballoutsiders.com/stats/ol')[0]
-
-oline_df = oline.T.reset_index(drop=True).T
-
-cols = {
-    0: 'run_block_rank',
-    1: 'team', 
-    2: 'adjust_line_yds',
-    3: 'rb_yds', 
-    4: 'power_success_pct',
-    5: 'power_rank',
-    6: 'stuffed_pct',
-    7: 'stuffed_rank',
-    8: 'second_level_yds',
-    9: 'second_level_rank',
-    10: 'open_field_yds',
-    11: 'open_field_rank',
-    12: 'team_drop',
-    13: 'pass_block_rank', 
-    14: 'sacks_allowed', 
-    15: 'adjusted_sack_rate'
-}
-
-oline_df = oline_df.rename(columns=cols)
-
-oline_df['year'] = year
-        
-oline_df['power_success_pct'] = oline_df.power_success_pct.apply(name_clean)
-oline_df['stuffed_pct'] = oline_df.stuffed_pct.apply(name_clean)
-oline_df['adjusted_sack_rate'] = oline_df.adjusted_sack_rate.apply(name_clean)
-
-oline_df = oline_df[['team', 'year', 'adjust_line_yds', 'rb_yds', 'power_success_pct',
-                     'stuffed_pct', 'second_level_yds', 'open_field_yds', 'pass_block_rank',
-                     'sacks_allowed', 'adjusted_sack_rate']]
-
-team_convert = {
-    
-    'ARI': 'ARI',
-    'ATL': 'ATL',
-    'BAL': 'BAL',
-    'BUF': 'BUF',
-    'CAR': 'CAR',
-    'CHI': 'CHI',
-    'CIN': 'CIN',
-    'CLE': 'CLE',
-    'DAL': 'DAL',
-    'DEN': 'DEN',
-    'DET': 'DET',
-    'GB': 'GNB',
-    'HOU': 'HOU',
-    'IND': 'IND',
-    'JAX': 'JAX',
-    'KC': 'KAN',
-    'LAC': 'LAC',
-    'SD': 'LAC',
-    'LAR': 'LAR',
-    'STL': 'LAR',
-    'MIA': 'MIA',
-    'MIN': 'MIN',
-    'NE': 'NWE',
-    'NO': 'NOR',
-    'NYG': 'NYG',
-    'NYJ': 'NYJ',
-    'LVR': 'LVR',
-    'OAK': 'LVR',
-    'PHI': 'PHI',
-    'PIT': 'PIT',
-    'SEA': 'SEA',
-    'SF': 'SFO',
-    'TB': 'TAM',
-    'TEN': 'TEN',
-    'WAS': 'WAS'
-}
-
-oline_df['team'] = oline_df.team.map(team_convert)
-for col in oline_df.columns:
-    try:
-        oline_df[col] = oline_df[col].astype('float')
-    except:
-        pass
-    
-oline_df = oline_df.dropna()
-# -
-
-append_to_db(oline_df, db_name=db_name, table_name='OLine_Stats', if_exist='append')
+#%%
 
 # # QB for Position Players
 
@@ -396,7 +217,7 @@ url_player = 'https://www.pro-football-reference.com/years/' + str(year) + '/pas
 data_player = pd.read_html(url_player)[0]
 
 # pulling historical player adp
-url_adp_qb = f'https://www71.myfantasyleague.com/{year+1}/reports?R=ADP&POS=QB&ROOKIES=0&INJURED=1&CUTOFF=5&FCOUNT=0&IS_PPR=3&IS_KEEPER=N&IS_MOCK=1&PERIOD=JULY'
+url_adp_qb = f'https://www71.myfantasyleague.com/{year+1}/reports?R=ADP&POS=QB&ROOKIES=0&INJURED=1&CUTOFF=5&FCOUNT=0&IS_PPR=3&IS_KEEPER=N&IS_MOCK=1&PERIOD=RECENT'
 data_adp_qb = pd.read_html(url_adp_qb)[1]
 
 # +
@@ -455,13 +276,9 @@ df_player['player'] = df_player.player.apply(name_clean)
 # fill missing values with zero
 df_player = df_player.fillna(0)
 
-for col in df_player.columns:
-    try:
-        df_player[col] = df_player[col].astype('float')
-    except:
-        pass
+df_player = dc.convert_to_float(df_player)
 
-# +
+#%%
 #==========
 # Clean the ADP data
 #==========
@@ -645,65 +462,67 @@ grouped_df = grouped_df.groupby(['team', 'year'], group_keys=False).agg(function
 grouped_df.columns = grouped_df.columns.droplevel(1)
 grouped_df = grouped_df.rename(columns={'qb_att': 'att'})
 # -
+#%%
 
-append_to_db(grouped_df, db_name=db_name, table_name='QB_PosPred', if_exist='append')
+dm.delete_from_db('Season_Stats', 'QB_PosPred', f"year={year}")
+dm.write_to_db(grouped_df, 'Season_Stats', table_name='QB_PosPred', if_exist='append')
 
+#%%
 # # Coaching Data
 
-# +
-all_coaches = pd.DataFrame()
-cols = ['coach', 'team', 'season_games', 'season_wins', 'season_losses', 'season_ties', 'games_w_team',
-        'wins_w_team', 'losses_w_team', 'ties_w_team', 'career_games', 'career_wins', 'careers_losses',
-        'career_ties', 'playoff_games', 'playoff_wins', 'playoff_losses',
-        'playoff_games_w_team', 'playoff_wins_w_team', 'playoff_losses_w_team',
-        'playoff_career_games', 'playoff_career_wins', 'playoff_career_losses', 'remark']
+# # +
+# all_coaches = pd.DataFrame()
+# cols = ['coach', 'team', 'season_games', 'season_wins', 'season_losses', 'season_ties', 'games_w_team',
+#         'wins_w_team', 'losses_w_team', 'ties_w_team', 'career_games', 'career_wins', 'careers_losses',
+#         'career_ties', 'playoff_games', 'playoff_wins', 'playoff_losses',
+#         'playoff_games_w_team', 'playoff_wins_w_team', 'playoff_losses_w_team',
+#         'playoff_career_games', 'playoff_career_wins', 'playoff_career_losses', 'remark']
 
-for i in range(1999, 2019):
-    data = pd.read_html('https://www.pro-football-reference.com/years/{}/coaches.htm'.format(i))
-    df = data[0].T.reset_index(drop=True).T
-    df.columns = cols
-    df['year'] = i
+# for i in range(1999, 2019):
+#     data = pd.read_html('https://www.pro-football-reference.com/years/{}/coaches.htm'.format(i))
+#     df = data[0].T.reset_index(drop=True).T
+#     df.columns = cols
+#     df['year'] = i
     
-    all_coaches = pd.concat([all_coaches, df], axis=0)
+#     all_coaches = pd.concat([all_coaches, df], axis=0)
     
-all_coaches = all_coaches.reset_index(drop=True)
-# -
+# all_coaches = all_coaches.reset_index(drop=True)
+# all_coaches.head()
 
-all_coaches.head()
-
+#%%
 # # Draft Data by Team
 
 # ## Pull Data From Pro Football Reference
 
-# pulling in the draft value for each pick
-draft_values = pd.read_html('https://www.pro-football-reference.com/draft/draft_trade_value.htm')[0]
-draft_values = draft_values[['Round', 'Pick', 'Value']]
-draft_values = draft_values.dropna()
-draft_values = draft_values[draft_values.Round != 'Round'].reset_index(drop=True)
-draft_values = convert_to_float(draft_values)
+# # pulling in the draft value for each pick
+# draft_values = pd.read_html('https://www.pro-football-reference.com/draft/draft_trade_value.htm')[0]
+# draft_values = draft_values[['Round', 'Pick', 'Value']]
+# draft_values = draft_values.dropna()
+# draft_values = draft_values[draft_values.Round != 'Round'].reset_index(drop=True)
+# draft_values = convert_to_float(draft_values)
 
-append_to_db(draft_values, table_name='Draft_Values')
+# dm.write_to_db(draft_values, 'Season_Stats', table_name='Draft_Values', if_exist='replace')
 
-# +
+#%%
 # create full positional list to loop through
 draft_pos = pd.DataFrame()
-for y in range(1985, 2020):
-    
-    # scrape in the results for each position
-    DRAFT_URL = f'https://www.pro-football-reference.com/play-index/draft-finder.cgi?request=1&year_min={y}&year_max={y}&pick_type=overall&pos%5B%5D=qb&pos%5B%5D=rb&pos%5B%5D=wr&pos%5B%5D=te&pos%5B%5D=e&pos%5B%5D=t&pos%5B%5D=g&pos%5B%5D=c&pos%5B%5D=ol&pos%5B%5D=dt&pos%5B%5D=de&pos%5B%5D=dl&pos%5B%5D=ilb&pos%5B%5D=olb&pos%5B%5D=lb&pos%5B%5D=cb&pos%5B%5D=s&pos%5B%5D=db&pos%5B%5D=k&pos%5B%5D=p&conference=any&show=all&order_by=default'
-    d = pd.read_html(DRAFT_URL)[0]
-    
-    # pull out the column names from multi column index
-    good_cols = [c[1] for c in d.columns]
-    d = d.T.reset_index(drop=True).T
-    d.columns = good_cols
 
-    # grab relevant columns and rename
-    d = d[['Year', 'Rnd', 'Pick', 'Player', 'Pos', 'Tm', 'College/Univ']]
-    d.columns = ['year', 'Round', 'Pick', 'player', 'pos', 'team', 'college']
-    
-    # concat current results to all results
-    draft_pos = pd.concat([draft_pos, d], axis=0)
+# scrape in the results for each position
+DRAFT_URL = f'https://www.pro-football-reference.com/years/{year+1}/draft.htm'
+d = pd.read_html(DRAFT_URL)[0]
+
+# pull out the column names from multi column index
+good_cols = [c[1] for c in d.columns]
+d = d.T.reset_index(drop=True).T
+d.columns = good_cols
+d['Year'] = year+1
+
+# grab relevant columns and rename
+d = d[['Year', 'Rnd', 'Pick', 'Player', 'Pos', 'Tm', 'College/Univ']]
+d.columns = ['year', 'Round', 'Pick', 'player', 'pos', 'team', 'college']
+
+# concat current results to all results
+draft_pos = pd.concat([draft_pos, d], axis=0)
     
 # ensure all positions are upper cased
 draft_pos.pos = draft_pos.pos.apply(lambda x: x.upper())    
@@ -712,22 +531,26 @@ draft_pos.pos = draft_pos.pos.apply(lambda x: x.upper())
 draft_pos = draft_pos.drop_duplicates()
 
 # remove crap header rows and convert to float
-draft_pos = draft_pos[draft_pos.year !='Year'].reset_index(drop=True)
+draft_pos = draft_pos[draft_pos.Pick !='Pick'].reset_index(drop=True)
+
 draft_pos = convert_to_float(draft_pos)
 
 # update the team names
 draft_pos.loc[draft_pos.team == 'STL', 'team'] = 'LAR'
 draft_pos.loc[draft_pos.team == 'SDG', 'team'] = 'LAC'
 draft_pos.loc[draft_pos.team == 'LVR', 'team'] = 'OAK'
+
 # -
+#%%
+dm.delete_from_db('Season_Stats', 'Draft_Positions', f"year={year+1}")
+dm.write_to_db(draft_pos, 'Season_Stats', table_name='Draft_Positions', if_exist='append')
 
-append_to_db(draft_pos, table_name='Draft_Positions', if_exist='append')
-
+#%%
 # ## Roll up to Team Level
 
 # +
 # select all data from draft positions
-draft_pos = pd.read_sql_query('''SELECT * FROM Draft_Positions''', conn)
+draft_pos = dm.read('''SELECT * FROM Draft_Positions''', 'Season_Stats')
 
 # if a position is on defense then assign Def tag
 check_d = ['DE', 'DT', 'LB', 'DB', 'NT', 'DL', 'OLB', 'CB', 'S', 'ILB', '']
@@ -742,7 +565,7 @@ check_st = ['P', 'K', 'LS']
 draft_pos.loc[draft_pos.pos.isin(check_st), 'pos'] = 'ST'
 
 # pull in the values for each draft pick
-draft_values = pd.read_sql_query('''SELECT * FROM Draft_Values''', conn)
+draft_values = dm.read('''SELECT * FROM Draft_Values''', 'Season_Stats')
 draft = pd.merge(draft_pos, draft_values, on=['Pick'], how='left').fillna(1)
 
 # calculate the max, sum, and count of values
@@ -776,6 +599,5 @@ team_values = pd.merge(team_values, value_cnts, on=['team', 'year'])
 team_values.year = team_values.year - 1
 # -
 
-append_to_db(team_values, table_name='Team_Drafts', if_exist='replace')
-
-
+#%%
+dm.write_to_db(team_values, 'Season_Stats', table_name='Team_Drafts', if_exist='replace')

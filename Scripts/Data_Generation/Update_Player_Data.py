@@ -1,23 +1,24 @@
 
 #%%
 
-import sqlite3
-import os
-
 # last year's statistics and adp to pull and append to database
 year = 2020
 
-# update True means delete data associated with current year and re-write (e.g. update ADP)
-update = True
+from re import I
+from ff.db_operations import DataManage
+from ff import general, data_clean as dc
 
-# name of database to append new data to
-db_name = 'Season_Stats'
-db_path = f'/Users/{os.getlogin()}/Documents/GitHub/Fantasy_Football/Data/Databases/'
-conn = sqlite3.connect(db_path + db_name + '.sqlite3')
+#==========
+# General Setting
+#==========
+
+# set the root path and database management object
+root_path = general.get_main_path('Fantasy_Football')
+db_path = f'{root_path}/Data/Databases/'
+dm = DataManage(db_path)
 
 # # Load Packages and Functions
 import pandas as pd
-import os
 from zData_Functions import *
 pd.options.mode.chained_assignment = None
 import numpy as np
@@ -159,6 +160,23 @@ def merge_stats_adp(df_stats, df_adp):
 
     return df_merged
 
+def add_player(d, all_df, output_df):
+    df = all_df[eval(d['filter_q'])].mean()*d['frac']
+    df = df[output_df.columns]
+    for c in ['player', 'team', 'age']:
+        df[c] = d[c]
+    try:
+        df.games = round(df.games)
+        df.games_started = df.games
+    except:
+        pass
+    df.year = year
+
+    output_df = output_df[output_df.player != d['player']]
+    output_df = pd.concat([output_df, pd.DataFrame(df).T], axis=0).reset_index(drop=True)
+
+    return output_df
+
 
 #%%
 
@@ -182,7 +200,7 @@ url_rec = f'https://www.pro-football-reference.com/years/{year}/receiving.htm'
 data_rec = pd.read_html(url_rec)[0]
 
 # pulling historical player adp for runningbacks
-url_adp_rush = f'https://api.myfantasyleague.com/{year+1}/reports?R=ADP&POS=RB&ROOKIES=0&INJURED=1&CUTOFF=5&FCOUNT=0&IS_PPR=3&IS_KEEPER=N&IS_MOCK=1&PERIOD=RECENT'
+url_adp_rush = f'https://www71.myfantasyleague.com/{year+1}/reports?R=ADP&POS=RB&PERIOD=RECENT&CUTOFF=5&FCOUNT=0&ROOKIES=0&INJURED=1&IS_PPR=3&IS_KEEPER=N&IS_MOCK=1&PAGE=ALL'
 data_adp_rush = pd.read_html(url_adp_rush)[1]
 
 # pulling historical redzone receiving data
@@ -278,13 +296,8 @@ df_rec['catch_pct'] = df_rec.catch_pct.apply(num_clean)
 df_rush = df_rush[df_rush.games != 'G'].reset_index(drop=True)
 df_rec = df_rec[df_rec.games != 'G'].reset_index(drop=True)
 
-# convert data to numeric
-for df in [df_rush, df_rec]:
-    for col in df.columns:
-        try:
-            df[col] = df[col].astype('float')
-        except:
-            pass
+df_rush = dc.convert_to_float(df_rush)
+df_rec = dc.convert_to_float(df_rec)
 
 #--------
 # Merging rushing and receiving stats, as well as adding new stats
@@ -303,7 +316,6 @@ df_rb['total_yd_per_game'] = df_rb.total_yds / df_rb.games
 df_rb['yds_per_touch'] = df_rb.total_yds / df_rb.total_touches
 df_rb['rush_att_per_game'] = df_rb.rush_att / df_rb.games
 
-#%%
 #==========
 # Find missing players
 #==========
@@ -314,22 +326,7 @@ missing[(missing.games.isnull()) | (missing.games < 8)]
 
 #%%
 
-all_rb = pd.read_sql_query("select * from rb_stats", con=conn)
-
-def add_player(d, df_rb):
-    df = all_rb[eval(d['filter_q'])].mean()*d['frac']
-    df = df[df_rb.columns]
-    for c in ['player', 'team', 'age']:
-        df[c] = d[c]
-    df.games = round(df.games)
-    df.games_started = df.games
-    df.year = year
-    df['total_yds_per_game'] = df.total_yds / df.games
-
-    df_rb = df_rb[df_rb.player != d['player']]
-    df_rb = pd.concat([df_rb, pd.DataFrame(df).T], axis=0).reset_index(drop=True)
-
-    return df_rb
+all_rb =dm.read("SELECT * FROM rb_stats", 'Season_Stats')
 
 p1 = {
     'filter_q': '(all_rb.player=="Christian McCaffrey") & (all_rb.games > 12)',
@@ -355,9 +352,9 @@ p3 = {
     'age': 24,
 }
 
-df_rb = add_player(p1, df_rb)
-df_rb = add_player(p2, df_rb)
-df_rb = add_player(p3, df_rb)
+df_rb = add_player(p1, all_rb, df_rb)
+df_rb = add_player(p2, all_rb, df_rb)
+df_rb = add_player(p3, all_rb, df_rb)
 
 
 #%%
@@ -456,13 +453,8 @@ rz_rec ['year'] = year
 rz_rush = rz_rush.drop(['team', 'link'], axis=1)
 rz_rec = rz_rec.drop(['team', 'link'], axis=1)
 
-# remove percent signs from columns
-for df in [rz_rush, rz_rec]:
-    for col in df.columns:
-        try:
-            df[col] = df[col].astype('float')
-        except:
-            pass
+rz_rush = dc.convert_to_float(rz_rush)
+rz_rec = dc.convert_to_float(rz_rec)
 
 #---------------
 # Fill in RZ columns
@@ -486,7 +478,7 @@ def add_player_rz(d, rz_rush, rz_rec):
     rz_rush = pd.concat([rz_rush, pd.DataFrame(df_rush).T], axis=0).reset_index(drop=True)
 
     rz_rec = rz_rec[rz_rec.player != d['player']]
-    rz_rec = pd.concat([rz_rec, pd.DataFrame(df_rush).T], axis=0).reset_index(drop=True)
+    rz_rec = pd.concat([rz_rec, pd.DataFrame(df_rec).T], axis=0).reset_index(drop=True)
 
     return rz_rush, rz_rec
 
@@ -525,12 +517,8 @@ df_rb = pd.merge(df_rb, rz_rush, how='left', left_on=['player', 'year'], right_o
 df_rb = pd.merge(df_rb, rz_rec, how='left', left_on=['player', 'year'], right_on=['player', 'year'])
 
 # set everything to float
-for col in df_rb.columns:
-    try:
-        df_rb[col] = df_rb[col].astype('float')
-    except:
-        pass
-    
+df_rb = dc.convert_to_float(df_rb)
+
 # fill nulls with zero--all should be RZ stats where they didn't accrue on the left join
 df_rb = df_rb.fillna(0)
 
@@ -545,10 +533,11 @@ df_rb = df_rb.sort_values(by=['year', 'avg_pick'], ascending=[False, True]).rese
 find_missing = pd.merge(df_adp_rush, df_rb, on='player', how='left')
 list(find_missing.loc[find_missing.team_y.isnull(), 'player'])
 
-# conn.cursor().execute('''delete from rb_stats where year={}'''.format(year))
-# conn.commit()
-# append_to_db(df_rb, db_name='Season_Stats', table_name='RB_Stats', if_exist='append')
+#%%
 
+# write out the running back data
+dm.delete_from_db('Season_Stats', 'rb_stats', f"year={year}")
+dm.write_to_db(df_rb, 'Season_Stats', 'RB_Stats', if_exist='append')
 
 #%% Wide Receivers
 
@@ -561,10 +550,10 @@ Pull in statistical and ADP data for the given years using the custom data_load 
 '''
 
 # pulling historical player adp
-url_adp_rec = f'https://www71.myfantasyleague.com/{year+1}/reports?R=ADP&POS=WR&PERIOD=JUNE&CUTOFF=5&INJURED=1&IS_PPR=3&IS_KEEPER=N&IS_MOCK=1&PAGE=ALL'
+url_adp_rec = f'https://www71.myfantasyleague.com/{year+1}/reports?R=ADP&POS=WR&PERIOD=RECENT&CUTOFF=5&FCOUNT=0&ROOKIES=0&INJURED=1&IS_PPR=3&IS_KEEPER=N&IS_MOCK=1&PAGE=ALL'
 data_adp_rec = pd.read_html(url_adp_rec)[1]
 
-# +
+#%%
 #==========
 # Clean the ADP data
 #==========
@@ -607,11 +596,7 @@ df_wr = df_wr[['player', 'pos', 'team', 'year', 'age', 'avg_pick',
 df_wr = pd.merge(df_wr, rz_rec, how='left', left_on=['player', 'year'], right_on=['player', 'year'])
 
 # set everything to float
-for col in df_wr.columns:
-    try:
-        df_wr[col] = df_wr[col].astype('float')
-    except:
-        pass
+df_wr = dc.convert_to_float(df_wr)
     
 # fill nulls with zero--all should be RZ stats where they didn't accrue on the left join
 df_wr = df_wr.fillna(0)
@@ -624,29 +609,78 @@ df_wr.loc[:, 'age'] = np.log(df_wr.age)
 df_wr = df_wr.sort_values(by=['year', 'avg_pick'], ascending=[False, True]).reset_index(drop=True)
 # -
 
-find_missing = pd.merge(df_adp_rec, df_wr, on='player', how='left')
-list(find_missing.loc[find_missing.team_y.isnull(), 'player'])
+missing = pd.merge(df_adp_rec[['player', 'avg_pick']], df_wr[['player', 'games']], on=['player'], how='left')
+missing[(missing.games.isnull()) | (missing.games < 8)]
 
-# +
-all_wr = pd.read_sql_query("select * from wr_stats", con=conn)
-aj = all_wr[(all_wr.player=="AJ Green")].mean()*0.85
-aj  = aj[df_wr.columns]
-aj.player="AJ Green"
-aj.team = 'CIN'
-aj.age = 32
-aj.pos = 'WR'
-aj.games = 14
-aj.games_started = 14
-aj.year = 2019
+#%%
+all_wr = dm.read("SELECT * FROM WR_Stats", 'Season_Stats')
+
+updates = [{
+    'filter_q': '(all_wr.player=="Michael Thomas") & (all_wr.games > 12)',
+    'frac': 0.9,
+    'player': "Michael Thomas",
+    'team': 'NO',
+    'age': np.log(28),
+    'new_team': 0
+},
+ {
+    'filter_q': '(all_wr.player=="Kenny Golladay") & (all_wr.games > 12)',
+    'frac': 0.9,
+    'player': "Kenny Golladay",
+    'team': 'NYG',
+    'age': np.log(27),
+    'new_team': 1
+},
+{
+    'filter_q': '(all_wr.player=="Odell Beckham") & (all_wr.games > 12)',
+    'frac': 0.85,
+    'player': "Odell Beckham",
+    'team': 'CLE',
+    'age': np.log(28),
+    'new_team': 0
+},
+ {
+    'filter_q': '((all_wr.player=="Courtland Sutton") | (all_wr.player=="Alshon Jeffery")) & (all_wr.games > 12)',
+    'frac': 0.8,
+    'player': "Courtland Sutton",
+    'team': 'DEN',
+    'age': np.log(24),
+    'new_team': 0
+},
+{
+    'filter_q': '((all_wr.player=="Deebo Samuel") | (all_wr.player=="Chris Godwin")) & (all_wr.games > 12)',
+    'frac': 0.8,
+    'player': "Deebo Samuel",
+    'team': 'SF',
+    'age': np.log(25),
+    'new_team': 0
+},
+{
+    'filter_q': '((all_wr.player=="Parris Campbell") | (all_wr.player=="Santana Moss")) & (all_wr.games > 12)',
+    'frac': 0.75,
+    'player': "Parris Campbell",
+    'team': 'IND',
+    'age': np.log(23),
+    'new_team': 0
+}
+]
+
+for pl in updates:
+    df_wr = add_player(pl, all_wr, df_wr)
+    df_wr.loc[df_wr.player==pl['player'], 'avg_pick'] = \
+        np.log(float(df_adp_rec.loc[df_adp_rec.player==pl['player'], 'avg_pick'].values[0]))
+    df_wr.loc[df_wr.player==pl['player'], 'new_team'] = pl['new_team']
+
+df_wr['pos'] = 'WR'
+
+#%%
+
+# write out the running back data
+dm.delete_from_db('Season_Stats', 'WR_Stats', f"year={year}")
+dm.write_to_db(df_wr, 'Season_Stats', 'WR_Stats', if_exist='append')
 
 
-df_wr = pd.concat([df_wr, pd.DataFrame(aj).T], axis=0)
-# -
-
-# conn.cursor().execute('''delete from wr_stats where year={}'''.format(year))
-# conn.commit()
-# append_to_db(df_wr, db_name='Season_Stats', table_name='WR_Stats', if_exist='append')
-
+#%%
 # # Update QB
 
 # +
@@ -659,7 +693,7 @@ url_qb = 'https://www.pro-football-reference.com/years/' + str(year) + '/passing
 data_qb = pd.read_html(url_qb)[0]
 
 # pulling historical player adp
-url_adp_qb = f'https://www71.myfantasyleague.com/{year+1}/reports?R=ADP&POS=QB&ROOKIES=0&INJURED=1&CUTOFF=5&FCOUNT=0&IS_PPR=3&IS_KEEPER=N&IS_MOCK=1&PERIOD=JULY'
+url_adp_qb = f'https://www71.myfantasyleague.com/{year+1}/reports?R=ADP&POS=QB&ROOKIES=0&INJURED=1&CUTOFF=5&FCOUNT=0&IS_PPR=3&IS_KEEPER=N&IS_MOCK=1&PERIOD=RECENT'
 data_adp_qb = pd.read_html(url_adp_qb)[1]
 
 # pulling historical redzone passing data
@@ -736,12 +770,7 @@ df_qb = merge_stats_adp(df_qb, df_adp_qb)
 #==========
 # Merging and Formatting All Player Data
 #==========
-
-for col in df_qb.columns:
-    try:
-        df_qb[col] = df_qb[col].astype('float')
-    except:
-        pass
+df_qb = dc.convert_to_float(df_qb)
 
 # filter players who threw more than 50 passes in season
 df_qb = df_qb[df_qb.qb_att > 25].reset_index(drop=True)
@@ -833,45 +862,50 @@ df_qb['rush_td_per_game'] = df_qb.rush_td / df_qb.qb_games
 
 # sort columns
 df_qb = df_qb.sort_values(['year', 'qb_avg_pick'], ascending=[False, True]).reset_index(drop=True)
-# -
+missing = pd.merge(df_adp_qb[['player', 'qb_avg_pick']], df_qb[['player', 'qb_games']], on=['player'], how='left')
+missing[(missing.qb_games.isnull()) | (missing.qb_games < 8)]
 
-# conn.cursor().execute('''delete from qb_stats where year={}'''.format(year))
-# conn.commit()
-# append_to_db(df_qb, db_name='Season_Stats', table_name='QB_Stats', if_exist='append')
+#%%
 
+all_qb = dm.read("SELECT * FROM QB_Stats", 'Season_Stats')
+
+updates = [
+{
+    'filter_q': '(all_qb.player=="Dak Prescott") & (all_qb.qb_games > 12)',
+    'frac': 1,
+    'player': "Dak Prescott",
+    'team': 'DAL',
+    'age': np.log(27),
+}
+]
+
+for pl in updates:
+    df_qb = add_player(pl, all_qb, df_qb)
+    df_qb.loc[df_qb.player==pl['player'], 'qb_avg_pick'] = \
+        float(df_adp_qb.loc[df_adp_qb.player==pl['player'], 'qb_avg_pick'].values[0])
+    df_qb.loc[:, 'qb_age'] = pl['age']
+    df_qb = df_qb.drop('age', axis=1)
+
+df_qb['pos'] = 'QB'
+
+#%%
+# write out the running back data
+dm.delete_from_db('Season_Stats', 'QB_Stats', f"year={year}")
+dm.write_to_db(df_qb, 'Season_Stats', 'QB_Stats', if_exist='append')
+
+#%%
 # # Update TE
 
 # pull TE ADP
-url_adp_te = f'https://api.myfantasyleague.com/{year+1}/reports?R=ADP&POS=TE&ROOKIES=0&INJURED=1&CUTOFF=5&FCOUNT=0&IS_PPR=3&IS_KEEPER=N&IS_MOCK=1&PERIOD=JULY'
+url_adp_te = f'https://www71.myfantasyleague.com/{year+1}/reports?R=ADP&POS=TE&ROOKIES=0&INJURED=1&CUTOFF=5&FCOUNT=0&IS_PPR=3&IS_KEEPER=N&IS_MOCK=1&PERIOD=RECENT'
 data_adp_te = pd.read_html(url_adp_te)[1]
 
-# +
+#%%
 #==========
 # Clean the ADP data
 #==========
 
 df_adp_te = clean_adp(data_adp_te, year)
-# -
-
-# hunter = df_rec[df_rec.pos == 'TE'].reset_index(drop=True).iloc[3:8].mean()
-# hunter['player'] = 'Hunter Henry'
-# hunter['team'] = 'LAC'
-# hunter['age'] = 24
-# hunter['pos'] = 'TE'
-# hunter = hunter[df_rec.columns]
-# df_rec = pd.concat([df_rec, pd.DataFrame(hunter).T], axis=0)
-#
-# hunter_rz = rz_rec[rz_rec.player.isin(df_rec[df_rec.pos == 'TE'].player[3:8])].reset_index(drop=True)
-# for col in hunter_rz.columns:
-#     try:
-#         hunter_rz[col] = hunter_rz[col].astype('float')
-#     except:
-#         pass
-#     
-# hunter_rz = hunter_rz.mean()
-# hunter_rz['player'] = 'Hunter Henry'
-# hunter_rz = hunter_rz[rz_rec.columns]
-# rz_rec = pd.concat([rz_rec, pd.DataFrame(hunter_rz).T], axis=0)
 
 # +
 #==========
@@ -924,12 +958,16 @@ df_te.loc[:, 'age'] = np.log(df_te.age)
 
 # sort values and reset index
 df_te = df_te.sort_values(by=['year', 'avg_pick'], ascending=[False, True]).reset_index(drop=True)
-# -
+missing = pd.merge(df_adp_te[['player', 'avg_pick']], df_te[['player', 'games']], on=['player'], how='left')
+missing[(missing.games.isnull()) | (missing.games < 8)]
 
-# conn.cursor().execute('''delete from te_stats where year={}'''.format(year))
-# conn.commit()
-# append_to_db(df_te, db_name='Season_Stats', table_name='TE_Stats', if_exist='append')
+#%%
 
+# write out the running back data
+dm.delete_from_db('Season_Stats', 'TE_Stats', f"year={year}")
+dm.write_to_db(df_te, 'Season_Stats', 'TE_Stats', if_exist='append')
+
+#%%
 # # Create Air Yards Table
 
 # +
@@ -1001,3 +1039,5 @@ df_air_player = df_air_player.drop(['tar', 'games', 'team'], axis=1)
 # -
 
 append_to_db(df_air_player, db_name='Season_Stats', table_name='AirYards', if_exist='append')
+
+# %%
