@@ -848,12 +848,8 @@ df_qb = pd.merge(df_qb, rz_rush, how='left',
 df_qb = df_qb.fillna(0)
 
 # ensure all new columns are numeric
-for col in df_qb.columns:
-    try:
-        df_qb[col] = df_qb[col].astype('float')
-    except:
-        pass
-    
+df_qb = dc.convert_to_float(df_qb)
+
 # add new columns, specifically for target metrics
 df_qb['pass_td_per_game'] = df_qb.qb_tds / df_qb.qb_games
 df_qb['int_per_game'] = df_qb.int / df_qb.qb_games
@@ -875,7 +871,7 @@ updates = [
     'frac': 1,
     'player': "Dak Prescott",
     'team': 'DAL',
-    'age': np.log(27),
+    'age': 27,
 }
 ]
 
@@ -883,10 +879,13 @@ for pl in updates:
     df_qb = add_player(pl, all_qb, df_qb)
     df_qb.loc[df_qb.player==pl['player'], 'qb_avg_pick'] = \
         float(df_adp_qb.loc[df_adp_qb.player==pl['player'], 'qb_avg_pick'].values[0])
-    df_qb.loc[:, 'qb_age'] = pl['age']
+    df_qb.loc[df_qb.player==pl['player'], 'qb_age'] = pl['age']
     df_qb = df_qb.drop('age', axis=1)
 
 df_qb['pos'] = 'QB'
+# ensure all new columns are numeric
+df_qb = dc.convert_to_float(df_qb)
+df_qb['qb_avg_pick'] = np.log(df_qb.qb_avg_pick)
 
 #%%
 # write out the running back data

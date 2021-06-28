@@ -1,6 +1,4 @@
-
-
-
+#%%
 import requests
 import json
 import pandas as pd
@@ -12,8 +10,17 @@ import numpy as np
 from fractions import Fraction
 import datetime as dt
 
+from ff.db_operations import DataManage
+from ff import general, data_clean as dc
+
+# set the root path and database management object
+root_path = general.get_main_path('Fantasy_Football')
+db_path = f'{root_path}/Data/Databases/'
+dm = DataManage(db_path)
+
+
 # set the year for last year's stats to pull
-set_year=2019
+set_year=2020
 
 # set core path
 path = f'/Users/{os.getlogin()}/Documents/Github/Fantasy_Football'
@@ -26,9 +33,9 @@ conn = sqlite3.connect(f'{path}/Data/Databases/{db_name}.sqlite3')
 CS_API = 'https://api.collegefootballdata.com'
 
 def adp_url(adp_pos, y=set_year+1):
-    return f'https://www72.myfantasyleague.com/{y}/reports?R=ADP&POS={adp_pos}&ROOKIES=1&INJURED=1&CUTOFF=5&FCOUNT=0&IS_PPR=3&IS_KEEPER=N&IS_MOCK=1&PERIOD=AUG1'
+    return f'https://www71.myfantasyleague.com/{y}/reports?R=ADP&POS={adp_pos}&ROOKIES=1&INJURED=1&CUTOFF=5&FCOUNT=0&IS_PPR=3&IS_KEEPER=N&IS_MOCK=1&PERIOD=RECENT'
 
-
+#%%
 # -
 
 # # Pull in Raw Data Sources
@@ -42,13 +49,15 @@ def adp_url(adp_pos, y=set_year+1):
 # # player data such as height and weight--need to loop through each letter in alphabet
 # player_data = requests.get(f'{CS_API}/player/search?year={cstat_year}&searchTerm=A')
 
-# # advanced stats data--earliest 2013
+ # advanced stats data--earliest 2013
 # player_adv = requests.get('https://api.collegefootballdata.com/ppa/players/season?year=2013') 
 
 # standard player college stats
-player_stats = requests.get(f'{CS_API}/stats/player/season?year={set_year}')
+CFB_API_KEY = 'Bearer uknadItJAfZPhb8MtWCQ4QOPpihpGWmqkR9SXlgBu1mjhrW8YH7Nv7+IOCjMpWc9'
+player_stats = requests.get(f'{CS_API}/stats/player/season?year={set_year}',
+                            headers={'Authorization': CFB_API_KEY})
 
-# +
+#%%
 c_stat = []
 for i in player_stats.json():
     if i['category'] in ['receiving', 'rushing', 'passing']:
@@ -57,6 +66,7 @@ for i in player_stats.json():
 c_stat = pd.DataFrame(c_stat)
 c_stat['stat_name'] = c_stat.category + '_' + c_stat.statType
 c_stat['stat'] = c_stat['stat'].astype('float')
+
 c_stat = pd.pivot_table(c_stat, index=['player', 'team', 'conference'], 
                         columns='stat_name', values = 'stat').reset_index().fillna(0)
 c_stat = c_stat[~c_stat.player.str.contains('Team')].reset_index(drop=True)
@@ -100,31 +110,14 @@ c_stat['year'] = set_year
 c_stat = pd.concat([c_stat[['player', 'team', 'year', 'conference']], c_stat.iloc[:, 3:-1]], axis=1)
 c_stat = c_stat[(c_stat.rushing_ATT >= 10) | (c_stat.receiving_REC >= 10) | (c_stat.passing_ATT > 25)].reset_index(drop=True)
 
-c_stat = c_stat.player.apply(name_clean)
-# -
+c_stat.player = c_stat.player.apply(name_clean)
+#%%
 
-# append_to_db(c_stat, db_name, 'College_Stats', if_exist='append')
+dm.delete_from_db('Season_Stats', 'College_Stats', f"year={set_year}")
+dm.write_to_db(c_stat, 'Season_Stats', 'College_Stats', if_exist='append')
 
-# ## Pull Combine Data
 
-COMBINE_PATH = f'https://www.pro-football-reference.com/play-index/nfl-combine-results.cgi?request=1&year_min={set_year+1}&year_max={set_year+1}&height_min=0&height_max=100&weight_min=140&weight_max=400&pos%5B%5D=QB&pos%5B%5D=WR&pos%5B%5D=TE&pos%5B%5D=RB&show=all&order_by=year_id'
-comb = pd.read_html(COMBINE_PATH)
-
-# +
-comb_df = comb[0]
-comb_df = comb_df[['Year', 'Player', 'Pos', 'Age', 'Height', 'Wt', '40YD', 
-                   'Vertical', 'BenchReps', 'Broad Jump', '3Cone', 'Shuttle']]
-comb_df.columns = ['year', 'player', 'pos', 'pp_age', 'height', 'weight', 'forty',
-                   'vertical', 'bench_press', 'broad_jump', 'three_cone', 'shuffle_20_yd']
-comb_df = comb_df[comb_df.height!='Height'].reset_index(drop=True)
-comb_df.height = comb_df.height.apply(lambda x: 12*int(x.split('-')[0]) + int(x.split('-')[1]))
-comb_df = convert_to_float(comb_df)
-
-comb_df.player = comb_df.player.apply(name_clean)
-# -
-
-# append_to_db(comb_df, db_name, 'Combine_Data_Raw', if_exist='append')
-
+#%%
 # ## Get Player's Age as of Start of This Season
 
 # +
@@ -147,12 +140,13 @@ exist_age = pd.read_sql_query('''SELECT player, year, pos, age FROM RB_Stats
                                  SELECT player, year, pos, age FROM TE_Stats
                                  UNION
                                  SELECT player, year, pos, qb_age age FROM QB_Stats''', conn)
+
 exist_year_max = exist_age.groupby(['player', 'pos']).agg({'year': 'max'}).reset_index()
 exist_age = pd.merge(exist_age, exist_year_max, on=['player', 'pos', 'year'])
 exist_age.loc[exist_age.age < 5, 'age'] = np.exp(exist_age.loc[exist_age.age < 5, 'age'])
 exist_age['age'] = exist_age.age + (set_year+1)-exist_age.year
 
-bday_check = pd.merge(birthdays, exist_age, on='player')
+bday_check = pd.merge(birthdays, exist_age, on='player').sort_values(by='year')
 bday_check[abs(bday_check.age_x - bday_check.age_y) > 1]
 
 # +
@@ -162,19 +156,52 @@ birthdays = pd.concat([birthdays, exist_age[['player', 'pos', 'age']]], axis=0)
 birthdays['run_date'] = run_date.date()
 birthdays = birthdays.dropna()
 
-players = ['DeVante Parker', 'John Ross', 'Josh Reynolds', 'Kelvin Harmon']
-ages = [27, 24.8, 25, 22.7]
-for p, a in zip(players, ages):
-    birthdays.loc[birthdays.player==p, 'age'] = a
+dm.write_to_db(birthdays, 'Season_Stats', 'Player_Birthdays', if_exist='replace')
 
+#%%
+# ## Pull Combine Data
 
-append_to_db(birthdays, 'Season_Stats', 'Player_Birthdays', 'replace')
-# -
+COMBINE_PATH = f'https://www.pro-football-reference.com/draft/{set_year+1}-combine.htm'
+comb = pd.read_html(COMBINE_PATH)
+
+# +
+comb_df = comb[0]
+comb_df['Year'] = set_year+1
+comb_df = comb_df.rename(columns={'Year': 'year', 
+                                  'Player': 'player', 
+                                  'Pos':'pos', 
+                                  'Ht':'height', 
+                                  'Wt':'weight', 
+                                  '40yd':'forty',
+                                  'Vertical': 'vertical',
+                                  'Bench': 'bench_press', 
+                                  'Broad Jump': 'broad_jump', 
+                                  '3Cone': 'three_cone', 
+                                  'Shuttle': 'shuffle_20_yd'})
+
+ages = dm.read('''SELECT player, age pp_age FROM Player_Birthdays''', 'Season_Stats')
+comb_df = pd.merge(comb_df, ages, on='player')
+
+comb_df = comb_df[['year', 'player', 'pos', 'pp_age', 'height', 'weight', 'forty',
+                   'vertical', 'bench_press', 'broad_jump', 'three_cone', 'shuffle_20_yd']]
+
+comb_df = comb_df[~comb_df.height.isnull()].reset_index(drop=True)
+comb_df.height = comb_df.height.apply(lambda x: 12*int(x.split('-')[0]) + int(x.split('-')[1]))
+comb_df = convert_to_float(comb_df)
+
+comb_df.player = comb_df.player.apply(name_clean)
+comb_df = comb_df[comb_df.pos.isin(['WR', 'RB', 'TE', 'QB'])].reset_index(drop=True)
+
+#%%
+dm.delete_from_db('Season_Stats', 'Combine_Data_Raw', f"year={set_year+1}")
+dm.write_to_db(comb_df, 'Season_Stats', 'Combine_Data_Raw', if_exist='append')
+
+#%%
 
 # ## Get College Player ADP
 
 # +
-y=2020
+y=2021
 def rookie_adp(adp_pos, y):
     
     URL = adp_url(adp_pos, y)
@@ -196,10 +223,10 @@ rookie_adp = rookie_adp[['player', 'draft_year', 'pos', 'avg_pick']]
 rookie_adp.player = rookie_adp.player.apply(name_clean)
 # -
 
-# conn.cursor().execute(f'''delete from Rookie_ADP where draft_year={set_year+1}''')
-# conn.commit()
-# append_to_db(rookie_adp, 'Season_Stats', 'Rookie_ADP', 'append')
+dm.delete_from_db('Season_Stats', 'Rookie_ADP', f"draft_year={set_year+1}")
+dm.write_to_db(rookie_adp, 'Season_Stats', 'Rookie_ADP', if_exist='append')
 
+#%%
 # # Begin Creating Cleaned up Datasets
 
 # ## Predict Missing Values
@@ -258,9 +285,9 @@ def reverse_metrics(met, train, predict, X_cols):
 
 
 # +
-comb_df = pd.read_sql_query('''SELECT * FROM combine_data_raw''', conn).drop('pp_age', axis=1)
-draft_info = pd.read_sql_query('''SELECT * FROM draft_positions''', conn)
-draft_values = pd.read_sql_query('''SELECT * FROM draft_values''', conn)
+comb_df = dm.read('''SELECT * FROM combine_data_raw''', 'Season_Stats').drop('pp_age', axis=1)
+draft_info = dm.read('''SELECT * FROM draft_positions''', 'Season_Stats')
+draft_values = dm.read('''SELECT * FROM draft_values''', 'Season_Stats')
 draft_info = pd.merge(draft_info, draft_values, on=['Round', 'Pick'])
 
 comb_df = pd.merge(comb_df, draft_info[['year', 'player', 'Value']], on=['year', 'player'], how='left')
@@ -284,13 +311,13 @@ comb_df = fill_metrics('shuffle_20_yd', comb_df, pred_cols)
 
 pred_cols.append('shuffle_20_yd')
 comb_df = fill_metrics('bench_press', comb_df, pred_cols)
-# -
+#%%
 
 # ## Predict Player Profiler Data
 
 # +
-rb = pd.read_sql_query('''SELECT * FROM Rookie_RB_Stats_Old''', conn)
-wr = pd.read_sql_query('''SELECT * FROM Rookie_WR_Stats_Old''', conn)
+rb = dm.read('''SELECT * FROM Rookie_RB_Stats_Old''', 'Season_Stats')
+wr = dm.read('''SELECT * FROM Rookie_WR_Stats_Old''', 'Season_Stats')
 
 pp = pd.concat([rb, wr], axis=0).reset_index(drop=True)
 X_cols = [c for c in comb_df if c not in ('year', 'player', 'Value', 'pp_age', 'QB', 'RB', 'TE', 'WR')]
@@ -311,16 +338,16 @@ comb_df = reverse_metrics('agility_score', pp, comb_df, X_cols)
 from sklearn.preprocessing import RobustScaler
 from difflib import SequenceMatcher
 
-comb_stats = pd.read_sql_query('''SELECT player, year draft_year, pos FROM combine_data_raw''', conn)
-draft = pd.read_sql_query('''SELECT player, year draft_year, pos, college FROM draft_positions''', conn)
-player_age = pd.read_sql_query(f'''SELECT player, pos, age, {set_year+1} as 'run_date' FROM Player_Birthdays ''', conn)
-rookie_adp = pd.read_sql_query('''SELECT * FROM Rookie_ADP''', conn)
+comb_stats = dm.read('''SELECT player, year draft_year, pos FROM combine_data_raw''', 'Season_Stats')
+draft = dm.read('''SELECT player, year draft_year, pos, college FROM draft_positions''', 'Season_Stats')
+player_age = dm.read(f'''SELECT player, pos, age, {set_year+1} as 'run_date' FROM Player_Birthdays ''', 'Season_Stats')
+rookie_adp = dm.read('''SELECT * FROM Rookie_ADP''', 'Season_Stats')
 
 comb_stats = pd.merge(comb_stats, draft, on=['player', 'draft_year', 'pos'])
 comb_stats = pd.merge(comb_stats, player_age, on=['player', 'pos'])
 comb_stats = pd.merge(comb_stats, rookie_adp, on=['player', 'pos', 'draft_year'])
 
-cstats = pd.read_sql_query('''SELECT * FROM College_Stats''', conn)
+cstats = dm.read('''SELECT * FROM College_Stats''', 'Season_Stats')
 comb_stats = pd.merge(comb_stats, cstats, on=['player'])
 comb_stats = comb_stats[comb_stats.year < comb_stats.draft_year].reset_index(drop=True)
 
@@ -353,7 +380,7 @@ comb_stats['season_age_scale'] = -comb_stats.season_age_scale.min() + comb_stats
 comb_stats['power5'] = 0
 comb_stats.loc[comb_stats.conference.isin(['SEC', 'Pac-10', 'Big 12', 'Big Ten', 'Pac-12', 'ACC']), 'power5'] = 1
 comb_stats.groupby('player').agg({'year':'count'}).sort_values(by='year')
-# -
+#%%
 
 # # Split out and save WR
 
@@ -412,7 +439,7 @@ wr_stats.loc[(wr_stats.draft_year!=set_year+1) & (wr_stats.games.isnull()), ['pl
 wr_stats = wr_stats.loc[~(wr_stats.games.isnull()) | (wr_stats.draft_year==set_year+1), :].reset_index(drop=True)
 wr_stats = wr_stats.loc[(wr_stats.games > 5) | (wr_stats.draft_year==set_year+1), :].reset_index(drop=True)
 
-# append_to_db(wr_stats, 'Season_Stats', 'Rookie_WR_Stats', 'replace')
+dm.write_to_db(wr_stats, 'Season_Stats', 'Rookie_WR_Stats', 'replace', create_backup=True)
 
 # # Split out and Save RB
 
@@ -484,55 +511,28 @@ rb_stats.loc[(rb_stats.draft_year!=set_year+1) & (rb_stats.games.isnull()),
 rb_stats = rb_stats.loc[~(rb_stats.games.isnull()) | (rb_stats.draft_year==set_year+1), :].reset_index(drop=True)
 rb_stats = rb_stats.loc[(rb_stats.games > 5) | (rb_stats.draft_year==set_year+1), :].reset_index(drop=True)
 
-append_to_db(rb_stats, 'Season_Stats', 'Rookie_RB_Stats', 'replace')
-
-# # Rough Modeling
-
-# +
-X = rb_stats[~rb_stats.rush_yd_per_game.isnull()].reset_index(drop=True)
-X = X.select_dtypes(exclude='object').drop(['rush_yd_per_game', 'rec_yd_per_game', 'rec_per_game', 'td_per_game', 'fp_per_game'], axis=1)
-sc = StandardScaler()
-X = pd.DataFrame(sc.fit_transform(X), columns=X.columns)
-
-X_test = rb_stats[rb_stats.rush_yd_per_game.isnull()].reset_index(drop=True)
-X_test = X_test.select_dtypes(exclude='object').drop(['rush_yd_per_game', 'rec_yd_per_game', 'rec_per_game', 'td_per_game', 'fp_per_game'], axis=1)
-X_test = pd.DataFrame(sc.transform(X_test), columns=X_test.columns)
-y = rb_stats.loc[~rb_stats.rush_yd_per_game.isnull(), 'fp_per_game'].reset_index(drop=True)
-
-# +
-from sklearn.linear_model import Ridge, Lasso
-from sklearn.model_selection import cross_val_score
-
-lr = Ridge(alpha=25)
-print(np.mean(np.sqrt(-cross_val_score(lr, X, y, scoring='neg_mean_squared_error', cv=10))))
-lr.fit(X, y)
-pd.Series(lr.coef_, index=X.columns).sort_values()
-pd.concat([rb_stats.loc[~rb_stats.rush_yd_per_game.isnull(), ['player', 'fp_per_game']].reset_index(drop=True),
-           pd.Series(lr.predict(X), name='pred')], axis=1).sort_values(by='pred', ascending=False).iloc[:25]
-# -
-
-pd.concat([rb_stats.loc[rb_stats.rush_yd_per_game.isnull(), 'player'].reset_index(drop=True),
-           pd.Series(lr.predict(X_test), name='pred')], axis=1).sort_values(by='pred', ascending=False).iloc[:25]
-
-# # Running Backs
-
-rookies.loc[:, 'log_draft_pick'] = np.log(rookies.draft_pick)
-rookies.loc[:, 'log_avg_pick'] = np.log(rookies.avg_pick)
-rookies.loc[:, 'speed_weight'] = rookies.speed_score * rookies.weight
-rookies.loc[:, 'speed_weight_age'] = rookies.speed_score * rookies.weight / rookies.pp_age
-rookies.loc[:, 'speed_catch'] = rookies.speed_score * rookies.college_tgt_share
-rookies.loc[:, 'speed_catch_age'] = rookies.speed_score * rookies.college_tgt_share / rookies.pp_age
-rookies.loc[:, 'draft_pick_age'] = rookies.draft_pick / rookies.pp_age
-
-append_to_db(rookies, db_name='Season_Stats.sqlite3', table_name='Rookie_RB_Stats', if_exist='replace')
-
-# # Wide Receivers
-
-rookies.loc[:, 'log_draft_pick'] = np.log(rookies.draft_pick)
-rookies.loc[:, 'log_avg_pick'] = np.log(rookies.avg_pick)
-rookies.loc[:, 'draft_pick_age'] = rookies.draft_pick / rookies.pp_age
-rookies.loc[:, 'hand_dominator'] = rookies.hand_size * rookies.dominator_rating
-
-append_to_db(rookies, db_name='Season_Stats.sqlite3', table_name='Rookie_WR_Stats', if_exist='replace')
+dm.write_to_db(rb_stats, 'Season_Stats', 'Rookie_RB_Stats', 'replace', create_backup=True)
 
 
+# rookies.loc[:, 'log_draft_pick'] = np.log(rookies.draft_pick)
+# rookies.loc[:, 'log_avg_pick'] = np.log(rookies.avg_pick)
+# rookies.loc[:, 'speed_weight'] = rookies.speed_score * rookies.weight
+# rookies.loc[:, 'speed_weight_age'] = rookies.speed_score * rookies.weight / rookies.pp_age
+# rookies.loc[:, 'speed_catch'] = rookies.speed_score * rookies.college_tgt_share
+# rookies.loc[:, 'speed_catch_age'] = rookies.speed_score * rookies.college_tgt_share / rookies.pp_age
+# rookies.loc[:, 'draft_pick_age'] = rookies.draft_pick / rookies.pp_age
+
+# append_to_db(rookies, db_name='Season_Stats.sqlite3', table_name='Rookie_RB_Stats', if_exist='replace')
+
+# # # Wide Receivers
+
+# rookies.loc[:, 'log_draft_pick'] = np.log(rookies.draft_pick)
+# rookies.loc[:, 'log_avg_pick'] = np.log(rookies.avg_pick)
+# rookies.loc[:, 'draft_pick_age'] = rookies.draft_pick / rookies.pp_age
+# rookies.loc[:, 'hand_dominator'] = rookies.hand_size * rookies.dominator_rating
+
+# append_to_db(rookies, db_name='Season_Stats.sqlite3', table_name='Rookie_WR_Stats', if_exist='replace')
+
+
+
+# %%

@@ -32,7 +32,7 @@ db_path = f'{root_path}/Data/Databases/'
 dm = DataManage(db_path)
 
 # set to position to analyze: 'RB', 'WR', 'QB', or 'TE'
-set_pos = 'RB'
+set_pos = 'WR'
 
 # set year to analyze
 set_year = 2020
@@ -86,7 +86,7 @@ pos['TE']['val_start'] = 2012
 pos['QB']['features'] = 'v2'
 pos['RB']['features'] = 'v2'
 pos['WR']['features'] = 'v2'
-pos['TE']['features'] = 'v1'
+pos['TE']['features'] = 'v2'
 
 pos['QB']['test_years'] = 1
 pos['RB']['test_years'] = 1
@@ -100,12 +100,12 @@ pos['TE']['use_ay'] = False
 
 pos['QB']['filter_data'] = 'greater_equal'
 pos['RB']['filter_data'] = 'greater_equal'
-pos['WR']['filter_data'] = 'less_equal'
+pos['WR']['filter_data'] = 'greater_equal'
 pos['TE']['filter_data'] = 'greater_equal'
 
 pos['QB']['year_exp'] = 0
 pos['RB']['year_exp'] = 0
-pos['WR']['year_exp'] = 3
+pos['WR']['year_exp'] = 4
 pos['TE']['year_exp'] = 0
 
 pos['QB']['act_ppg'] = 20
@@ -118,19 +118,41 @@ pos['RB']['pct_off'] = 0.15
 pos['WR']['pct_off'] = 0.15
 pos['TE']['pct_off'] = 0.15
 
-pos['QB']['iters'] = 10
+pos['QB']['iters'] = 25
 pos['RB']['iters'] = 25
 pos['WR']['iters'] = 25
 pos['TE']['iters'] = 25
 
+pos['QB']['all_stats'] = True
+pos['RB']['all_stats'] = False
+pos['WR']['all_stats'] = False
+pos['TE']['all_stats'] = False
+
+pos['QB']['reg_stack_model'] = 'ridge'
+pos['RB']['reg_stack_model'] = 'ridge'
+pos['WR']['reg_stack_model'] = 'ridge'
+pos['TE']['reg_stack_model'] = 'ridge'
+
+pos['QB']['class_stack_model'] = 'rf_c'
+pos['RB']['class_stack_model'] = 'rf_c'
+pos['WR']['class_stack_model'] = 'rf_c'
+pos['TE']['class_stack_model'] = 'rf_c'
+
 np.random.seed(1234)
 
-pkey = str(set_pos)
-for var in ['req_touch', 'req_games', 'earliest_year', 'val_start', 
+
+all_vars = ['req_touch', 'req_games', 'earliest_year', 'val_start', 
             'features', 'test_years', 'use_ay', 'filter_data', 'year_exp', 
-            'act_ppg', 'pct_off', 'iters']:
+            'act_ppg', 'pct_off', 'iters', 'all_stats', 'reg_stack_model',
+            'class_stack_model']
+
+pkey = str(set_pos)
+db_output = {'set_pos': set_pos, 'set_year': set_year}
+for var in all_vars:
     v = str(pos[set_pos][var])
     pkey = pkey + '_' + v
+    db_output[var] = pos[set_pos][var]
+db_output['pkey'] = pkey
 
 model_output_path = f'{root_path}/Model_Outputs/{set_year}/{pkey}/'
 if not os.path.exists(model_output_path): os.makedirs(model_output_path)
@@ -187,7 +209,7 @@ pts_dict[set_pos].append(1)
 # set up blank dictionaries for all metrics
 pred = {}; actual = {}; scores = {}; models = {}
 
-if set_pos == 'QB':
+if pos[set_pos]['all_stats']:
     mets = pos[set_pos]['metrics']
 else:
     mets = pos[set_pos]['metrics'][-1:]
@@ -248,14 +270,19 @@ for met in mets:
         params = skm.default_params(pipe, 'rand')
         params['feature_drop__col'] = [
 
-            ['avg_pick', 'avg_pick_median', 'avg_pick_median',
-             'avg_pick / age', 'avg_pick_exp_diff', 
-             'avg_pick_exp_div', 'avg_pick'],
+            ['avg_pick', 'avg_pick_exp','avg_pick_exp_diff',
+             'avg_pick_exp_div', 'avg_pick_median', 'avg_pick_exp_median',
+             'avg_pick_exp_diff_median', 'avg_pick_exp_div_median', 'avg_pick_sum',
+             'avg_pick_over_median', 'avg_pick_exp_over_median', 'avg_pick_exp_diff_over_median',
+             'avg_pick_exp_div_over_median', 'avg_pick / age', 'avg_pick_exp / age',
+             'avg_pick_exp_diff / age','avg_pick_exp_div / age','avg_pick_rolling',
+             'avg_pick_exp_rolling', 'avg_pick_exp_diff_rolling', 'avg_pick_exp_div_rolling'],
+            
+            ['avg_pick_exp_diff_median',  'avg_pick_exp_div_median', 'avg_pick_median',             
+             'avg_pick_exp_diff / age', 'avg_pick_exp_diff', 'avg_pick_exp_div / age', 
+             'avg_pick_exp_div', 'avg_pick / age', 'avg_pick'],
 
-            ['avg_pick', 'avg_pick_median', 'avg_pick_median',
-             'avg_pick / age', 'avg_pick'],
-
-            ['avg_pick']
+            ['avg_pick', 'avg_pick / age'],
 
             ]
         if m=='knn': params['knn__n_neighbors'] = range(1, min_samples-1)
@@ -292,14 +319,22 @@ skm = SciKitModel(df_train)
 # get the X and y values for stack trainin for the current metric
 X_stack = pd.DataFrame()
 for met, pt in zip(pos[set_pos]['metrics'], pts_dict[set_pos]):
-    X_s, y_s = skm.X_y_stack(met, pred, actual)
-    X_stack = pd.concat([X_stack, X_s*pt], axis=1)
-    if met == 'fp_per_game':
+    
+    if pos[set_pos]['all_stats']:
+        X_s, y_s = skm.X_y_stack(met, pred, actual)
+        X_stack = pd.concat([X_stack, X_s*pt], axis=1)
+        if met=='fp_per_game': y_stack = y_s
+    
+    elif met == 'fp_per_game':
+        X_s, y_s = skm.X_y_stack(met, pred, actual)
+        X_stack = pd.concat([X_stack, X_s*pt], axis=1)
         y_stack = y_s
 
 # get the model pipe for stacking setup and train it on meta features
-stack_pipe = skm.model_pipe([skm.piece('k_best'), skm.piece('ridge')])
-best_model, adp_score, stack_score = skm.best_stack(stack_pipe, X_stack, y_stack, n_iter=pos[set_pos]['iters']*10, run_adp=True)
+stack_pipe = skm.model_pipe([skm.piece('k_best'), skm.piece(pos[set_pos]['reg_stack_model'])])
+best_model, stack_score, adp_score = skm.best_stack(stack_pipe, X_stack, y_stack, n_iter=pos[set_pos]['iters']*3, run_adp=True)
+db_output['reg_stack_score'] = stack_score
+db_output['adp_stack_score'] = adp_score
 
 # create the full stack pipe with meta estimators followed by stacked model
 stacked_models = [(k, skm.ensemble_pipe(v)) for k,v in models.items()]
@@ -357,7 +392,7 @@ min_samples = int(df_train_class[df_train_class.year <= df_train_class.year.min(
 print('Training Value Counts:', df_train_class.y_act.value_counts()[0], '|', df_train_class.y_act.value_counts()[1])
 print(f'Number of Features: {df_train_class.shape[1]}')
 print('Min Train Year:', df_train_class.year.min())
-print('Max Train Year:', df_train_class.year.min())
+print('Max Train Year:', df_train_class.year.max())
 print('Min Val Year:', df_train_class.year.min()+1)
 print('Max Val Year:', df_train_class.year.max())
 print('Min Test Year:', df_predict_class.year.min())
@@ -421,9 +456,10 @@ skm = SciKitModel(df_train_class, model_obj='class')
 X_stack_class, y_stack_class = skm.X_y_stack('class', pred_class, actual_class)
 
 # get the model pipe for stacking setup and train it on meta features
-stack_pipe_class = skm.model_pipe([ skm.piece('k_best'), skm.piece('rf_c')])
-best_model_class, stack_score, _ = skm.best_stack(stack_pipe_class, X_stack_class, y_stack_class, 
-                                                  n_iter=pos[set_pos]['iters']*3, print_coef=True)
+stack_pipe_class = skm.model_pipe([ skm.piece('k_best'), skm.piece(pos[set_pos]['class_stack_model'])])
+best_model_class, stack_score_class, _ = skm.best_stack(stack_pipe_class, X_stack_class, y_stack_class, 
+                                                        n_iter=pos[set_pos]['iters']*3, print_coef=True)
+db_output['class_stack_score'] = stack_score_class
 
 # create the full stack pipe with meta estimators followed by stacked model
 stacked_models = [(k, skm.ensemble_pipe(v)) for k,v in models_class.items() if 'class' in k]
@@ -443,4 +479,14 @@ prediction = round(prediction,2)
 output = pd.concat([output, prediction], axis=1)
 output = output.sort_values(by='avg_pick')
 output.iloc[:50]
+# %%
+
+
+df_output = pd.DataFrame(db_output, index=[0])
+df_output['reg_pct_above'] = round((df_output.reg_stack_score - df_output.adp_stack_score) / df_output.adp_stack_score, 3)
+output_cols = ['pkey', 'set_pos', 'set_year']
+output_cols.extend(all_vars)
+output_cols.extend(['reg_stack_score', 'adp_stack_score', 'reg_pct_above', 'class_stack_score'])
+df_output = df_output[output_cols]
+dm.write_to_db(df_output, 'ParamTracking', 'StackResults', if_exist='append')
 # %%
