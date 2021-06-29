@@ -479,9 +479,7 @@ teammate adps compare to the current player.
 #--------
 
 # load prepared data
-conn = sqlite3.connect(f'/Users/{os.getlogin()}/Documents/Github/Fantasy_Football/Data/Databases/Season_Stats.sqlite3')
-
-rookie_rb = pd.read_sql_query("select * from rookie_rb_stats", conn)
+rookie_rb = dm.read("select * from rookie_rb_stats", 'Season_Stats')
 rookie_rb = rookie_rb.rename(columns={'draft_year': 'year'})
 rookie_rb['year'] = rookie_rb['year'] - 1
 
@@ -489,7 +487,7 @@ team_stats_q = '''SELECT * FROM OLine_Stats A
     INNER JOIN Team_Offense_DVOA C ON A.team = C.team AND A.year = C.year
     INNER JOIN Team_Offensive_Stats D ON A.team = D.team AND A.year = D.year
     INNER JOIN QB_PosPred E ON A.team = E.team AND A.year = E.year'''
-team_stats = pd.read_sql_query(team_stats_q, conn)
+team_stats =  dm.read(team_stats_q, 'Season_Stats')
 
 # remove duplicated columns
 team_stats = team_stats.loc[:, ~team_stats.columns.duplicated()]
@@ -498,8 +496,8 @@ team_stats = team_stats.drop_duplicates()
 rookie_rb = pd.merge(rookie_rb, team_stats, how='inner', left_on=['team', 'year'], right_on=['team', 'year'])
 
 # +
-df = pd.read_sql_query('''select * from rb_stats a
-                        inner join team_offensive_stats b on a.team=b.team and a.year=b.year''', con=conn)
+df = dm.read('''select * from rb_stats a
+                inner join team_offensive_stats b on a.team=b.team and a.year=b.year''', 'Season_Stats')
 
 # remove duplicated columns
 df = df.loc[:, ~df.columns.duplicated()]
@@ -555,7 +553,7 @@ rookie_rb['teammate_diff_avg_dv'] = rookie_rb.avg_pick / rookie_rb['avg_teammate
 rookie_rb = draft_value(rookie_rb, 'RB')
 rookie_rb = qb_run(rookie_rb)
 
-dm.write_to_db(df, db_name='Model_Inputs', table_name='Rookie_RB_' + str(year+1), if_exist='replace')
+dm.write_to_db(rookie_rb, db_name='Model_Inputs', table_name='Rookie_RB_' + str(year+1), if_exist='replace')
 
 # # Compile Rookie WR
 
@@ -575,7 +573,7 @@ teammate adps compare to the current player.
 #--------
 
 # load prepared data
-rookie_wr = pd.read_sql_query("select * from rookie_wr_stats", conn)
+rookie_wr = dm.read("select * from rookie_wr_stats", 'Season_Stats')
 rookie_wr = rookie_wr.rename(columns={'draft_year': 'year'})
 rookie_wr['year'] = rookie_wr['year'] - 1
 
@@ -583,7 +581,7 @@ team_stats_q = '''SELECT * FROM OLine_Stats A
     INNER JOIN Team_Offense_DVOA C ON A.team = C.team AND A.year = C.year
     INNER JOIN Team_Offensive_Stats D ON A.team = D.team AND A.year = D.year
     INNER JOIN QB_PosPred E ON A.team = E.team AND A.year = E.year'''
-team_stats = pd.read_sql_query(team_stats_q, conn)
+team_stats = dm.read(team_stats_q, 'Season_Stats')
 
 # remove duplicated columns
 team_stats = team_stats.loc[:, ~team_stats.columns.duplicated()]
@@ -592,8 +590,8 @@ team_stats = team_stats.drop_duplicates()
 rookie_wr = pd.merge(rookie_wr, team_stats, how='inner', left_on=['team', 'year'], right_on=['team', 'year'])
 
 # +
-df = pd.read_sql_query('''select * from wr_stats a
-                        inner join team_offensive_stats b on a.team=b.team and a.year=b.year''', con=conn)
+df = dm.read('''select * from wr_stats a
+              inner join team_offensive_stats b on a.team=b.team and a.year=b.year''', 'Season_Stats')
 
 # remove duplicated columns
 df = df.loc[:, ~df.columns.duplicated()]
@@ -636,4 +634,6 @@ rookie_wr['teammate_diff_avg_dv'] = rookie_wr.avg_pick / rookie_wr['avg_teammate
 rookie_wr = draft_value(rookie_wr, 'WR')
 rookie_wr = qb_run(rookie_wr)
 
-append_to_db(rookie_wr, db_name='Model_Inputs', table_name='Rookie_WR_' + str(year+1), if_exist='replace')
+dm.write_to_db(rookie_wr, db_name='Model_Inputs', table_name='Rookie_WR_' + str(year+1), if_exist='replace')
+
+# %%

@@ -36,7 +36,7 @@ set_pos = 'Rookie_WR'
 rb_wr = set_pos.split('_')[1]
 
 # set year to analyze
-set_year = 2020
+set_year = 2021
 
 #==========
 # Fantasy Point Values
@@ -94,8 +94,8 @@ for met in ['fp_per_game']:# mets:
     print('Shape of Train Set', df_train.shape)
     skm = SciKitModel(df_train)
     X, y = skm.Xy_split(y_metric=met, to_drop=['player', 'pos', 'team', 
-                                                'adjust_line_yds', 'pass_block_rank', 'last_year',
-                                                 'rec_yd_per_game',
+                                                 'rec_yd_per_game', 
+                                                 #'rush_yd_per_game',
                                                 'rec_per_game', 'td_per_game', 'fp_per_game'])
 
     min_samples = int(df_train[df_train.year <= df_train.year.min()].shape[0])  
@@ -152,6 +152,13 @@ for met in ['fp_per_game']:# mets:
 # %%
 output = df_predict[['player', 'avg_pick']].copy()
 
+df_predict = df_predict.fillna(0)
+for c in df_predict.columns:
+    if len(df_predict[df_predict[c]==np.inf]) > 0:
+        df_predict.loc[df_predict[c]==np.inf, c] = 0
+    if len(df_predict[df_predict[c]==-np.inf]) > 0:
+        df_predict.loc[df_predict[c]==-np.inf, c] = 0
+
 # get the X and y values for stack trainin for the current metric
 X_stack, y_stack = skm.X_y_stack(met, pred, actual)
 
@@ -171,4 +178,5 @@ output = output.sort_values(by='avg_pick')
 output['adp_rank'] = range(len(output))
 output = output.sort_values(by='pred_fp_per_game', ascending=False).reset_index(drop=True)
 output.iloc[:50]
-# %%
+#%%
+
