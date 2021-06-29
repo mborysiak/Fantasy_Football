@@ -1,7 +1,7 @@
 #%%
 # set to 1 year prior to current (i.e. the year that has stats)
 # will auto update updates to current year for drafting
-year = 2019
+year = 2020
 
 from ff.db_operations import DataManage
 from ff import general, data_clean as dc
@@ -177,7 +177,7 @@ query = '''
     SELECT * 
     FROM RB_Stats A 
     INNER JOIN OLine_Stats B ON A.team = B.team AND A.year = B.year
-    INNER JOIN Team_Efficiency C ON A.team = C.team AND A.year = C.year
+    INNER JOIN Team_Offense_DVOA C ON A.team = C.team AND A.year = C.year
     INNER JOIN Team_Offensive_Stats D ON A.team = D.team AND A.year = D.year
     INNER JOIN QB_PosPred E ON A.team = E.team AND A.year = E.year
     LEFT JOIN Team_Drafts F ON A.team = F.team AND A.year = F.year 
@@ -271,7 +271,7 @@ query = '''
     SELECT * 
     FROM WR_Stats A 
     INNER JOIN OLine_Stats B ON A.team = B.team AND A.year = B.year
-    INNER JOIN Team_Efficiency C ON A.team = C.team AND A.year = C.year
+    INNER JOIN Team_Offense_DVOA C ON A.team = C.team AND A.year = C.year
     INNER JOIN Team_Offensive_Stats D ON A.team = D.team AND A.year = D.year
     INNER JOIN QB_PosPred E ON A.team = E.team AND A.year = E.year
     INNER JOIN Team_Drafts F ON A.team = F.team AND A.year = F.year'''
@@ -350,7 +350,7 @@ query = '''
     SELECT * 
     FROM QB_Stats A 
     INNER JOIN OLine_Stats B ON A.team = B.team AND A.year = B.year
-    INNER JOIN Team_Efficiency C ON A.team = C.team AND A.year = C.year
+    INNER JOIN Team_Offense_DVOA C ON A.team = C.team AND A.year = C.year
     INNER JOIN Team_Offensive_Stats D ON A.team = D.team AND A.year = D.year
     INNER JOIN QB_PosPred E ON A.team = E.team AND A.year = E.year
      INNER JOIN Team_Drafts F ON A.team = F.team AND A.year = F.year
@@ -401,7 +401,7 @@ query = '''
     SELECT * 
     FROM TE_Stats A 
     INNER JOIN OLine_Stats B ON A.team = B.team AND A.year = B.year
-    INNER JOIN Team_Efficiency C ON A.team = C.team AND A.year = C.year
+    INNER JOIN Team_Offense_DVOA C ON A.team = C.team AND A.year = C.year
     INNER JOIN Team_Offensive_Stats D ON A.team = D.team AND A.year = D.year
     INNER JOIN QB_PosPred E ON A.team = E.team AND A.year = E.year
     INNER JOIN Team_Drafts F ON A.team = F.team AND A.year = F.year'''
@@ -486,7 +486,7 @@ rookie_rb = rookie_rb.rename(columns={'draft_year': 'year'})
 rookie_rb['year'] = rookie_rb['year'] - 1
 
 team_stats_q = '''SELECT * FROM OLine_Stats A 
-    INNER JOIN Team_Efficiency C ON A.team = C.team AND A.year = C.year
+    INNER JOIN Team_Offense_DVOA C ON A.team = C.team AND A.year = C.year
     INNER JOIN Team_Offensive_Stats D ON A.team = D.team AND A.year = D.year
     INNER JOIN QB_PosPred E ON A.team = E.team AND A.year = E.year'''
 team_stats = pd.read_sql_query(team_stats_q, conn)
@@ -555,7 +555,7 @@ rookie_rb['teammate_diff_avg_dv'] = rookie_rb.avg_pick / rookie_rb['avg_teammate
 rookie_rb = draft_value(rookie_rb, 'RB')
 rookie_rb = qb_run(rookie_rb)
 
-append_to_db(rookie_rb, db_name='Model_Inputs', table_name='Rookie_RB_' + str(year+1), if_exist='replace')
+dm.write_to_db(df, db_name='Model_Inputs', table_name='Rookie_RB_' + str(year+1), if_exist='replace')
 
 # # Compile Rookie WR
 
@@ -580,7 +580,7 @@ rookie_wr = rookie_wr.rename(columns={'draft_year': 'year'})
 rookie_wr['year'] = rookie_wr['year'] - 1
 
 team_stats_q = '''SELECT * FROM OLine_Stats A 
-    INNER JOIN Team_Efficiency C ON A.team = C.team AND A.year = C.year
+    INNER JOIN Team_Offense_DVOA C ON A.team = C.team AND A.year = C.year
     INNER JOIN Team_Offensive_Stats D ON A.team = D.team AND A.year = D.year
     INNER JOIN QB_PosPred E ON A.team = E.team AND A.year = E.year'''
 team_stats = pd.read_sql_query(team_stats_q, conn)

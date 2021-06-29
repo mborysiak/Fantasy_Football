@@ -28,7 +28,7 @@ pos['RB']['metrics'] = ['rush_yd_per_game', 'rec_yd_per_game', 'rec_per_game', '
 # median feature categories
 pos['RB']['med_features'] = ['fp', 'tgt', 'receptions', 'total_touches', 'rush_yds', 'rec_yds', 
                            'rush_yd_per_game', 'rec_yd_per_game', 'rush_td', 'games_started', 
-                           'qb_rating', 'qb_yds', 'pass_off', 'tm_rush_td', 'tm_rush_yds', 
+                           'qb_rating', 'qb_yds', 'pass_dvoa', 'tm_rush_td', 'tm_rush_yds', 
                            'tm_rush_att', 'adjust_line_yds', 'ms_rush_yd', 'ms_rec_yd', 'ms_rush_td',
                            'avg_pick', 'fp_per_touch', 'team_rush_avg_att',
                             'rz_20_rush_att', 'rz_20_rush_yds', 'rz_20_rush_td', 'rz_20_tgt', 'rz_20_receptions', 
@@ -111,7 +111,7 @@ pos['WR']['metrics'] = ['rec_yd_per_game', 'rec_per_game', 'td_per_game']
 
 # median feature categories
 pos['WR']['med_features'] = ['fp', 'tgt', 'receptions', 'rec_yds', 'rec_yd_per_game', 'rec_td', 'games_started', 
-                             'qb_rating', 'qb_yds', 'pass_off', 'ms_tgts', 'ms_rec_yd', 
+                             'qb_rating', 'qb_yds', 'pass_dvoa', 'ms_tgts', 'ms_rec_yd', 
                              'tm_net_pass_yds', 'avg_pick',  'rz_20_tgt', 'rz_20_receptions', 
                             'rz_20_catch_pct', 'rz_20_rec_yds', 'rz_20_rec_tds',
                              'rz_10_tgt', 'rz_10_receptions', 
@@ -154,7 +154,7 @@ pos['QB']['touch_filter'] = 'qb_att'
 pos['QB']['metrics'] = ['qb_yd_per_game', 'pass_td_per_game','rush_yd_per_game', 
                         'rush_td_per_game' ,'int_per_game', 'sacks_per_game' ]
 
-pos['QB']['med_features'] = ['fp', 'qb_tds','qb_rating', 'qb_yds', 'pass_off', 'qb_complete_pct', 'qb_td_pct', 
+pos['QB']['med_features'] = ['fp', 'qb_tds','qb_rating', 'qb_yds', 'pass_dvoa', 'qb_complete_pct', 'qb_td_pct', 
                              'sack_pct', 'avg_pick', 'sacks_allowed', 'qbr', 'adj_yd_per_att', 'adj_net_yd_per_att',
                              'int', 'int_pct', 'rush_att', 'rush_yds', 'rush_td', 'rush_yd_per_game', 'rush_yd_per_att',
                              'rz_20_pass_complete', 'rz_20_pass_att',
@@ -184,7 +184,7 @@ pos['TE']['metrics'] = ['rec_yd_per_game', 'rec_per_game', 'td_per_game']
 
 # median feature categories
 pos['TE']['med_features'] = ['fp', 'tgt', 'receptions', 'rec_yds', 'rec_yd_per_game', 'rec_td', 'games_started', 
-                             'qb_rating', 'qb_yds', 'pass_off', 'ms_tgts', 'ms_rec_yd', 
+                             'qb_rating', 'qb_yds', 'pass_dvoa', 'ms_tgts', 'ms_rec_yd', 
                              'tm_net_pass_yds', 'avg_pick','rz_20_tgt', 'rz_20_receptions', 
                             'rz_20_catch_pct', 'rz_20_rec_yds', 'rz_20_rec_tds',
                              'rz_10_tgt', 'rz_10_receptions', 
@@ -255,7 +255,7 @@ def add_exp_metrics(df, set_pos):
                     'rz_20_tgt', 'rz_20_receptions', 'avg_pick', 'min_teammate']
            
     elif set_pos == 'QB':
-        cols = ['fp', 'qb_tds','qb_rating', 'qb_yds', 'pass_off', 'qb_complete_pct', 'qb_td_pct', 
+        cols = ['fp', 'qb_tds','qb_rating', 'qb_yds', 'pass_dvoa', 'qb_complete_pct', 'qb_td_pct', 
                  'sack_pct', 'avg_pick', 'sacks_allowed', 'qbr', 'adj_yd_per_att', 'adj_net_yd_per_att',
                  'int', 'int_pct', 'rush_att', 'rush_yds', 'rush_yd_per_game', 'rush_td', 'rush_yd_per_att']
     
