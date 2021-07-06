@@ -1,17 +1,4 @@
-# ---
-# jupyter:
-#   jupytext:
-#     formats: ipynb,py:light
-#     text_representation:
-#       extension: .py
-#       format_name: light
-#       format_version: '1.5'
-#       jupytext_version: 1.5.2
-#   kernelspec:
-#     display_name: Python 3
-#     language: python
-#     name: python3
-# ---
+
 
 #%%
 
@@ -19,21 +6,35 @@
 
 import pandas as pd
 import numpy as np
-import os
 import sqlite3
 from zData_Functions import *
 
+from ff.db_operations import DataManage
+from ff import general
+from skmodel import SciKitModel
+
+import pandas_bokeh
+pandas_bokeh.output_notebook()
+
+import warnings
+warnings.filterwarnings("ignore", category=RuntimeWarning) 
+warnings.filterwarnings("ignore", category=UserWarning) 
+
+#==========
+# General Setting
+#==========
+
+# set the root path and database management object
+root_path = general.get_main_path('Fantasy_Football')
+db_path = f'{root_path}/Data/Databases/'
+dm = DataManage(db_path)
+
+#%%
 # set core path
-PATH = f'/Users/{os.getlogin()}/Documents/Github/Fantasy_Football/Data/'
+PATH = f'{root_path}/Data/'
 YEAR = 2020
 LEAGUE = 'beta'
 FNAME = f'{LEAGUE}_{YEAR}_results'
-
-
-conn_sim = sqlite3.connect(f'{PATH}/Databases/Simulation.sqlite3')
-conn_stats = sqlite3.connect(f'{PATH}/Databases/Season_Stats.sqlite3')
-
-
 
 def clean_results(path, fname, year, league, team_split=True):
     
@@ -61,25 +62,25 @@ def clean_results(path, fname, year, league, team_split=True):
     return results
 
 results = clean_results(PATH, FNAME, YEAR, LEAGUE)
-# append_to_db(results, 'Simulation', 'Actual_Salaries', 'append')
+dm.delete_from_db('Simulation', 'Actual_Salaries', f"year='{YEAR}' AND league='{LEAGUE}'")
+dm.write_to_db(results, 'Simulation', 'Actual_Salaries', 'append')
 
-
-##########################################
 
 #%%
 
-actual_sal = pd.read_sql_query(f'''SELECT *
-                                FROM Actual_Salaries 
-                                WHERE League='{LEAGUE}' ''', conn_sim)
-base_sal = pd.read_sql_query(f'''SELECT player, salary, year
-                                 FROM Salaries 
-                                 WHERE League='{LEAGUE}' ''', conn_sim)
-player_age = pd.read_sql_query('''SELECT * FROM player_birthdays''', conn_stats)   
-osu = pd.read_sql_query('''SELECT DISTINCT player, 1 as is_OSU 
+actual_sal = dm.read(f'''SELECT *
+                         FROM Actual_Salaries 
+                         WHERE League='{LEAGUE}' ''', 'Simulation')
+base_sal = dm.read(f'''SELECT player, salary, year
+                              FROM Salaries 
+                              WHERE League='{LEAGUE}' ''', 'Simulation')
+player_age = dm.read('''SELECT * FROM player_birthdays''', 'Season_Stats')   
+osu = dm.read('''SELECT DISTINCT player, 1 as is_OSU 
                            FROM college_stats
-                           where team='Ohio State' ''', conn_stats)
-rookies = pd.read_sql_query('''SELECT player, draft_year year FROM rookie_adp''', conn_stats)
+                           where team='Ohio State' ''', 'Season_Stats')
+rookies = dm.read('''SELECT player, draft_year year FROM rookie_adp''', 'Season_Stats')
 rookies['is_rookie'] = 1
+
 # 
 salaries = pd.merge(actual_sal, base_sal, on=['player', 'year'])
 salaries = pd.merge(salaries, player_age, on=['player'])
@@ -96,43 +97,51 @@ inflation['inflation'] = 1 + (inflation.value / 3600)
 salaries = pd.merge(salaries, inflation, on='year')
 salaries = salaries[salaries.is_keeper==0].reset_index(drop=True)
 
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.linear_model import Ridge, Lasso
-from sklearn.model_selection import cross_val_score, cross_val_predict
-from sklearn.metrics import mean_squared_error
-from sklearn.preprocessing import StandardScaler
-from lightgbm import LGBMRegressor
-from xgboost import XGBRegressor
+#%%
 
-X = salaries[['inflation', 'salary', 'pos',  'is_rookie', 'is_OSU']] 
+skm = SciKitModel(salaries)
+X, y = skm.Xy_split_list('actual_salary', ['inflation', 'salary', 'pos',  'is_rookie', 'is_OSU'])
 X = pd.concat([X, pd.get_dummies(X.pos, drop_first=True)], axis=1).drop('pos', axis=1)
 X['rookie_rb'] = X.RB * X.is_rookie
-X = X.drop('is_rookie', axis=1)
+# X = X.drop('is_rookie', axis=1)
 
-# X['stud'] = 0
-# X.loc[X.salary > 80, 'stud'] = 1 
+# loop through each potential model
+best_models = {}
+model_list = ['lgbm', 'ridge', 'svr', 'lasso', 'enet', 'xgb', 'knn', 'gbm', 'rf']
+for m in model_list:
 
-# X['filler'] = 0
-# X.loc[X.salary < 10, 'filler'] = 1 
+    print('\n============\n')
+    print(m)
 
-# X = pd.DataFrame(StandardScaler().fit_transform(X), columns=X.columns)
-y = salaries.actual_salary
+    # set up the model pipe and get the default search parameters
+    pipe = skm.model_pipe([
+                            skm.piece('std_scale'), 
+                            skm.piece('k_best'),
+                            skm.piece(m)
+                            ])
+    params = skm.default_params(pipe, 'rand')
+    params['k_best__k'] = range(1,X.shape[1])
 
-# m = RandomForestRegressor(n_estimators=50, max_depth=4, min_samples_leaf=1)
-# m = LGBMRegressor(n_estimators=50, max_depth=5, reg_lambda=10)
-m = Ridge(alpha=1)
-mse = np.mean(np.sqrt(-cross_val_score(m, X, y, cv=10, scoring='neg_mean_squared_error')))
-inf_baseline = np.sqrt(mean_squared_error(salaries.actual_salary*salaries.inflation, salaries.salary))
-baseline = np.sqrt(mean_squared_error(salaries.actual_salary, salaries.salary))
-print('Model',  round(mse, 3))
-print('Inflation Baseline',  round(inf_baseline, 3))
-print('Baseline',  round(baseline, 3))
+    best_model = skm.random_search(pipe, X, y, params)
+    mse, r2 = skm.val_scores(best_model, X, y, cv=5)
+    best_models[m] = best_model
 
-m.fit(X, y)
-pred_sal = cross_val_predict(m, X, y, cv=10)
-#########################################
-salaries = pd.concat([salaries, pd.Series(pred_sal, name='pred_salary')], axis=1)
-pred_results = salaries[['player', 'year', 'actual_salary', 'pred_salary']]
+#%%
+from sklearn.metrics import r2_score, mean_squared_error
+
+inf_baseline = mean_squared_error(salaries.actual_salary*salaries.inflation, salaries.salary)
+inf_baseline_r2 = r2_score(salaries.actual_salary*salaries.inflation, salaries.salary)
+baseline = mean_squared_error(salaries.actual_salary, salaries.salary)
+baseline_r2 = r2_score(salaries.actual_salary, salaries.salary)
+
+print('Inflation Baseline',  round(inf_baseline, 3), round(inf_baseline_r2, 3))
+print('Baseline',  round(baseline, 3), round(baseline_r2, 3))
+
+#%%
+
+pred_sal = skm.cv_predict(best_models['lasso'], X, y, cv=10)
+pred_results = pd.concat([salaries[['player', 'year', 'actual_salary', 'salary']], 
+                      pd.Series(pred_sal, name='pred_salary')], axis=1)
 pred_results['sal_diff'] = abs(pred_results.pred_salary - pred_results.actual_salary)
 pred_results.sort_values(by='sal_diff', ascending=False).iloc[:50]
 
@@ -150,32 +159,31 @@ append_to_db(output,'Simulation', 'Salaries', 'append')
 
 #%%
 
+YEAR=2021
 
-
-salary_final = pd.read_csv(f'{path}/OtherData/Salaries/salaries_{year}_{league}.csv')
-salary_final['year'] = year
-salary_final['league'] = league
+salary_final = pd.read_csv(f'{PATH}/OtherData/Salaries/salaries_{YEAR}_{LEAGUE}.csv')
+salary_final['year'] = YEAR
+salary_final['league'] = LEAGUE
 salary_final.player = salary_final.player.apply(name_clean)
 
-if league=='snake':
+if LEAGUE=='snake':
     salary_final['salary'] =1
 
-# +
-conn_sim = sqlite3.connect(f'{path}/Databases/Simulation.sqlite3')
-conn_sim.cursor().execute(f'''DELETE FROM Salaries WHERE year={year} AND league='{league}' ''')
-conn_sim.commit()
-    
-append_to_db(salary_final,'Simulation', 'Salaries', 'append')
+dm.delete_from_db('Simulation', 'Salaries', f"year='{YEAR}' AND league='{LEAGUE}'")
+dm.write_to_db(salary_final, 'Simulation', 'Salaries', 'append')
 # -
+
+#%%
 
 # # Pushing Injuries to Season_Stats Database
 
 # +
 from sklearn.preprocessing import StandardScaler
-year = 2020
+year = 2021
 
 # read in the injury predictor file
-inj = pd.read_csv(f'{path}/OtherData/InjuryPredictor/injury_predictor_{year}.csv', header=None)
+inj = pd.read_csv(f'{PATH}/OtherData/InjuryPredictor/injury_predictor_{YEAR}.csv', 
+                  header=None)
 
 # fix the columns and formatting
 inj.columns = ['player', 'pct_miss_one', 'proj_games_missed', 'inj_pct_per_game', 'inj_risk', 'points']
@@ -198,19 +206,16 @@ inj = inj[['player', 'mean_risk']].sort_values(by='mean_risk').reset_index(drop=
 
 inj.player = inj.player.apply(name_clean)
 
-# adjust specific players if needed
-pts = [1, 1, 1, 1, 1]
-players = ['Kerryon Johnson', 'Tyreek Hill', 'Todd Gurley', 'Deebo Samuel', 'Miles Sanders']
-for pt, pl in zip(pts, players):
-    inj.loc[inj.player==pl, 'mean_risk'] = inj.loc[inj.player==pl, 'mean_risk'] + pt
+# # adjust specific players if needed
+# pts = [1, 1, 1, 1, 1]
+# players = ['Kerryon Johnson', 'Tyreek Hill', 'Todd Gurley', 'Deebo Samuel', 'Miles Sanders']
+# for pt, pl in zip(pts, players):
+#     inj.loc[inj.player==pl, 'mean_risk'] = inj.loc[inj.player==pl, 'mean_risk'] + pt
     
-inj['year'] = year
-# -
+inj['year'] = YEAR
 
-conn_sim = sqlite3.connect(f'{path}/Databases/Simulation.sqlite3')
-conn_sim.cursor().execute(f'''DELETE FROM Injuries WHERE year={year}''')
-conn_sim.commit()
-append_to_db(inj, 'Simulation', 'Injuries', 'append')
+dm.delete_from_db('Simulation', 'Injuries', f"year='{YEAR}'")
+dm.write_to_db(inj, 'Simulation', 'Injuries', 'append')
 
 
 

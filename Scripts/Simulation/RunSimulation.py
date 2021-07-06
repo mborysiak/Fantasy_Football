@@ -1,17 +1,3 @@
-# ---
-# jupyter:
-#   jupytext:
-#     formats: ipynb,py:light
-#     text_representation:
-#       extension: .py
-#       format_name: light
-#       format_version: '1.5'
-#       jupytext_version: 1.5.2
-#   kernelspec:
-#     display_name: Python 3
-#     language: python
-#     name: python3
-# ---
 
 #%%
 
@@ -33,9 +19,9 @@ np.random.seed(1234)
 # connection for simulation and specific table
 path = f'c:/Users/{os.getlogin()}/Documents/Github/Fantasy_Football/'
 conn_sim = sqlite3.connect(f'{path}/Data/Databases/Simulation.sqlite3')
-table_vers = 'Version4'
-set_year = 2020
-league='betapred'
+table_vers = 'Version1'
+set_year = 2021
+league='beta'
 
 # number of iteration to run
 iterations = 1000
@@ -113,35 +99,63 @@ proport = proport[['Position', 'Wts']]
 
 # input information for players and their associated salaries selected by other teams
 keepers = {
-    'Christian McCaffrey': 97,
-    'Derrick Henry': 61,
+    'Nick Chubb': 53,
+    'Travis Kelce': 56,
 
-    'Saquon Barkley': 126,
-    'DJ Chark': 35,
+    'Austin Ekeler': 45,
 
-    'Dalvin Cook': 80,
-    'Darren Waller': 11,
-    
-    'Kenyan Drake': 23,
-    'Terry McLaurin': 11,
+    "D'Andre Swift": 30,
+    'Keenan Allen': 34,
 
-    'James Conner': 26,
-    'Allen Robinson': 31,
+    'Darren Waller': 30,
+    'Dalvin Cook': 95,
 
-    'Lamar Jackson': 11,
-    'Austin Ekeler': 30,
+    'Jonathan Taylor': 61,
+    'Stefon Diggs': 27,
 
-    'Courtland Sutton': 11,
-    'Miles Sanders': 31,
+    'CeeDee Lamb': 24,
+    'Terry McLaurin': 26,
 
-    'Tyreek Hill': 56,
-    'Chris Godwin': 26,
+    'Cam Akers': 51,
+    'Saquon Barkley': 62,
 
-    'Adrian Peterson': 26,
+    'Justin Jefferson': 14,
 
-    'George Kittle': 48,
-    'Kareem Hunt': 16
+    'DK Metcalf': 34,
+    'Antonio Gibson': 50
 }
+
+# 2020 Keepers
+# keepers = {
+#     'Christian McCaffrey': 97,
+#     'Derrick Henry': 61,
+
+#     'Saquon Barkley': 126,
+#     'DJ Chark': 35,
+
+#     'Dalvin Cook': 80,
+#     'Darren Waller': 11,
+    
+#     'Kenyan Drake': 23,
+#     'Terry McLaurin': 11,
+
+#     'James Conner': 26,
+#     'Allen Robinson': 31,
+
+#     'Lamar Jackson': 11,
+#     'Austin Ekeler': 30,
+
+#     'Courtland Sutton': 11,
+#     'Miles Sanders': 31,
+
+#     'Tyreek Hill': 56,
+#     'Chris Godwin': 26,
+
+#     'Adrian Peterson': 26,
+
+#     'George Kittle': 48,
+#     'Kareem Hunt': 16
+# }
 
 # # 2019 keepers
 # keepers = {

@@ -103,12 +103,12 @@ pos['TE']['use_ay'] = False
 
 pos['QB']['filter_data'] = 'greater_equal'
 pos['RB']['filter_data'] = 'greater_equal'
-pos['WR']['filter_data'] = 'less_equal'
+pos['WR']['filter_data'] = 'greater_equal'
 pos['TE']['filter_data'] = 'greater_equal'
 
 pos['QB']['year_exp'] = 0
 pos['RB']['year_exp'] = 0
-pos['WR']['year_exp'] = 3
+pos['WR']['year_exp'] = 4
 pos['TE']['year_exp'] = 0
 
 pos['QB']['act_ppg'] = 20
@@ -535,7 +535,7 @@ def plot_distribution(estimates):
                  label = 'Estimated Dist.')
 
     # Plot the mean estimate
-    plt.vlines(x = estimates.mean(), ymin = 0, ymax = 0.1, 
+    plt.vlines(x = estimates.mean(), ymin = 0, ymax = 0.01, 
                 linestyles = '--', colors = 'red',
                 label = 'Pred Estimate',
                 linewidth = 2.5)
@@ -555,7 +555,7 @@ def create_distribution(player_data, num_samples=1000):
     import scipy.stats as stats
 
     # create truncated distribution
-    lower, upper = 0,  np.percentile(df_train.y_act, 99) * 1.1
+    lower, upper = 0,  np.percentile(df_train.y_act, 99) * 1.15
     lower_bound = (lower - player_data.pred_fp_per_game) / player_data.std_dev, 
     upper_bound = (upper - player_data.pred_fp_per_game) / player_data.std_dev
     trunc_dist = stats.truncnorm(lower_bound, upper_bound, loc= player_data.pred_fp_per_game, scale= player_data.std_dev)
@@ -576,8 +576,13 @@ def create_sim_output(output, num_samples=1000):
     
     return sim_out
 
-p1 = create_distribution(output.iloc[0])
-plot_distribution(p1)
+#%%
+
+player = 'Christian McCaffrey'
+
+df = dm.read(f'''SELECT * FROM Version1_2021 WHERE player='{player}' ''', 'Simulation')
+df = df.drop(['player', 'pos'], axis=1).values
+plot_distribution(df)
 
 # %%
 
