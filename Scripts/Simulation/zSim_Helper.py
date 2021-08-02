@@ -176,16 +176,16 @@ class FootballSimulation():
             points, salaries_tmp = self._random_select(data, salaries, salary_skews, 
                                                        inj_dist, replace_val, iterations)
             
-            # adjust salaries to ensure they don't go over the total cap
-            # first sum of the salaries of unique players (exclude flex)
-            sum_salaries = np.sum(salaries_tmp[:len(data.index.unique())])
+            # # adjust salaries to ensure they don't go over the total cap
+            # # first sum of the salaries of unique players (exclude flex)
+            # sum_salaries = np.sum(salaries_tmp[:len(data.index.unique())])
             
-            # sum up the salaries with total already spent
-            all_money = add_act_sal + drop_act_sal + sum_salaries
+            # # sum up the salaries with total already spent
+            # all_money = add_act_sal + drop_act_sal + sum_salaries
             
-            # calculate an inflation or deflation metric and multiply by salaries
-            factor = total_cap / all_money
-            salaries_tmp = salaries_tmp * factor
+            # # calculate an inflation or deflation metric and multiply by salaries
+            # factor = total_cap / all_money
+            # salaries_tmp = salaries_tmp * factor
 
             # run linear integer optimization
             x = self._run_opt(A, points, salaries_tmp, league_info['salary_cap'], pos_require)
@@ -336,7 +336,8 @@ class FootballSimulation():
         #--------
 
         # set salaries to numpy array and multiply by inflation
-        salaries = data.salary.values*inflation
+        # CHANGE 2021-07-06: Inflation removed since predicted salaries account for it
+        salaries = data.salary.values#*np.min([inflation, 1.05])
 
         # calculate salary skews for each player's salary
         salary_skews = self._skews(salaries, 1000)
@@ -353,17 +354,20 @@ class FootballSimulation():
         Input: Internal method that accepts the salaries input for each player in the dataset.
         Return: Right skewed salary uncertainties, scaled to the actual salary of the player.
         '''
-        # pull out the salary column and convert to numpy array
-        _salaries = salaries.reshape(-1,1)
+        # # pull out the salary column and convert to numpy array
+        # _salaries = salaries.reshape(-1,1)
 
-        # create a skews normal distribution of uncertainty for salaries
-        skews = (skewnorm.rvs(5, size=1000)*.1).reshape(1, -1)
+        # # create a skews normal distribution of uncertainty for salaries
+        # skews = (skewnorm.rvs(5, size=1000)*.05).reshape(1, -1)
 
-        # create a p x m matrix with dot product, where p is the number of players
-        # and m is the number of skewed uncertainties, e.g. 320 players x 10000 skewed errors
-        salary_skews = np.dot(_salaries, skews)
+        # # create a p x m matrix with dot product, where p is the number of players
+        # # and m is the number of skewed uncertainties, e.g. 320 players x 1000 skewed errors
+        # salary_skews = np.dot(_salaries, skews)
 
-        return salary_skews
+        # CHANGED 2021-07-06 to dollar error based on model predicting salaries
+        sal_errors = np.random.normal(0, 5, size=1000*len(salaries)).reshape(len(salaries), 1000)
+
+        return sal_errors
     
     
     @staticmethod
@@ -562,6 +566,7 @@ class FootballSimulation():
         # pull out a random skew and add to the original salaries
         salaries_tmp = salaries + salary_skews[:, ran_num]
         salaries_tmp = salaries_tmp.astype('double')
+        salaries_tmp[salaries_tmp < 2] = 2
         
         return points, salaries_tmp
     
@@ -701,13 +706,14 @@ class FootballSimulation():
         return avg_sal
 
 
-# # %%
+# %%
 
 # # connection for simulation and specific table
 # path = f'c:/Users/{os.getlogin()}/Documents/Github/Fantasy_Football/'
 # conn_sim = sqlite3.connect(f'{path}/Data/Databases/Simulation.sqlite3')
 # table_vers = 'Version1'
 # set_year = 2019
+# league='beta'
 
 # # number of iteration to run
 # iterations = 1000
@@ -730,7 +736,7 @@ class FootballSimulation():
 # pts_dict['TE'] = [rec_yd_per_pt, ppr, rush_rec_td]
 
 # # instantiate simulation class and add salary information to data
-# sim = FootballSimulation(pts_dict, conn_sim, table_vers, set_year, iterations)
+# sim = FootballSimulation(pts_dict, conn_sim, table_vers, set_year, league, iterations)
 
 # # set league information, included position requirements, number of teams, and salary cap
 # league_info = {}
@@ -750,4 +756,4 @@ class FootballSimulation():
 # to_add['salaries'] = []
 
 # sim.run_simulation(league_info, to_drop, to_add, iterations=iterations)
-# %%
+# # %%

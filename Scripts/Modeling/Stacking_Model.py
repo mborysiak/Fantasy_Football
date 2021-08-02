@@ -501,6 +501,7 @@ for bm, fm in zip(best_models, final_m):
 db_output['reg_stack_score'] = stack_score
 db_output['adp_stack_score'] = adp_score
 
+
 output['pred_fp_per_game'] = predictions.mean(axis=1)
 std_models = predictions.std(axis=1)
 std_bridge = bm.predict(X_predict, return_std=True)[1]

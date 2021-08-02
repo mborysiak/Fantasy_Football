@@ -21,7 +21,7 @@ path = f'c:/Users/{os.getlogin()}/Documents/Github/Fantasy_Football/'
 conn_sim = sqlite3.connect(f'{path}/Data/Databases/Simulation.sqlite3')
 table_vers = 'Version1'
 set_year = 2021
-league='beta'
+league='betapred_keeperscore'
 
 # number of iteration to run
 iterations = 1000
@@ -99,30 +99,30 @@ proport = proport[['Position', 'Wts']]
 
 # input information for players and their associated salaries selected by other teams
 keepers = {
-    'Nick Chubb': 53,
-    'Travis Kelce': 56,
+    # 'Nick Chubb': 53,
+    # 'Travis Kelce': 56,
 
-    'Austin Ekeler': 45,
+    # 'Austin Ekeler': 45,
 
-    "D'Andre Swift": 30,
-    'Keenan Allen': 34,
+    # "D'Andre Swift": 30,
+    # 'Keenan Allen': 34,
 
-    'Darren Waller': 30,
-    'Dalvin Cook': 95,
+    # 'Darren Waller': 30,
+    # 'Dalvin Cook': 95,
 
-    'Jonathan Taylor': 61,
-    'Stefon Diggs': 27,
+    # 'Jonathan Taylor': 61,
+    # 'Stefon Diggs': 27,
 
-    'CeeDee Lamb': 24,
-    'Terry McLaurin': 26,
+    # 'CeeDee Lamb': 24,
+    # 'Terry McLaurin': 26,
 
-    'Cam Akers': 51,
-    'Saquon Barkley': 62,
+    # 'Cam Akers': 51,
+    # 'Saquon Barkley': 62,
 
-    'Justin Jefferson': 14,
+    # 'Justin Jefferson': 14,
 
-    'DK Metcalf': 34,
-    'Antonio Gibson': 50
+    # 'DK Metcalf': 34,
+    # 'Antonio Gibson': 50
 }
 
 # 2020 Keepers
@@ -691,6 +691,8 @@ def update_output(n_clicks, drafted_data, drafted_columns):
 
     return gr_fig, hist_fig, my_team_update.to_dict('records'), team_info_update.to_dict('records')
 
+
+#%%
 if __name__ == '__main__':
     app.run_server(debug=False)
 

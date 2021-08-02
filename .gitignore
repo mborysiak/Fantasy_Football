@@ -17,6 +17,7 @@ DB_Versioning/
 
 # jupyter notebooks
 *.ipynb
+*.parquet
 
 # vs code
 *.vscode

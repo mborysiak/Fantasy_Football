@@ -29,12 +29,13 @@ root_path = general.get_main_path('Fantasy_Football')
 db_path = f'{root_path}/Data/Databases/'
 dm = DataManage(db_path)
 
-#%%
 # set core path
 PATH = f'{root_path}/Data/'
-YEAR = 2020
+YEAR = 2021
 LEAGUE = 'beta'
 FNAME = f'{LEAGUE}_{YEAR}_results'
+
+#%%
 
 def clean_results(path, fname, year, league, team_split=True):
     
@@ -62,8 +63,8 @@ def clean_results(path, fname, year, league, team_split=True):
     return results
 
 results = clean_results(PATH, FNAME, YEAR, LEAGUE)
-dm.delete_from_db('Simulation', 'Actual_Salaries', f"year='{YEAR}' AND league='{LEAGUE}'")
-dm.write_to_db(results, 'Simulation', 'Actual_Salaries', 'append')
+# dm.delete_from_db('Simulation', 'Actual_Salaries', f"year='{YEAR}' AND league='{LEAGUE}'")
+# dm.write_to_db(results, 'Simulation', 'Actual_Salaries', 'append')
 
 
 #%%
@@ -81,8 +82,7 @@ osu = dm.read('''SELECT DISTINCT player, 1 as is_OSU
 rookies = dm.read('''SELECT player, draft_year year FROM rookie_adp''', 'Season_Stats')
 rookies['is_rookie'] = 1
 
-# 
-salaries = pd.merge(actual_sal, base_sal, on=['player', 'year'])
+salaries = pd.merge(actual_sal, base_sal, on=['player', 'year'], how='right')
 salaries = pd.merge(salaries, player_age, on=['player'])
 salaries = pd.merge(salaries, rookies, on=['player', 'year'], how='left')
 salaries = pd.merge(salaries, osu, on=['player'], how='left')
@@ -94,17 +94,31 @@ keepers['value'] = keepers.salary - keepers.actual_salary
 inflation = keepers.groupby('year').agg({'value': 'sum'}).reset_index()
 inflation['inflation'] = 1 + (inflation.value / 3600)
 
-salaries = pd.merge(salaries, inflation, on='year')
+salaries = pd.merge(salaries, inflation, on='year', how='left')
+
+salaries.is_keeper = salaries.is_keeper.fillna(0)
 salaries = salaries[salaries.is_keeper==0].reset_index(drop=True)
+salaries = salaries[(salaries.year==YEAR) | (~salaries.actual_salary.isnull())].reset_index(drop=True)
+salaries = salaries.sort_values(by=['year', 'salary'], ascending=[True, False])
+salaries['sal_rank'] = salaries.groupby('year').cumcount()
+
+salaries = salaries.sample(frac=1, random_state=1234)
 
 #%%
 
 skm = SciKitModel(salaries)
-X, y = skm.Xy_split_list('actual_salary', ['inflation', 'salary', 'pos',  'is_rookie', 'is_OSU'])
+X, y = skm.Xy_split_list('actual_salary', ['year', 'sal_rank', 'inflation', 'salary', 'pos',  'is_rookie', 'is_OSU'])
 X = pd.concat([X, pd.get_dummies(X.pos, drop_first=True)], axis=1).drop('pos', axis=1)
 X['rookie_rb'] = X.RB * X.is_rookie
-# X = X.drop('is_rookie', axis=1)
 
+X_train = X[X.year != YEAR]
+y_train = y[X_train.index].reset_index(drop=True); X_train.reset_index(drop=True, inplace=True)   
+
+X_test = X[X.year == YEAR].reset_index(drop=True)
+y_test = y[X_test.index].reset_index(drop=True); X_test.reset_index(drop=True, inplace=True)    
+
+
+#%%
 # loop through each potential model
 best_models = {}
 model_list = ['lgbm', 'ridge', 'svr', 'lasso', 'enet', 'xgb', 'knn', 'gbm', 'rf']
@@ -120,42 +134,52 @@ for m in model_list:
                             skm.piece(m)
                             ])
     params = skm.default_params(pipe, 'rand')
-    params['k_best__k'] = range(1,X.shape[1])
+    params['k_best__k'] = range(1,X_train.shape[1])
 
-    best_model = skm.random_search(pipe, X, y, params)
-    mse, r2 = skm.val_scores(best_model, X, y, cv=5)
+    best_model = skm.random_search(pipe, X_train, y_train, params)
+    mse, r2 = skm.val_scores(best_model, X_train, y_train, cv=5)
     best_models[m] = best_model
 
 #%%
 from sklearn.metrics import r2_score, mean_squared_error
 
-inf_baseline = mean_squared_error(salaries.actual_salary*salaries.inflation, salaries.salary)
-inf_baseline_r2 = r2_score(salaries.actual_salary*salaries.inflation, salaries.salary)
-baseline = mean_squared_error(salaries.actual_salary, salaries.salary)
-baseline_r2 = r2_score(salaries.actual_salary, salaries.salary)
+baseline_data = salaries[salaries.year!=YEAR]
+
+inf_baseline = mean_squared_error(baseline_data.actual_salary*baseline_data.inflation, baseline_data.salary)
+inf_baseline_r2 = r2_score(baseline_data.actual_salary*baseline_data.inflation, baseline_data.salary)
+baseline = mean_squared_error(baseline_data.actual_salary, baseline_data.salary)
+baseline_r2 = r2_score(baseline_data.actual_salary, baseline_data.salary)
 
 print('Inflation Baseline',  round(inf_baseline, 3), round(inf_baseline_r2, 3))
 print('Baseline',  round(baseline, 3), round(baseline_r2, 3))
 
+pred_sal = skm.cv_predict(best_models['lasso'], X_train, y_train, cv=10)
+pred_results = pd.concat([salaries.loc[salaries.year!=YEAR, ['player', 'year', 'salary', 'actual_salary']].reset_index(drop=True), 
+                          pd.Series(pred_sal, name='pred_salary')], axis=1)
+pred_results['dollar_diff'] = (pred_results.pred_salary - pred_results.actual_salary)
+pred_results.dollar_diff.plot.hist()
+
 #%%
 
-pred_sal = skm.cv_predict(best_models['lasso'], X, y, cv=10)
-pred_results = pd.concat([salaries[['player', 'year', 'actual_salary', 'salary']], 
-                      pd.Series(pred_sal, name='pred_salary')], axis=1)
-pred_results['sal_diff'] = abs(pred_results.pred_salary - pred_results.actual_salary)
-pred_results.sort_values(by='sal_diff', ascending=False).iloc[:50]
+X_test.inflation = X_train.inflation.mean()
+pred_sal = best_models['svr'].predict(X_test)
+
+pred_results = pd.concat([salaries.loc[salaries.year==YEAR,['player', 'year', 'salary']].reset_index(drop=True), 
+                          pd.Series(pred_sal, name='pred_salary')], axis=1)
+pred_results = pred_results.sort_values(by='salary', ascending=False)
+pred_results.loc[pred_results.pred_salary<1, 'pred_salary'] = 1
+pred_results.pred_salary = pred_results.pred_salary.astype('int')
+
+pred_results['pred_diff'] = pred_results.pred_salary - pred_results.salary
+pred_results.sort_values(by='pred_diff', ascending=False).iloc[:25]
 
 #%%
 
 output = pred_results[['player', 'pred_salary', 'year']]
 output = output.rename(columns={'pred_salary': 'salary'})
-output.salary = output.salary.astype('int')
-output = output[output.year==2020]
-keepers = keepers.loc[keepers.year==2020, ['player', 'actual_salary', 'year']]
-keepers = keepers.rename(columns={'actual_salary': 'salary'})
-output = pd.concat([output, keepers], axis=0)
 output['league'] = LEAGUE + 'pred'
-append_to_db(output,'Simulation', 'Salaries', 'append')
+dm.delete_from_db('Simulation', 'Salaries', f"year={YEAR} AND league='{LEAGUE}pred'")
+dm.write_to_db(output, 'Simulation', 'Salaries', 'append')
 
 #%%
 
@@ -171,7 +195,6 @@ if LEAGUE=='snake':
 
 dm.delete_from_db('Simulation', 'Salaries', f"year='{YEAR}' AND league='{LEAGUE}'")
 dm.write_to_db(salary_final, 'Simulation', 'Salaries', 'append')
-# -
 
 #%%
 
