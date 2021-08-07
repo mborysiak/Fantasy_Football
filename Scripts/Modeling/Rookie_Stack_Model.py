@@ -77,6 +77,7 @@ def load_pickle(path, fname):
 
 # load data and filter down
 df = dm.read(f'''SELECT * FROM {set_pos}_{set_year}''', 'Model_Inputs')
+df = df.sort_values(by='year').reset_index(drop=True)
 df_train = df[df.year < set_year-1].reset_index(drop=True)
 df_predict = df[df.year == set_year-1].reset_index(drop=True)
 
@@ -95,11 +96,10 @@ for met in ['fp_per_game']:# mets:
     skm = SciKitModel(df_train)
     X, y = skm.Xy_split(y_metric=met, to_drop=['player', 'pos', 'team', 
                                                  'rec_yd_per_game', 
-                                                 #'rush_yd_per_game',
+                                                # 'rush_yd_per_game',
                                                 'rec_per_game', 'td_per_game', 'fp_per_game'])
 
     min_samples = int(df_train[df_train.year <= df_train.year.min()].shape[0])  
-
 
     # set up the ADP model pipe
     pipe = skm.model_pipe([skm.piece('feature_select'), skm.piece('std_scale'), skm.piece('lr')])
@@ -109,7 +109,7 @@ for met in ['fp_per_game']:# mets:
     # fit and append the ADP model
     best_models, r2, oof_data = skm.time_series_cv(pipe, X, y, params, n_iter=50,
                                                     col_split='year', 
-                                                    time_split=2014)
+                                                    time_split=2013)
 
     # append all of the metric outputs
     pred[f'{met}_adp'] = oof_data['combined']; actual[f'{met}_adp'] = oof_data['actual']
@@ -120,8 +120,7 @@ for met in ['fp_per_game']:# mets:
     #---------------
 
     # loop through each potential model
-    model_list = ['lgbm', 'ridge', 'svr', 'lasso', 'enet', 'xgb', #'knn', 
-    'gbm', 'rf']
+    model_list = ['lgbm', 'ridge', 'svr', 'lasso', 'enet', 'xgb', 'gbm', 'rf']
     for m in model_list:
 
         print('\n============\n')
@@ -143,7 +142,8 @@ for met in ['fp_per_game']:# mets:
 
         # run the model with parameter search
         best_models, r2, oof_data = skm.time_series_cv(pipe, X, y, params, n_iter=10,
-                                                       col_split='year', time_split=2014)
+                                                       col_split='year', n_splits=3, 
+                                                       time_split=2013)
 
         # append the results and the best models for each fold
         pred[f'{met}_{m}'] = oof_data['combined']; actual[f'{met}_{m}'] = oof_data['actual']
@@ -163,7 +163,7 @@ for c in df_predict.columns:
 X_stack, y_stack = skm.X_y_stack(met, pred, actual)
 
 # get the model pipe for stacking setup and train it on meta features
-stack_pipe = skm.model_pipe([skm.piece('k_best'), skm.piece('ridge')])
+stack_pipe = skm.model_pipe([skm.piece('k_best'), skm.piece('bridge')])
 best_model, stack_score, adp_score = skm.best_stack(stack_pipe, X_stack, y_stack, n_iter=50, run_adp=True)
 
 # create the full stack pipe with meta estimators followed by stacked model

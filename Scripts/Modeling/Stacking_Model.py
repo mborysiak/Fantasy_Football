@@ -285,6 +285,7 @@ for met in mets:
     pred[f'{met}_adp'] = oof_data['combined']; actual[f'{met}_adp'] = oof_data['actual']
     scores[f'{met}_adp'] = r2; models[f'{met}_adp'] = best_models
 
+#%%
     #---------------
     # Model Training loop
     #---------------
@@ -401,15 +402,6 @@ X_stack_class, y_stack_class = skm_class.X_y_stack('class', pred_class, actual_c
 try: X_stack_class = X_stack_class.drop('class_svc', axis=1)
 except: pass
 
-# # get the model pipe for stacking setup and train it on meta features
-# stack_pipe_class = skm_class.model_pipe([
-#                                         skm_class.piece('k_best'), 
-#                                         skm_class.piece(pos[set_pos]['class_stack_model'])
-#                                         ])
-# best_model_class, stack_score_class, _ = skm_class.best_stack(stack_pipe_class, X_stack_class, y_stack_class, 
-#                                                         n_iter=pos[set_pos]['iters']*0.5, print_coef=True)
-# db_output['class_stack_score'] = stack_score_class
-
 skm_class_final = SciKitModel(df_train_class, model_obj='class')
 X_class_final, y_class_final = skm_class_final.Xy_split(y_metric='y_act', 
                                                         to_drop=['player', 'team', 'pos'])
@@ -422,16 +414,6 @@ for k, v in models_class.items():
         m.fit(X_class_final, y_class_final)
         cur_pred = pd.Series(m.predict_proba(df_predict_class[X_class_final.columns])[:,1], name=k)
         X_predict_class = pd.concat([X_predict_class, cur_pred], axis=1)
-
-# from sklearn.preprocessing import MinMaxScaler
-
-# prediction_class = best_model_class.predict_proba(X_predict_class)[:,1].reshape(-1,1)
-# prediction_class = MinMaxScaler().fit_transform(prediction_class)
-# prediction_class = pd.Series(prediction_class.reshape(1,-1)[0], name='pred_class')
-# prediction_class = round(prediction_class,2)
-# output_class = pd.concat([output_class, prediction_class], axis=1)
-# output_class = output_class.sort_values(by='avg_pick')
-# output_class.iloc[:50]
 
 #%%
 
@@ -511,15 +493,6 @@ output['adp_rank'] = range(len(output))
 output = output.sort_values(by='pred_fp_per_game', ascending=False).reset_index(drop=True)
 output.iloc[:50]
 
-# %%
-
-df_output = pd.DataFrame(db_output, index=[0])
-df_output['reg_pct_above'] = round((df_output.reg_stack_score - df_output.adp_stack_score) / df_output.adp_stack_score, 3)
-output_cols = ['pkey', 'set_pos', 'set_year']
-output_cols.extend(all_vars)
-output_cols.extend(['reg_stack_score', 'adp_stack_score', 'reg_pct_above', 'class_stack_score'])
-df_output = df_output[output_cols]
-dm.write_to_db(df_output, 'ParamTracking', 'StackResults', if_exist='append')
 
 # %%
 def plot_distribution(estimates):
@@ -589,8 +562,8 @@ plot_distribution(df)
 
 sim_output = create_sim_output(output)
 
-vers = 'Version1'
+vers = 'Version2'
 
-dm.delete_from_db('Simulation', f'{vers}_{set_year}', f"pos='{set_pos}'")
+# dm.delete_from_db('Simulation', f'{vers}_{set_year}', f"pos='{set_pos}'")
 dm.write_to_db(sim_output, 'Simulation', f'{vers}_{set_year}', 'append')
 # %%
