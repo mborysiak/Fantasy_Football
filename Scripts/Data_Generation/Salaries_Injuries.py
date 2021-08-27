@@ -33,9 +33,61 @@ dm = DataManage(db_path)
 PATH = f'{root_path}/Data/'
 YEAR = 2021
 LEAGUE = 'beta'
-FNAME = f'{LEAGUE}_{YEAR}_results'
 
 #%%
+
+#=================
+# Load salaries from ESPN into database
+#=================
+
+# read in csv file of raw copy-pasted data with bad formatting from ESPN
+df = pd.read_csv(f'{PATH}/OtherData/Salaries/salaries_{YEAR}_{LEAGUE}.csv', header=None)
+
+def scrape_values(df):
+    '''
+    This function will scrape a copy-paste of the ESPN salary information (paste special->text)
+    into a CSV when the data is in a single long row
+    '''
+    is_dollar = False
+    names = []
+    values = []
+    for _, v in df.iterrows():
+        
+        # get the value in the row
+        v = v[0]
+
+        # names are longer than other stats in the sheet, so filter based on length
+        if len(v) > 7:
+            names.append(v)
+
+        # the code below is a trigger for a dollar sign, which
+        # signals salary is coming up. if trigger is active, append salary
+        if is_dollar:
+            values.append(int(v))
+
+        # set the dollar sign trigger based on the current value for next iteration
+        if v == '$': is_dollar=True
+        else: is_dollar=False
+    
+    # create a dataframe of the resultant lists
+    df = pd.DataFrame([names, values]).T
+    df.columns = ['player', 'salary']
+
+    return df
+
+salaries = scrape_values(df)
+salaries['year'] = YEAR
+salaries['league'] = LEAGUE
+salaries.player = salaries.player.apply(name_clean)
+
+dm.delete_from_db('Simulation', 'Salaries', f"year='{YEAR}' AND league='{LEAGUE}'")
+dm.write_to_db(salaries, 'Simulation', 'Salaries', 'append')
+
+#%%
+
+#--------------
+# Function to Add Results to Dataframe after season for modeling
+#--------------
 
 def clean_results(path, fname, year, league, team_split=True):
     
@@ -62,6 +114,7 @@ def clean_results(path, fname, year, league, team_split=True):
     
     return results
 
+FNAME = f'{LEAGUE}_{YEAR}_results'
 results = clean_results(PATH, FNAME, YEAR, LEAGUE)
 # dm.delete_from_db('Simulation', 'Actual_Salaries', f"year='{YEAR}' AND league='{LEAGUE}'")
 # dm.write_to_db(results, 'Simulation', 'Actual_Salaries', 'append')
@@ -166,6 +219,7 @@ pred_sal = best_models['svr'].predict(X_test)
 
 pred_results = pd.concat([salaries.loc[salaries.year==YEAR,['player', 'year', 'salary']].reset_index(drop=True), 
                           pd.Series(pred_sal, name='pred_salary')], axis=1)
+
 pred_results = pred_results.sort_values(by='salary', ascending=False)
 pred_results.loc[pred_results.pred_salary<1, 'pred_salary'] = 1
 pred_results.pred_salary = pred_results.pred_salary.astype('int')
@@ -180,21 +234,6 @@ output = output.rename(columns={'pred_salary': 'salary'})
 output['league'] = LEAGUE + 'pred'
 dm.delete_from_db('Simulation', 'Salaries', f"year={YEAR} AND league='{LEAGUE}pred'")
 dm.write_to_db(output, 'Simulation', 'Salaries', 'append')
-
-#%%
-
-YEAR=2021
-
-salary_final = pd.read_csv(f'{PATH}/OtherData/Salaries/salaries_{YEAR}_{LEAGUE}.csv')
-salary_final['year'] = YEAR
-salary_final['league'] = LEAGUE
-salary_final.player = salary_final.player.apply(name_clean)
-
-if LEAGUE=='snake':
-    salary_final['salary'] =1
-
-dm.delete_from_db('Simulation', 'Salaries', f"year='{YEAR}' AND league='{LEAGUE}'")
-dm.write_to_db(salary_final, 'Simulation', 'Salaries', 'append')
 
 #%%
 
@@ -239,7 +278,3 @@ inj['year'] = YEAR
 
 dm.delete_from_db('Simulation', 'Injuries', f"year='{YEAR}'")
 dm.write_to_db(inj, 'Simulation', 'Injuries', 'append')
-
-
-
-# %%

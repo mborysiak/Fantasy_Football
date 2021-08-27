@@ -19,12 +19,12 @@ np.random.seed(1234)
 # connection for simulation and specific table
 path = f'c:/Users/{os.getlogin()}/Documents/Github/Fantasy_Football/'
 conn_sim = sqlite3.connect(f'{path}/Data/Databases/Simulation.sqlite3')
-table_vers = 'Version1'
+table_vers = 'Version3'
 set_year = 2021
 league='betapred'
 
 # number of iteration to run
-iterations = 1000
+iterations = 2000
 
 # define point values for all statistical categories
 pass_yd_per_pt = 0.04 
@@ -99,13 +99,13 @@ proport = proport[['Position', 'Wts']]
 
 # input information for players and their associated salaries selected by other teams
 keepers = {
-    'Nick Chubb': 53,
-    'Travis Kelce': 56,
+    # 'Nick Chubb': 53,
+    # 'James Robinson': 11,
 
     'Austin Ekeler': 45,
 
     "D'Andre Swift": 30,
-    'Keenan Allen': 34,
+    'Derrick Henry': 76,
 
     'Darren Waller': 30,
     'Dalvin Cook': 95,
@@ -120,9 +120,13 @@ keepers = {
     'Saquon Barkley': 62,
 
     'Justin Jefferson': 14,
+    'Josh Allen': 13,
 
     'DK Metcalf': 34,
-    'Antonio Gibson': 50
+    'Antonio Gibson': 50,
+
+    'David Montgomery': 24,
+    'Robert Woods': 40
 }
 
 # 2020 Keepers
@@ -646,7 +650,8 @@ def update_output(n_clicks, drafted_data, drafted_columns):
     remain_sal = league_info['salary_cap'] - np.sum(to_add['salaries'])
 
     # run the simulation
-    _, inflation = sim.run_simulation(league_info, to_drop, to_add, iterations=iterations)
+    if my_team_select.shape[0] < 9:
+        _, inflation = sim.run_simulation(league_info, to_drop, to_add, iterations=iterations)
     
     # get the results dataframe structured
     avg_sal = sim.show_most_selected(to_add, iterations, num_show=30)

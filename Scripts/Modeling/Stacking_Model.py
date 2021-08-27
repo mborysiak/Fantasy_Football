@@ -35,7 +35,7 @@ db_path = f'{root_path}/Data/Databases/'
 dm = DataManage(db_path)
 
 # set to position to analyze: 'RB', 'WR', 'QB', or 'TE'
-set_pos = 'WR'
+set_pos = 'RB'
 
 # set year to analyze
 set_year = 2021
@@ -81,10 +81,10 @@ pos['RB']['earliest_year'] = 1998
 pos['WR']['earliest_year'] = 1998
 pos['TE']['earliest_year'] = 1998
 
-pos['QB']['val_start'] = 2012
-pos['RB']['val_start'] = 2012
-pos['WR']['val_start'] = 2012
-pos['TE']['val_start'] = 2012
+pos['QB']['val_start'] = 2010
+pos['RB']['val_start'] = 2010
+pos['WR']['val_start'] = 2010
+pos['TE']['val_start'] = 2010
 
 pos['QB']['features'] = 'v2'
 pos['RB']['features'] = 'v2'
@@ -102,24 +102,24 @@ pos['WR']['use_ay'] = False
 pos['TE']['use_ay'] = False
 
 pos['QB']['filter_data'] = 'greater_equal'
-pos['RB']['filter_data'] = 'greater_equal'
-pos['WR']['filter_data'] = 'greater_equal'
+pos['RB']['filter_data'] = 'less_equal'
+pos['WR']['filter_data'] = 'less_equal'
 pos['TE']['filter_data'] = 'greater_equal'
 
 pos['QB']['year_exp'] = 0
-pos['RB']['year_exp'] = 0
-pos['WR']['year_exp'] = 4
+pos['RB']['year_exp'] = 3
+pos['WR']['year_exp'] = 3
 pos['TE']['year_exp'] = 0
 
 pos['QB']['act_ppg'] = 20
-pos['RB']['act_ppg'] = 12
-pos['WR']['act_ppg'] = 11
-pos['TE']['act_ppg'] = 10
+pos['RB']['act_ppg'] = 13
+pos['WR']['act_ppg'] = 12
+pos['TE']['act_ppg'] = 11
 
 pos['QB']['pct_off'] = 0.05
-pos['RB']['pct_off'] = 0.15
-pos['WR']['pct_off'] = 0.15
-pos['TE']['pct_off'] = 0.15
+pos['RB']['pct_off'] = 0.1
+pos['WR']['pct_off'] = 0.1
+pos['TE']['pct_off'] = 0.1
 
 pos['QB']['iters'] = 25
 pos['RB']['iters'] = 25
@@ -160,6 +160,11 @@ def load_pickle(path, fname):
         loaded_object = pickle.load(f)
         return loaded_object
 
+def filter_less_equal(df, pos):
+    if pos[set_pos]['filter_data']=='less_equal':
+        df = df.loc[df.year_exp != pos[set_pos]['year_exp']+1, :].reset_index(drop=True)
+    return df
+
 #==========
 # Pull and clean compiled data
 #==========
@@ -185,7 +190,9 @@ elif pos[set_pos]['filter_data']=='less_equal':
 _, output_start = hf.get_train_predict(df, 'fp_per_game', pos, set_pos, 
                                  set_year-pos[set_pos]['test_years'], 
                                  pos[set_pos]['earliest_year'], pos[set_pos]['features'])
-output = output_start[['player', 'avg_pick']].copy()
+
+output_start = filter_less_equal(output_start, pos)
+output_start = output_start[['player', 'avg_pick']]
 
 # append fp_per_game to the metrics and ensure unique values
 pos[set_pos]['metrics'].append('fp_per_game')
@@ -195,7 +202,6 @@ pos[set_pos]['metrics'] = list(dict.fromkeys(pos[set_pos]['metrics']))
 pts_dict[set_pos].append(1)
 # pts_dict[set_pos] = list(dict.fromkeys(pts_dict[set_pos]))
 
-#%%
 #==============
 # Create Break-out Probability Features
 #==============
@@ -218,6 +224,7 @@ df_train_class, df_predict_class = hf.get_train_predict(df, breakout_metric, pos
 
 # get the adp predictions and merge back to the training dataframe
 df_train_class, df_predict_class, lr = hf.get_adp_predictions(df_train_class, df_predict_class, 1)
+df_predict_class = filter_less_equal(df_predict_class, pos)
 
 # filter to adp cutoffs
 df_train_class = hf.adp_filter(df_train_class, adp_ppg_low, adp_ppg_high)
@@ -263,7 +270,8 @@ for met in mets:
                                                 set_year-pos[set_pos]['test_years'], 
                                                 pos[set_pos]['earliest_year'], 
                                                 pos[set_pos]['features'])
-    
+    df_predict = filter_less_equal(df_predict, pos)
+
     # get the minimum number of training samples for the initial datasets
     min_samples = int(df_train[df_train.year <= df_train.year.min()].shape[0])  
     
@@ -285,7 +293,6 @@ for met in mets:
     pred[f'{met}_adp'] = oof_data['combined']; actual[f'{met}_adp'] = oof_data['actual']
     scores[f'{met}_adp'] = r2; models[f'{met}_adp'] = best_models
 
-#%%
     #---------------
     # Model Training loop
     #---------------
@@ -342,7 +349,6 @@ save_pickle(models, model_output_path, 'reg_models')
 save_pickle(scores, model_output_path, 'reg_scores')
 
 
-# %%
 
 # set up blank dictionaries for all metrics
 pred = {}; actual = {}; scores = {}; models = {}
@@ -415,7 +421,6 @@ for k, v in models_class.items():
         cur_pred = pd.Series(m.predict_proba(df_predict_class[X_class_final.columns])[:,1], name=k)
         X_predict_class = pd.concat([X_predict_class, cur_pred], axis=1)
 
-#%%
 
 pred = load_pickle(model_output_path, 'reg_pred')
 actual = load_pickle(model_output_path, 'reg_actual')
@@ -428,6 +433,7 @@ output = output_start[['player', 'avg_pick']].copy()
 df_train, df_predict = hf.get_train_predict(df, 'fp_per_game', pos, set_pos, 
                                             set_year-pos[set_pos]['test_years'], 
                                             pos[set_pos]['earliest_year'], pos[set_pos]['features'])
+df_predict = filter_less_equal(df_predict, pos)
 df_predict = df_predict.drop('y_act', axis=1).fillna(0)
 skm = SciKitModel(df_train)
 
@@ -487,83 +493,30 @@ db_output['adp_stack_score'] = adp_score
 output['pred_fp_per_game'] = predictions.mean(axis=1)
 std_models = predictions.std(axis=1)
 std_bridge = bm.predict(X_predict, return_std=True)[1]
-output['std_dev'] = std_models + std_bridge
+output['std_dev'] = (std_models/2)+ std_bridge
 output = output.sort_values(by='avg_pick')
 output['adp_rank'] = range(len(output))
 output = output.sort_values(by='pred_fp_per_game', ascending=False).reset_index(drop=True)
 output.iloc[:50]
 
-
-# %%
-def plot_distribution(estimates):
-
-    from IPython.core.pylabtools import figsize
-    import seaborn as sns
-    import matplotlib.pyplot as plt
-
-    # Plot all the estimates
-    plt.figure(figsize(8, 8))
-    sns.distplot(estimates, hist = True, kde = True, bins = 19,
-                 hist_kws = {'edgecolor': 'k', 'color': 'darkblue'},
-                 kde_kws = {'linewidth' : 4},
-                 label = 'Estimated Dist.')
-
-    # Plot the mean estimate
-    plt.vlines(x = estimates.mean(), ymin = 0, ymax = 0.01, 
-                linestyles = '--', colors = 'red',
-                label = 'Pred Estimate',
-                linewidth = 2.5)
-
-    plt.legend(loc = 1)
-    plt.title('Density Plot for Test Observation');
-    plt.xlabel('Grade'); plt.ylabel('Density');
-
-    # Prediction information
-    sum_stats = (np.percentile(estimates, 5), np.percentile(estimates, 95), estimates.std() /estimates.mean())
-    print('Average Estimate = %0.4f' % estimates.mean())
-    print('5%% Estimate = %0.4f    95%% Estimate = %0.4f    Std Error = %0.4f' % sum_stats)  
-
-def create_distribution(player_data, num_samples=1000):
-    
-    print(player_data.player)
-    import scipy.stats as stats
-
-    # create truncated distribution
-    lower, upper = 0,  np.percentile(df_train.y_act, 99) * 1.15
-    lower_bound = (lower - player_data.pred_fp_per_game) / player_data.std_dev, 
-    upper_bound = (upper - player_data.pred_fp_per_game) / player_data.std_dev
-    trunc_dist = stats.truncnorm(lower_bound, upper_bound, loc= player_data.pred_fp_per_game, scale= player_data.std_dev)
-    
-    estimates = trunc_dist.rvs(num_samples)
-
-    return estimates
-
-
-def create_sim_output(output, num_samples=1000):
-    sim_out = pd.DataFrame()
-    for _, row in output.iterrows():
-        cur_out = pd.DataFrame([row.player, set_pos]).T
-        cur_out.columns=['player', 'pos']
-        dists = 16*pd.DataFrame(create_distribution(row, num_samples)).T
-        cur_out = pd.concat([cur_out, dists], axis=1)
-        sim_out = pd.concat([sim_out, cur_out], axis=0)
-    
-    return sim_out
-
 #%%
 
-player = 'Christian McCaffrey'
+vers = 'v1'
 
-df = dm.read(f'''SELECT * FROM Version1_2021 WHERE player='{player}' ''', 'Simulation')
-df = df.drop(['player', 'pos'], axis=1).values
-plot_distribution(df)
+output['pos'] = set_pos
+output['filter_data'] = pos[set_pos]['filter_data']
+output['year_exp'] = pos[set_pos]['year_exp']
+output['version'] = vers
+output['max_score'] = 1.05*np.percentile(df_train.y_act.max(), 99)
+
+del_str = f'''pos='{set_pos}' 
+              AND version='{vers}'
+              AND filter_data='{pos[set_pos]['filter_data']}'
+              AND year_exp={pos[set_pos]['year_exp']}'''
+
+dm.delete_from_db('Simulation', 'Model_Predictions', del_str)
+dm.write_to_db(output, 'Simulation', f'Model_Predictions', 'append')
 
 # %%
 
-sim_output = create_sim_output(output)
-
-vers = 'Version2'
-
-# dm.delete_from_db('Simulation', f'{vers}_{set_year}', f"pos='{set_pos}'")
-dm.write_to_db(sim_output, 'Simulation', f'{vers}_{set_year}', 'append')
 # %%

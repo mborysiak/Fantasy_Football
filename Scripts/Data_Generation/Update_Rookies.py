@@ -200,6 +200,46 @@ dm.write_to_db(comb_df, 'Season_Stats', 'Combine_Data_Raw', if_exist='append')
 
 # ## Get College Player ADP
 
+ # ensure all teams have same abbreviations for matching
+adp_to_player_teams = {
+
+    'ARI': 'ARI',
+    'ATL': 'ATL',
+    'BAL': 'BAL',
+    'BUF': 'BUF',
+    'CAR': 'CAR',
+    'CHI': 'CHI',
+    'CIN': 'CIN',
+    'CLE': 'CLE',
+    'DAL': 'DAL',
+    'DEN': 'DEN',
+    'DET': 'DET',
+    'GBP': 'GNB',
+    'HOU': 'HOU',
+    'IND': 'IND',
+    'JAC': 'JAX',
+    'KCC': 'KAN',
+    'LAC': 'LAC',
+    'SDC': 'LAC',
+    'LAR': 'LAR',
+    'RAM': 'LAR',
+    'MIA': 'MIA',
+    'MIN': 'MIN',
+    'NEP': 'NWE',
+    'NOS': 'NOR',
+    'NYG': 'NYG',
+    'NYJ': 'NYJ',
+    'OAK': 'LVR',
+    'LVR': 'LVR',
+    'PHI': 'PHI',
+    'PIT': 'PIT',
+    'SEA': 'SEA',
+    'SFO': 'SFO',
+    'TBB': 'TAM',
+    'TEN': 'TEN',
+    'WAS': 'WAS'
+}
+
 # +
 y=2021
 def rookie_adp(adp_pos, y):
@@ -208,8 +248,10 @@ def rookie_adp(adp_pos, y):
     
     # pulling historical player adp for runningbacks
     data_adp = pd.read_html(URL)[1]
-    df_adp = clean_adp(data_adp, y).rename(columns={'year': 'draft_year'}).drop('team',axis=1)
+    df_adp = clean_adp(data_adp, y).rename(columns={'year': 'draft_year'})
     df_adp['pos'] = adp_pos
+    df_adp['team'] = df_adp['team'].map(adp_to_player_teams)
+
     
     return df_adp
 
@@ -219,10 +261,9 @@ te_adp = rookie_adp('TE', y)
 qb_adp = rookie_adp('QB', y)
 
 rookie_adp = pd.concat([rb_adp, wr_adp, te_adp, qb_adp], axis=0)
-rookie_adp = rookie_adp[['player', 'draft_year', 'pos', 'avg_pick']]
+rookie_adp = rookie_adp[['player', 'draft_year', 'pos', 'avg_pick', 'team']]
 rookie_adp.player = rookie_adp.player.apply(name_clean)
 # -
-
 dm.delete_from_db('Season_Stats', 'Rookie_ADP', f"draft_year={set_year+1}")
 dm.write_to_db(rookie_adp, 'Season_Stats', 'Rookie_ADP', if_exist='append')
 

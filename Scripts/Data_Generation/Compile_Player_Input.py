@@ -21,11 +21,13 @@ pd.set_option('display.max_columns', None)
 
 def adp_groupby(df, position):
 
-    df_adp = dm.read(f'''
-        SELECT team, year, avg_pick FROM {position}_Stats
-        UNION
-        SELECT team, draft_year-1 year, avg_pick from Rookie_{position}_Stats
-    ''', 'Season_Stats')
+    df_adp = dm.read(f'''SELECT team, year, avg_pick FROM {position}_Stats''', 'Season_Stats')
+    rookie_adp = dm.read(f'''SELECT team, draft_year-1 year, avg_pick 
+                             FROM Rookie_ADP
+                             WHERE pos='{position}' ''', 'Season_Stats')
+    rookie_adp['avg_pick'] = np.log(rookie_adp.avg_pick)
+
+    df_adp = pd.concat([df_adp, rookie_adp], axis=0)
 
     # create teammate ADP metrics to see if top ranked player
     min_teammate = df_adp.groupby(['team', 'year'], group_keys=False)['avg_pick'].agg(np.min).reset_index().rename(columns={'avg_pick': 'min_teammate'})
@@ -196,8 +198,8 @@ for col in df.columns:
         pass
     
     
-df = df[~((df.player=='Damien Williams') & (df.year==2019))].reset_index(drop=True)
-df = df[~((df.player=='Derrius Guice') & (df.year==2019))].reset_index(drop=True)
+df = df[~((df.player=='Cam Akers') & (df.year==2020))].reset_index(drop=True)
+df = df[~((df.player=='Travis Etienne') & (df.year==2020))].reset_index(drop=True)
 
 # +
 #==========
@@ -635,9 +637,5 @@ rookie_wr = draft_value(rookie_wr, 'WR')
 rookie_wr = qb_run(rookie_wr)
 
 dm.write_to_db(rookie_wr, db_name='Model_Inputs', table_name='Rookie_WR_' + str(year+1), if_exist='replace')
-
-# %%
-
-# %%
 
 # %%
