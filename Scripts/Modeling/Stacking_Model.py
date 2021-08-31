@@ -465,7 +465,7 @@ for final_m in final_models:
                             skm.piece(final_m)
                         ])
     best_model, stack_score, adp_score = skm.best_stack(stack_pipe, X_stack, 
-                                                        y_stack, n_iter=50, 
+                                                        y_stack, n_iter=25, 
                                                         run_adp=True, print_coef=True)
     best_models.append(best_model)
 
@@ -482,7 +482,7 @@ for k, v in models.items():
 X_predict = pd.concat([X_predict, X_predict_class], axis=1)
 
 predictions = pd.DataFrame()
-for bm, fm in zip(best_models, final_m):
+for bm, fm in zip(best_models, final_models):
     prediction = pd.Series(np.round(bm.predict(X_predict), 2), name=f'pred_{met}_{fm}')
     predictions = pd.concat([predictions, prediction], axis=1)
 
@@ -501,7 +501,7 @@ output.iloc[:50]
 
 #%%
 
-vers = 'v1'
+vers = 'v2'
 
 output['pos'] = set_pos
 output['filter_data'] = pos[set_pos]['filter_data']

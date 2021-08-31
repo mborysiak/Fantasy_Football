@@ -49,6 +49,9 @@ class FootballSimulation():
             self.data = pd.merge(self.data, salaries, how='left', left_on='player', right_on='player')
             self.data.salary = self.data.salary.fillna(1)
 
+        if league=='nv' or league=='nvpred':
+            self.data.loc[self.data.pos=='aQB', 'salary'] = round((3+self.data.loc[self.data.pos=='aQB', 'salary']) * 1.66,0)
+
         # pull in injury risk information
         self.inj = pd.read_sql_query(f'''SELECT player, mean_risk 
                                          FROM Injuries 

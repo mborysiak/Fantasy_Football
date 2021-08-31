@@ -80,59 +80,84 @@ pos['TE']['req_games'] = 8
 # Run Baseline Model
 #-----------------
 
-set_pos = 'RB'
 pred_version = 1
-sim_version = 3
+sim_version = 4
 
-pos[set_pos]['use_ay'] = False
-non_rookies =  dm.read(f'''SELECT *
+
+def get_non_rookies(set_pos):
+    df =  dm.read(f'''SELECT *
                             FROM {set_pos}_{set_year}
-                                ''', 'Model_Inputs')
+                                    ''', 'Model_Inputs')
 
-# apply the specified touches and game filters
-non_rookies, _, _ = hf.touch_game_filter(non_rookies, pos, set_pos, set_year)
+    # apply the specified touches and game filters
+    df, _, _ = hf.touch_game_filter(df, pos, set_pos, set_year)
 
-# calculate FP for a given set of scoring values
-non_rookies = hf.calculate_fp(non_rookies, pts_dict, pos=set_pos).reset_index(drop=True)
-non_rookies['rules_change'] = np.where(non_rookies.year>=2010, 1, 0)
-non_rookies['is_rookie'] = 0
+    # calculate FP for a given set of scoring values
+    df = hf.calculate_fp(df, pts_dict, pos=set_pos).reset_index(drop=True)
+    df['rules_change'] = np.where(df.year>=2010, 1, 0)
+    df['is_rookie'] = 0
 
-# get the train and prediction dataframes for FP per game
-non_rookies_train, non_rookies_predict = hf.get_train_predict(non_rookies, 'fp_per_game', pos, set_pos, 
-                                                              set_year-1, 1998, 'v1')
+    pos[set_pos]['use_ay'] = False
 
-non_rookies_train = non_rookies_train[['player', 'year', 'avg_pick', 'is_rookie', 'y_act']]
-non_rookies_predict = non_rookies_predict[['player', 'year', 'avg_pick', 'is_rookie']]
+    # get the train and prediction dataframes for FP per game
+    train, predict = hf.get_train_predict(df, 'fp_per_game', pos, set_pos, set_year-1, 1998, 'v1')
+
+    train = train[['player', 'pos', 'year', 'avg_pick', 'is_rookie', 'y_act']]
+    predict = predict[['player', 'pos', 'year', 'avg_pick', 'is_rookie']]
+
+    return train, predict
+
+non_rookies_train = pd.DataFrame()
+non_rookies_predict = pd.DataFrame()
+
+for p in ['QB', 'RB', 'WR', 'TE']:
+
+    pos_train, pos_predict = get_non_rookies(p)
+    non_rookies_train = pd.concat([non_rookies_train, pos_train])
+    non_rookies_predict = pd.concat([non_rookies_predict, pos_predict])
 
 
-if pos in ('RB', 'WR'):
-    rookies_train = dm.read(f'''SELECT player, 
-                                    year, 
-                                    avg_pick, 
-                                    1 as is_rookie, 
-                                    fp_per_game y_act
-                                FROM Rookie_{set_pos}_{set_year}
-                                WHERE year < {set_year}-1
-                            ''', 'Model_Inputs')
-    df_train = pd.concat([rookies_train, non_rookies_train], axis=0)
 
-else: df_train = non_rookies_train.copy()
+rookies_rb = dm.read(f'''SELECT player, 
+                                pos,
+                                year, 
+                                avg_pick, 
+                                1 as is_rookie, 
+                                fp_per_game y_act
+                            FROM Rookie_WR_{set_year}
+                            WHERE year < {set_year}-1
+                        ''', 'Model_Inputs')
+
+rookies_wr = dm.read(f'''SELECT player, 
+                                pos,
+                                year, 
+                                avg_pick, 
+                                1 as is_rookie, 
+                                fp_per_game y_act
+                            FROM Rookie_WR_{set_year}
+                            WHERE year < {set_year}-1
+                        ''', 'Model_Inputs')
 
 rookies_predict = dm.read(f'''SELECT player, 
+                                     pos,
                                      draft_year-1 year, 
                                      avg_pick, 
                                      1 as is_rookie
                              FROM Rookie_ADP
                              WHERE draft_year = {set_year}
-                                   AND pos = '{set_pos}'
                              ''', 'Season_Stats')
+
+df_train = pd.concat([non_rookies_train, rookies_rb, rookies_wr], axis=0)
+
 
 rookies_predict.avg_pick = np.log(rookies_predict.avg_pick)
 df_predict = pd.concat([rookies_predict, non_rookies_predict], axis=0)
 
-to_fill = dm.read(f'''SELECT DISTINCT player FROM Version{sim_version}_{set_year}''', 'Simulation')
+to_fill = dm.read(f'''SELECT DISTINCT player 
+                      FROM Model_Predictions
+                      WHERE year_exp != 'Backfill' ''', 'Simulation')
 df_predict = df_predict[~df_predict.player.isin(list(to_fill.player))].reset_index(drop=True)
-output_start = df_predict[['player', 'avg_pick']].copy()
+output_start = df_predict[['player', 'pos', 'avg_pick']].copy()
 
 # get the minimum number of training samples for the initial datasets
 print('Shape of Train Set', df_train.shape)
@@ -143,34 +168,48 @@ skm = SciKitModel(df_train)
 X, y = skm.Xy_split(y_metric='y_act', to_drop=['player'])
 cv_time_base = skm.cv_time_splits('year', X, 2012)
 
-model_base = skm.model_pipe([skm.piece('std_scale'), 
-                            skm.piece('k_best'),
-                             skm.piece('bridge')])
+predictions = pd.DataFrame()
+for m in ['svr', 'knn', 'lgbm', 'xgb', 'rf', 'bridge']:
+    
+    print(m)
+    
+    model_base = skm.model_pipe([skm.column_transform(num_pipe = [skm.piece('std_scale'), skm.piece('k_best')],
+                                                      cat_pipe = [skm.piece('one_hot')]),
+                                skm.piece(m)])
 
-params = skm.default_params(model_base)
-#params['k_best__k'] = range(1, X_base.shape[1])
+    params = skm.default_params(model_base)
+    #params['k_best__k'] = range(1, X_base.shape[1])
 
-best_model_base = skm.random_search(model_base, X, y, params, cv=cv_time_base, n_iter=25)
-_, _ = skm.val_scores(best_model_base, X, y, cv_time_base)
+    best_model = skm.random_search(model_base, X, y, params, cv=cv_time_base, n_iter=25)
+    _, _ = skm.val_scores(best_model, X, y, cv_time_base)
 
-imp_cols = X.columns[best_model_base['k_best'].get_support()]
-skm.print_coef(best_model_base, imp_cols)
+    X_predict = df_predict[X.columns]
 
-X_predict = df_predict[X.columns]
-pred, pred_std = best_model_base.predict(X_predict, return_std=True)
+    if m != 'bridge':
+        predictions = pd.concat([predictions, pd.Series(best_model.predict(X_predict), name=m)], axis=1)
+    
 output = output_start.copy()
-output['pred_fp_per_game'] = pred
-output['std_dev'] = pred_std
+output['pred_fp_per_game'] = predictions.mean(axis=1)
 
-output['pos'] = set_pos
+std_models = predictions.std(axis=1)
+std_bridge = best_model.predict(X_predict, return_std=True)[1]
+output['std_dev'] = (std_models/2)+ std_bridge
+
 output['filter_data'] = 'Backfill'
 output['year_exp'] = 'Backfill'
-output['version'] = 'v1'
-output['max_score'] = np.percentile(y, 95)
+output['version'] = pred_version
+output['adp_rank'] = None
+
+max_pts = df_train.groupby('pos')['y_act'].agg(lambda x: np.percentile(x, 99)).reset_index()
+max_pts.columns = ['pos', 'max_score']
+output = pd.merge(output, max_pts, on='pos')
+
+cols = dm.read("SELECT * FROM Model_Predictions", 'Simulation').columns
+output = output[cols]
 
 #%%
 delete_players = tuple(output.player)
-dm.delete_from_db('Simulation', 'Model_Predictions', f"player in {delete_players} AND version={pred_version}")
+dm.delete_from_db('Simulation', 'Model_Predictions', f"player in {delete_players} AND version='{pred_version}'")
 dm.write_to_db(output, 'Simulation', f'Model_Predictions', 'append')
 
 # %%
@@ -243,13 +282,17 @@ sim_output = create_sim_output(preds).reset_index(drop=True)
 
 #%%
 
-idx = sim_output[sim_output.player=='TJ Hockenson'].index[0]
+idx = sim_output[sim_output.player=="Tyler Boyd"].index[0]
 plot_distribution(sim_output.iloc[idx])
 
 
 # %%
 
-
 dm.write_to_db(sim_output, 'Simulation', f'Version{sim_version}_{set_year}', 'replace')
+
+# %%
+sim_output = dm.read('''SELECT * FROM Version4_2021''', 'Simulation')
+idx = sim_output[sim_output.player=="D'Andre Swift"].index[0]
+plot_distribution(sim_output.iloc[idx])
 
 # %%

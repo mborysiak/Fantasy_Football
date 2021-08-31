@@ -32,7 +32,7 @@ dm = DataManage(db_path)
 # set core path
 PATH = f'{root_path}/Data/'
 YEAR = 2021
-LEAGUE = 'beta'
+LEAGUE = 'nv'
 
 #%%
 
@@ -148,6 +148,7 @@ inflation = keepers.groupby('year').agg({'value': 'sum'}).reset_index()
 inflation['inflation'] = 1 + (inflation.value / 3600)
 
 salaries = pd.merge(salaries, inflation, on='year', how='left')
+salaries.loc[salaries.inflation.isnull(), 'inflation'] = 1
 
 salaries.is_keeper = salaries.is_keeper.fillna(0)
 salaries = salaries[salaries.is_keeper==0].reset_index(drop=True)
@@ -206,7 +207,7 @@ baseline_r2 = r2_score(baseline_data.actual_salary, baseline_data.salary)
 print('Inflation Baseline',  round(inf_baseline, 3), round(inf_baseline_r2, 3))
 print('Baseline',  round(baseline, 3), round(baseline_r2, 3))
 
-pred_sal = skm.cv_predict(best_models['lasso'], X_train, y_train, cv=10)
+pred_sal = skm.cv_predict(best_models['svr'], X_train, y_train, cv=10)
 pred_results = pd.concat([salaries.loc[salaries.year!=YEAR, ['player', 'year', 'salary', 'actual_salary']].reset_index(drop=True), 
                           pd.Series(pred_sal, name='pred_salary')], axis=1)
 pred_results['dollar_diff'] = (pred_results.pred_salary - pred_results.actual_salary)
@@ -215,7 +216,9 @@ pred_results.dollar_diff.plot.hist()
 #%%
 
 X_test.inflation = X_train.inflation.mean()
-pred_sal = best_models['svr'].predict(X_test)
+pred_sal = np.mean([best_models['gbm'].predict(X_test),
+                    best_models['rf'].predict(X_test),
+                    best_models['svr'].predict(X_test)], axis=0)
 
 pred_results = pd.concat([salaries.loc[salaries.year==YEAR,['player', 'year', 'salary']].reset_index(drop=True), 
                           pd.Series(pred_sal, name='pred_salary')], axis=1)
@@ -241,7 +244,7 @@ dm.write_to_db(output, 'Simulation', 'Salaries', 'append')
 
 # +
 from sklearn.preprocessing import StandardScaler
-year = 2021
+YEAR = 2021
 
 # read in the injury predictor file
 inj = pd.read_csv(f'{PATH}/OtherData/InjuryPredictor/injury_predictor_{YEAR}.csv', 
@@ -252,13 +255,23 @@ inj.columns = ['player', 'pct_miss_one', 'proj_games_missed', 'inj_pct_per_game'
 inj.player = inj.player.apply(lambda x: x.split(',')[0])
 inj.pct_miss_one = inj.pct_miss_one.apply(lambda x: float(x.strip('%')))
 inj.inj_pct_per_game = inj.inj_pct_per_game.apply(lambda x: float(x.strip('%')))
-inj = inj.drop(['points', 'inj_risk'], axis=1)
+inj = inj.drop('points', axis=1)
+inj['year'] = YEAR
+
+dm.delete_from_db('Simulation', 'Injuries_Source', f"year='{YEAR}'")
+dm.write_to_db(inj, 'Simulation', 'Injuries_Source', 'append')
+
+#%%
+
+inj = dm.read(f'''SELECT * FROM Injuries_Source WHERE year={YEAR}''', 'Simulation')
+inj = inj.drop(['inj_risk', 'year'], axis=1)
+inj.player = inj.player.apply(name_clean)
 
 # scale the data and set minimum to 0
 X = StandardScaler().fit_transform(inj.iloc[:, 1:])
 inj = pd.concat([pd.DataFrame(inj.player),
                  pd.DataFrame(X, columns=['pct_miss_one', 'proj_games_missed', 'pct_per_game'])], 
-                axis=1)
+                 axis=1)
 for col in ['pct_miss_one', 'proj_games_missed', 'pct_per_game']:
     inj[col] = inj[col] + abs(inj[col].min())
     
@@ -266,15 +279,46 @@ for col in ['pct_miss_one', 'proj_games_missed', 'pct_per_game']:
 inj['mean_risk'] = inj.iloc[:, 1:].mean(axis=1)
 inj = inj[['player', 'mean_risk']].sort_values(by='mean_risk').reset_index(drop=True)
 
-inj.player = inj.player.apply(name_clean)
 
-# # adjust specific players if needed
-# pts = [1, 1, 1, 1, 1]
-# players = ['Kerryon Johnson', 'Tyreek Hill', 'Todd Gurley', 'Deebo Samuel', 'Miles Sanders']
-# for pt, pl in zip(pts, players):
-#     inj.loc[inj.player==pl, 'mean_risk'] = inj.loc[inj.player==pl, 'mean_risk'] + pt
+# adjust specific players if needed
+pts = []
+players = []
+for pt, pl in zip(pts, players):
+    inj.loc[inj.player==pl, 'mean_risk'] = inj.loc[inj.player==pl, 'mean_risk'] + pt
     
 inj['year'] = YEAR
 
 dm.delete_from_db('Simulation', 'Injuries', f"year='{YEAR}'")
 dm.write_to_db(inj, 'Simulation', 'Injuries', 'append')
+# %%
+
+# inj = dm.read('''SELECT * FROM Injuries_Source''', 'Simulation')
+# inj.player = inj.player.apply(name_clean)
+
+# games = dm.read('''SELECT player, year, pos, games 
+#                    FROM RB_Stats
+#                    UNION
+#                    SELECT player, year, pos, games 
+#                    FROM WR_Stats
+#                    UNION
+#                    SELECT player, year, pos, games 
+#                    FROM TE_Stats
+#                    UNION 
+#                    SELECT player, year, pos, qb_games games
+#                    FROM QB_Stats''', 'Season_Stats')
+
+# X_test = inj[inj.year == YEAR].drop('player', axis=1).reset_index(drop=True)
+# train = pd.merge(inj, games, on=['player', 'year'])
+# train['games'] = 16-train['games']
+
+# skm = SciKitModel(train)
+# X_train, y_train = skm.Xy_split('games', to_drop=['player'])
+
+# pipe = skm.model_pipe([skm.column_transform(num_pipe = [skm.piece('std_scale')],
+#                                             cat_pipe = [skm.piece('one_hot')]),
+#                        skm.piece('ridge')])
+
+# # pipe.fit(X_train, y_train)
+# # pipe.predict(X_test)
+# print(skm.cv_score(pipe, X_train, y_train))
+# mean_squared_error(np.full(len(y_train), y_train.mean()), y_train)

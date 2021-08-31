@@ -18,13 +18,23 @@ from zData_Functions import *
 pd.set_option('display.max_columns', None)
 
 # # Helper Functions
-
 def adp_groupby(df, position):
 
-    df_adp = dm.read(f'''SELECT team, year, avg_pick FROM {position}_Stats''', 'Season_Stats')
+    df_adp = dm.read(f'''SELECT team, year, avg_pick 
+                         FROM {position}_Stats
+                         WHERE player NOT IN ('Cam Akers',
+                                              'Travis Etienne',
+                                              'JK Dobbins')
+             
+                                   ''', 'Season_Stats')
+
     rookie_adp = dm.read(f'''SELECT team, draft_year-1 year, avg_pick 
                              FROM Rookie_ADP
-                             WHERE pos='{position}' ''', 'Season_Stats')
+                             WHERE pos='{position}' 
+                                   AND player NOT IN ('Cam Akers',
+                                                      'Travis Etienne',
+                                                      'JK Dobbins') 
+                                   ''', 'Season_Stats')
     rookie_adp['avg_pick'] = np.log(rookie_adp.avg_pick)
 
     df_adp = pd.concat([df_adp, rookie_adp], axis=0)
@@ -200,7 +210,7 @@ for col in df.columns:
     
 df = df[~((df.player=='Cam Akers') & (df.year==2020))].reset_index(drop=True)
 df = df[~((df.player=='Travis Etienne') & (df.year==2020))].reset_index(drop=True)
-
+df = df[~((df.player=='JK Dobbins') & (df.year==2020))].reset_index(drop=True)
 # +
 #==========
 # Creating team based grouped statistics
@@ -516,6 +526,7 @@ for col in df.columns:
 
 df = df[~((df.player=='Damien Williams') & (df.year==2019))].reset_index(drop=True)
 df = df[~((df.player=='Derrius Guice') & (df.year==2019))].reset_index(drop=True)
+df = df[~((df.player=='Travis Etienne') & (df.year==2020))].reset_index(drop=True)
 
 #====================
 
@@ -639,3 +650,4 @@ rookie_wr = qb_run(rookie_wr)
 dm.write_to_db(rookie_wr, db_name='Model_Inputs', table_name='Rookie_WR_' + str(year+1), if_exist='replace')
 
 # %%
+
