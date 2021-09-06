@@ -25,7 +25,7 @@ def adp_groupby(df, position):
                          WHERE player NOT IN ('Cam Akers',
                                               'Travis Etienne',
                                               'JK Dobbins')
-             
+                               AND avg_pick < 10
                                    ''', 'Season_Stats')
 
     rookie_adp = dm.read(f'''SELECT team, draft_year-1 year, avg_pick 
@@ -34,6 +34,7 @@ def adp_groupby(df, position):
                                    AND player NOT IN ('Cam Akers',
                                                       'Travis Etienne',
                                                       'JK Dobbins') 
+                                   AND avg_pick < 10
                                    ''', 'Season_Stats')
     rookie_adp['avg_pick'] = np.log(rookie_adp.avg_pick)
 
@@ -50,8 +51,8 @@ def adp_groupby(df, position):
     df['teammate_diff_min'] = df.avg_pick - df['min_teammate'] 
     df['teammate_diff_avg'] = df.avg_pick - df['avg_teammate']
     df['teammate_diff_max'] = df.avg_pick - df['max_teammate'] 
-    df['teammate_diff_min_div'] = df.avg_pick / df['min_teammate'] 
-    df['teammate_diff_avg_dv'] = df.avg_pick / df['avg_teammate']
+    df['teammate_diff_min_div'] = df.avg_pick / (df['min_teammate'] + 1.00102)
+    df['teammate_diff_avg_dv'] = df.avg_pick / (df['avg_teammate'] + 1.00102)
 
     return df
 

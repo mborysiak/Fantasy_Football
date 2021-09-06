@@ -80,8 +80,8 @@ pos['TE']['req_games'] = 8
 # Run Baseline Model
 #-----------------
 
-pred_version = 1
-sim_version = 4
+pred_version = 'nv'
+sim_version = 'nv1'
 
 
 def get_non_rookies(set_pos):
@@ -214,7 +214,7 @@ dm.write_to_db(output, 'Simulation', f'Model_Predictions', 'append')
 
 # %%
 
-preds = dm.read(f'''SELECT * FROM Model_Predictions WHERE version='v{pred_version}' ''', 'Simulation')
+preds = dm.read(f'''SELECT * FROM Model_Predictions WHERE version='{pred_version}' ''', 'Simulation')
 preds = preds.groupby(['player', 'pos'], as_index=False).agg({'pred_fp_per_game': 'mean', 
                                                               'std_dev': 'mean',
                                                               'max_score': 'mean'})

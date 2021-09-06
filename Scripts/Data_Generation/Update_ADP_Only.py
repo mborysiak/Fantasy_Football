@@ -197,6 +197,7 @@ print(f'Successfully overwrote Rookie_WR_Stats for Year {year+1}')
 rookie_wr_adp = merge_with_existing(rookie_wr_adp, 'Rookie_ADP', year)
 rookie_wr_adp = rookie_wr_adp[rookie_wr_adp.pos=='WR'].reset_index(drop=True)
 rookie_wr_adp['avg_pick'] = np.round(np.exp(rookie_wr_adp.avg_pick), 1)
+rookie_wr_adp.loc[rookie_wr_adp.avg_pick > 5.5, 'avg_pick'] = 5.5
 
 #%%
 dm.delete_from_db('Season_Stats', 'Rookie_ADP', f'''draft_year={year+1} AND pos='WR' ''')

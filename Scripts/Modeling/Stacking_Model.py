@@ -35,7 +35,7 @@ db_path = f'{root_path}/Data/Databases/'
 dm = DataManage(db_path)
 
 # set to position to analyze: 'RB', 'WR', 'QB', or 'TE'
-set_pos = 'RB'
+set_pos = 'TE'
 
 # set year to analyze
 set_year = 2021
@@ -81,10 +81,10 @@ pos['RB']['earliest_year'] = 1998
 pos['WR']['earliest_year'] = 1998
 pos['TE']['earliest_year'] = 1998
 
-pos['QB']['val_start'] = 2010
-pos['RB']['val_start'] = 2010
-pos['WR']['val_start'] = 2010
-pos['TE']['val_start'] = 2010
+pos['QB']['val_start'] = 2012
+pos['RB']['val_start'] = 2012
+pos['WR']['val_start'] = 2012
+pos['TE']['val_start'] = 2012
 
 pos['QB']['features'] = 'v2'
 pos['RB']['features'] = 'v2'
@@ -102,13 +102,13 @@ pos['WR']['use_ay'] = False
 pos['TE']['use_ay'] = False
 
 pos['QB']['filter_data'] = 'greater_equal'
-pos['RB']['filter_data'] = 'less_equal'
-pos['WR']['filter_data'] = 'less_equal'
+pos['RB']['filter_data'] = 'greater_equal'
+pos['WR']['filter_data'] = 'greater_equal'
 pos['TE']['filter_data'] = 'greater_equal'
 
 pos['QB']['year_exp'] = 0
-pos['RB']['year_exp'] = 3
-pos['WR']['year_exp'] = 3
+pos['RB']['year_exp'] = 0
+pos['WR']['year_exp'] = 0
 pos['TE']['year_exp'] = 0
 
 pos['QB']['act_ppg'] = 20
@@ -305,8 +305,7 @@ for met in mets:
         print(m)
 
         # set up the model pipe and get the default search parameters
-        pipe = skm.model_pipe([skm.piece('feature_drop'),
-                               skm.piece('std_scale'), 
+        pipe = skm.model_pipe([skm.piece('std_scale'), 
                                skm.piece('select_perc'),
                                skm.feature_union([
                                                 skm.piece('agglomeration'), 
@@ -316,23 +315,6 @@ for met in mets:
                                skm.piece('k_best'),
                                skm.piece(m)])
         params = skm.default_params(pipe, 'rand')
-        params['feature_drop__col'] = [
-
-            ['avg_pick', 'avg_pick_exp','avg_pick_exp_diff',
-             'avg_pick_exp_div', 'avg_pick_median', 'avg_pick_exp_median',
-             'avg_pick_exp_diff_median', 'avg_pick_exp_div_median', 'avg_pick_sum',
-             'avg_pick_over_median', 'avg_pick_exp_over_median', 'avg_pick_exp_diff_over_median',
-             'avg_pick_exp_div_over_median', 'avg_pick / age', 'avg_pick_exp / age',
-             'avg_pick_exp_diff / age','avg_pick_exp_div / age','avg_pick_rolling',
-             'avg_pick_exp_rolling', 'avg_pick_exp_diff_rolling', 'avg_pick_exp_div_rolling'],
-            
-            ['avg_pick_exp_diff_median',  'avg_pick_exp_div_median', 'avg_pick_median',             
-             'avg_pick_exp_diff / age', 'avg_pick_exp_diff', 'avg_pick_exp_div / age', 
-             'avg_pick_exp_div', 'avg_pick / age', 'avg_pick'],
-
-            ['avg_pick', 'avg_pick / age', 'avg_pick_median'],
-
-            ]
         if m=='knn': params['knn__n_neighbors'] = range(1, min_samples-1)
 
         # run the model with parameter search
@@ -411,6 +393,7 @@ except: pass
 skm_class_final = SciKitModel(df_train_class, model_obj='class')
 X_class_final, y_class_final = skm_class_final.Xy_split(y_metric='y_act', 
                                                         to_drop=['player', 'team', 'pos'])
+
 
 # create the full stack pipe with meta estimators followed by stacked model
 X_predict_class = pd.DataFrame()
@@ -501,7 +484,7 @@ output.iloc[:50]
 
 #%%
 
-vers = 'v2'
+vers = 'nv'
 
 output['pos'] = set_pos
 output['filter_data'] = pos[set_pos]['filter_data']
