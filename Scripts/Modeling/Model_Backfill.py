@@ -31,6 +31,12 @@ set_config(display='diagram')
 # General Setting
 #==========
 
+
+pred_version = 'beta_post'
+sim_version = 'beta_post'
+
+#############
+
 # set the root path and database management object
 root_path = ffgeneral.get_main_path('Fantasy_Football')
 db_path = f'{root_path}/Data/Databases/'
@@ -49,7 +55,7 @@ val_year_min = 2012
 
 # define point values for all statistical categories
 pass_yd_per_pt = 0.04 
-pass_td_pt = 5
+pass_td_pt = 4
 int_pts = -2
 sacks = -1
 rush_yd_per_pt = 0.1 
@@ -79,9 +85,6 @@ pos['TE']['req_games'] = 8
 #-----------------
 # Run Baseline Model
 #-----------------
-
-pred_version = 'nv'
-sim_version = 'nv1'
 
 
 def get_non_rookies(set_pos):
@@ -206,7 +209,7 @@ output = pd.merge(output, max_pts, on='pos')
 
 cols = dm.read("SELECT * FROM Model_Predictions", 'Simulation').columns
 output = output[cols]
-
+output
 #%%
 delete_players = tuple(output.player)
 dm.delete_from_db('Simulation', 'Model_Predictions', f"player in {delete_players} AND version='{pred_version}'")

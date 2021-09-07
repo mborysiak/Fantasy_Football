@@ -19,9 +19,9 @@ np.random.seed(1234)
 # connection for simulation and specific table
 path = f'c:/Users/{os.getlogin()}/Documents/Github/Fantasy_Football/'
 conn_sim = sqlite3.connect(f'{path}/Data/Databases/Simulation.sqlite3')
-table_vers = 'Version4'
+table_vers = 'Versionbeta_post'
 set_year = 2021
-league='beta_actual'
+league='betapred'
 
 # number of iteration to run
 iterations = 2000

@@ -35,7 +35,7 @@ db_path = f'{root_path}/Data/Databases/'
 dm = DataManage(db_path)
 
 # set to position to analyze: 'RB', 'WR', 'QB', or 'TE'
-set_pos = 'TE'
+set_pos = 'QB'
 
 # set year to analyze
 set_year = 2021
