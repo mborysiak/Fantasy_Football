@@ -19,9 +19,9 @@ np.random.seed(1234)
 # connection for simulation and specific table
 path = f'c:/Users/{os.getlogin()}/Documents/Github/Fantasy_Football/'
 conn_sim = sqlite3.connect(f'{path}/Data/Databases/Simulation.sqlite3')
-table_vers = 'Versionbeta_post'
+table_vers = 'Versionnv1'
 set_year = 2021
-league='betapred'
+league='nv_actual'
 
 # number of iteration to run
 iterations = 2000
@@ -38,7 +38,7 @@ ppr = .5
 
 # set league information, included position requirements, number of teams, and salary cap
 league_info = {}
-league_info['pos_require'] = {'QB': 1, 'RB': 2, 'WR': 2, 'TE': 1, 'FLEX': 2}
+league_info['pos_require'] = {'QB': 2, 'RB': 2, 'WR': 2, 'TE': 1, 'FLEX': 1}
 league_info['num_teams'] = 12
 league_info['initial_cap'] = 293
 league_info['salary_cap'] = 293
@@ -94,39 +94,39 @@ proport = proport[['Position', 'Wts']]
 # For Beta Keepers
 #------------------
 
-# keepers = {}
+keepers = {}
 
-# input information for players and their associated salaries selected by other teams
-keepers = {
-    'Nick Chubb': 53,
-    'James Robinson': 12,
+# # input information for players and their associated salaries selected by other teams
+# keepers = {
+#     'Nick Chubb': 53,
+#     'James Robinson': 12,
 
-    'Austin Ekeler': 45,
+#     'Austin Ekeler': 45,
 
-    "D'Andre Swift": 30,
-    'Derrick Henry': 76,
+#     "D'Andre Swift": 30,
+#     'Derrick Henry': 76,
 
-    'Darren Waller': 30,
-    'Dalvin Cook': 95,
+#     'Darren Waller': 30,
+#     'Dalvin Cook': 95,
 
-    'Jonathan Taylor': 61,
-    'Stefon Diggs': 27,
+#     'Jonathan Taylor': 61,
+#     'Stefon Diggs': 27,
 
-    'CeeDee Lamb': 24,
-    'Terry McLaurin': 26,
+#     'CeeDee Lamb': 24,
+#     'Terry McLaurin': 26,
 
-    'Tee Higgins': 17,
-    'Saquon Barkley': 62,
+#     'Tee Higgins': 17,
+#     'Saquon Barkley': 62,
 
-    'Justin Jefferson': 14,
-    'Josh Allen': 13,
+#     'Justin Jefferson': 14,
+#     'Josh Allen': 13,
 
-    'DK Metcalf': 34,
-    'Kareem Hunt': 31,
+#     'DK Metcalf': 34,
+#     'Kareem Hunt': 31,
 
-    'David Montgomery': 24,
-    'Robert Woods': 40
-}
+#     'David Montgomery': 24,
+#     'Robert Woods': 40
+# }
 
 # 2020 Keepers
 # keepers = {

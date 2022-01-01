@@ -116,8 +116,8 @@ def clean_results(path, fname, year, league, team_split=True):
 
 FNAME = f'{LEAGUE}_{YEAR}_results'
 results = clean_results(PATH, FNAME, YEAR, LEAGUE)
-# dm.delete_from_db('Simulation', 'Actual_Salaries', f"year='{YEAR}' AND league='{LEAGUE}'")
-# dm.write_to_db(results, 'Simulation', 'Actual_Salaries', 'append')
+dm.delete_from_db('Simulation', 'Actual_Salaries', f"year='{YEAR}' AND league='{LEAGUE}'")
+dm.write_to_db(results, 'Simulation', 'Actual_Salaries', 'append')
 
 
 #%%
@@ -218,7 +218,8 @@ pred_results.dollar_diff.plot.hist()
 X_test.inflation = X_train.inflation.mean()
 pred_sal = np.mean([best_models['gbm'].predict(X_test),
                     best_models['rf'].predict(X_test),
-                    best_models['svr'].predict(X_test)], axis=0)
+                    best_models['svr'].predict(X_test)
+                    ], axis=0)
 
 pred_results = pd.concat([salaries.loc[salaries.year==YEAR,['player', 'year', 'salary']].reset_index(drop=True), 
                           pd.Series(pred_sal, name='pred_salary')], axis=1)
