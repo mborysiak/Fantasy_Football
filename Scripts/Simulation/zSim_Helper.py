@@ -34,7 +34,7 @@ class FootballSimulation():
         salaries = pd.read_sql_query(f'''SELECT player, salary
                                          FROM Salaries
                                          WHERE year={set_year}
-                                               AND league='{league}' ''', conn_sim)
+                                               AND league='{league}pred' ''', conn_sim)
 
         if pick_prob_df is not None:
             salaries = pd.merge(salaries, pick_prob_df, on='player')

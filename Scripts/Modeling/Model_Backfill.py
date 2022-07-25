@@ -1,5 +1,6 @@
 #%%
 # core packages
+from email.mime import message
 import pandas as pd
 import numpy as np
 import os
@@ -32,8 +33,8 @@ set_config(display='diagram')
 #==========
 
 
-pred_version = 'beta_post'
-sim_version = 'beta_post'
+pred_version = 'beta'
+sim_version = 'beta'
 
 #############
 
@@ -44,7 +45,7 @@ dm = DataManage(db_path)
 np.random.seed(1234)
 
 # set year to analyze
-set_year = 2021
+set_year = 2022
 
 # set the earliest date to begin the validation set
 val_year_min = 2012
@@ -89,8 +90,8 @@ pos['TE']['req_games'] = 8
 
 def get_non_rookies(set_pos):
     df =  dm.read(f'''SELECT *
-                            FROM {set_pos}_{set_year}
-                                    ''', 'Model_Inputs')
+                      FROM {set_pos}_{set_year}
+                            ''', 'Model_Inputs')
 
     # apply the specified touches and game filters
     df, _, _ = hf.touch_game_filter(df, pos, set_pos, set_year)
@@ -150,15 +151,21 @@ rookies_predict = dm.read(f'''SELECT player,
                              WHERE draft_year = {set_year}
                              ''', 'Season_Stats')
 
-df_train = pd.concat([non_rookies_train, rookies_rb, rookies_wr], axis=0)
 
+df_train = pd.concat([non_rookies_train, rookies_rb, rookies_wr], axis=0)
+df_train['week'] = 1
+df_train['game_date'] = df_train.year
 
 rookies_predict.avg_pick = np.log(rookies_predict.avg_pick)
 df_predict = pd.concat([rookies_predict, non_rookies_predict], axis=0)
+df_predict['week'] = 1
+df_predict['game_date'] = set_year
 
 to_fill = dm.read(f'''SELECT DISTINCT player 
                       FROM Model_Predictions
-                      WHERE year_exp != 'Backfill' ''', 'Simulation')
+                      WHERE year_exp != 'Backfill'
+                            AND year = {set_year} ''', 'Simulation')
+
 df_predict = df_predict[~df_predict.player.isin(list(to_fill.player))].reset_index(drop=True)
 output_start = df_predict[['player', 'pos', 'avg_pick']].copy()
 
@@ -169,10 +176,19 @@ print('Shape of Train Set', df_train.shape)
 
 skm = SciKitModel(df_train)
 X, y = skm.Xy_split(y_metric='y_act', to_drop=['player'])
-cv_time_base = skm.cv_time_splits('year', X, 2012)
+cv_time_base = skm.cv_time_splits(X, 'year', 2012)
 
 predictions = pd.DataFrame()
-for m in ['svr', 'knn', 'lgbm', 'xgb', 'rf', 'bridge']:
+for m in [
+          #'ridge', 
+          #'lasso', 
+          'gbm', 
+          #'svr', 
+          'knn',  
+          'xgb', 
+          'rf', 
+          #'bridge'
+          ]:
     
     print(m)
     
@@ -184,32 +200,48 @@ for m in ['svr', 'knn', 'lgbm', 'xgb', 'rf', 'bridge']:
     #params['k_best__k'] = range(1, X_base.shape[1])
 
     best_model = skm.random_search(model_base, X, y, params, cv=cv_time_base, n_iter=25)
-    _, _ = skm.val_scores(best_model, X, y, cv_time_base)
-
+    mse = skm.cv_score(best_model, X, y, cv_time_base)
+    print(np.sqrt(-mse))
     X_predict = df_predict[X.columns]
-
-    if m != 'bridge':
-        predictions = pd.concat([predictions, pd.Series(best_model.predict(X_predict), name=m)], axis=1)
+    predictions = pd.concat([predictions, pd.Series(best_model.predict(X_predict), name=m)], axis=1)
     
+#%%
+
+from Fix_Standard_Dev import *
+
 output = output_start.copy()
 output['pred_fp_per_game'] = predictions.mean(axis=1)
+output['std_dev'] = 0
+for p in ['QB', 'RB', 'WR', 'TE']:
 
-std_models = predictions.std(axis=1)
-std_bridge = best_model.predict(X_predict, return_std=True)[1]
-output['std_dev'] = (std_models/2)+ std_bridge
+    cur_train = df_train[df_train.pos==p].copy().reset_index(drop=True)
+    cur_predict = output[output.pos==p].copy().reset_index(drop=True)
+
+    sd_spline, max_spline = get_std_splines(cur_train, ['avg_pick'], ['avg_pick'], 
+                                            show_plot=True, k=1, 
+                                            min_grps_den=int(cur_train.shape[0]*0.25), 
+                                            max_grps_den=int(cur_train.shape[0]*0.15))
+
+    sc = MinMaxScaler()
+    sc.fit(cur_train.avg_pick.values.reshape(-1,1))
+    
+
+    pred_sd_max = pd.DataFrame(sc.transform(cur_predict.avg_pick.values.reshape(-1,1)))
+    output.loc[output.pos==p, 'std_dev'] = sd_spline(pred_sd_max)
+    output.loc[output.pos==p, 'max_score']  = max_spline(pred_sd_max)
+
+output.iloc[:50]
 
 output['filter_data'] = 'Backfill'
 output['year_exp'] = 'Backfill'
 output['version'] = pred_version
 output['adp_rank'] = None
-
-max_pts = df_train.groupby('pos')['y_act'].agg(lambda x: np.percentile(x, 99)).reset_index()
-max_pts.columns = ['pos', 'max_score']
-output = pd.merge(output, max_pts, on='pos')
+output['year']= set_year
 
 cols = dm.read("SELECT * FROM Model_Predictions", 'Simulation').columns
 output = output[cols]
 output
+
 #%%
 delete_players = tuple(output.player)
 dm.delete_from_db('Simulation', 'Model_Predictions', f"player in {delete_players} AND version='{pred_version}'")
@@ -221,6 +253,7 @@ preds = dm.read(f'''SELECT * FROM Model_Predictions WHERE version='{pred_version
 preds = preds.groupby(['player', 'pos'], as_index=False).agg({'pred_fp_per_game': 'mean', 
                                                               'std_dev': 'mean',
                                                               'max_score': 'mean'})
+preds.pos = preds.pos.apply(lambda x: x.replace('Rookie_', ''))
 
 #%%
 
@@ -285,17 +318,12 @@ sim_output = create_sim_output(preds).reset_index(drop=True)
 
 #%%
 
-idx = sim_output[sim_output.player=="Tyler Boyd"].index[0]
+idx = sim_output[sim_output.player=="Breece Hall"].index[0]
 plot_distribution(sim_output.iloc[idx])
 
 
 # %%
 
 dm.write_to_db(sim_output, 'Simulation', f'Version{sim_version}_{set_year}', 'replace')
-
-# %%
-sim_output = dm.read('''SELECT * FROM Version4_2021''', 'Simulation')
-idx = sim_output[sim_output.player=="D'Andre Swift"].index[0]
-plot_distribution(sim_output.iloc[idx])
 
 # %%

@@ -48,15 +48,20 @@ def name_clean(col):
 
 # selecting first and last names from adp data
 def name_select(col):
-    first = col.split(' ')[1]
-    last = col.split(' ')[0]
-    new_col = ' '.join([first,last])
+    col = col.replace(' III', '').replace(' Jr.', '')
+
+    if 'Amon' in col:
+        new_col = 'Amon-Ra St Brown'
+    else:
+        first = col.split(' ')[1]
+        last = col.split(' ')[0]
+        new_col = ' '.join([first,last])
     return new_col
 
 
 # select team name from adp data
 def team_select(col):
-    team = col.split(' ')[2]
+    team = col.split(' ')[-2]
     return team
 
 

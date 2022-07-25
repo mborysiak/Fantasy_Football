@@ -19,12 +19,12 @@ np.random.seed(1234)
 # connection for simulation and specific table
 path = f'c:/Users/{os.getlogin()}/Documents/Github/Fantasy_Football/'
 conn_sim = sqlite3.connect(f'{path}/Data/Databases/Simulation.sqlite3')
-table_vers = 'Versionnv1'
-set_year = 2021
-league='nv_actual'
+table_vers = 'Versionbeta'
+set_year = 2022
+league='beta'
 
 # number of iteration to run
-iterations = 2000
+iterations = 500
 
 # define point values for all statistical categories
 pass_yd_per_pt = 0.04 
@@ -38,7 +38,7 @@ ppr = .5
 
 # set league information, included position requirements, number of teams, and salary cap
 league_info = {}
-league_info['pos_require'] = {'QB': 2, 'RB': 2, 'WR': 2, 'TE': 1, 'FLEX': 1}
+league_info['pos_require'] = {'QB': 1, 'RB': 2, 'WR': 2, 'TE': 1, 'FLEX': 2}
 league_info['num_teams'] = 12
 league_info['initial_cap'] = 293
 league_info['salary_cap'] = 293
@@ -97,6 +97,41 @@ proport = proport[['Position', 'Wts']]
 keepers = {}
 
 # # input information for players and their associated salaries selected by other teams
+
+keepers = {
+    'JK Dobbins': 12,
+    'Jaylen Waddle': 16,
+
+    "Ja'Marr Chase": 27,
+    "D'Andre Swift": 45,
+
+    'Javonte Williams': 41,
+    'Amon-Ra St Brown': 11,
+
+    'Stefon Diggs': 42,
+    'Jonathan Taylor': 76,
+
+    'CeeDee Lamb': 39,
+    'Terry McLaurin': 46,
+
+    'James Conner': 13,
+    'Najee Harris': 84,
+
+    'Tee Higgins': 32,
+    'Cam Akers': 11,
+
+    'Damien Harris': 26,
+    'Cooper Kupp': 50,
+
+    'Justin Jefferson': 29,
+    'Travis Etienne': 11,
+
+    'Deebo Samuel': 15,
+    'Marquise Brown': 13
+
+}
+
+# 2021 keepers
 # keepers = {
 #     'Nick Chubb': 53,
 #     'James Robinson': 12,

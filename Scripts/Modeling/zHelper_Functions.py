@@ -1,7 +1,6 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.utils.testing import ignore_warnings
 from sklearn.exceptions import ConvergenceWarning
 
 
