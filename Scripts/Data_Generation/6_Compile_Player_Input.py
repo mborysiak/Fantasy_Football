@@ -17,6 +17,25 @@ import numpy as np
 from zData_Functions import *
 pd.set_option('display.max_columns', None)
 
+#%%
+
+tables = ['AirYards', 'College_Stats', 'Combine_Data_Raw', 'Draft_Positions',
+          'FantasyPros', 'PFF_Receiving', 'Player_Birthdays',
+          'QB_Stats', 'RB_Stats', 'Rookie_ADP', 'Rookie_RB_Stats',
+          'Rookie_RB_Stats_Old', 'Rookie_WR_Stats', 'Rookie_WR_Stats_Old',
+          'TE_Stats', 'WR_Stats']
+
+for i, t in enumerate(tables):
+    df = dm.read(f'''SELECT * FROM {t}''', 'Season_Stats')
+    df['player'] = df.player.apply(name_clean)
+    if i == 0:
+        dm.write_to_db(df, 'Season_Stats', t, if_exist='replace', create_backup=True)
+    else:
+        dm.write_to_db(df, 'Season_Stats', t, if_exist='replace', create_backup=False)
+
+
+#%%
+
 # # Helper Functions
 def adp_groupby(df, position):
 

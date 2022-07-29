@@ -39,7 +39,7 @@ db_path = f'{root_path}/Data/Databases/'
 dm = DataManage(db_path)
 
 # set to position to analyze: 'RB', 'WR', 'QB', or 'TE'
-set_pos = 'WR'
+set_pos = 'QB'
 
 # set year to analyze
 set_year = 2022
@@ -58,6 +58,24 @@ rec_yd_per_pt = 0.1
 rush_rec_td = 7
 ppr = 0.5
 fumble = -2
+
+pos['QB']['rush_pass'] = 'both'
+pos['RB']['rush_pass'] = ''
+pos['WR']['rush_pass'] = ''
+pos['TE']['rush_pass'] = ''
+
+if pos['QB']['rush_pass'] == 'rush':
+    pass_yd_per_pt = 0 
+    pass_td_pt = 0
+    int_pts = 0
+    sacks = 0
+
+elif pos['QB']['rush_pass'] == 'pass':
+    rush_yd_per_pt = 0
+    rush_rec_td = 0
+
+else:
+    pass
 
 # creating dictionary containing point values for each position
 pts_dict = {}
@@ -112,10 +130,12 @@ pos['TE']['filter_data'] = 'greater_equal'
 
 pos['QB']['year_exp'] = 0
 pos['RB']['year_exp'] = 0
-pos['WR']['year_exp'] = 4
+pos['WR']['year_exp'] = 0
 pos['TE']['year_exp'] = 0
 
-pos['QB']['act_ppg'] = 20
+if pos['QB']['rush_pass'] == 'rush': pos['QB']['act_ppg'] = 4
+elif pos['QB']['rush_pass'] == 'pass': pos['QB']['act_ppg'] = 17
+
 pos['RB']['act_ppg'] = 17
 pos['WR']['act_ppg'] = 15
 pos['TE']['act_ppg'] = 12
@@ -137,7 +157,7 @@ pos['TE']['all_stats'] = False
 
 all_vars = ['req_touch', 'req_games', 'earliest_year', 'val_start', 
             'features', 'test_years', 'use_ay', 'filter_data', 'year_exp', 
-            'act_ppg', 'pct_off', 'iters', 'all_stats']
+            'act_ppg', 'pct_off', 'iters', 'all_stats', 'rush_pass']
 
 pkey = str(set_pos)
 db_output = {'set_pos': set_pos, 'set_year': set_year}
@@ -521,7 +541,7 @@ output = mf.create_output(output_start, predictions)
 # set up the model pipe and get the default search parameters
 pipe = skm.model_pipe([skm.piece('std_scale'), 
                        skm.piece('k_best'),
-                       skm.piece('ridge')])
+                       skm.piece('bridge')])
 
 # set params
 params = skm.default_params(pipe, 'rand')
@@ -541,13 +561,49 @@ mf.shap_plot(best_models, X)
 # %%
 
 
-sd_df, sd_cols = mf.get_sd_cols(df_train, df_predict, X, best_models)
+sd_cols, df_train, df_predict = mf.get_sd_cols(df_train, df_predict, X, best_models, model_num=1)
 sd_spline, max_spline = get_std_splines(df_train, sd_cols, sd_cols, show_plot=True, k=1, 
                                         min_grps_den=int(df_train.shape[0]*0.25), 
                                         max_grps_den=int(df_train.shape[0]*0.15))
 
-output = mf.assign_sd_max(output, df_predict, sd_df, sd_cols, sd_spline, max_spline)
+output = mf.assign_sd_max(output, df_predict, df_train, sd_cols, sd_spline, max_spline)
 output.iloc[:50]
+
+
+#%%
+
+chk = pd.concat([best_val.mean(axis=1), y_stack], axis=1)
+chk.columns = ['prediction', 'y_act']
+chk = pd.merge(chk, df_train[['player', 'year', 'y_act']], on='y_act')
+chk['rush_or_pass'] = pos['QB']['rush_pass']
+
+dm.write_to_db(chk, 'Simulation', 'QB_Run_Pass_Check', if_exist='append')
+
+#%%
+
+rp = dm.read('''SELECT player, 
+                       year, 
+                       SUM(Prediction) rp_pred, 
+                       SUM(y_act) rp_y_act
+                FROM QB_Run_Pass_Check
+                WHERE rush_or_pass IN ('rush', 'pass')
+                GROUP BY player, year
+             ''', 'Simulation')
+
+both = dm.read('''SELECT player, 
+                        year, 
+                        prediction both_pred, 
+                        y_act both_y_act
+                FROM QB_Run_Pass_Check
+                WHERE rush_or_pass = 'both'
+                ''', 'Simulation')
+
+rp = rp[rp.rp_y_act > 5].reset_index(drop=True)
+rp = pd.merge(rp, both, on=['player', 'year'])
+
+mf.show_scatter_plot(rp.rp_pred, rp.rp_y_act, r2=True)
+mf.show_scatter_plot(rp.both_pred, rp.both_y_act, r2=True)
+print(rp[abs(rp.both_y_act - rp.rp_y_act) > 0.001])
 
 #%%
 

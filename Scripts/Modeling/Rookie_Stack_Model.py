@@ -112,17 +112,17 @@ df = df.rename(columns={'fp_per_game': 'y_act'})
 df_train = df[df.year < set_year-1].reset_index(drop=True)
 df_predict = df[df.year == set_year-1].reset_index(drop=True)
 
-
-
 output_start = df_predict[['player', 'avg_pick']].copy()
-#%%
+print(set_pos, df_train.shape[0], df_predict.shape[0])
+
+df_predict['games'] = df_train.games.mean()
+
 df_predict = df_predict.fillna(0)
 for c in df_predict.columns:
     if len(df_predict[df_predict[c]==np.inf]) > 0:
         df_predict.loc[df_predict[c]==np.inf, c] = 0
     if len(df_predict[df_predict[c]==-np.inf]) > 0:
         df_predict.loc[df_predict[c]==-np.inf, c] = 0
-
 
 df_train_class = df_train.copy()
 df_predict_class = df_predict.copy()

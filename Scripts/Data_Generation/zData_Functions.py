@@ -34,16 +34,18 @@ def num_clean(col):
     return char_remove
 
 # removing un-needed characters
-def name_clean(col):
-    char_remove = re.sub('[\*\+\%\,]', '', str(col))
-    char_remove = char_remove.replace('III', '')
-    char_remove = char_remove.replace('II', '')
-    char_remove = char_remove.replace('.', '')
-    char_remove = char_remove.replace('Jr', '')
-    char_remove = char_remove.replace('Jr.', '')
-    char_remove = char_remove.rstrip().lstrip()
+def name_clean(player_name):
 
-    return char_remove
+    # replace common characters to remove from names with no space
+    characters = ['*', "'", '+', '%', ',' ,'III', 'II', '.', 'Jr']
+    for c in characters:
+        player_name = player_name.replace(c, '')
+        
+    # replace dashes with space and title case / strip whitespace
+    player_name = player_name.replace('-', ' ')
+    player_name = player_name.title().rstrip().lstrip()
+
+    return player_name
 
 
 # selecting first and last names from adp data
