@@ -115,7 +115,7 @@ df_predict = df[df.year == set_year-1].reset_index(drop=True)
 
 
 output_start = df_predict[['player', 'avg_pick']].copy()
-
+#%%
 df_predict = df_predict.fillna(0)
 for c in df_predict.columns:
     if len(df_predict[df_predict[c]==np.inf]) > 0:
@@ -129,12 +129,12 @@ df_predict_class = df_predict.copy()
 
 if set_pos == 'Rookie_WR':
     drop_cols = ['player', 'pos', 'team', 'rec_yd_per_game', 
-                 'rec_per_game', 'td_per_game']
+                 'rec_per_game', 'td_per_game', 'games']
     df_train_class['y_act'] = np.where(df_train_class.y_act >= 11, 1, 0)
 
 elif set_pos == 'Rookie_RB':
     drop_cols = ['player', 'pos', 'team', 'rec_yd_per_game',  
-                 'rush_yd_per_game', 'rec_per_game', 'td_per_game']
+                 'rush_yd_per_game', 'rec_per_game', 'td_per_game', 'games']
     df_train_class['y_act'] = np.where(df_train_class.y_act >= 13, 1, 0)
 
 # %%
@@ -174,9 +174,9 @@ for i, m in enumerate(model_list):
     print(m)
 
     # set up the model pipe and get the default search parameters
-    pipe = skm.model_pipe([skm.piece('random_sample'),
+    pipe = skm.model_pipe([#skm.piece('random_sample'),
                             skm.piece('std_scale'), 
-                            #skm.piece('select_perc'),
+                            skm.piece('select_perc'),
                             skm.feature_union([
                                             skm.piece('agglomeration'), 
                                             skm.piece('k_best'),
@@ -360,7 +360,8 @@ X_predict = pd.concat([X_predict, X_predict_class], axis=1)
 X_predict = pd.concat([X_predict, X_predict_quant], axis=1)
 
 predictions = mf.stack_predictions(X_predict, best_models, final_models)
-best_val, best_predictions = mf.best_average_models(scores, final_models, stack_val_pred, predictions)
+best_val, best_predictions = mf.best_average_models(skm_stack, scores, final_models, y_stack, stack_val_pred, predictions)
+mf.show_scatter_plot(best_val.mean(axis=1), y_stack, r2=True)
 output = mf.create_output(output_start, predictions)
 
 
@@ -379,22 +380,22 @@ params['k_best__k'] = range(20, 200, 5)
 # run the model with parameter search
 best_models, oof_data, param_scores = skm.time_series_cv(pipe, X, y, params, n_iter=50,
                                                         col_split='year', 
-                                                        time_split=pos[set_pos]['val_start'],
+                                                        time_split=2013,
                                                         bayes_rand='custom_rand',
                                                         sample_weight=False,
                                                         random_seed=1234)
 
-mf.shap_plot(best_models)
+mf.shap_plot(best_models, X)
    
 # %%
 
 
-sd_df, sd_cols = mf.get_sd_cols(df_train, best_models)
+sd_cols, df_train, df_predict = mf.get_sd_cols(df_train, df_predict, X, best_models)
 sd_spline, max_spline = get_std_splines(df_train, sd_cols, sd_cols, show_plot=True, k=1, 
                                         min_grps_den=int(df_train.shape[0]*0.25), 
                                         max_grps_den=int(df_train.shape[0]*0.15))
 
-output = mf.assign_sd_max(output, df_predict, sd_df, sd_cols, sd_spline, max_spline)
+output = mf.assign_sd_max(output, df_predict, df_train, sd_cols, sd_spline, max_spline)
 output.iloc[:50]
 
 # %%

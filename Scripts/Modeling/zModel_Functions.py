@@ -125,7 +125,7 @@ def stack_predictions(X_predict, best_models, final_models):
 
     return predictions
 
-def best_average_models(scores, final_models, stack_val_pred, predictions):
+def best_average_models(skm_stack, scores, final_models, y_stack, stack_val_pred, predictions):
 
     n_scores = []
     for i in range(len(scores)):
@@ -177,7 +177,7 @@ def create_output(output_start, predictions):
 
 
 
-def shap_plot(best_models, model_num=0):
+def shap_plot(best_models, X, model_num=0):
 
     m = best_models[model_num]
     transformer = Pipeline(m.steps[:-1])
@@ -190,7 +190,7 @@ def shap_plot(best_models, model_num=0):
     shap.summary_plot(shap_values, X_shap, feature_names=X_shap.columns, plot_size=(8,15), max_display=30, show=False)
 
 
-def get_sd_cols(df_train, best_models, model_num=0):
+def get_sd_cols(df_train, df_predict, X, best_models, model_num=0):
     
     m = best_models[model_num]
     transformer = Pipeline(m.steps[:-1])
@@ -200,20 +200,19 @@ def get_sd_cols(df_train, best_models, model_num=0):
     best_cols = abs(coef_results).sort_values().iloc[-8:].index
     
     sd_cols = []
-    sd_df = pd.DataFrame()
-
     for c in best_cols:
         if coef_results[coef_results.index==c].values[0] < 0:
-            sd_df['minus_' + c] = np.log(df_train[c].max() - df_train[c] + 1)
-            sd_df['minus_' + c] = np.log(df_predict[c].max() - df_predict[c] + 1)
+            df_train['minus_' + c] = np.log(df_train[c].max() - df_train[c] + 1)
+            df_predict['minus_' + c] = np.log(df_predict[c].max() - df_predict[c] + 1)
             sd_cols.append('minus_' + c)
         else:
             sd_cols.append(c)
-            sd_df[c] = df_train[c]
     
-    return sd_df, sd_cols
+    return sd_cols, df_train, df_predict
 
 def assign_sd_max(output, df_predict, sd_df, sd_cols, sd_spline, max_spline):
+    
+    from sklearn.preprocessing import MinMaxScaler
 
     sc = MinMaxScaler()
     sc.fit(sd_df[sd_cols])

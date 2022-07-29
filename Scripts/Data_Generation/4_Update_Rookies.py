@@ -331,6 +331,10 @@ for c in ['bench_press', 'three_cone']:
     
 draft_info = dm.read('''SELECT * FROM draft_positions''', 'Season_Stats')
 draft_values = dm.read('''SELECT * FROM draft_values''', 'Season_Stats')
+
+for d in [comb_df, draft_info]:
+    d.player = d.player.apply(dc.name_clean)
+
 draft_info = pd.merge(draft_info, draft_values, on=['Round', 'Pick'])
 
 comb_df = pd.merge(comb_df, draft_info[['year', 'player', 'Value']], on=['year', 'player'], how='left')
@@ -372,6 +376,7 @@ comb_df = reverse_metrics('bmi', pp, comb_df, X_cols)
 comb_df = reverse_metrics('burst_score', pp, comb_df, X_cols)
 comb_df = reverse_metrics('agility_score', pp, comb_df, X_cols)
 
+comb_df.player = comb_df.player.apply(dc.name_clean)
 # ## Find the College stats for Players
 
 #%%
@@ -430,6 +435,7 @@ comb_stats.groupby('player').agg({'year':'count'}).sort_values(by='year')
 
 # +
 wr = comb_stats[comb_stats.pos=='WR'].reset_index(drop=True).copy()
+# wr.player = wr.player.apply(dc.name_clean)
 wr = wr[['player', 'draft_year', 'pos', 'college', 'conference', 'power5', 'age', 
          'year', 'season_age', 'season_age_scale',
          'receiving_LONG', 'receiving_REC', 'receiving_TD', 'receiving_YDS',
@@ -466,6 +472,8 @@ wr_stats = pd.merge(wr_stats, rookie_adp[rookie_adp.pos=='WR'], on=['player',  '
 
 target_data = pd.read_sql_query('''SELECT player, games, year draft_year, rec_per_game, rec_yd_per_game, td_per_game 
                                    FROM WR_Stats''', conn)
+target_data.player = target_data.player.apply(dc.name_clean)
+                                   
 wr_stats = pd.merge(wr_stats, target_data, on=['player', 'draft_year'], how='left')
 wr_stats['fp_per_game'] = (wr_stats[['rec_per_game', 'rec_yd_per_game', 'td_per_game']]*[0.5, 0.1, 7]).sum(axis=1)
 wr_stats.avg_pick = np.log(wr_stats.avg_pick)
@@ -483,7 +491,7 @@ wr_stats.loc[(wr_stats.draft_year!=set_year+1) & (wr_stats.games.isnull()), ['pl
 wr_stats = wr_stats.loc[~(wr_stats.games.isnull()) | (wr_stats.draft_year==set_year+1), :].reset_index(drop=True)
 wr_stats = wr_stats.loc[(wr_stats.games > 5) | (wr_stats.draft_year==set_year+1), :].reset_index(drop=True)
 
-dm.write_to_db(wr_stats, 'Season_Stats', 'Rookie_WR_Stats', 'replace', create_backup=True)
+# dm.write_to_db(wr_stats, 'Season_Stats', 'Rookie_WR_Stats', 'replace', create_backup=True)
 
 # # Split out and Save RB
 
