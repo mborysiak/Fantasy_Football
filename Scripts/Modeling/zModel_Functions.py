@@ -190,38 +190,46 @@ def shap_plot(best_models, X, model_num=0):
     shap.summary_plot(shap_values, X_shap, feature_names=X_shap.columns, plot_size=(8,15), max_display=30, show=False)
 
 
-def get_sd_cols(df_train, df_predict, X, best_models, model_num=0):
+def get_sd_cols(df_train, df_predict, X, best_models, num_cols=5):
     
-    m = best_models[model_num]
-    transformer = Pipeline(m.steps[:-1])
-    cols = X.columns[transformer['k_best'].get_support()]
+    sd_cols = {}
+    for model_num in range(len(best_models)):
+        m = best_models[model_num]
+        transformer = Pipeline(m.steps[:-1])
+        cols = X.columns[transformer['k_best'].get_support()]
 
-    coef_results = pd.Series(m.steps[-1][1].coef_, cols)
-    best_cols = abs(coef_results).sort_values().iloc[-8:].index
-    
-    sd_cols = []
-    for c in best_cols:
-        if coef_results[coef_results.index==c].values[0] < 0:
-            df_train['minus_' + c] = np.log(df_train[c].max() - df_train[c] + 1)
-            df_predict['minus_' + c] = np.log(df_predict[c].max() - df_predict[c] + 1)
-            sd_cols.append('minus_' + c)
-        else:
-            sd_cols.append(c)
+        coef_results = pd.DataFrame(m.steps[-1][1].coef_, cols)
+        best_cols = abs(coef_results).sort_values(by=0).iloc[-num_cols:].index
+        coef_results = coef_results[coef_results.index.isin(best_cols)]
+
+        for c, v in coef_results.iterrows():
+            if v[0] < 0:
+                df_train['minus_' + c] = np.log(df_train[c].max() - df_train[c] + 1)
+                df_predict['minus_' + c] = np.log(df_predict[c].max() - df_predict[c] + 1)
+                if 'minus_' + c not in sd_cols.keys(): sd_cols['minus_' + c] = []
+                sd_cols['minus_' + c].append(-v[0])
+            else:
+                if c not in sd_cols.keys():sd_cols[c] = []
+                sd_cols[c].append(v[0])
+
+    for k, v in sd_cols.items():
+        sd_cols[k] = np.sum(v)
     
     return sd_cols, df_train, df_predict
 
 def assign_sd_max(output, df_predict, sd_df, sd_cols, sd_spline, max_spline):
     
-    from sklearn.preprocessing import MinMaxScaler
+    from sklearn.preprocessing import StandardScaler
 
-    sc = MinMaxScaler()
-    sc.fit(sd_df[sd_cols])
+    sc = StandardScaler()
+    sc.fit(sd_df[list(sd_cols.keys())])
 
     df_predict = df_predict.set_index('player')
     df_predict = df_predict.reindex(index=output['player'])
     df_predict = df_predict.reset_index()
 
-    pred_sd_max = pd.DataFrame(sc.transform(df_predict[sd_cols])).mean(axis=1)
+    pred_sd_max = pd.DataFrame(sc.transform(df_predict[list(sd_cols.keys())])) * list(sd_cols.values())
+    pred_sd_max = pred_sd_max.mean(axis=1)
     output['std_dev'] = sd_spline(pred_sd_max)
     output['max_score'] = max_spline(pred_sd_max)
 

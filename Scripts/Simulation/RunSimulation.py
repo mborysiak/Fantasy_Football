@@ -38,7 +38,7 @@ ppr = .5
 
 # set league information, included position requirements, number of teams, and salary cap
 league_info = {}
-league_info['pos_require'] = {'QB': 1, 'RB': 2, 'WR': 2, 'TE': 1, 'FLEX': 2}
+league_info['pos_require'] = {'QB': 1, 'RB': 2, 'WR': 3, 'TE': 1, 'FLEX': 2}
 league_info['num_teams'] = 12
 league_info['initial_cap'] = 293
 league_info['salary_cap'] = 293
@@ -99,23 +99,23 @@ keepers = {}
 # # input information for players and their associated salaries selected by other teams
 
 keepers = {
-    'JK Dobbins': 12,
+    'Jk Dobbins': 12,
     'Jaylen Waddle': 16,
 
-    "Ja'Marr Chase": 27,
-    "D'Andre Swift": 45,
+    "Jamarr Chase": 27,
+    "Dandre Swift": 45,
 
     'Javonte Williams': 41,
-    'Amon-Ra St Brown': 11,
+    'Joe Burrow': 11,
 
     'Stefon Diggs': 42,
     'Jonathan Taylor': 76,
 
-    'CeeDee Lamb': 39,
+    'Ceedee Lamb': 39,
     'Terry McLaurin': 46,
 
     'James Conner': 13,
-    'Najee Harris': 84,
+    'Elijah Mitchell': 75,
 
     'Tee Higgins': 32,
     'Cam Akers': 11,

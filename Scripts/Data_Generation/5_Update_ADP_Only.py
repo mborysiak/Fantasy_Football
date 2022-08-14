@@ -5,7 +5,7 @@ from ff.db_operations import DataManage
 from ff import general
 
 # last year's statistics and adp to pull and append to database
-year = 2020
+year = 2021
 
 # set the root path and database management object
 root_path = general.get_main_path('Fantasy_Football')

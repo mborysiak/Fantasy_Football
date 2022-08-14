@@ -210,6 +210,49 @@ pos['TE']['age_features'] = ['fp', 'rec_yd_per_game', 'receptions', 'tgt', 'ms_t
                              'rz_20_tgt_exp_diff', 'rz_20_receptions_exp_diff']
 
 
+# initilize RB dictionary
+pos['Rookie_RB'] = {}
+
+# total touch filter name
+pos['Rookie_RB']['touch_filter'] = 'rush_yd_per_game'
+
+# metrics to be predicted for fantasy point generation
+pos['Rookie_RB']['metrics'] = ['rush_yd_per_game', 'rec_yd_per_game', 'rec_per_game', 'td_per_game']
+
+# median feature categories
+pos['Rookie_RB']['med_features'] = []
+# sum feature categories
+pos['Rookie_RB']['sum_features'] = []
+
+# max feature categories
+pos['Rookie_RB']['max_features'] = []
+
+# age feature categories
+pos['Rookie_RB']['age_features'] = []
+
+
+# initilize RB dictionary
+pos['Rookie_WR'] = {}
+
+# total touch filter name
+pos['Rookie_WR']['touch_filter'] = 'rec_yd_per_game'
+
+# metrics to be predicted for fantasy point generation
+pos['Rookie_WR']['metrics'] = ['rec_yd_per_game', 'rec_per_game', 'td_per_game']
+
+# median feature categories
+pos['Rookie_WR']['med_features'] = []
+# sum Rookie_WR categories
+pos['Rookie_WR']['sum_features'] = []
+
+# max feature categories
+pos['Rookie_WR']['max_features'] = []
+
+# age feature categories
+pos['Rookie_WR']['age_features'] = []
+
+
+
 # ==========
 # Data Preparation Functions
 # ==========
@@ -277,7 +320,7 @@ def add_exp_metrics(df, set_pos):
 def calculate_fp(df, pts, pos):
     
     # calculate fantasy points for QB's associated with a given RB or WR
-    if pos == 'RB' or 'WR':
+    if pos == 'RB' or 'WR' or 'Rookie_RB' or 'Rookie_WR':
         df['qb_fp'] = \
         pts['QB'][0]*df['qb_yds'] + \
         pts['QB'][1]*df['qb_tds'] + \
@@ -291,7 +334,7 @@ def calculate_fp(df, pts, pos):
         pts['RB'][0]*df['rush_yds'] + \
         pts['RB'][1]*df['rec_yds'] + \
         pts['RB'][3]*df['rush_td'] + \
-        pts['RB'][3]*df['rec_td'] + \
+        pts['RB'][4]*df['rec_td'] + \
         pts['RB'][2]*df['receptions']
         
         # calculate fantasy points per touch
@@ -330,8 +373,9 @@ def calculate_fp(df, pts, pos):
         pts['QB'][4]*df['int'] + \
         pts['QB'][5]*df['qb_sacks']
         
-    # calculate fantasy points per game
-    df['fp_per_game'] = df['fp'] / df['games']
+    if pos not in ['Rookie_RB', 'Rookie_WR']:
+        # calculate fantasy points per game
+        df['fp_per_game'] = df['fp'] / df['games']
     
     return df
 
@@ -391,8 +435,16 @@ def features_target(df, set_pos, year_start, year_split, median_features, sum_fe
         suffix = '/ age'
         for feature in age_features:
             feature_label = ' '.join([feature, suffix])
-            past[feature_label] = past[feature] / past['age']
-        
+            past[feature_label] = past[feature] / np.exp(past.age)
+
+        suffix = '_inverse_age'
+        for feature in age_features:
+            feature_label = ''.join([feature, suffix])
+            if 'avg_pick' in feature_label:
+                past[feature_label] = (past[feature].max() - past[feature]) * (np.max(np.exp(past.age))-past.age)
+            else:
+                past[feature_label] = past[feature] * (np.max(np.exp(past.age))-past.age)
+
         # adding the values for target feature
         year_n = past[past["year"] == year]
         year_n_plus_one = df[df['year'] == year+1][['player', target_feature]].rename(columns={target_feature: 'y_act'})
@@ -434,10 +486,18 @@ def features_target_v2(df, set_pos, year_start, year_split, median_features, sum
             past[mf + '_over_median'] = (past[mf]-past[mf + '_median']) / (past[mf + '_median'] + baseline)
 
         # adding the age features
-        suffix = '/ age'
+        suffix = '_times_age'
         for feature in age_features:
-            feature_label = ' '.join([feature, suffix])
-            past[feature_label] = past[feature] / past['age']
+            feature_label = ''.join([feature, suffix])
+            past[feature_label] = past[feature] * (np.exp(past['age']) - np.min(np.exp(past.age)))
+
+        suffix = '_inverse_age'
+        for feature in age_features:
+            feature_label = ''.join([feature, suffix])
+            if 'avg_pick' in feature_label:
+                past[feature_label] = (past[feature].max() - past[feature]) * (np.max(np.exp(past.age))-np.exp(past.age))
+            else:
+                past[feature_label] = past[feature] * (np.max(np.exp(past.age))-np.exp(past.age))
 
         # adding the values for target feature
         year_n = past[past["year"] == year]

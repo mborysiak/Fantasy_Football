@@ -119,6 +119,29 @@ results = clean_results(PATH, FNAME, YEAR, LEAGUE)
 dm.delete_from_db('Simulation', 'Actual_Salaries', f"year='{YEAR}' AND league='{LEAGUE}'")
 dm.write_to_db(results, 'Simulation', 'Actual_Salaries', 'append')
 
+#%%
+
+all_stats = pd.DataFrame()
+for pos in ['QB', 'RB', 'WR', 'TE', 'Rookie_RB', 'Rookie_WR']:
+    if pos!='QB': ap='avg_pick' 
+    else: ap = 'qb_avg_pick'
+    if 'Rookie' in pos: yr = 'draft_year'; yr_add=0
+    else: yr = 'year';  yr_add=1
+
+    stats = dm.read(f"SELECT player, pos, {yr}+{yr_add} year, {ap} avg_pick FROM {pos}_Stats", 'Season_Stats')
+    all_stats = pd.concat([all_stats, stats], axis=0)
+
+def year_exp(df):
+
+    # adding years of experience
+    min_year = df.groupby(['player', 'pos']).agg('min')['year'].reset_index()
+    min_year = min_year.rename(columns={'year': 'min_year'})
+    df = pd.merge(df, min_year, how='left', on=['player', 'pos'])
+    df['year_exp'] = df.year - df.min_year
+    
+    return df
+
+all_stats = year_exp(all_stats)
 
 #%%
 
@@ -139,6 +162,8 @@ salaries = pd.merge(actual_sal, base_sal, on=['player', 'year'], how='right')
 salaries = pd.merge(salaries, player_age, on=['player'])
 salaries = pd.merge(salaries, rookies, on=['player', 'year'], how='left')
 salaries = pd.merge(salaries, osu, on=['player'], how='left')
+salaries = pd.merge(salaries, all_stats, on=['player', 'year', 'pos'])
+
 salaries.is_rookie = salaries.is_rookie.fillna(0)
 salaries.is_OSU = salaries.is_OSU.fillna(0)
 
@@ -161,7 +186,7 @@ salaries = salaries.sample(frac=1, random_state=1234)
 #%%
 
 skm = SciKitModel(salaries)
-X, y = skm.Xy_split_list('actual_salary', ['year', 'sal_rank', 'inflation', 'salary', 'pos',  'is_rookie', 'is_OSU'])
+X, y = skm.Xy_split_list('actual_salary', ['year', 'sal_rank', 'inflation', 'salary', 'pos',  'is_rookie', 'is_OSU', 'avg_pick', 'year_exp'])
 X = pd.concat([X, pd.get_dummies(X.pos, drop_first=True)], axis=1).drop('pos', axis=1)
 X['rookie_rb'] = X.RB * X.is_rookie
 
@@ -173,6 +198,19 @@ y_test = y[X_test.index].reset_index(drop=True); X_test.reset_index(drop=True, i
 
 
 #%%
+from sklearn.model_selection import cross_val_predict
+from sklearn.metrics import r2_score, mean_squared_error
+
+baseline_data = salaries[salaries.year!=YEAR]
+
+inf_baseline = mean_squared_error(baseline_data.actual_salary*baseline_data.inflation, baseline_data.salary)
+inf_baseline_r2 = r2_score(baseline_data.actual_salary*baseline_data.inflation, baseline_data.salary)
+baseline = mean_squared_error(baseline_data.actual_salary, baseline_data.salary)
+baseline_r2 = r2_score(baseline_data.actual_salary, baseline_data.salary)
+
+print('Inflation Baseline',  round(inf_baseline, 3), round(inf_baseline_r2, 3))
+print('Baseline',  round(baseline, 3), round(baseline_r2, 3))
+
 # loop through each potential model
 best_models = {}
 model_list = [ 'ridge', 'svr', 'lasso', 'enet', 'xgb', 'knn', 'gbm', 'rf']
@@ -191,27 +229,23 @@ for m in model_list:
     params['k_best__k'] = range(1,X_train.shape[1])
 
     best_model = skm.random_search(pipe, X_train, y_train, params)
-    mse = skm.cv_score(best_model, X_train, y_train, cv=5)
-    print(-mse)
+    cv_pred = cross_val_predict(best_model, X_train, y_train)
+    mse = np.round(mean_squared_error(cv_pred, y_train), 3)
+    r2 = np.round(r2_score(cv_pred, y_train), 3)
+    
+    print(mse, r2)
     best_models[m] = best_model
 
 #%%
-from sklearn.metrics import r2_score, mean_squared_error
-
-baseline_data = salaries[salaries.year!=YEAR]
-
-inf_baseline = mean_squared_error(baseline_data.actual_salary*baseline_data.inflation, baseline_data.salary)
-inf_baseline_r2 = r2_score(baseline_data.actual_salary*baseline_data.inflation, baseline_data.salary)
-baseline = mean_squared_error(baseline_data.actual_salary, baseline_data.salary)
-baseline_r2 = r2_score(baseline_data.actual_salary, baseline_data.salary)
-
-print('Inflation Baseline',  round(inf_baseline, 3), round(inf_baseline_r2, 3))
-print('Baseline',  round(baseline, 3), round(baseline_r2, 3))
 
 X_test.inflation = X_train.inflation.mean()
-pred_sal = np.mean([#best_models['rf'].predict(X_test),
+pred_sal = np.mean([best_models['rf'].predict(X_test),
+                    best_models['gbm'].predict(X_test),
+                    best_models['enet'].predict(X_test),
+                    best_models['knn'].predict(X_test),
                     best_models['lasso'].predict(X_test),
-                    best_models['svr'].predict(X_test)
+                    best_models['svr'].predict(X_test),
+                    best_models['xgb'].predict(X_test)
                     ], axis=0)
 
 pred_results = pd.concat([salaries.loc[salaries.year==YEAR,['player', 'year', 'salary']].reset_index(drop=True), 
@@ -224,7 +258,10 @@ pred_results.pred_salary = pred_results.pred_salary.astype('int')
 pred_results['pred_diff'] = pred_results.pred_salary - pred_results.salary
 pred_results.sort_values(by='pred_diff', ascending=False).iloc[:25]
 
-pred_results.iloc[:50]
+print(pred_results.pred_diff.sum())
+display(pred_results.iloc[:50])
+display(pred_results[np.abs(pred_results.pred_diff) > 4].sort_values(by='pred_diff', ascending=False))
+
 
 #%%
 
@@ -253,6 +290,8 @@ inj.pct_miss_one = inj.pct_miss_one.apply(lambda x: float(x.strip('%')))
 inj.inj_pct_per_game = inj.inj_pct_per_game.apply(lambda x: float(x.strip('%')))
 inj = inj.drop('points', axis=1)
 inj['year'] = YEAR
+
+inj.player = inj.player.apply(name_clean)
 
 dm.delete_from_db('Simulation', 'Injuries_Source', f"year='{YEAR}'")
 dm.write_to_db(inj, 'Simulation', 'Injuries_Source', 'append')

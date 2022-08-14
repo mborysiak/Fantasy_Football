@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 from scipy.interpolate import UnivariateSpline
 import matplotlib.pyplot as plt
 from sklearn.metrics import r2_score
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
 
 import zHelper_Functions as hf
 pos = hf.pos
@@ -25,16 +25,19 @@ db_path = f'{root_path}/Data/Databases/'
 dm = DataManage(db_path)
 
 
-def create_sd_max_metrics(df, sd_cols, max_cols):
+def create_sd_max_metrics(df, metrics):
 
-    sc = MinMaxScaler()
-    X_sd = pd.DataFrame(sc.fit_transform(df[sd_cols]), columns=sd_cols)
-    X_max = pd.DataFrame(sc.fit_transform(df[max_cols]), columns=max_cols)
+    sc = StandardScaler()
+
+    sd_cols = list(metrics.keys())
+    sd_wts = list(metrics.values())
+    X_sd = pd.DataFrame(sc.fit_transform(df[sd_cols]), columns=sd_cols) * sd_wts
+    X_max = pd.DataFrame(sc.fit_transform(df[sd_cols]), columns=sd_cols) * sd_wts
 
     df['sd_metric'] = X_sd.mean(axis=1)
     df['max_metric'] = X_max.mean(axis=1)
     
-    df = df[[c for c in df.columns if c not in max_cols and c not in sd_cols]]
+    df = df[[c for c in df.columns if c not in sd_cols]]
 
     return df
 
@@ -49,20 +52,20 @@ def create_groups(df, num_grps):
 
 def show_spline_fit(splines, met, X, y, X_max, y_max):
     print(met)
-    X_pred = list(np.arange(0, 1, 0.1))
+    X_pred = list(np.arange(np.min(X.values), np.max(X.values), 0.1))
     plt.scatter(X, y)
     plt.scatter(X_max[met], y_max[met])
     plt.plot(X_pred, splines[met](X_pred), 'g', lw=3)
     plt.show()
 
-def get_std_splines(df, sd_cols, max_cols, show_plot=False, k=2, s=2000, min_grps_den=100, max_grps_den=60):
+def get_std_splines(df, metrics, show_plot=False, k=2, s=2000, min_grps_den=100, max_grps_den=60):
     
     
-    all_cols = list(set(sd_cols + max_cols  + ['player', 'year', 'y_act']))
+    all_cols = list(set(list(metrics.keys()) + ['player', 'year', 'y_act']))
     df = df[all_cols].dropna().reset_index(drop=True)
 
     # calculate sd and max metrics
-    df = create_sd_max_metrics(df, sd_cols, max_cols)
+    df = create_sd_max_metrics(df, metrics)
 
     # create the groups    
     df = df.dropna()

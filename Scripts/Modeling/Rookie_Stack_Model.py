@@ -41,6 +41,9 @@ rb_wr = set_pos.split('_')[1]
 # set year to analyze
 set_year = 2022
 
+vers = 'beta'
+current_or_next_year = 'current'
+
 model_output_path = f'{root_path}/Model_Outputs/{set_year}/{set_pos}/'
 if not os.path.exists(model_output_path): os.makedirs(model_output_path)
 
@@ -115,14 +118,14 @@ df_predict = df[df.year == set_year-1].reset_index(drop=True)
 output_start = df_predict[['player', 'avg_pick']].copy()
 print(set_pos, df_train.shape[0], df_predict.shape[0])
 
-df_predict['games'] = df_train.games.mean()
-
 df_predict = df_predict.fillna(0)
 for c in df_predict.columns:
     if len(df_predict[df_predict[c]==np.inf]) > 0:
         df_predict.loc[df_predict[c]==np.inf, c] = 0
     if len(df_predict[df_predict[c]==-np.inf]) > 0:
         df_predict.loc[df_predict[c]==-np.inf, c] = 0
+
+df_train = df_train[(df_train.games > 8)].reset_index(drop=True)
 
 df_train_class = df_train.copy()
 df_predict_class = df_predict.copy()
@@ -352,10 +355,8 @@ for i, final_m in enumerate(final_models):
     mf.show_scatter_plot(stack_pred['stack_pred'], stack_pred['y'], r2=True)
     mf.top_predictions(stack_pred['stack_pred'], stack_pred['y'], r2=True)
 
-# get the final output:
-X_full, y_full = skm_stack.Xy_split(y_metric='y_act', to_drop=['player', 'team', 'pos'])
 
-X_predict = mf.get_reg_predict_features(df_predict, models, X_full, y_full)
+X_predict = mf.get_reg_predict_features(df_predict, models, X, y)
 X_predict = pd.concat([X_predict, X_predict_class], axis=1)
 X_predict = pd.concat([X_predict, X_predict_quant], axis=1)
 
@@ -400,19 +401,23 @@ output.iloc[:50]
 
 # %%
 
-vers = 'beta'
+
 
 output['pos'] = set_pos
 output['filter_data'] = 'Rookie_Model'
 output['year_exp'] = 0
+output['current_or_next_year'] = current_or_next_year
 output['version'] = vers
 output['year'] = set_year
 
 del_str = f'''pos='{set_pos}' 
               AND version='{vers}'
               AND filter_data='Rookie_Model'
-              AND year_exp=0'''
+              AND year_exp=0
+              AND current_or_next_year='{current_or_next_year}' '''
 
 dm.delete_from_db('Simulation', 'Model_Predictions', del_str)
 dm.write_to_db(output, 'Simulation', f'Model_Predictions', 'append')
+# %%
+current_or_next_year
 # %%

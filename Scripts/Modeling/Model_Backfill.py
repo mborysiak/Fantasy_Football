@@ -61,16 +61,17 @@ int_pts = -2
 sacks = -1
 rush_yd_per_pt = 0.1 
 rec_yd_per_pt = 0.1
-rush_rec_td = 7
+rush_td = 7
+rec_td = 7
 ppr = 0.5
 fumble = -2
 
 # creating dictionary containing point values for each position
 pts_dict = {}
-pts_dict['QB'] = [pass_yd_per_pt, pass_td_pt, rush_yd_per_pt, rush_rec_td, int_pts, sacks]
-pts_dict['RB'] = [rush_yd_per_pt, rec_yd_per_pt, ppr, rush_rec_td]
-pts_dict['WR'] = [rec_yd_per_pt, ppr, rush_rec_td]
-pts_dict['TE'] = [rec_yd_per_pt, ppr, rush_rec_td]
+pts_dict['QB'] = [pass_yd_per_pt, pass_td_pt, rush_yd_per_pt, rush_td, int_pts, sacks]
+pts_dict['RB'] = [rush_yd_per_pt, rec_yd_per_pt, ppr, rush_td, rec_td]
+pts_dict['WR'] = [rec_yd_per_pt, ppr, rec_td]
+pts_dict['TE'] = [rec_yd_per_pt, ppr, rec_td]
 
 pos['QB']['req_touch'] = 250
 pos['RB']['req_touch'] = 60
@@ -237,6 +238,7 @@ output['year_exp'] = 'Backfill'
 output['version'] = pred_version
 output['adp_rank'] = None
 output['year']= set_year
+output['rush_pass'] = 'both'
 
 cols = dm.read("SELECT * FROM Model_Predictions", 'Simulation').columns
 output = output[cols]
@@ -249,7 +251,31 @@ dm.write_to_db(output, 'Simulation', f'Model_Predictions', 'append')
 
 # %%
 
-preds = dm.read(f'''SELECT * FROM Model_Predictions WHERE version='{pred_version}' ''', 'Simulation')
+rp = dm.read(f'''SELECT player,
+                        pos,
+                        avg_pick,
+                        SUM(pred_fp_per_game) pred_fp_per_game,
+                        SUM(std_dev) / 1.5,
+                        SUM(max_score) / 1.5
+                FROM Model_Predictions
+                WHERE rush_pass IN ('rush', 'pass')
+                      AND version='{pred_version}'
+                      AND year = {set_year}
+                GROUP BY player, pos, year
+             ''', 'Simulation').sort_values(by='avg_pick')
+
+both = dm.read(f'''SELECT player, 
+                          pos,
+                          pred_fp_per_game pred_fp_per_game,
+                          std_dev,
+                          max_score
+                FROM Model_Predictions
+                WHERE (rush_pass NOT IN ('rush', 'pass') OR rush_pass IS NULL)
+                      AND version='{pred_version}'
+                      AND year = {set_year}
+             ''', 'Simulation')
+
+preds = pd.concat([rp, both], axis=0)
 preds = preds.groupby(['player', 'pos'], as_index=False).agg({'pred_fp_per_game': 'mean', 
                                                               'std_dev': 'mean',
                                                               'max_score': 'mean'})
