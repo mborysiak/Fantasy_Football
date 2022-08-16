@@ -2,37 +2,48 @@
 from Stacking_Model import *
 
 runs = [
-       # ['Rookie_RB', 'current', 'greater_equal', 0],
-        # ['Rookie_RB', 'next', 'greater_equal', 0],
-        # ['Rookie_WR', 'current', 'greater_equal', 0],
-        # ['Rookie_WR', 'next', 'greater_equal', 0],
-        # ['RB', 'current', 'greater_equal', 0],
-        # ['RB', 'current', 'less_equal', 3],
-        # ['RB', 'current', 'greater_equal', 4],
-        # ['RB', 'next', 'greater_equal', 0],
-        # ['RB', 'next', 'less_equal', 3],
-        # ['RB', 'next', 'greater_equal', 4],
-        # ['WR', 'current', 'greater_equal', 0],
-        # ['WR', 'current', 'less_equal', 3],
-        # ['WR', 'current', 'greater_equal', 4],
-        # ['WR', 'next', 'greater_equal', 0],
-        # ['WR', 'next', 'less_equal', 3],
-        # ['WR', 'next', 'greater_equal', 4],
-        ['QB', 'current', 'greater_equal', 0],
-        # ['TE', 'current', 'greater_equal', 0],
+        # ['Rookie_RB', 'current', 'greater_equal', 0, ''],
+        # ['Rookie_RB', 'next', 'greater_equal', 0, ''],
+        # ['Rookie_WR', 'current', 'greater_equal', 0, ''],
+     #   ['Rookie_WR', 'next', 'greater_equal', 0],
+        # ['WR', 'current', 'greater_equal', 0, ''],
+        # ['WR', 'current', 'less_equal', 3, ''],
+        # ['WR', 'current', 'greater_equal', 4, ''],
+        # ['WR', 'next', 'greater_equal', 0, ''],
+        # ['WR', 'next', 'less_equal', 3, ''],
+        # ['WR', 'next', 'greater_equal', 4, ''],
+        # ['RB', 'current', 'greater_equal', 0, 'both'],
+        # ['RB', 'current', 'less_equal', 3, ''],
+        # ['RB', 'current', 'greater_equal', 4, ''],
+        ['RB', 'next', 'greater_equal', 0, ''],
+        ['RB', 'next', 'less_equal', 3, ''],
+        ['RB', 'next', 'greater_equal', 4, ''],
+        # ['RB', 'current', 'greater_equal', 0, 'rush'],
+        # ['RB', 'current', 'greater_equal', 0, 'pass'],
+        ['TE', 'current', 'greater_equal', 0, ''],
+        ['TE', 'next', 'greater_equal', 0, ''],
+        # ['QB', 'current', 'greater_equal', 0, 'both'],
+        ['QB', 'next', 'greater_equal', 0, 'both'],
+        # ['QB', 'current', 'greater_equal', 0, 'rush'],
+        # ['QB', 'current', 'greater_equal', 0, 'pass'],
+        
+        
 ]
 
-for sp, cn, fd, ye in runs:
+for sp, cn, fd, ye, rp in runs:
 
     set_pos = sp
     current_or_next_year = cn
     pos[set_pos]['filter_data'] = fd
     pos[set_pos]['year_exp'] = ye
+    pos[set_pos]['rush_pass'] = rp
 
     #------------
     # Pull in the data and create train and predict sets
     #------------
 
+    pts_dict = create_pts_dict(pos, set_pos)
+    pos = class_cutoff(pos)
     model_output_path = create_pkey(pos, set_pos)
     df = pull_data(pts_dict, set_pos, set_year)
 
@@ -41,9 +52,9 @@ for sp, cn, fd, ye in runs:
         df_train, df_predict, min_samples = get_reg_data(df, pos, set_pos)
         df_train_class, df_predict_class = get_class_data(df, pos, set_pos)
     else:
-        df_train, df_predict, df_train_class, df_predict_class, output_start, min_samples = prepare_rookie_data(df, set_pos)
+        df_train, df_predict, df_train_class, df_predict_class, output_start, min_samples = prepare_rookie_data(df, set_pos, cn)
 
-    if current_or_next_year == 'next': 
+    if current_or_next_year == 'next' and 'Rookie' not in set_pos: 
         df_train, df_train_class = adjust_current_or_next(df_train, df_train_class)
 
     #------------

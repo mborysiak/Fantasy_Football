@@ -185,7 +185,7 @@ print(f'Successfully overwrote Rookie_ADP for Year {year+1} AND Pos=RB')
 # %%
 # pulling historical player adp for runningbacks
 rookie_wr_adp = get_adp(year, 'WR', rook=1)
-rookie_wr = merge_with_existing(rb_adp, 'Rookie_WR_Stats', year)
+rookie_wr = merge_with_existing(rookie_wr_adp, 'Rookie_WR_Stats', year)
 
 # %%
 dm.delete_from_db('Season_Stats', 'Rookie_WR_Stats', f'''draft_year={year+1}''')

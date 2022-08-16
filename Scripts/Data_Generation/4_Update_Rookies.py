@@ -383,8 +383,10 @@ draft = dm.read('''SELECT player, year draft_year, pos, college FROM draft_posit
 player_age = dm.read(f'''SELECT player, pos, age, {set_year+1} as 'run_date' FROM Player_Birthdays ''', 'Season_Stats')
 rookie_adp = dm.read('''SELECT * FROM Rookie_ADP''', 'Season_Stats').drop('team', axis=1)
 
-
+#%%
 comb_stats = pd.merge(comb_stats, draft, on=['player', 'draft_year', 'pos'])
+
+#%%
 comb_stats = pd.merge(comb_stats, player_age, on=['player', 'pos'])
 comb_stats = pd.merge(comb_stats, rookie_adp, on=['player', 'pos', 'draft_year'])
 

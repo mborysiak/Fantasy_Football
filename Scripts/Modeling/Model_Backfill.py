@@ -112,6 +112,15 @@ def get_non_rookies(set_pos):
 
     return train, predict
 
+def get_skm(skm_df, model_obj, to_drop=['player', 'team', 'pos']):
+    
+    skm = SciKitModel(skm_df, model_obj=model_obj)
+    X, y = skm.Xy_split(y_metric='y_act', to_drop=to_drop)
+
+    return skm, X, y
+
+
+
 non_rookies_train = pd.DataFrame()
 non_rookies_predict = pd.DataFrame()
 
@@ -218,7 +227,7 @@ for p in ['QB', 'RB', 'WR', 'TE']:
     cur_train = df_train[df_train.pos==p].copy().reset_index(drop=True)
     cur_predict = output[output.pos==p].copy().reset_index(drop=True)
 
-    sd_spline, max_spline = get_std_splines(cur_train, ['avg_pick'], ['avg_pick'], 
+    sd_spline, max_spline = get_std_splines(cur_train, {'avg_pick': 1},
                                             show_plot=True, k=1, 
                                             min_grps_den=int(cur_train.shape[0]*0.25), 
                                             max_grps_den=int(cur_train.shape[0]*0.15))
@@ -239,6 +248,8 @@ output['version'] = pred_version
 output['adp_rank'] = None
 output['year']= set_year
 output['rush_pass'] = 'both'
+output['current_or_next_year'] = 'current'
+output['date_modified'] = dt.datetime.now().strftime('%m-%d-%Y %H:%M')
 
 cols = dm.read("SELECT * FROM Model_Predictions", 'Simulation').columns
 output = output[cols]
@@ -255,10 +266,10 @@ rp = dm.read(f'''SELECT player,
                         pos,
                         avg_pick,
                         SUM(pred_fp_per_game) pred_fp_per_game,
-                        SUM(std_dev) / 1.5,
-                        SUM(max_score) / 1.5
+                        SUM(std_dev) / 1.4 std_dev, 
+                        SUM(max_score) / 1.3 max_score
                 FROM Model_Predictions
-                WHERE rush_pass IN ('rush', 'pass')
+                WHERE rush_pass IN ('rush', 'pass', 'rec')
                       AND version='{pred_version}'
                       AND year = {set_year}
                 GROUP BY player, pos, year
@@ -266,11 +277,12 @@ rp = dm.read(f'''SELECT player,
 
 both = dm.read(f'''SELECT player, 
                           pos,
+                          rush_pass,
                           pred_fp_per_game pred_fp_per_game,
                           std_dev,
                           max_score
                 FROM Model_Predictions
-                WHERE (rush_pass NOT IN ('rush', 'pass') OR rush_pass IS NULL)
+                WHERE (rush_pass NOT IN ('rush', 'pass', 'rec') OR rush_pass IS NULL)
                       AND version='{pred_version}'
                       AND year = {set_year}
              ''', 'Simulation')
@@ -280,6 +292,7 @@ preds = preds.groupby(['player', 'pos'], as_index=False).agg({'pred_fp_per_game'
                                                               'std_dev': 'mean',
                                                               'max_score': 'mean'})
 preds.pos = preds.pos.apply(lambda x: x.replace('Rookie_', ''))
+preds[~((preds.pos=='QB') & (preds.pred_fp_per_game < 17))].sort_values(by='pred_fp_per_game', ascending=False).iloc[:50]
 
 #%%
 

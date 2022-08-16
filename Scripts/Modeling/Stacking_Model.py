@@ -39,7 +39,7 @@ db_path = f'{root_path}/Data/Databases/'
 dm = DataManage(db_path)
 
 # set to position to analyze: 'RB', 'WR', 'QB', or 'TE'
-set_pos = 'Rookie_WR'
+set_pos = 'RB'
 
 # set year to analyze
 set_year = 2022
@@ -48,62 +48,15 @@ set_year = 2022
 vers = 'beta'
 
 # set with this year or next
-current_or_next_year = 'current'
+current_or_next_year = 'next'
 
-
-#==========
-# Fantasy Point Values
-#==========
-
-# define point values for all statistical categories
-pass_yd_per_pt = 0.04 
-pass_td_pt = 4
-int_pts = -2
-sacks = -1
-rush_yd_per_pt = 0.1 
-rec_yd_per_pt = 0.1
-rush_td = 7
-rec_td = 7
-ppr = 0.5
-fumble = -2
-
-pos['QB']['rush_pass'] = 'pass'
+# determine whether to do run/pass/rec separate or together
+pos['QB']['rush_pass'] = 'both'
 pos['RB']['rush_pass'] = 'both'
 pos['WR']['rush_pass'] = ''
 pos['TE']['rush_pass'] = ''
 pos['Rookie_RB']['rush_pass'] = ''
 pos['Rookie_WR']['rush_pass'] = ''
-
-if set_pos=='QB' and pos['QB']['rush_pass'] == 'rush':
-    pass_yd_per_pt = 0 
-    pass_td_pt = 0
-    int_pts = 0
-    sacks = 0
-
-elif set_pos=='QB' and pos['QB']['rush_pass'] == 'pass':
-    rush_yd_per_pt = 0
-    rush_td = 0
-
-elif set_pos == 'RB' and pos['RB']['rush_pass'] == 'rush':
-    rec_yd_per_pt = 0
-    rec_td = 0
-    ppr = 0
-
-elif set_pos=='RB' and pos['RB']['rush_pass'] == 'rec':
-    rush_yd_per_pt = 0
-    rush_td = 0
-
-else:
-    pass
-
-# creating dictionary containing point values for each position
-pts_dict = {}
-pts_dict['QB'] = [pass_yd_per_pt, pass_td_pt, rush_yd_per_pt, rush_td, int_pts, sacks]
-pts_dict['RB'] = [rush_yd_per_pt, rec_yd_per_pt, ppr, rush_td, rec_td]
-pts_dict['WR'] = [rec_yd_per_pt, ppr, rec_td]
-pts_dict['TE'] = [rec_yd_per_pt, ppr, rec_td]
-pts_dict['Rookie_RB'] = [rush_yd_per_pt, rec_yd_per_pt, ppr, rush_td, rec_td]
-pts_dict['Rookie_WR'] = [rec_yd_per_pt, ppr, rec_td]
 
 #==========
 # Model Settings
@@ -158,7 +111,7 @@ pos['TE']['use_ay'] = False
 pos['Rookie_RB']['use_ay'] = False
 pos['Rookie_WR']['use_ay'] = False
 
-pos['QB']['filter_data'] = 'less_equal'
+pos['QB']['filter_data'] = 'greater_equal'
 pos['RB']['filter_data'] = 'greater_equal'
 pos['WR']['filter_data'] = 'greater_equal'
 pos['TE']['filter_data'] = 'greater_equal'
@@ -171,19 +124,6 @@ pos['WR']['year_exp'] = 0
 pos['TE']['year_exp'] = 0
 pos['Rookie_RB']['year_exp'] = 0
 pos['Rookie_WR']['year_exp'] = 0
-
-if pos['QB']['rush_pass'] == 'rush': pos['QB']['act_ppg'] = 4
-elif pos['QB']['rush_pass'] == 'pass': pos['QB']['act_ppg'] = 17
-else: pos['QB']['act_ppg'] = 19
-
-if pos['RB']['rush_pass'] == 'rush': pos['RB']['act_ppg'] = 13
-elif pos['RB']['rush_pass'] == 'rec': pos['RB']['act_ppg'] = 6
-else: pos['RB']['act_ppg'] = 17
-
-pos['WR']['act_ppg'] = 15
-pos['TE']['act_ppg'] = 12
-pos['Rookie_RB']['act_ppg'] = 13
-pos['Rookie_WR']['act_ppg'] = 11
 
 pos['QB']['pct_off'] = 0
 pos['RB']['pct_off'] = 0
@@ -198,6 +138,78 @@ pos['WR']['iters'] = 25
 pos['TE']['iters'] = 25
 pos['Rookie_RB']['iters'] = 25
 pos['Rookie_WR']['iters'] = 25
+
+pos['QB']['n_splits'] = 5
+pos['RB']['n_splits'] = 5
+pos['WR']['n_splits'] = 5
+pos['TE']['n_splits'] = 5
+pos['Rookie_RB']['n_splits'] = 4
+pos['Rookie_WR']['n_splits'] = 4
+
+
+def create_pts_dict(pos, set_pos):
+
+    # define point values for all statistical categories
+    pass_yd_per_pt = 0.04 
+    pass_td_pt = 4
+    int_pts = -2
+    sacks = -1
+    rush_yd_per_pt = 0.1 
+    rec_yd_per_pt = 0.1
+    rush_td = 7
+    rec_td = 7
+    ppr = 0.5
+
+    if set_pos=='QB' and pos['QB']['rush_pass'] == 'rush':
+        pass_yd_per_pt = 0 
+        pass_td_pt = 0
+        int_pts = 0
+        sacks = 0
+
+    elif set_pos=='QB' and pos['QB']['rush_pass'] == 'pass':
+        rush_yd_per_pt = 0
+        rush_td = 0
+
+    elif set_pos == 'RB' and pos['RB']['rush_pass'] == 'rush':
+        rec_yd_per_pt = 0
+        rec_td = 0
+        ppr = 0
+
+    elif set_pos=='RB' and pos['RB']['rush_pass'] == 'rec':
+        rush_yd_per_pt = 0
+        rush_td = 0
+
+    else:
+        pass
+
+    # creating dictionary containing point values for each position
+    pts_dict = {}
+    pts_dict['QB'] = [pass_yd_per_pt, pass_td_pt, rush_yd_per_pt, rush_td, int_pts, sacks]
+    pts_dict['RB'] = [rush_yd_per_pt, rec_yd_per_pt, ppr, rush_td, rec_td]
+    pts_dict['WR'] = [rec_yd_per_pt, ppr, rec_td]
+    pts_dict['TE'] = [rec_yd_per_pt, ppr, rec_td]
+    pts_dict['Rookie_RB'] = [rush_yd_per_pt, rec_yd_per_pt, ppr, rush_td, rec_td]
+    pts_dict['Rookie_WR'] = [rec_yd_per_pt, ppr, rec_td]
+
+    return pts_dict
+
+def class_cutoff(pos):
+
+    if pos['QB']['rush_pass'] == 'rush': pos['QB']['act_ppg'] = 4
+    elif pos['QB']['rush_pass'] == 'pass': pos['QB']['act_ppg'] = 17
+    else: pos['QB']['act_ppg'] = 19
+
+    if pos['RB']['rush_pass'] == 'rush': pos['RB']['act_ppg'] = 13
+    elif pos['RB']['rush_pass'] == 'rec': pos['RB']['act_ppg'] = 6
+    else: pos['RB']['act_ppg'] = 17
+
+    pos['WR']['act_ppg'] = 15
+    pos['TE']['act_ppg'] = 12
+    pos['Rookie_RB']['act_ppg'] = 13
+    pos['Rookie_WR']['act_ppg'] = 11
+
+    return pos
+
 
 def create_pkey(pos, set_pos):
 
@@ -295,11 +307,12 @@ def filter_df(df, pos, set_pos, set_year):
 
 
 def prepare_rookie_data(df, set_pos, current_or_next):
+
     df = df.sort_values(by='year').reset_index(drop=True)
     df = df[(df.games > 8) | (df.year==set_year-1)].reset_index(drop=True)
     
     if current_or_next == 'current':
-        df = df.rename(columns={'fp_per_game': 'y_act'}).dropn('fp_per_game_next', axis=1)
+        df = df.rename(columns={'fp_per_game': 'y_act'}).drop('fp_per_game_next', axis=1)
     elif current_or_next == 'next':
         df = df.rename(columns={'fp_per_game_next': 'y_act'}).drop('fp_per_game', axis=1)
 
@@ -314,7 +327,7 @@ def prepare_rookie_data(df, set_pos, current_or_next):
                       'td_per_game_next', 'games_next'], axis=1)
 
 
-    df_train = df[df.year < set_year-1].reset_index(drop=True)
+    df_train = df[(df.year < set_year-1) & (df.y_act > 0)].reset_index(drop=True)
     df_predict = df[df.year == set_year-1].reset_index(drop=True)
 
     output_start = df_predict[['player', 'avg_pick']].copy()
@@ -488,7 +501,7 @@ def get_model_output(model_name, cur_df, model_obj, out_dict, pos, set_pos, i, m
     else: proba = False
 
     # fit and append the ADP model
-    best_models, oof_data, _ = skm.time_series_cv(pipe, X, y, params, n_iter=pos[set_pos]['iters'],
+    best_models, oof_data, _ = skm.time_series_cv(pipe, X, y, params, n_iter=pos[set_pos]['iters'], n_splits=pos[set_pos]['n_splits'],
                                                   col_split='year', time_split=pos[set_pos]['val_start'],
                                                   bayes_rand='custom_rand', proba=proba, random_seed=(i+7)*19+(i*12)+6)
     out_dict = update_output_dict(model_obj, model_name, str(alpha), out_dict, oof_data, best_models)
@@ -560,9 +573,9 @@ def std_dev_features(cur_df, model_name, set_pos, show_plot=True):
     pipe, params = get_full_pipe(skm, model_name, stack_model=True)
 
     # fit and append the ADP model
-    best_models, _, _ = skm.time_series_cv(pipe, X, y, params, n_iter=pos[set_pos]['iters'],
-                                                  col_split='year', time_split=pos[set_pos]['val_start'],
-                                                  bayes_rand='custom_rand', random_seed=1234)
+    best_models, _, _ = skm.time_series_cv(pipe, X, y, params, n_iter=pos[set_pos]['iters'], n_splits=pos[set_pos]['n_splits'],
+                                           col_split='year', time_split=pos[set_pos]['val_start'],
+                                           bayes_rand='custom_rand', random_seed=1234)
 
     for bm in best_models: bm.fit(X, y)
     if show_plot:
@@ -609,6 +622,7 @@ def validation_compare_df(model_output_path, best_val):
 
 def save_out_results(df, db_name, table_name, pos, set_year, set_pos, current_or_next_year):
 
+    import datetime as dt
 
     df['pos'] = set_pos
     df['rush_pass'] = pos[set_pos]['rush_pass']
@@ -617,6 +631,7 @@ def save_out_results(df, db_name, table_name, pos, set_year, set_pos, current_or
     df['current_or_next_year'] = current_or_next_year
     df['version'] = vers
     df['year'] = set_year
+    df['date_modified'] = dt.datetime.now().strftime('%m-%d-%Y %H:%M')
 
     del_str = f'''pos='{set_pos}' 
                   AND rush_pass='{pos[set_pos]['rush_pass']}'
@@ -635,6 +650,8 @@ def save_out_results(df, db_name, table_name, pos, set_year, set_pos, current_or
 # # Pull in the data and create train and predict sets
 # #------------
 
+# pts_dict = create_pts_dict(pos, set_pos)
+# pos = class_cutoff(pos)
 # model_output_path = create_pkey(pos, set_pos)
 # df = pull_data(pts_dict, set_pos, set_year)
 
@@ -643,9 +660,9 @@ def save_out_results(df, db_name, table_name, pos, set_year, set_pos, current_or
 #     df_train, df_predict, min_samples = get_reg_data(df, pos, set_pos)
 #     df_train_class, df_predict_class = get_class_data(df, pos, set_pos)
 # else:
-#     df_train, df_predict, df_train_class, df_predict_class, output_start, min_samples = prepare_rookie_data(df, set_pos)
+#     df_train, df_predict, df_train_class, df_predict_class, output_start, min_samples = prepare_rookie_data(df, set_pos, current_or_next_year)
 
-# if current_or_next_year == 'next': 
+# if current_or_next_year == 'next' and 'Rookie' not in set_pos: 
 #     df_train, df_train_class = adjust_current_or_next(df_train, df_train_class)
 
 # #%%
@@ -670,7 +687,7 @@ def save_out_results(df, db_name, table_name, pos, set_year, set_pos, current_or
 
 # # run all other models
 # for alph in [0.8, 0.95]:
-#     out_dict_quant, _, _ = get_model_output('gbm_q', df_train, 'quantile', out_dict_class, pos, set_pos, i, alpha=alph)
+#     out_dict_quant, _, _ = get_model_output('gbm_q', df_train, 'quantile', out_dict_quant, pos, set_pos, i, alpha=alph)
 # save_output_dict(out_dict_quant, model_output_path, 'quant')
 
 # #%%
@@ -705,45 +722,71 @@ def save_out_results(df, db_name, table_name, pos, set_year, set_pos, current_or
 # save_out_results(output, 'Simulation', 'Model_Predictions', pos, set_year, set_pos, current_or_next_year)
 
 
-#%%
+# #%%
 
 # from sklearn.metrics import mean_squared_error
 
 # rp = dm.read(f'''SELECT player, 
-#                         year, 
+#                         season, 
 #                         SUM(Prediction) rp_pred, 
 #                         SUM(y_act) rp_y_act
 #                 FROM Model_Validations
-#                 WHERE rush_or_pass != 'both'
+#                 WHERE rush_pass != 'both'
 #                       AND pos = '{set_pos}'
-#                       AND year_exp='{pos[set_pos]['rush_pass']}'
+#                       AND year_exp='{pos[set_pos]['year_exp']}'
 #                       AND filter_data = '{pos[set_pos]['filter_data']}'
 #                       AND current_or_next_year = '{current_or_next_year}'
-#                       AND run_year = '{set_year}'
-#                 GROUP BY player, year
+#                       AND year = '{set_year}'
+#                 GROUP BY player, season
 #              ''', 'Simulation')
 
 # both = dm.read(f'''SELECT player, 
-#                          year, 
+#                          season, 
 #                          prediction both_pred, 
 #                          y_act both_y_act
 #                 FROM Model_Validations
-#                 WHERE rush_or_pass = 'both'
+#                 WHERE rush_pass = 'both'
 #                       AND pos = '{set_pos}'
-#                       AND year_exp='{pos[set_pos]['rush_pass']}'
+#                       AND year_exp='{pos[set_pos]['year_exp']}'
 #                       AND filter_data = '{pos[set_pos]['filter_data']}'
 #                       AND current_or_next_year = '{current_or_next_year}'
-#                       AND run_year = '{set_year}'
+#                       AND year = '{set_year}'
 #                 ''', 'Simulation')
 
+
+# skm, _, _ = get_skm(df_train, 'reg')
+
 # # rp = rp[rp.rp_pred < 22].reset_index(drop=True)
-# rp = pd.merge(rp, both, on=['player', 'year'])
+# rp = pd.merge(rp, both, on=['player', 'season'])
 
 # mf.show_scatter_plot(rp.rp_pred, rp.rp_y_act, r2=True)
 # mf.show_scatter_plot(rp.both_pred, rp.both_y_act, r2=True)
-# print('RP MSE:', np.sqrt(mean_squared_error(rp.rp_pred, rp.rp_y_act)))
+
+# print('\nRP MSE:', np.sqrt(mean_squared_error(rp.rp_pred, rp.rp_y_act)))
 # print('Both MSE:', np.sqrt(mean_squared_error(rp.both_pred, rp.both_y_act)))
-# print('RP Sera:', skm.sera_loss(rp.rp_y_act, rp.rp_pred))
-# print('Both Sera:', skm.sera_loss(rp.both_y_act, rp.both_pred))
+# print('\nRP Sera:', skm.sera_loss(rp.rp_y_act, rp.rp_pred))
+# print('Both Sera:', skm.sera_loss(rp.both_y_act, rp.both_pred), '\n')
 # print(rp[abs(rp.both_y_act - rp.rp_y_act) > 0.001])
 
+
+# # %%
+
+# rp = dm.read(f'''SELECT player, 
+#                         year, 
+#                         SUM(pred_fp_per_game) rp_pred,
+#                         AVG(avg_pick) avg_pick,
+#                         SUM(std_dev)/1.4 std_dev,
+#                         SUM(max_score)/1.3 max_score
+#                 FROM Model_Predictions
+#                 WHERE rush_pass != 'both'
+#                       AND pos = '{set_pos}'
+#                       AND year_exp='{pos[set_pos]['year_exp']}'
+#                       AND filter_data = '{pos[set_pos]['filter_data']}'
+#                       AND current_or_next_year = '{current_or_next_year}'
+#                       AND year = '{set_year}'
+#                 GROUP BY player, year
+#              ''', 'Simulation').sort_values(by='rp_pred', ascending=False)
+# rp.iloc[:50]
+# # %%
+
+# %%
