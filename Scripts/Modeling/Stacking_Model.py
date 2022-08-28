@@ -45,7 +45,7 @@ set_pos = 'RB'
 set_year = 2022
 
 # set the version
-vers = 'beta'
+vers = 'nv'
 
 # set with this year or next
 current_or_next_year = 'next'
@@ -444,14 +444,16 @@ def get_full_pipe(skm, m, alpha=None, stack_model=False, min_samples=10):
 
     elif stack_model:
         pipe = skm.model_pipe([
-                            skm.piece('std_scale'),
-                            skm.piece('k_best'), 
+                            skm.piece('random_sample'),
+                            skm.piece('k_best'),
+                            skm.piece('std_scale'), 
                             skm.piece(m)
                         ])
 
     elif skm.model_obj == 'reg':
         pipe = skm.model_pipe([skm.piece('random_sample'),
                                 skm.piece('std_scale'), 
+                                skm.piece('select_perc'),
                                 skm.feature_union([
                                                 skm.piece('agglomeration'), 
                                                 skm.piece('k_best'),
@@ -463,6 +465,7 @@ def get_full_pipe(skm, m, alpha=None, stack_model=False, min_samples=10):
     elif skm.model_obj == 'class':
         pipe = skm.model_pipe([skm.piece('random_sample'),
                                skm.piece('std_scale'), 
+                               skm.piece('select_perc_c'),
                                skm.feature_union([
                                                 skm.piece('agglomeration'), 
                                                 skm.piece('k_best_c'),
@@ -475,6 +478,8 @@ def get_full_pipe(skm, m, alpha=None, stack_model=False, min_samples=10):
     elif skm.model_obj == 'quantile':
         pipe = skm.model_pipe([
                                 skm.piece('random_sample'),
+                                skm.piece('std_scale'), 
+                                skm.piece('select_perc'),
                                 skm.piece(m)
                                 ])
         pipe.steps[-1][-1].alpha = alpha
@@ -485,7 +490,9 @@ def get_full_pipe(skm, m, alpha=None, stack_model=False, min_samples=10):
     if m=='adp': params['feature_select__cols'] = [['avg_pick'], ['avg_pick', 'year']]
     if m=='knn_c': params['knn_c__n_neighbors'] = range(1, min_samples-1)
     if m=='knn': params['knn__n_neighbors'] = range(1, min_samples-1)
-    if stack_model: params['k_best__k'] = range(2, 20)
+    if stack_model: 
+        params['random_sample__frac'] = np.arange(0.05, 1, 0.05)
+        params['k_best__k'] = range(2, 30, 1)
 
     return pipe, params
 
@@ -598,14 +605,61 @@ def add_std_dev_max(df_train, df_predict, output, set_pos, num_cols=5):
     return output
 
 
+def val_std_dev(model_output_path, output, best_val, iso_spline, show_plot=True):
+
+    val_data = validation_compare_df(model_output_path, best_val)
+    sd_max_met = StandardScaler().fit(val_data[['pred_fp_per_game']]).transform(output[['pred_fp_per_game']])
+
+    if iso_spline=='iso':
+        sd_m, max_m, min_m = get_std_splines(val_data, {'pred_fp_per_game': 1}, show_plot=show_plot, k=2, 
+                                            min_grps_den=int(val_data.shape[0]*0.1), 
+                                            max_grps_den=int(val_data.shape[0]*0.05),
+                                            iso_spline=iso_spline)
+        output['std_dev'] = sd_m.predict(sd_max_met)
+        output['max_score'] = max_m.predict(sd_max_met)
+
+    elif iso_spline=='spline':
+        sd_m, max_m, min_m = get_std_splines(val_data, {'pred_fp_per_game': 1}, show_plot=show_plot, k=2, 
+                                            min_grps_den=int(val_data.shape[0]*0.2), 
+                                            max_grps_den=int(val_data.shape[0]*0.05),
+                                            iso_spline=iso_spline)
+        output['std_dev'] = sd_m(sd_max_met)
+        output['max_score'] = max_m(sd_max_met)
+ 
+    return output
+
+
 def average_stack_models(df_train, scores, final_models, y_stack, stack_val_pred, predictions, show_plot=True):
     
     skm_stack, _, _ = get_skm(df_train, 'reg')
-    best_val, best_predictions = mf.best_average_models(skm_stack, scores, final_models, y_stack, stack_val_pred, predictions)
+    best_val, best_predictions, best_score = best_average_models(skm_stack, scores, final_models, y_stack, stack_val_pred, predictions)
     
     if show_plot:
         mf.show_scatter_plot(best_val.mean(axis=1), y_stack, r2=True)
-    return best_val, best_predictions
+    return best_val, best_predictions, best_score
+
+def best_average_models(skm_stack, scores, final_models, y_stack, stack_val_pred, predictions, min_include = 3):
+
+    n_scores = []
+    models_included = []
+    for i in range(len(scores)-min_include+1):
+        top_n = sorted(range(len(scores)), key=lambda i: scores[i], reverse=False)[:i+min_include]
+        models_included.append(top_n)
+        model_idx = np.array(final_models)[top_n]
+        
+        n_score = skm_stack.custom_score(y_stack, stack_val_pred[model_idx].mean(axis=1))
+        n_scores.append(n_score)
+        
+    print('All Average Scores:', np.round(n_scores, 3))
+    best_n = np.argmin(n_scores)
+    best_score = n_scores[best_n]
+    top_models = models_included[best_n]
+
+    model_idx = np.array(final_models)[top_models]
+    best_val = stack_val_pred[model_idx]
+    best_predictions = predictions[model_idx]
+
+    return best_val, best_predictions, best_score
 
 #====================
 # Outputs
@@ -615,7 +669,7 @@ def validation_compare_df(model_output_path, best_val):
 
     _, _, _, _, oof_data = mf.load_all_pickles(model_output_path, 'reg')
     oof_data = oof_data['reg_adp'][['player', 'team', 'year', 'y_act']].reset_index(drop=True)
-    best_val = pd.Series(best_val.mean(axis=1), name='prediction')
+    best_val = pd.Series(best_val.mean(axis=1), name='pred_fp_per_game')
     val_compare = pd.concat([oof_data, best_val], axis=1).rename(columns={'year': 'season'})
     
     return val_compare
@@ -712,7 +766,7 @@ def save_out_results(df, db_name, table_name, pos, set_year, set_pos, current_or
 
 # # create the output and add standard devations / max scores
 # output = mf.create_output(output_start, best_predictions)
-# output = add_std_dev_max(df_train, df_predict, output, set_pos, num_cols=5)
+# output = val_std_dev(model_output_path, output, best_val, iso_spline='iso', show_plot=True)
 # output.sort_values(by='pred_fp_per_game', ascending=False).iloc[:50]
 
 # #%%

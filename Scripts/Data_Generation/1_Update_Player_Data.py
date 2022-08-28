@@ -346,7 +346,7 @@ rb_updates = [
     {
         'filter_q': '(all_rb.player=="JK Dobbins") | ((all_rb.player=="Devonta Freeman") & (all_rb.team=="BAL"))',
         'frac': 1,
-        'player': "JK Dobbins",
+        'player': "Jk Dobbins",
         'team': 'BAL',
         'age': 22,
     },
@@ -610,24 +610,33 @@ missing[(missing.games.isnull()) | (missing.games < 8)]
 all_wr = dm.read("SELECT * FROM WR_Stats", 'Season_Stats')
 
 updates = [{
-    'filter_q': '((all_wr.player=="JuJu Smith-Schuster") | (all_wr.player=="Pierre Garcon")) & (all_wr.games > 12)',
-    'frac': 0.95,
-    'player': "JuJu Smith-Schuster",
-    'team': 'KC',
+    'filter_q': '((all_wr.player=="Juju Smith-Schuster") | (all_wr.player=="Pierre Garcon")) & (all_wr.games > 12)',
+    'frac': 1,
+    'player': "Juju Smith Schuster",
+    'team': 'KAN',
     'age': np.log(25),
     'new_team': 1
 },
  {
-    'filter_q': '((all_wr.player=="DJ Chark") | (all_wr.player=="Devante Parker")) & (all_wr.games > 12)',
+    'filter_q': '((all_wr.player=="Dj Chark") | (all_wr.player=="Devante Parker")) & (all_wr.games > 12)',
     'frac': 0.9,
-    'player': "DJ Chark",
+    'player': "Dj Chark",
     'team': 'DET',
     'age': np.log(25),
     'new_team': 1
+},
+ {
+    'filter_q': '(all_wr.player=="Michael Thomas")',
+    'frac': 0.75,
+    'player': "Michael Thomas",
+    'team': 'NOR',
+    'age': np.log(29.5),
+    'new_team': 0
 }
 ]
 
 for pl in updates:
+    print(pl)
     df_wr = add_player(pl, all_wr, df_wr)
     df_wr.loc[df_wr.player==pl['player'], 'avg_pick'] = \
         np.log(float(df_adp_rec.loc[df_adp_rec.player==pl['player'], 'avg_pick'].values[0]))

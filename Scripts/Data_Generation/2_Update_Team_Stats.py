@@ -109,12 +109,12 @@ team_to_abb = {
     'Tampa Bay Buccaneers': 'TAM',
     'Tennessee Titans': 'TEN',
     'Tennessee Oilers': 'TEN',
-    'Washington Redskins': 'WAS'
+    'Washington Football Team': 'WAS'
 }
 
 df_team.team = df_team.team.map(team_to_abb)
 df_team['year'] = year
-dfteam = df_team.reset_index(drop=True)
+df_team = df_team.reset_index(drop=True)
 
 # +
 #==========
@@ -205,8 +205,7 @@ df_team['total_tm_yds'] = df_team.tm_pass_yds + df_team.tm_rush_yds
 
 df_team.iloc[:, 1:] = df_team.iloc[:, 1:].astype('float')
 # -
-
-df_team
+print('Number of teams in dataset:', df_team[~df_team.team.isnull()].shape[0])
 #%%
 # write out the running back data
 

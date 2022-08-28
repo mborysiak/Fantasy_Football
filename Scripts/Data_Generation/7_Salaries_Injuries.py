@@ -32,7 +32,7 @@ dm = DataManage(db_path)
 # set core path
 PATH = f'{root_path}/Data/'
 YEAR = 2022
-LEAGUE = 'beta'
+LEAGUE = 'nv'
 
 #%%
 

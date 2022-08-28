@@ -115,12 +115,12 @@ keepers = {
     'Terry McLaurin': 46,
 
     'James Conner': 13,
-    'Elijah Mitchell': 75,
+    'David Montgomery': 34,
 
-    'Tee Higgins': 32,
+    'Saquon Barkley': 71,
     'Cam Akers': 11,
 
-    'Damien Harris': 26,
+    'Allen Robinson': 11,
     'Cooper Kupp': 50,
 
     'Justin Jefferson': 29,

@@ -476,7 +476,6 @@ wr_stats['fp_per_game'] = (wr_stats[['rec_per_game', 'rec_yd_per_game', 'td_per_
 wr_stats['fp_per_game_next'] = (wr_stats[['rec_per_game_next', 'rec_yd_per_game_next', 'td_per_game_next']]*[0.5, 0.1, 7]).sum(axis=1)
 
 wr_stats.avg_pick = np.log(wr_stats.avg_pick)
-
 # +
 draft = pd.read_sql_query('''SELECT player, pos, team FROM draft_positions''', conn)
 draft = draft[~((draft.player=='Anthony Miller') & (draft.team=='LAC'))]
@@ -486,6 +485,7 @@ draft = draft[~(draft.player=='Tavon Austin')]
 wr_stats = pd.merge(wr_stats, draft, on=['player', 'pos'])# -
 wr_stats = wr_stats.loc[~(wr_stats.games.isnull()) | (wr_stats.draft_year==set_year+1), :].reset_index(drop=True)
 wr_stats = wr_stats.loc[(wr_stats.games > 5) | (wr_stats.draft_year==set_year+1), :].reset_index(drop=True)
+
 dm.write_to_db(wr_stats, 'Season_Stats', 'Rookie_WR_Stats', 'replace', create_backup=True)
 
 # # Split out and Save RB

@@ -5,27 +5,27 @@ runs = [
         # ['Rookie_RB', 'current', 'greater_equal', 0, ''],
         # ['Rookie_RB', 'next', 'greater_equal', 0, ''],
         # ['Rookie_WR', 'current', 'greater_equal', 0, ''],
-     #   ['Rookie_WR', 'next', 'greater_equal', 0],
+        # # ['Rookie_WR', 'next', 'greater_equal', 0, ''],
         # ['WR', 'current', 'greater_equal', 0, ''],
         # ['WR', 'current', 'less_equal', 3, ''],
         # ['WR', 'current', 'greater_equal', 4, ''],
         # ['WR', 'next', 'greater_equal', 0, ''],
         # ['WR', 'next', 'less_equal', 3, ''],
-        # ['WR', 'next', 'greater_equal', 4, ''],
-        # ['RB', 'current', 'greater_equal', 0, 'both'],
-        # ['RB', 'current', 'less_equal', 3, ''],
-        # ['RB', 'current', 'greater_equal', 4, ''],
+        ['WR', 'next', 'greater_equal', 4, ''],
+        ['RB', 'current', 'greater_equal', 0, 'both'],
+        ['RB', 'current', 'less_equal', 3, ''],
+        ['RB', 'current', 'greater_equal', 4, ''],
         ['RB', 'next', 'greater_equal', 0, ''],
         ['RB', 'next', 'less_equal', 3, ''],
         ['RB', 'next', 'greater_equal', 4, ''],
-        # ['RB', 'current', 'greater_equal', 0, 'rush'],
-        # ['RB', 'current', 'greater_equal', 0, 'pass'],
+        ['RB', 'current', 'greater_equal', 0, 'rush'],
+        ['RB', 'current', 'greater_equal', 0, 'pass'],
         ['TE', 'current', 'greater_equal', 0, ''],
         ['TE', 'next', 'greater_equal', 0, ''],
-        # ['QB', 'current', 'greater_equal', 0, 'both'],
+        ['QB', 'current', 'greater_equal', 0, 'both'],
         ['QB', 'next', 'greater_equal', 0, 'both'],
-        # ['QB', 'current', 'greater_equal', 0, 'rush'],
-        # ['QB', 'current', 'greater_equal', 0, 'pass'],
+        ['QB', 'current', 'greater_equal', 0, 'rush'],
+        ['QB', 'current', 'greater_equal', 0, 'pass'],
         
         
 ]
@@ -98,20 +98,17 @@ for sp, cn, fd, ye, rp in runs:
 
     # get the best stack predictions and average
     predictions = mf.stack_predictions(X_predict, best_models, final_models)
-    best_val, best_predictions = average_stack_models(df_train, scores, final_models, y_stack, stack_val_pred, predictions, show_plot=True)
+    best_val, best_predictions, best_score = average_stack_models(df_train, scores, final_models, y_stack, stack_val_pred, predictions, show_plot=True)
 
     # create the output and add standard devations / max scores
     output = mf.create_output(output_start, best_predictions)
-    output = add_std_dev_max(df_train, df_predict, output, set_pos, num_cols=5)
+    output = val_std_dev(model_output_path, output, best_val, iso_spline='iso', show_plot=True)
     display(output.sort_values(by='pred_fp_per_game', ascending=False).iloc[:50])
 
     # save out final results
     val_compare = validation_compare_df(model_output_path, best_val)
     save_out_results(val_compare, 'Simulation', 'Model_Validations', pos, set_year, set_pos, current_or_next_year)
     save_out_results(output, 'Simulation', 'Model_Predictions', pos, set_year, set_pos, current_or_next_year)
-
-
-# %%
 
 
 # %%
