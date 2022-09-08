@@ -19,45 +19,32 @@ np.random.seed(1234)
 # connection for simulation and specific table
 path = f'c:/Users/{os.getlogin()}/Documents/Github/Fantasy_Football/'
 conn_sim = sqlite3.connect(f'{path}/Data/Databases/Simulation.sqlite3')
-table_vers = 'Versionbeta'
+
 set_year = 2022
 league='beta'
+table_vers = 'Version' + league
 
 # number of iteration to run
 iterations = 500
 
-# define point values for all statistical categories
-pass_yd_per_pt = 0.04 
-pass_td_pt = 4
-int_pts = -2
-sacks = -1
-rush_yd_per_pt = 0.1 
-rec_yd_per_pt = 0.1
-rush_rec_td = 7
-ppr = .5
-
 # set league information, included position requirements, number of teams, and salary cap
 league_info = {}
-league_info['pos_require'] = {'QB': 1, 'RB': 2, 'WR': 3, 'TE': 1, 'FLEX': 2}
+
+if league == 'beta': league_info['pos_require'] = {'QB': 1, 'RB': 2, 'WR': 2, 'TE': 1, 'FLEX': 2}
+elif league == 'nv': league_info['pos_require'] = {'QB': 2, 'RB': 2, 'WR': 2, 'TE': 1, 'FLEX': 1}
 league_info['num_teams'] = 12
 league_info['initial_cap'] = 293
 league_info['salary_cap'] = 293
 
 flex_pos = ['RB', 'WR', 'TE']
 
-# creating dictionary containing point values for each position
-pts_dict = {}
-pts_dict['QB'] = [pass_yd_per_pt, pass_td_pt, rush_yd_per_pt, rush_rec_td, int_pts, sacks]
-pts_dict['RB'] = [rush_yd_per_pt, rec_yd_per_pt, ppr, rush_rec_td]
-pts_dict['WR'] = [rec_yd_per_pt, ppr, rush_rec_td]
-pts_dict['TE'] = [rec_yd_per_pt, ppr, rush_rec_td]
 
 #==================
 # Initialize the Simluation Class
 #==================
 
 # instantiate simulation class and add salary information to data
-sim = FootballSimulation(pts_dict, conn_sim, table_vers, set_year, league, iterations)
+sim = FootballSimulation(conn_sim, table_vers, set_year, league)
 
 # return the data and set up dataframe for proportion of salary across position
 d = sim.return_data()
@@ -94,28 +81,24 @@ proport = proport[['Position', 'Wts']]
 # For Beta Keepers
 #------------------
 
-keepers = {}
-
-# # input information for players and their associated salaries selected by other teams
-
-keepers = {
+if league == 'beta': keepers = {
     'Jk Dobbins': 12,
-    'Jaylen Waddle': 16,
+    'Austin Ekeler': 65,
 
     "Jamarr Chase": 27,
     "Dandre Swift": 45,
 
     'Javonte Williams': 41,
-    'Joe Burrow': 11,
+    'Amon Ra St Brown': 11,
 
     'Stefon Diggs': 42,
     'Jonathan Taylor': 76,
 
     'Ceedee Lamb': 39,
-    'Terry McLaurin': 46,
+    'Terry Mclaurin': 46,
 
     'James Conner': 13,
-    'David Montgomery': 34,
+    'David Montgomery': 39,
 
     'Saquon Barkley': 71,
     'Cam Akers': 11,
@@ -124,11 +107,42 @@ keepers = {
     'Cooper Kupp': 50,
 
     'Justin Jefferson': 29,
+    'Leonard Fournette': 25,
+
+    'Courtland Sutton': 22,
+    'Deebo Samuel': 15
+
+}
+
+elif league=='nv': keepers = {
+
+    'Jaylen Waddle': 20,
     'Travis Etienne': 11,
+    
+    'Dandre Swift': 48,
+    'Keenan Allen': 53,
+    
+    'Najee Harris': 79,
+    'Cooper Kupp': 42,
 
-    'Deebo Samuel': 15,
-    'Marquise Brown': 13
+    'Jamarr Chase': 16,
+    'Javonte Williams': 26,
 
+    'Mark Andrews': 29,
+
+    'Justin Jefferson': 66,
+    'Deebo Samuel': 12,
+
+    'Michael Pittman': 13,
+    'Christian Mccaffrey': 50,
+    
+    'Tee Higgins': 32,
+
+    'Josh Allen': 48,
+    'Jalen Hurts': 11,
+
+    'Joe Mixon': 80,
+    'Aj Dillon': 11
 }
 
 # 2021 keepers
@@ -472,11 +486,11 @@ def create_bar(x_val, y_val, orient='h', color_str=main_color_rgba, text=None):
     return go.Bar(x=x_val, y=y_val, marker=marker_set, orientation=orient, text=text, showlegend=False)
 
 
-def create_fig_layout(fig1, fig2, fig3):
+def create_fig_layout(fig1, fig2, fig3, fig4):
     '''
     Function to combine bar charts into a single figure
     '''
-    fig = go.Figure(data=[fig1, fig2, fig3])
+    fig = go.Figure(data=[fig1, fig2, fig3, fig4])
     
     # Change the bar mode
     fig.update_layout(barmode='group', autosize=True, height=1600, 
@@ -685,24 +699,27 @@ def update_output(n_clicks, drafted_data, drafted_columns):
 
     # run the simulation
     if my_team_select.shape[0] < 9:
-        _, inflation = sim.run_simulation(league_info, to_drop, to_add, iterations=iterations)
+        _ = sim.run_simulation(league_info, to_drop, to_add, iterations=iterations)
     
     # get the results dataframe structured
+
     avg_sal = sim.show_most_selected(to_add, iterations, num_show=30)
     avg_sal = avg_sal.sort_values(by='Percent Drafted').reset_index()
-    avg_sal.columns = ['Player', 'PercentDrafted', 'AverageSalary', 'ExpectedSalaryDiff']
+    avg_sal.columns = ['Player', 'PercentDrafted', 'AverageSalary', 'Salary90', 'ExpectedSalaryDiff']
+    avg_sal.Salary90 = avg_sal.Salary90.round(1)
 
     avail_pts = pd.merge(avg_sal, d[d.Position!='FLEX'].reset_index()[['player', 'Position']].rename(columns={'player': 'Player'}), on='Player')
-    avail_pts = avail_pts[['Position', 'Player', 'AverageSalary']].rename(columns={'AverageSalary': 'Salary'})
+    avail_pts = avail_pts[['Position', 'Player', 'AverageSalary', 'Salary90']].rename(columns={'AverageSalary': 'Salary'})
     avail_pts = expected_pts(my_team_update, avail_pts[['Position', 'Player', 'Salary']], test_template, remain_sal)
     avg_sal = pd.merge(avg_sal, avail_pts, on='Player')
 
     # Creating two subplots and merging into single figure
-    (pl, pc_dr, av_sl, pt) = avg_sal.Player, avg_sal.PercentDrafted, avg_sal.AverageSalary, avg_sal['Points Added']
+    (pl, pc_dr, av_sl, sl_90, pt) = avg_sal.Player, avg_sal.PercentDrafted, avg_sal.AverageSalary, avg_sal['Salary90'], avg_sal['Points Added']
     pick_bar = create_bar(pc_dr, pl, text=pc_dr)
     sal_bar = create_bar(av_sl, pl, color_str='rgba(250, 190, 88, 1)', text=av_sl)
+    sl_90_bar = create_bar(sl_90, pl, color_str='rgba(250, 190, 88, 1)', text=sl_90)
     pt_bar = create_bar(pt, pl, color_str='rgba(250, 128, 114, 1)', text=pt)
-    gr_fig = create_fig_layout(sal_bar, pick_bar, pt_bar)
+    gr_fig = create_fig_layout(sl_90_bar, sal_bar, pick_bar, pt_bar)
 
     # histogram creation
     remain_pos, selected_df = salary_proportions(my_team_update, proport, remain_sal)
@@ -722,7 +739,7 @@ def update_output(n_clicks, drafted_data, drafted_columns):
 
     # update team information table
     team_info_update = pd.DataFrame({'Mean Points': [int(cur_team_dist.mean())], 
-                                     'Inflation': [round(inflation,2)], 
+                                     'Inflation': [1], 
                                      'Remaining Salary': [remain_sal]})
     
     # save out csv of status

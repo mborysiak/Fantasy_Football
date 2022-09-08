@@ -39,16 +39,16 @@ db_path = f'{root_path}/Data/Databases/'
 dm = DataManage(db_path)
 
 # set to position to analyze: 'RB', 'WR', 'QB', or 'TE'
-set_pos = 'RB'
+set_pos = 'QB'
 
 # set year to analyze
 set_year = 2022
 
 # set the version
-vers = 'nv'
+vers = 'beta'
 
 # set with this year or next
-current_or_next_year = 'next'
+current_or_next_year = 'current'
 
 # determine whether to do run/pass/rec separate or together
 pos['QB']['rush_pass'] = 'both'
@@ -151,7 +151,7 @@ def create_pts_dict(pos, set_pos):
 
     # define point values for all statistical categories
     pass_yd_per_pt = 0.04 
-    pass_td_pt = 4
+    pass_td_pt = 5
     int_pts = -2
     sacks = -1
     rush_yd_per_pt = 0.1 
@@ -612,8 +612,8 @@ def val_std_dev(model_output_path, output, best_val, iso_spline, show_plot=True)
 
     if iso_spline=='iso':
         sd_m, max_m, min_m = get_std_splines(val_data, {'pred_fp_per_game': 1}, show_plot=show_plot, k=2, 
-                                            min_grps_den=int(val_data.shape[0]*0.1), 
-                                            max_grps_den=int(val_data.shape[0]*0.05),
+                                            min_grps_den=int(val_data.shape[0]*0.2), 
+                                            max_grps_den=int(val_data.shape[0]*0.06),
                                             iso_spline=iso_spline)
         output['std_dev'] = sd_m.predict(sd_max_met)
         output['max_score'] = max_m.predict(sd_max_met)
@@ -629,10 +629,11 @@ def val_std_dev(model_output_path, output, best_val, iso_spline, show_plot=True)
     return output
 
 
-def average_stack_models(df_train, scores, final_models, y_stack, stack_val_pred, predictions, show_plot=True):
+def average_stack_models(df_train, scores, final_models, y_stack, stack_val_pred, predictions, show_plot=True, min_include=3):
     
     skm_stack, _, _ = get_skm(df_train, 'reg')
-    best_val, best_predictions, best_score = best_average_models(skm_stack, scores, final_models, y_stack, stack_val_pred, predictions)
+    best_val, best_predictions, best_score = best_average_models(skm_stack, scores, final_models, y_stack, 
+                                                                 stack_val_pred, predictions, min_include)
     
     if show_plot:
         mf.show_scatter_plot(best_val.mean(axis=1), y_stack, r2=True)
@@ -762,7 +763,7 @@ def save_out_results(df, db_name, table_name, pos, set_year, set_pos, current_or
 
 # # get the best stack predictions and average
 # predictions = mf.stack_predictions(X_predict, best_models, final_models)
-# best_val, best_predictions = average_stack_models(df_train, scores, final_models, y_stack, stack_val_pred, predictions, show_plot=True)
+# best_val, best_predictions, best_score = average_stack_models(df_train, scores, final_models, y_stack, stack_val_pred, predictions, show_plot=True)
 
 # # create the output and add standard devations / max scores
 # output = mf.create_output(output_start, best_predictions)
@@ -776,13 +777,27 @@ def save_out_results(df, db_name, table_name, pos, set_year, set_pos, current_or
 # save_out_results(output, 'Simulation', 'Model_Predictions', pos, set_year, set_pos, current_or_next_year)
 
 
+
+
+
+
+# #============================================================================
+
+
+
+
+
+
 # #%%
+
+# set_pos = 'QB'
+# version = 'nv'
 
 # from sklearn.metrics import mean_squared_error
 
 # rp = dm.read(f'''SELECT player, 
 #                         season, 
-#                         SUM(Prediction) rp_pred, 
+#                         SUM(pred_fp_per_game) rp_pred, 
 #                         SUM(y_act) rp_y_act
 #                 FROM Model_Validations
 #                 WHERE rush_pass != 'both'
@@ -791,12 +806,13 @@ def save_out_results(df, db_name, table_name, pos, set_year, set_pos, current_or
 #                       AND filter_data = '{pos[set_pos]['filter_data']}'
 #                       AND current_or_next_year = '{current_or_next_year}'
 #                       AND year = '{set_year}'
+#                       AND version = '{vers}'
 #                 GROUP BY player, season
 #              ''', 'Simulation')
 
 # both = dm.read(f'''SELECT player, 
 #                          season, 
-#                          prediction both_pred, 
+#                          pred_fp_per_game both_pred, 
 #                          y_act both_y_act
 #                 FROM Model_Validations
 #                 WHERE rush_pass = 'both'
@@ -805,10 +821,10 @@ def save_out_results(df, db_name, table_name, pos, set_year, set_pos, current_or
 #                       AND filter_data = '{pos[set_pos]['filter_data']}'
 #                       AND current_or_next_year = '{current_or_next_year}'
 #                       AND year = '{set_year}'
+#                     AND version = '{vers}'
 #                 ''', 'Simulation')
 
 
-# skm, _, _ = get_skm(df_train, 'reg')
 
 # # rp = rp[rp.rp_pred < 22].reset_index(drop=True)
 # rp = pd.merge(rp, both, on=['player', 'season'])
@@ -818,12 +834,10 @@ def save_out_results(df, db_name, table_name, pos, set_year, set_pos, current_or
 
 # print('\nRP MSE:', np.sqrt(mean_squared_error(rp.rp_pred, rp.rp_y_act)))
 # print('Both MSE:', np.sqrt(mean_squared_error(rp.both_pred, rp.both_y_act)))
-# print('\nRP Sera:', skm.sera_loss(rp.rp_y_act, rp.rp_pred))
-# print('Both Sera:', skm.sera_loss(rp.both_y_act, rp.both_pred), '\n')
 # print(rp[abs(rp.both_y_act - rp.rp_y_act) > 0.001])
 
 
-# # %%
+# # # %%
 
 # rp = dm.read(f'''SELECT player, 
 #                         year, 
@@ -838,9 +852,7 @@ def save_out_results(df, db_name, table_name, pos, set_year, set_pos, current_or
 #                       AND filter_data = '{pos[set_pos]['filter_data']}'
 #                       AND current_or_next_year = '{current_or_next_year}'
 #                       AND year = '{set_year}'
+#                       AND version = '{vers}'
 #                 GROUP BY player, year
 #              ''', 'Simulation').sort_values(by='rp_pred', ascending=False)
 # rp.iloc[:50]
-# # %%
-
-# %%

@@ -32,7 +32,7 @@ dm = DataManage(db_path)
 # set core path
 PATH = f'{root_path}/Data/'
 YEAR = 2022
-LEAGUE = 'nv'
+LEAGUE = 'beta'
 
 #%%
 
@@ -181,7 +181,7 @@ salaries = salaries[(salaries.year==YEAR) | (~salaries.actual_salary.isnull())].
 salaries = salaries.sort_values(by=['year', 'salary'], ascending=[True, False])
 salaries['sal_rank'] = salaries.groupby('year').cumcount()
 
-salaries = salaries.sample(frac=1, random_state=1234)
+salaries = salaries.sample(frac=1, random_state=1234).reset_index(drop=True)
 
 #%%
 
@@ -214,6 +214,7 @@ print('Baseline',  round(baseline, 3), round(baseline_r2, 3))
 # loop through each potential model
 best_models = {}
 model_list = [ 'ridge', 'svr', 'lasso', 'enet', 'xgb', 'knn', 'gbm', 'rf']
+all_pred = pd.DataFrame()
 for m in model_list:
 
     print('\n============\n')
@@ -232,11 +233,14 @@ for m in model_list:
     cv_pred = cross_val_predict(best_model, X_train, y_train)
     mse = np.round(mean_squared_error(cv_pred, y_train), 3)
     r2 = np.round(r2_score(cv_pred, y_train), 3)
+
+    all_pred = pd.concat([all_pred, pd.Series(cv_pred, name=m)], axis=1)
     
     print(mse, r2)
     best_models[m] = best_model
 
 #%%
+
 
 X_test.inflation = X_train.inflation.mean()
 pred_sal = np.mean([best_models['rf'].predict(X_test),
@@ -262,7 +266,21 @@ print(pred_results.pred_diff.sum())
 display(pred_results.iloc[:50])
 display(pred_results[np.abs(pred_results.pred_diff) > 4].sort_values(by='pred_diff', ascending=False))
 
+#%%
 
+from sklearn.preprocessing import StandardScaler
+ 
+val_data = pd.concat([pd.Series(y_train, name='y_act'), all_pred.mean(axis=1)], axis=1)
+val_data.columns = ['y_act', 'pred_salary']
+
+sd_max_met = StandardScaler().fit(val_data[['pred_salary']]).transform(pred_results[['pred_salary']])
+
+sd_m, max_m, min_m = get_std_splines(val_data, {'pred_salary': 1}, show_plot=True, k=2, 
+                                    min_grps_den=int(val_data.shape[0]*0.2), 
+                                    max_grps_den=int(val_data.shape[0]*0.06),
+                                    iso_spline='iso')
+pred_results['std_dev'] = sd_m.predict(sd_max_met)
+pred_results['max_score'] = max_m.predict(sd_max_met)
 #%%
 
 output = pred_results[['player', 'pred_salary', 'year']]

@@ -190,24 +190,25 @@ cv_time_base = skm.cv_time_splits(X, 'year', 2012)
 
 predictions = pd.DataFrame()
 for m in [
-          #'ridge', 
-          #'lasso', 
+          'ridge', 
+          'lasso', 
           'gbm', 
-          #'svr', 
+          'svr', 
           'knn',  
           'xgb', 
           'rf', 
-          #'bridge'
+          'bridge'
           ]:
     
     print(m)
     
-    model_base = skm.model_pipe([skm.column_transform(num_pipe = [skm.piece('std_scale'), skm.piece('k_best')],
+    model_base = skm.model_pipe([skm.column_transform(num_pipe = [skm.piece('std_scale')],
                                                       cat_pipe = [skm.piece('one_hot')]),
-                                skm.piece(m)])
+                                 skm.piece('k_best'),
+                                 skm.piece(m)])
 
     params = skm.default_params(model_base)
-    #params['k_best__k'] = range(1, X_base.shape[1])
+    params['k_best__k'] = range(1, 10)
 
     best_model = skm.random_search(model_base, X, y, params, cv=cv_time_base, n_iter=25)
     mse = skm.cv_score(best_model, X, y, cv_time_base)
@@ -227,7 +228,7 @@ for p in ['QB', 'RB', 'WR', 'TE']:
     cur_train = df_train[df_train.pos==p].copy().reset_index(drop=True)
     cur_predict = output[output.pos==p].copy().reset_index(drop=True)
 
-    sd_spline, max_spline = get_std_splines(cur_train, {'avg_pick': 1},
+    sd_spline, max_spline, min_spline = get_std_splines(cur_train, {'avg_pick': 1},
                                             show_plot=True, k=1, 
                                             min_grps_den=int(cur_train.shape[0]*0.25), 
                                             max_grps_den=int(cur_train.shape[0]*0.15))
@@ -284,6 +285,7 @@ both = dm.read(f'''SELECT player,
                 FROM Model_Predictions
                 WHERE (rush_pass NOT IN ('rush', 'pass', 'rec') OR rush_pass IS NULL)
                       AND version='{pred_version}'
+                      AND pos!='QB'
                       AND year = {set_year}
              ''', 'Simulation')
 
@@ -292,7 +294,9 @@ preds = preds.groupby(['player', 'pos'], as_index=False).agg({'pred_fp_per_game'
                                                               'std_dev': 'mean',
                                                               'max_score': 'mean'})
 preds.pos = preds.pos.apply(lambda x: x.replace('Rookie_', ''))
-preds[~((preds.pos=='QB') & (preds.pred_fp_per_game < 17))].sort_values(by='pred_fp_per_game', ascending=False).iloc[:50]
+preds = preds[preds.pred_fp_per_game > 0].reset_index(drop=True)
+display(preds[((preds.pos=='QB'))].sort_values(by='pred_fp_per_game', ascending=False).iloc[:15])
+display(preds[((preds.pos!='QB'))].sort_values(by='pred_fp_per_game', ascending=False).iloc[:50])
 
 #%%
 
@@ -357,7 +361,7 @@ sim_output = create_sim_output(preds).reset_index(drop=True)
 
 #%%
 
-idx = sim_output[sim_output.player=="Breece Hall"].index[0]
+idx = sim_output[sim_output.player=="Antonio Gibson"].index[0]
 plot_distribution(sim_output.iloc[idx])
 
 

@@ -1,16 +1,18 @@
 #%%
 from Stacking_Model import *
 
+show_plot = True
+
 runs = [
         # ['Rookie_RB', 'current', 'greater_equal', 0, ''],
-        # ['Rookie_RB', 'next', 'greater_equal', 0, ''],
-        # ['Rookie_WR', 'current', 'greater_equal', 0, ''],
-        # # ['Rookie_WR', 'next', 'greater_equal', 0, ''],
-        # ['WR', 'current', 'greater_equal', 0, ''],
-        # ['WR', 'current', 'less_equal', 3, ''],
-        # ['WR', 'current', 'greater_equal', 4, ''],
-        # ['WR', 'next', 'greater_equal', 0, ''],
-        # ['WR', 'next', 'less_equal', 3, ''],
+        ['Rookie_RB', 'next', 'greater_equal', 0, ''],
+        ['Rookie_WR', 'current', 'greater_equal', 0, ''],
+        # ['Rookie_WR', 'next', 'greater_equal', 0, ''],
+        ['WR', 'current', 'greater_equal', 0, ''],
+        ['WR', 'current', 'less_equal', 3, ''],
+        ['WR', 'current', 'greater_equal', 4, ''],
+        ['WR', 'next', 'greater_equal', 0, ''],
+        ['WR', 'next', 'less_equal', 3, ''],
         ['WR', 'next', 'greater_equal', 4, ''],
         ['RB', 'current', 'greater_equal', 0, 'both'],
         ['RB', 'current', 'less_equal', 3, ''],
@@ -19,9 +21,9 @@ runs = [
         ['RB', 'next', 'less_equal', 3, ''],
         ['RB', 'next', 'greater_equal', 4, ''],
         ['RB', 'current', 'greater_equal', 0, 'rush'],
-        ['RB', 'current', 'greater_equal', 0, 'pass'],
-        ['TE', 'current', 'greater_equal', 0, ''],
-        ['TE', 'next', 'greater_equal', 0, ''],
+        ['RB', 'current', 'greater_equal', 0, 'rec'],
+        # ['TE', 'current', 'greater_equal', 0, ''],
+        # ['TE', 'next', 'greater_equal', 0, ''],
         ['QB', 'current', 'greater_equal', 0, 'both'],
         ['QB', 'next', 'greater_equal', 0, 'both'],
         ['QB', 'current', 'greater_equal', 0, 'rush'],
@@ -29,6 +31,8 @@ runs = [
         
         
 ]
+
+print(vers)
 
 for sp, cn, fd, ye, rp in runs:
 
@@ -61,25 +65,25 @@ for sp, cn, fd, ye, rp in runs:
     # Run the Regression, Classification, and Quantiles
     #------------
 
-    # set up blank dictionaries for all metrics
-    out_dict_reg, out_dict_class, out_dict_quant = output_dict(), output_dict(), output_dict()
+    # # set up blank dictionaries for all metrics
+    # out_dict_reg, out_dict_class, out_dict_quant = output_dict(), output_dict(), output_dict()
 
-    # run all other models
-    model_list = ['adp', 'lgbm', 'ridge', 'svr', 'lasso', 'enet', 'xgb', 'knn', 'gbm', 'rf']
-    for i, m in enumerate(model_list):
-        out_dict_reg, _, _ = get_model_output(m, df_train, 'reg', out_dict_reg, pos, set_pos, i, min_samples)
-    save_output_dict(out_dict_reg, model_output_path, 'reg')
+    # # run all other models
+    # model_list = ['adp', 'lgbm', 'ridge', 'svr', 'lasso', 'enet', 'xgb', 'knn', 'gbm', 'rf']
+    # for i, m in enumerate(model_list):
+    #     out_dict_reg, _, _ = get_model_output(m, df_train, 'reg', out_dict_reg, pos, set_pos, i, min_samples)
+    # save_output_dict(out_dict_reg, model_output_path, 'reg')
 
-    # run all other models
-    model_list = ['lr_c', 'xgb_c',  'lgbm_c', 'gbm_c', 'rf_c', 'knn_c']
-    for i, m in enumerate(model_list):
-        out_dict_class, _, _= get_model_output(m, df_train_class, 'class', out_dict_class, pos, set_pos, i, min_samples)
-    save_output_dict(out_dict_class, model_output_path, 'class')
+    # # run all other models
+    # model_list = ['lr_c', 'xgb_c',  'lgbm_c', 'gbm_c', 'rf_c', 'knn_c']
+    # for i, m in enumerate(model_list):
+    #     out_dict_class, _, _= get_model_output(m, df_train_class, 'class', out_dict_class, pos, set_pos, i, min_samples)
+    # save_output_dict(out_dict_class, model_output_path, 'class')
 
-    # run all other models
-    for alph in [0.8, 0.95]:
-        out_dict_quant, _, _ = get_model_output('gbm_q', df_train, 'quantile', out_dict_class, pos, set_pos, i, alpha=alph)
-    save_output_dict(out_dict_quant, model_output_path, 'quant')
+    # # run all other models
+    # for alph in [0.8, 0.95]:
+    #     out_dict_quant, _, _ = get_model_output('gbm_q', df_train, 'quantile', out_dict_class, pos, set_pos, i, alpha=alph)
+    # save_output_dict(out_dict_quant, model_output_path, 'quant')
 
     #------------
     # Run the Stacking Models and Generate Output
@@ -94,16 +98,17 @@ for sp, cn, fd, ye, rp in runs:
     final_models = ['ridge', 'lasso', 'lgbm', 'xgb', 'rf', 'bridge', 'gbm']
     stack_val_pred = pd.DataFrame(); scores = []; best_models = []
     for i, fm in enumerate(final_models):
-        best_models, scores, stack_val_pred = run_stack_models(fm, i, X_stack, y_stack, best_models, scores, stack_val_pred, show_plots=True)
+        best_models, scores, stack_val_pred = run_stack_models(fm, i, X_stack, y_stack, best_models, scores, stack_val_pred, show_plots=show_plot)
 
     # get the best stack predictions and average
     predictions = mf.stack_predictions(X_predict, best_models, final_models)
-    best_val, best_predictions, best_score = average_stack_models(df_train, scores, final_models, y_stack, stack_val_pred, predictions, show_plot=True)
+    best_val, best_predictions, best_score = average_stack_models(df_train, scores, final_models, y_stack, stack_val_pred, 
+                                                                  predictions, show_plot=show_plot, min_include=2)
 
     # create the output and add standard devations / max scores
     output = mf.create_output(output_start, best_predictions)
-    output = val_std_dev(model_output_path, output, best_val, iso_spline='iso', show_plot=True)
-    display(output.sort_values(by='pred_fp_per_game', ascending=False).iloc[:50])
+    output = val_std_dev(model_output_path, output, best_val, iso_spline='iso', show_plot=show_plot)
+    print(output.sort_values(by='pred_fp_per_game', ascending=False).iloc[:50])
 
     # save out final results
     val_compare = validation_compare_df(model_output_path, best_val)
@@ -111,4 +116,6 @@ for sp, cn, fd, ye, rp in runs:
     save_out_results(output, 'Simulation', 'Model_Predictions', pos, set_year, set_pos, current_or_next_year)
 
 
+# %%
+ 
 # %%

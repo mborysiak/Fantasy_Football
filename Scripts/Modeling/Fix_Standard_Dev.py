@@ -81,7 +81,7 @@ def get_std_splines(df, metrics, show_plot=False, k=2, s=2000, min_grps_den=100,
                                          'sd_metric': 'mean',# lambda x: np.percentile(x, 95),
                                          'max_metric': 'mean',#lambda x: np.percentile(x, 95),
                                          'min_metric': 'mean',# lambda x: np.percentile(x, 95),
-                                         'player': 'count'})
+                                         'player': 'count'}).dropna()
             Xy.columns = ['std_dev', 'perc_99', 'perc_1', 'sd_metric', 'max_metric', 'min_metric', 'player_cnts']
 
             # fit a spline to the group datasets

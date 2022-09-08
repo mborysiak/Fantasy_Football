@@ -5,17 +5,13 @@ import pandas as pd
 import numpy as np
 import random
 import matplotlib.pyplot as plt
-import pandas.io.formats.style
 import copy
-import os 
-
-# sql packages
+import os
 import sqlite3
 
 # linear optimization
 from cvxopt import matrix
 from cvxopt.glpk import ilp
-from scipy.stats import skewnorm
 
 class FootballSimulation():
 
@@ -23,7 +19,7 @@ class FootballSimulation():
     # Creating Player Distributions for Given Settings
     #==========
     
-    def __init__(self, pts_dict, conn_sim, table_vers, set_year, league, iterations, pick_prob_df=None):
+    def __init__(self, conn_sim, table_vers, set_year, league):
         
         # create empty dataframe to store player point distributions
         pos_update = {'QB': 'aQB', 'RB': 'bRB', 'WR': 'cWR', 'TE': 'dTE'}
@@ -31,26 +27,13 @@ class FootballSimulation():
         self.data['pos'] = self.data['pos'].map(pos_update)
 
         # add salaries to the dataframe and set index to player
-        salaries = pd.read_sql_query(f'''SELECT player, salary
-                                         FROM Salaries
-                                         WHERE year={set_year}
-                                               AND league='{league}pred' ''', conn_sim)
+        self.salaries = pd.read_sql_query(f'''SELECT player, salary, std_dev, min_score, max_score
+                                              FROM Salaries
+                                              WHERE year={set_year}
+                                                    AND league='{league}pred' ''', conn_sim)
 
-        if pick_prob_df is not None:
-            salaries = pd.merge(salaries, pick_prob_df, on='player')
-            salaries.salary = salaries.salary * np.exp(salaries.pick_prob)
-            salaries = salaries.drop('pick_prob', axis=1)
-            # salaries['salary'] = 1
-            self.sal = salaries
-            self.data = pd.merge(self.data, salaries, how='inner', left_on='player', right_on='player')
-
-        else:
-            self.sal = salaries
-            self.data = pd.merge(self.data, salaries, how='left', left_on='player', right_on='player')
-            self.data.salary = self.data.salary.fillna(1)
-
-        if league=='nv' or league=='nvpred':
-            self.data.loc[self.data.pos=='aQB', 'salary'] = round((3+self.data.loc[self.data.pos=='aQB', 'salary']) * 1.66,0)
+        self.data = pd.merge(self.data, self.salaries[['player', 'salary']], on='player', how='left')
+        self.data.salary = self.data.salary.fillna(1)
 
         # pull in injury risk information
         self.inj = pd.read_sql_query(f'''SELECT player, mean_risk 
@@ -74,6 +57,7 @@ class FootballSimulation():
         return self.data
     
     
+
     #==========
     # Running the Simulation for Given League Settings and Keepers
     #==========
@@ -124,11 +108,10 @@ class FootballSimulation():
         pos_require = list(league_info['pos_require'].values())
         
         # calculate inflation based on drafted players and their salaries
-        inflation, total_cap = self._calc_inflation(league_info, drop_proj_sal, drop_act_sal, add_proj_sal, add_act_sal)
-        print('Current Inflation:', round(inflation, 2))
+        print('Current Inflation:', round(1, 2))
 
         # determine salaries, skew distributions, and number of players for each position
-        data, salaries, salary_skews, pos_counts = self._pull_salary_poscounts(data, inflation, iterations)
+        data, salaries, pos_counts = self._pull_salary_poscounts(data)
         
         # calculate the injury distributions
         data, inj_dist, replace_val = self._injury_replacement(data, league_info, inj, iterations)
@@ -158,7 +141,7 @@ class FootballSimulation():
         counts['salary'] = pd.Series(0, index=dict_names).to_dict()
         
         # shuffle the random data--both salary skews and the point projections
-        _ = [np.random.shuffle(row) for row in salary_skews]
+        _ = [np.random.shuffle(row) for row in salaries]
         inj_dist = self._df_shuffle(inj_dist)
         data = self._df_shuffle(data)
                 
@@ -171,24 +154,12 @@ class FootballSimulation():
     
             # every N trials, randomly shuffle each run in salary skews and data
             if i % (iterations / 10) == 0:
-                _ = [np.random.shuffle(row) for row in salary_skews]
+                _ = [np.random.shuffle(row) for row in salaries]
                 inj_dist = self._df_shuffle(inj_dist)
                 data = self._df_shuffle(data)
             
             # pull out a random selection of points and salaries
-            points, salaries_tmp = self._random_select(data, salaries, salary_skews, 
-                                                       inj_dist, replace_val, iterations)
-            
-            # # adjust salaries to ensure they don't go over the total cap
-            # # first sum of the salaries of unique players (exclude flex)
-            # sum_salaries = np.sum(salaries_tmp[:len(data.index.unique())])
-            
-            # # sum up the salaries with total already spent
-            # all_money = add_act_sal + drop_act_sal + sum_salaries
-            
-            # # calculate an inflation or deflation metric and multiply by salaries
-            # factor = total_cap / all_money
-            # salaries_tmp = salaries_tmp * factor
+            points, salaries_tmp = self._random_select(data, salaries, inj_dist, replace_val)
 
             # run linear integer optimization
             x = self._run_opt(A, points, salaries_tmp, league_info['salary_cap'], pos_require)
@@ -201,10 +172,9 @@ class FootballSimulation():
         self.results = self._format_results(results)
 
         # add self version of variable for output calculations
-        self._inflation = inflation
         self._sal = self.data.reset_index()[['player', 'salary']].drop_duplicates().set_index('player')
 
-        return self.counts, inflation, 
+        return self.counts
     
     #==========
     # Helper Functions for the Simulation Loop
@@ -213,22 +183,6 @@ class FootballSimulation():
     #--------
     # Salary (+Inflation) and Keeper Setup
     #--------
-    
-    def add_salaries(self, salaries):
-        '''
-        Input: Salaries for all players in the dataset.
-        Return: The self.data dataframe that has salaries appended to it.
-        '''
-        #--------
-        # Merge salaries and points on names to ensure matches
-        #--------
-        
-        # merge the salary and prediction data together on player
-        self.data = pd.merge(self.data, salaries, how='inner', left_on='player', right_on='player')
-        
-        # sort values and move player to the index of the dataframe
-        self.data = self.data.sort_values(by=['pos', 'salary'], ascending=[True, False]).set_index('player')
-    
     
     @staticmethod
     def _drop_players(data, league_info, to_drop):
@@ -310,22 +264,31 @@ class FootballSimulation():
     
     
     @staticmethod
-    def _calc_inflation(league_info, drop_proj_sal, drop_act_sal, add_proj_sal, add_act_sal):
-        '''
-        Method to calculate inflation based on players selected and the expected salaries.
-        '''
-        # add up the total actual and projected salaries for all keepers
-        projected_salary = drop_proj_sal + add_proj_sal
-        actual_salary = drop_act_sal + add_act_sal
+    def trunc_normal(row, num_samples=1000):
+
+        import scipy.stats as stats
+
+        # create truncated distribution
+        lower, upper = row.min_score,  row.max_score
+        lower_bound = (lower - row.salary) / row.std_dev, 
+        upper_bound = (upper - row.salary) / row.std_dev
+        trunc_dist = stats.truncnorm(lower_bound, upper_bound, loc=row.salary, scale=row.std_dev)
         
-        # calculate the salary inflation due to the keepers
-        total_cap = league_info['num_teams'] * league_info['initial_cap']
-        inflation = (total_cap-actual_salary) / (total_cap-projected_salary)
+        estimates = trunc_dist.rvs(num_samples)
+
+        return estimates
+
+
+    def trunc_normal_dist(self, df, num_options=1000):
+        predictions = pd.DataFrame()
+        for _, row in df.iterrows():
+            dists = pd.DataFrame(self.trunc_normal(row, num_options)).T
+            predictions = pd.concat([predictions, dists], axis=0)
         
-        return inflation, total_cap
-        
-        
-    def _pull_salary_poscounts(self, data, inflation, iterations):
+        return predictions.reset_index(drop=True)
+
+
+    def _pull_salary_poscounts(self, data):
         '''
         Method to pull salaries from the data dataframe, create salary skews, and determine
         the position counts for the A matrix in the simulation
@@ -337,40 +300,19 @@ class FootballSimulation():
         #--------
         # Extract salaries into numpy array and drop salary from points data
         #--------
+        salaries = pd.merge(data.reset_index()[['player']], self.salaries, how='left', left_on='player', right_on='player')
+        salaries.salary = salaries.salary.fillna(1)
+        salaries.min_score = salaries.min_score.fillna(1)
+        salaries.max_score = salaries.max_score.fillna(10)
+        salaries.std_dev = salaries.std_dev.fillna(5)
 
-        # set salaries to numpy array and multiply by inflation
-        # CHANGE 2021-07-06: Inflation removed since predicted salaries account for it
-        salaries = data.salary.values#*np.min([inflation, 1.05])
-
-        # calculate salary skews for each player's salary
-        salary_skews = self._skews(salaries, 1000)
+        # calculate salary dist for each player's salary
+        salaries = self.trunc_normal_dist(salaries, 1000).values
 
         # extract the number of counts for each position for later creating A matrix
         pos_counts = list(data.pos.value_counts().sort_index())
         
-        return data, salaries, salary_skews, pos_counts
-        
-        
-    @staticmethod
-    def _skews(salaries, iterations):
-        '''
-        Input: Internal method that accepts the salaries input for each player in the dataset.
-        Return: Right skewed salary uncertainties, scaled to the actual salary of the player.
-        '''
-        # # pull out the salary column and convert to numpy array
-        # _salaries = salaries.reshape(-1,1)
-
-        # # create a skews normal distribution of uncertainty for salaries
-        # skews = (skewnorm.rvs(5, size=1000)*.05).reshape(1, -1)
-
-        # # create a p x m matrix with dot product, where p is the number of players
-        # # and m is the number of skewed uncertainties, e.g. 320 players x 1000 skewed errors
-        # salary_skews = np.dot(_salaries, skews)
-
-        # CHANGED 2021-07-06 to dollar error based on model predicting salaries
-        sal_errors = np.random.normal(0, 5, size=1000*len(salaries)).reshape(len(salaries), 1000)
-
-        return sal_errors
+        return data, salaries, pos_counts
     
     
     @staticmethod
@@ -545,7 +487,7 @@ class FootballSimulation():
         return x
     
     @staticmethod
-    def _random_select(data, salaries, salary_skews, inj_dist, replace_val, iterations):
+    def _random_select(data, salaries, inj_dist, replace_val):
         '''
         Random column selection for trial in simulation
         
@@ -567,7 +509,7 @@ class FootballSimulation():
                        (inj_adjust.values * pd.concat([replace_val, ppg], axis=1).min(axis=1).values))
 
         # pull out a random skew and add to the original salaries
-        salaries_tmp = salaries + salary_skews[:, ran_num]
+        salaries_tmp = salaries[:, ran_num]
         salaries_tmp = salaries_tmp.astype('double')
         salaries_tmp[salaries_tmp < 2] = 2
         
@@ -689,16 +631,16 @@ class FootballSimulation():
         # pull out the salary that each player was drafted at from dictionary
         avg_sal = {}
         for key, value in self.counts['salary'].items():
-            avg_sal[key] = np.mean(value)
+            avg_sal[key] = [np.mean(value), np.percentile(value, 90)]
 
         # pass the average salaries into datframe and merge with the counts dataframe
-        avg_sal = pd.DataFrame.from_dict(avg_sal, orient='index').rename(columns={0: 'Average Salary'})
+        avg_sal = pd.DataFrame.from_dict(avg_sal, orient='index').rename(columns={0: 'Average Salary', 1: 'Salary90'})
         avg_sal = pd.merge(counts_df, avg_sal, how='inner', left_index=True, 
                         right_index=True).sort_values(by='Percent Drafted', ascending=False)
         
         # pull in the list salary + inflation to calculate drafted salary minus expected
         avg_sal = pd.merge(avg_sal, self._sal, how='inner', left_index=True, right_index=True)
-        avg_sal.salary = (avg_sal['Average Salary'] - avg_sal.salary * self._inflation)
+        avg_sal.salary = (avg_sal['Average Salary'] - avg_sal.salary * 1)
         avg_sal = avg_sal.rename(columns={'salary': 'Expected Salary Diff'})
 
         # format the result with rounding
@@ -714,32 +656,16 @@ class FootballSimulation():
 # # connection for simulation and specific table
 # path = f'c:/Users/{os.getlogin()}/Documents/Github/Fantasy_Football/'
 # conn_sim = sqlite3.connect(f'{path}/Data/Databases/Simulation.sqlite3')
-# table_vers = 'Version1'
-# set_year = 2019
+
+# set_year = 2022
 # league='beta'
+# table_vers = 'Version' + league
 
 # # number of iteration to run
-# iterations = 1000
-
-# # define point values for all statistical categories
-# pass_yd_per_pt = 0.04 
-# pass_td_pt = 4
-# int_pts = -2
-# sacks = -1
-# rush_yd_per_pt = 0.1 
-# rec_yd_per_pt = 0.1
-# rush_rec_td = 7
-# ppr = .5
-
-# # creating dictionary containing point values for each position
-# pts_dict = {}
-# pts_dict['QB'] = [pass_yd_per_pt, pass_td_pt, rush_yd_per_pt, rush_rec_td, int_pts, sacks]
-# pts_dict['RB'] = [rush_yd_per_pt, rec_yd_per_pt, ppr, rush_rec_td]
-# pts_dict['WR'] = [rec_yd_per_pt, ppr, rush_rec_td]
-# pts_dict['TE'] = [rec_yd_per_pt, ppr, rush_rec_td]
+# iterations = 500
 
 # # instantiate simulation class and add salary information to data
-# sim = FootballSimulation(pts_dict, conn_sim, table_vers, set_year, league, iterations)
+# sim = FootballSimulation(conn_sim, table_vers, set_year, league)
 
 # # set league information, included position requirements, number of teams, and salary cap
 # league_info = {}
@@ -750,7 +676,6 @@ class FootballSimulation():
 
 # to_drop = {}
 # to_drop['players'] = []
-
 # to_drop['salaries'] = []
 
 # # input information for players and their associated salaries selected by your team
@@ -759,4 +684,5 @@ class FootballSimulation():
 # to_add['salaries'] = []
 
 # sim.run_simulation(league_info, to_drop, to_add, iterations=iterations)
+# sim.show_most_selected(to_add, iterations)
 # # %%
