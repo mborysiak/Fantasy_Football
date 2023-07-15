@@ -31,7 +31,7 @@ dm = DataManage(db_path)
 
 # set core path
 PATH = f'{root_path}/Data/'
-YEAR = 2022
+YEAR = 2023
 LEAGUE = 'beta'
 
 #%%
@@ -187,7 +187,7 @@ salaries = salaries.sample(frac=1, random_state=1234).reset_index(drop=True)
 
 skm = SciKitModel(salaries)
 X, y = skm.Xy_split_list('actual_salary', ['year', 'sal_rank', 'inflation', 'salary', 'pos',  'is_rookie', 'is_OSU', 'avg_pick', 'year_exp'])
-X = pd.concat([X, pd.get_dummies(X.pos, drop_first=True)], axis=1).drop('pos', axis=1)
+X = pd.concat([X, pd.get_dummies(X.pos)], axis=1).drop('pos', axis=1)
 X['rookie_rb'] = X.RB * X.is_rookie
 
 X_train = X[X.year != YEAR]
@@ -200,6 +200,7 @@ y_test = y[X_test.index].reset_index(drop=True); X_test.reset_index(drop=True, i
 #%%
 from sklearn.model_selection import cross_val_predict
 from sklearn.metrics import r2_score, mean_squared_error
+from sklearn.model_selection import RandomizedSearchCV
 
 baseline_data = salaries[salaries.year!=YEAR]
 
@@ -229,7 +230,10 @@ for m in model_list:
     params = skm.default_params(pipe, 'rand')
     params['k_best__k'] = range(1,X_train.shape[1])
 
-    best_model = skm.random_search(pipe, X_train, y_train, params)
+    best_model = RandomizedSearchCV(pipe, params, cv=5, n_iter=50, scoring='neg_mean_squared_error', n_jobs=-1)
+    best_model.fit(X_train, y_train)
+    best_model = best_model.best_estimator_
+
     cv_pred = cross_val_predict(best_model, X_train, y_train)
     mse = np.round(mean_squared_error(cv_pred, y_train), 3)
     r2 = np.round(r2_score(cv_pred, y_train), 3)
@@ -246,6 +250,7 @@ X_test.inflation = X_train.inflation.mean()
 pred_sal = np.mean([best_models['rf'].predict(X_test),
                     best_models['gbm'].predict(X_test),
                     best_models['enet'].predict(X_test),
+                    best_models['ridge'].predict(X_test),
                     best_models['knn'].predict(X_test),
                     best_models['lasso'].predict(X_test),
                     best_models['svr'].predict(X_test),
@@ -268,19 +273,20 @@ display(pred_results[np.abs(pred_results.pred_diff) > 4].sort_values(by='pred_di
 
 #%%
 
-from sklearn.preprocessing import StandardScaler
+# from sklearn.preprocessing import StandardScaler
  
-val_data = pd.concat([pd.Series(y_train, name='y_act'), all_pred.mean(axis=1)], axis=1)
-val_data.columns = ['y_act', 'pred_salary']
+# val_data = pd.concat([pd.Series(y_train, name='y_act'), all_pred.mean(axis=1)], axis=1)
+# val_data.columns = ['y_act', 'pred_salary']
 
-sd_max_met = StandardScaler().fit(val_data[['pred_salary']]).transform(pred_results[['pred_salary']])
+# sd_max_met = StandardScaler().fit(val_data[['pred_salary']]).transform(pred_results[['pred_salary']])
 
-sd_m, max_m, min_m = get_std_splines(val_data, {'pred_salary': 1}, show_plot=True, k=2, 
-                                    min_grps_den=int(val_data.shape[0]*0.2), 
-                                    max_grps_den=int(val_data.shape[0]*0.06),
-                                    iso_spline='iso')
-pred_results['std_dev'] = sd_m.predict(sd_max_met)
-pred_results['max_score'] = max_m.predict(sd_max_met)
+# sd_m, max_m, min_m = get_std_splines(val_data, {'pred_salary': 1}, show_plot=True, k=2, 
+#                                     min_grps_den=int(val_data.shape[0]*0.2), 
+#                                     max_grps_den=int(val_data.shape[0]*0.06),
+#                                     iso_spline='iso')
+# pred_results['std_dev'] = sd_m.predict(sd_max_met)
+# pred_results['max_score'] = max_m.predict(sd_max_met)
+
 #%%
 
 output = pred_results[['player', 'pred_salary', 'year']]
@@ -295,7 +301,7 @@ dm.write_to_db(output, 'Simulation', 'Salaries', 'append')
 
 # +
 from sklearn.preprocessing import StandardScaler
-YEAR = 2022
+YEAR = 2023
 
 # read in the injury predictor file
 inj = pd.read_csv(f'{PATH}/OtherData/InjuryPredictor/injury_predictor_{YEAR}.csv', 
@@ -391,12 +397,15 @@ train = train.sample(frac=1).reset_index(drop=True)
 skm = SciKitModel(train)
 X_train, y_train = skm.Xy_split('y_act', to_drop=['player', 'games_missed'])
 
-pipe = skm.model_pipe([skm.piece('enet')])
+pipe = skm.model_pipe([skm.piece('lgbm')])
 params = skm.default_params(pipe, 'rand')
-best_model = skm.random_search(pipe, X_train, y_train, params, cv=5)
-
+search = RandomizedSearchCV(pipe, params, cv=5, n_iter=50, scoring='neg_mean_squared_error', n_jobs=-1)
+search.fit(X_train, y_train)
+best_model = search.best_estimator_
 best_model.fit(X_train, y_train)
+
 predictions = pd.Series(best_model.predict(X_test[X_train.columns]), name='mean_risk')
+
 print(skm.cv_score(best_model, X_train, y_train))
 mean_squared_error(np.full(len(y_train), y_train.mean()), y_train)
 

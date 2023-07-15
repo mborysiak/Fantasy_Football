@@ -20,7 +20,7 @@ dm = DataManage(db_path)
 
 
 # set the year for last year's stats to pull
-set_year=2021
+set_year=2022
 
 # set core path
 path = f'/Users/{os.getlogin()}/Documents/Github/Fantasy_Football'

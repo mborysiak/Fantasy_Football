@@ -2,7 +2,7 @@
 # # User Inputs
 
 # +
-year = 2021
+year = 2022
 
 from ff.db_operations import DataManage
 from ff import general, data_clean as dc

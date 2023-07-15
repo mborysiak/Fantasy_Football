@@ -107,7 +107,7 @@ for sp, cn, fd, ye, rp in runs:
 
     # create the output and add standard devations / max scores
     output = mf.create_output(output_start, best_predictions)
-    output = val_std_dev(model_output_path, output, best_val, iso_spline='iso', show_plot=show_plot)
+    output = val_std_dev(model_output_path, output, best_val, iso_spline='spline', show_plot=show_plot)
     print(output.sort_values(by='pred_fp_per_game', ascending=False).iloc[:50])
 
     # save out final results

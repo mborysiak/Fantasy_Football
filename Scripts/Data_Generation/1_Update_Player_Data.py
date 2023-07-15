@@ -2,7 +2,7 @@
 #%%
 
 # last year's statistics and adp to pull and append to database
-year = 2021
+year = 2022
 
 from re import I
 from ff.db_operations import DataManage
@@ -161,16 +161,26 @@ def merge_stats_adp(df_stats, df_adp):
     return df_merged
 
 def add_player(d, all_df, output_df):
-    df = all_df[eval(d['filter_q'])].mean()*d['frac']
-    df = df[output_df.columns]
-    for c in ['player', 'team', 'age']:
+
+    df = all_df[eval(d['filter_q'])].copy()
+    # num_cols = list(df_rb.dtypes[df_rb.dtypes!='object'].index)
+    df = df.mean() * d['frac']
+    
+    
+    for c in ['player', 'team', 'age', 'pos']:
         df[c] = d[c]
+    df = df[output_df.columns]
+
     try:
         df.games = round(df.games)
         df.games_started = df.games
     except:
         pass
     df.year = year
+
+    for c in df.index:
+        if 'pct' in c:
+            df[c] = df[c] / d['frac']
 
     output_df = output_df[output_df.player != d['player']]
     output_df = pd.concat([output_df, pd.DataFrame(df).T], axis=0).reset_index(drop=True)
@@ -252,7 +262,7 @@ colnames_rush = {
     'Att': 'rush_att',
     'Yds': 'rush_yds',
     'TD': 'rush_td',
-    '1D': 'first_downs',
+    '1D': 'first_downs_rush',
     'Lng': 'long_rush',
     'Y/A': 'rush_yd_per_att',
     'Y/G': 'rush_yd_per_game',
@@ -274,7 +284,7 @@ colnames_rec = {
     'Yds': 'rec_yds', 
     'Y/R': 'yd_per_rec',
     'TD': 'rec_td',
-    '1D': 'first_downs',
+    '1D': 'first_downs_rec',
     'Lng': 'long_rec',
     'Y/Tgt': 'yards_per_tgt',
     'R/G': 'rec_per_game',
@@ -315,6 +325,8 @@ df_rb['total_yds'] = df_rb.rush_yds + df_rb.rec_yds
 df_rb['total_yd_per_game'] = df_rb.total_yds / df_rb.games
 df_rb['yds_per_touch'] = df_rb.total_yds / df_rb.total_touches
 df_rb['rush_att_per_game'] = df_rb.rush_att / df_rb.games
+df_rb['first_downs'] = df_rb.first_downs_rush + df_rb.first_downs_rec
+df_rb = df_rb.drop(['first_downs_rush', 'first_downs_rec'], axis=1)
 
 #==========
 # Find missing players
@@ -327,43 +339,33 @@ missing[(missing.games.isnull()) | (missing.games < 8)]
 #%%
 
 all_rb =dm.read("SELECT * FROM rb_stats", 'Season_Stats')
-
+df_rb = df_rb.drop([c for c in df_rb.columns if c not in all_rb], axis=1)
 rb_updates = [
     {
-        'filter_q': '(all_rb.player=="Christian McCaffrey") & (all_rb.games > 12)',
-        'frac': 0.85,
-        'player': "Christian McCaffrey",
-        'team': 'CAR',
-        'age': 25,
-    },
-    {
-        'filter_q': '(all_rb.player=="Darrell Henderson") & (all_rb.rush_att > 100)',
-        'frac': 1.1,
-        'player': "Cam Akers",
-        'team': 'LAR',
-        'age': 22,
-    },
-    {
-        'filter_q': '(all_rb.player=="JK Dobbins") | ((all_rb.player=="Devonta Freeman") & (all_rb.team=="BAL"))',
+        'filter_q': '(all_rb.player=="Jonathan Taylor")',
         'frac': 1,
-        'player': "Jk Dobbins",
-        'team': 'BAL',
+        'player': "Breece Hall",
+        'team': 'NYJ',
         'age': 22,
+        'pos': 'RB'
     },
     {
-        'filter_q': '(all_rb.player=="Gus Edwards") | ((all_rb.player=="Devonta Freeman") & (all_rb.team=="BAL"))',
-        'frac': 1,
-        'player': "Gus Edwards",
-        'team': 'BAL',
+        'filter_q': '(all_rb.player=="Melvin Gordon") & (all_rb.games > 12)',
+        'frac': 0.9,
+        'player': "Javonte Williams",
+        'team': 'DEN',
         'age': 22,
-    },
+        'pos': 'RB'
+    }, 
     {
-        'filter_q': '(all_rb.player=="James Robinson")',
+        'filter_q': '(all_rb.player=="Rashaad Penny") | (all_rb.player=="Miles Sanders")',
         'frac': 1,
-        'player': "Travis Etienne",
-        'team': 'JAX',
-        'age': 22,
-    }
+        'player': "Rashaad Penny",
+        'team': 'PHI',
+        'age': 27,
+        'pos': 'RB'
+    },
+    
 ]
 
 for pl in rb_updates:
@@ -395,7 +397,7 @@ df_rb = df_rb[['player', 'pos', 'team', 'year', 'age', 'avg_pick',
                'rush_td', 'tgt', 'receptions', 'rec_yds', 'yd_per_rec', 'rec_td',
                'long_rec', 'long_rush', 'rec_per_game', 'rec_yd_per_game', 'catch_pct', 'total_yds',
                'total_td', 'total_touches', 'td_per_game', 'total_yd_per_game',
-               'yds_per_touch', 'fmb', 'games', 'games_started']]
+               'yds_per_touch', 'fmb', 'games', 'games_started']].sort_values(by='rush_yds', ascending=False).reset_index(drop=True)
 
 #%%
 #==========
@@ -480,12 +482,18 @@ rz_fill = all_rb[cols]
 def add_player_rz(d, rz_rush, rz_rec):
 
     df = rz_fill[eval(d['filter_q'])].mean()*d['frac']
+
+    df['player'] = d['player']
+    df['year'] = year
+
+    for c in df.index:
+        if 'pct' in c:
+            df[c] = df[c] / d['frac']
+
     df_rush = df[rz_rush.columns]
     df_rec = df[rz_rec.columns]
-    df_rush.player = d['player']
-    df_rush.year = year
-    df_rec.player = d['player']
-    df_rec.year = year
+
+    
 
     rz_rush = rz_rush[rz_rush.player != d['player']]
     rz_rush = pd.concat([rz_rush, pd.DataFrame(df_rush).T], axis=0).reset_index(drop=True)
@@ -610,29 +618,50 @@ missing[(missing.games.isnull()) | (missing.games < 8)]
 all_wr = dm.read("SELECT * FROM WR_Stats", 'Season_Stats')
 
 updates = [{
-    'filter_q': '((all_wr.player=="Juju Smith-Schuster") | (all_wr.player=="Pierre Garcon")) & (all_wr.games > 12)',
-    'frac': 1,
-    'player': "Juju Smith Schuster",
-    'team': 'KAN',
-    'age': np.log(25),
-    'new_team': 1
+    'filter_q': '((all_wr.player=="Rashod Bateman") | (all_wr.player=="Stefon Diggs"))',
+    'frac': 0.6,
+    'player': "Rashod Bateman",
+    'team': 'BAL',
+    'age': np.log(24),
+    'new_team': 0,
+    'pos': 'WR'
 },
  {
-    'filter_q': '((all_wr.player=="Dj Chark") | (all_wr.player=="Devante Parker")) & (all_wr.games > 12)',
-    'frac': 0.9,
-    'player': "Dj Chark",
+    'filter_q': '((all_wr.player=="Will Fuller") & (all_wr.games > 12))',
+    'frac': 1,
+    'player': "Jameson Williams",
     'team': 'DET',
-    'age': np.log(25),
-    'new_team': 1
+    'age': np.log(23),
+    'new_team': 0,
+    'pos': 'WR'
 },
  {
     'filter_q': '(all_wr.player=="Michael Thomas")',
-    'frac': 0.75,
+    'frac': 0.65,
     'player': "Michael Thomas",
     'team': 'NOR',
-    'age': np.log(29.5),
-    'new_team': 0
-}
+    'age': np.log(30.5),
+    'new_team': 0,
+    'pos': 'WR'
+},
+{
+    'filter_q': '(all_wr.player=="Wandale Robinson") | (all_wr.player=="Tyler Lockett")',
+    'frac': 0.8,
+    'player': "Wandale Robinson",
+    'team': 'NYG',
+    'age': np.log(23),
+    'new_team': 0,
+    'pos': 'WR'
+},
+{
+    'filter_q': '(all_wr.player=="Calvin Ridley")',
+    'frac': 0.8,
+    'player': "Calvin Ridley",
+    'team': 'JAX',
+    'age': np.log(28),
+    'new_team': 1,
+    'pos': 'WR'
+},
 ]
 
 for pl in updates:
@@ -674,7 +703,7 @@ data_adp_qb = pd.read_html(url_adp_qb)[1]
 url_rz_pass = 'https://www.pro-football-reference.com/years/' + str(year) + '/redzone-passing.htm'
 data_rz_pass = pd.read_html(url_rz_pass)[0]
 
-# +
+#%%
 #--------
 # Cleaning Player Statistical Data
 #--------
@@ -760,7 +789,7 @@ df_qb = df_qb[['player', 'pos', 'team', 'year', 'qb_avg_pick', 'qb_age', 'qb_gam
                'fourth_qt_comeback', 'game_winning_drives']]
 
 # merge rushing stats
-df_qb = pd.merge(df_qb, df_rush.drop(['team', 'age', 'pos', 'games', 'games_started', 'first_downs'], axis=1), 
+df_qb = pd.merge(df_qb, df_rush.drop(['team', 'age', 'pos', 'games', 'games_started', 'first_downs_rush'], axis=1), 
                  how='inner', left_on=['player', 'year'], right_on=['player', 'year'])
 
 # +
@@ -837,24 +866,25 @@ missing[(missing.qb_games.isnull()) | (missing.qb_games < 8)]
 
 #%%
 
-# all_qb = dm.read("SELECT * FROM QB_Stats", 'Season_Stats')
+all_qb = dm.read("SELECT * FROM QB_Stats", 'Season_Stats')
 
-# updates = [
-# {
-#     'filter_q': '(all_qb.player=="Dak Prescott") | (all_qb.qb_games > 12)',
-#     'frac': 1,
-#     'player': "Dak Prescott",
-#     'team': 'DAL',
-#     'age': 22,
-# }
-# ]
+updates = [
+{
+    'filter_q': '(all_qb.player=="Deshaun Watson")',
+    'frac': 0.9,
+    'player': "Deshaun Watson",
+    'team': 'CLE',
+    'age': 27,
+    'pos': 'QB'
+}
+]
 
-# for pl in updates:
-#     df_qb = add_player(pl, all_qb, df_qb)
-#     df_qb.loc[df_qb.player==pl['player'], 'qb_avg_pick'] = \
-#         float(df_adp_qb.loc[df_adp_qb.player==pl['player'], 'qb_avg_pick'].values[0])
-#     df_qb.loc[df_qb.player==pl['player'], 'qb_age'] = pl['age']
-#     df_qb = df_qb.drop('age', axis=1)
+for pl in updates:
+    df_qb = add_player(pl, all_qb, df_qb)
+    df_qb.loc[df_qb.player==pl['player'], 'qb_avg_pick'] = \
+        float(df_adp_qb.loc[df_adp_qb.player==pl['player'], 'qb_avg_pick'].values[0])
+    df_qb.loc[df_qb.player==pl['player'], 'qb_age'] = pl['age']
+   
 
 df_qb['pos'] = 'QB'
 # ensure all new columns are numeric

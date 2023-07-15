@@ -1,7 +1,7 @@
 #%%
 # set to 1 year prior to current (i.e. the year that has stats)
 # will auto update updates to current year for drafting
-year = 2021
+year = 2022
 
 from ff.db_operations import DataManage
 from ff import general, data_clean as dc

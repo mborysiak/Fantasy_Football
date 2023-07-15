@@ -5,7 +5,7 @@ from ff.db_operations import DataManage
 from ff import general
 
 # last year's statistics and adp to pull and append to database
-year = 2021
+year = 2022
 
 # set the root path and database management object
 root_path = general.get_main_path('Fantasy_Football')
@@ -17,6 +17,10 @@ import os
 from zData_Functions import *
 pd.options.mode.chained_assignment = None
 import numpy as np
+
+SOURCE = 'fantasypros'
+
+#%%
 
 #==========
 # Clean the ADP data
@@ -74,16 +78,26 @@ def clean_adp(data_adp, year):
 
 def get_adp(year, pos, rook=0):
     
-    # get the dataset based on year + position
-    URL = f'https://www71.myfantasyleague.com/{year+1}/reports?R=ADP&POS={pos}&ROOKIES={rook}&INJURED=1&CUTOFF=5&FCOUNT=0&IS_PPR=3&IS_KEEPER=N&IS_MOCK=1&PERIOD=RECENT&PAGE=ALL'
-    data = pd.read_html(URL)[1]
+    if SOURCE == 'mfl':
+        # get the dataset based on year + position
+        URL = f'https://www71.myfantasyleague.com/{year+1}/reports?R=ADP&POS={pos}&ROOKIES={rook}&INJURED=1&CUTOFF=5&FCOUNT=0&IS_PPR=3&IS_KEEPER=N&IS_MOCK=1&PERIOD=RECENT&PAGE=ALL'
+        data = pd.read_html(URL)[1]
 
-    # clean the dataset and print out check dataset
-    df = clean_adp(data, year)[['player', 'avg_pick']]
-    print(df.head(10))
+        # clean the dataset and print out check dataset
+        df = clean_adp(data, year)[['player', 'avg_pick']]
+        print(df.head(10))
 
-    df = df[df.player!='Player Hint:'].reset_index(drop=True)
+        df = df[df.player!='Player Hint:'].reset_index(drop=True)
     
+    elif SOURCE == 'fantasypros':
+        df = pd.read_html("https://www.fantasypros.com/nfl/adp/half-point-ppr-overall.php")[0]
+        df = df.rename(columns={'Player Team (Bye)': 'player', 'AVG': 'avg_pick'})
+        df = df[['player', 'avg_pick']]
+        df.player = df.player.apply(lambda x: x.split('(')[0].rstrip())
+        df.player = df.player.apply(lambda x: x.split(' ')[:-1])
+        df.player = df.player.apply(lambda x: ' '.join(x))
+        df['player'] = df.player.apply(name_clean)
+        
     # log the avg_pick to match existing
     df.avg_pick = np.log(df.avg_pick.astype('float'))
 
