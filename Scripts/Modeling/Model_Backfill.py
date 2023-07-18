@@ -12,7 +12,7 @@ from ff.db_operations import DataManage
 from ff import general as ffgeneral
 import ff.data_clean as dc
 from skmodel import SciKitModel
-
+from sklearn.model_selection import RandomizedSearchCV
 import zHelper_Functions as hf
 pos = hf.pos
 
@@ -22,6 +22,8 @@ pandas_bokeh.output_notebook()
 import warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning) 
 warnings.filterwarnings("ignore", category=UserWarning) 
+warnings.simplefilter(action='ignore', category=FutureWarning)
+warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
 
 pd.set_option('display.max_columns', 999)
 
@@ -45,7 +47,7 @@ dm = DataManage(db_path)
 np.random.seed(1234)
 
 # set year to analyze
-set_year = 2022
+set_year = 2023
 
 # set the earliest date to begin the validation set
 val_year_min = 2012
@@ -193,11 +195,11 @@ for m in [
           'ridge', 
           'lasso', 
           'gbm', 
-          'svr', 
+         # 'svr', 
           'knn',  
           'xgb', 
           'rf', 
-          'bridge'
+         # 'bridge'
           ]:
     
     print(m)
@@ -210,7 +212,10 @@ for m in [
     params = skm.default_params(model_base)
     params['k_best__k'] = range(1, 10)
 
-    best_model = skm.random_search(model_base, X, y, params, cv=cv_time_base, n_iter=25)
+    search = RandomizedSearchCV(model_base, params, n_iter=25, cv=cv_time_base, n_jobs=-1, refit=True)
+    search.fit(X, y)
+    best_model = search.best_estimator_
+    
     mse = skm.cv_score(best_model, X, y, cv_time_base)
     print(np.sqrt(-mse))
     X_predict = df_predict[X.columns]
@@ -243,6 +248,7 @@ for p in ['QB', 'RB', 'WR', 'TE']:
 
 output.iloc[:50]
 
+#%%
 output['filter_data'] = 'Backfill'
 output['year_exp'] = 'Backfill'
 output['version'] = pred_version
@@ -254,9 +260,7 @@ output['date_modified'] = dt.datetime.now().strftime('%m-%d-%Y %H:%M')
 
 cols = dm.read("SELECT * FROM Model_Predictions", 'Simulation').columns
 output = output[cols]
-output
 
-#%%
 delete_players = tuple(output.player)
 dm.delete_from_db('Simulation', 'Model_Predictions', f"player in {delete_players} AND version='{pred_version}'")
 dm.write_to_db(output, 'Simulation', f'Model_Predictions', 'append')

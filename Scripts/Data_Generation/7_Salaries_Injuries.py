@@ -12,7 +12,7 @@ from zData_Functions import *
 from ff.db_operations import DataManage
 from ff import general
 from skmodel import SciKitModel
-
+from Fix_Standard_Dev import *
 import pandas_bokeh
 pandas_bokeh.output_notebook()
 

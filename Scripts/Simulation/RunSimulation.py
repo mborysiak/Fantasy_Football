@@ -20,17 +20,17 @@ np.random.seed(1234)
 path = f'c:/Users/{os.getlogin()}/Documents/Github/Fantasy_Football/'
 conn_sim = sqlite3.connect(f'{path}/Data/Databases/Simulation.sqlite3')
 
-set_year = 2022
+set_year = 2023
 league='beta'
 table_vers = 'Version' + league
 
 # number of iteration to run
-iterations = 500
+iterations = 250
 
 # set league information, included position requirements, number of teams, and salary cap
 league_info = {}
 
-if league == 'beta': league_info['pos_require'] = {'QB': 1, 'RB': 2, 'WR': 2, 'TE': 1, 'FLEX': 2}
+if league == 'beta': league_info['pos_require'] = {'QB': 1, 'RB': 2, 'WR': 3, 'TE': 1, 'FLEX': 2}
 elif league == 'nv': league_info['pos_require'] = {'QB': 2, 'RB': 2, 'WR': 2, 'TE': 1, 'FLEX': 1}
 league_info['num_teams'] = 12
 league_info['initial_cap'] = 293
@@ -80,70 +80,98 @@ proport = proport[['Position', 'Wts']]
 #------------------
 # For Beta Keepers
 #------------------
+# set keepers for this year
+keepers = {
+    'Rhamondre Stevenson': 35,
+    'Devonta Smith': 19,
 
-if league == 'beta': keepers = {
-    'Jk Dobbins': 12,
-    'Austin Ekeler': 65,
+    "Ja'Marr Chase": 42,
+    'Jaylen Waddle': 48,
 
-    "Jamarr Chase": 27,
-    "Dandre Swift": 45,
+    'Aj Brown': 55,
+    'Amon Ra St Brown': 21,
 
-    'Javonte Williams': 41,
-    'Amon Ra St Brown': 11,
+    'Breece Hall': 64,
+    'Chris Olave': 26,
 
-    'Stefon Diggs': 42,
-    'Jonathan Taylor': 76,
+    'Jalen Hurts': 22,
+    'Ceedee Lamb': 59,
 
-    'Ceedee Lamb': 39,
-    'Terry Mclaurin': 46,
+    'Josh Jacobs': 47,
+    'Garrett Wilson': 19,
 
-    'James Conner': 13,
-    'David Montgomery': 39,
+    'Kenneth Walker': 27,
+    
+    'Cooper Kupp': 65,
+    'Javonte Williams': 11,
 
-    'Saquon Barkley': 71,
-    'Cam Akers': 11,
-
-    'Allen Robinson': 11,
-    'Cooper Kupp': 50,
-
-    'Justin Jefferson': 29,
-    'Leonard Fournette': 25,
-
-    'Courtland Sutton': 22,
-    'Deebo Samuel': 15
+    'Justin Jefferson': 49,
+    'Joe Burrow': 22,
 
 }
+# if league == 'beta': keepers = {
+#     'Jk Dobbins': 12,
+#     'Austin Ekeler': 65,
 
-elif league=='nv': keepers = {
+#     "Jamarr Chase": 27,
+#     "Dandre Swift": 45,
 
-    'Jaylen Waddle': 20,
-    'Travis Etienne': 11,
+#     'Javonte Williams': 41,
+#     'Amon Ra St Brown': 11,
+
+#     'Stefon Diggs': 42,
+#     'Jonathan Taylor': 76,
+
+#     'Ceedee Lamb': 39,
+#     'Terry Mclaurin': 46,
+
+#     'James Conner': 13,
+#     'David Montgomery': 39,
+
+#     'Saquon Barkley': 71,
+#     'Cam Akers': 11,
+
+#     'Allen Robinson': 11,
+#     'Cooper Kupp': 50,
+
+#     'Justin Jefferson': 29,
+#     'Leonard Fournette': 25,
+
+#     'Courtland Sutton': 22,
+#     'Deebo Samuel': 15
+
+# }
+
+# elif league=='nv': keepers = {
+
+#     'Jaylen Waddle': 20,
+#     'Travis Etienne': 11,
     
-    'Dandre Swift': 48,
-    'Keenan Allen': 53,
+#     'Dandre Swift': 48,
+#     'Keenan Allen': 53,
     
-    'Najee Harris': 79,
-    'Cooper Kupp': 42,
+#     'Najee Harris': 79,
+#     'Cooper Kupp': 42,
 
-    'Jamarr Chase': 16,
-    'Javonte Williams': 26,
+#     'Jamarr Chase': 16,
+#     'Javonte Williams': 26,
 
-    'Mark Andrews': 29,
+#     'Mark Andrews': 29,
 
-    'Justin Jefferson': 66,
-    'Deebo Samuel': 12,
+#     'Justin Jefferson': 66,
+#     'Deebo Samuel': 12,
 
-    'Michael Pittman': 13,
-    'Christian Mccaffrey': 50,
+#     'Michael Pittman': 13,
+#     'Christian Mccaffrey': 50,
     
-    'Tee Higgins': 32,
+#     'Tee Higgins': 32,
 
-    'Josh Allen': 48,
-    'Jalen Hurts': 11,
+#     'Josh Allen': 48,
+#     'Jalen Hurts': 11,
 
-    'Joe Mixon': 80,
-    'Aj Dillon': 11
-}
+#     'Joe Mixon': 80,
+#     'Aj Dillon': 11
+# }
 
 # 2021 keepers
 # keepers = {

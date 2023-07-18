@@ -12,7 +12,7 @@ import zModel_Functions as mf
 from ff.db_operations import DataManage
 from ff import general
 from skmodel import SciKitModel
-
+from sklearn.model_selection import RandomizedSearchCV
 import pandas_bokeh
 pandas_bokeh.output_notebook()
 
@@ -31,40 +31,39 @@ dm = DataManage(db_path)
 
 # set core path
 PATH = f'{root_path}/Data/'
-YEAR = 2022
-LEAGUE = 'nv'
+YEAR = 2023
+LEAGUE = 'beta'
 
 # set keepers for this year
 ty_keepers = pd.DataFrame({
-    'Jk Dobbins': [12],
-    'Austin Ekeler': [65],
+    'Rhamondre Stevenson': [35],
+    'Devonta Smith': [19],
 
-    "Jamarr Chase": [27],
-    "Dandre Swift": [45],
+    "Ja'Marr Chase": [42],
+    'Jaylen Waddle': [48],
 
-    'Javonte Williams': [41],
-    'Amon Ra St Brown': [11],
+    'Aj Brown': [55],
+    'Amon Ra St Brown': [21],
 
-    'Stefon Diggs': [42],
-    'Jonathan Taylor': [76],
+    'Breece Hall': [64],
+    'Chris Olave': [26],
 
-    'Ceedee Lamb': [39],
-    'Terry McLaurin': [46],
+    'Jalen Hurts': [22],
+    'Ceedee Lamb': [59],
 
-    'James Conner': [13],
-    'David Montgomery': [39],
+    'Josh Jacobs': [47],
+    'Garrett Wilson': [19],
 
-    'Saquon Barkley': [71],
-    'Cam Akers': [11],
+    'Kenneth Walker': [27],
+    
+    'Cooper Kupp': [65],
+    'Javonte Williams': [11],
 
-    'Allen Robinson': [11],
-    'Cooper Kupp': [50],
+    'Justin Jefferson': [49],
+    'Joe Burrow': [22],
 
-    'Justin Jefferson': [29],
-    'Leonard Fournette': [25],
+    
 
-    'Courtland Sutton': [22],
-    'Debbo Samuel': [15]
 })
 
 ty_keepers = ty_keepers.T.reset_index()
@@ -208,7 +207,7 @@ def fill_ty_keepers(salaries, ty_keepers):
         salaries.loc[(salaries.year==YEAR) & ~(salaries.ty_keeper_sal.isnull()), 'ty_keeper_sal']
     salaries.loc[(salaries.year==YEAR) & ~(salaries.ty_keeper_sal.isnull()), 'is_keeper'] = 1
 
-    return salaries.drop('ty_keeper_sal')
+    return salaries.drop('ty_keeper_sal', axis=1)
 
 def get_salaries():
     actual_sal = dm.read(f'''SELECT *
@@ -290,6 +289,7 @@ salaries = add_rookie(salaries)
 adp_stats = get_adp()
 adp_stats = year_exp(adp_stats)
 salaries = pd.merge(salaries, adp_stats, on=['player', 'year', 'pos'])
+salaries = fill_ty_keepers(salaries, ty_keepers)
 salaries = calc_inflation(salaries)
 
 salaries = drop_keepers(salaries)
@@ -346,7 +346,9 @@ for m in model_list:
     params['k_best__k'] = range(1,X_train.shape[1])
     if m=='lgbm': params = {k:v for k,v in params.items() if k!='lgbm__learning_rate' }
 
-    best_model = skm.random_search(pipe, X_train, y_train, params)
+    search = RandomizedSearchCV(pipe, params, n_iter=50, scoring='neg_mean_squared_error',refit=True)
+    search.fit(X_train, y_train)
+    best_model = search.best_estimator_
 
     cv_pred = cross_val_predict(best_model, X_train, y_train)
     mse = np.round(mean_squared_error(cv_pred, y_train), 3)
@@ -362,7 +364,7 @@ for m in model_list:
 from sklearn.preprocessing import StandardScaler
 from Fix_Standard_Dev import *
 
-drop_models = ('')
+drop_models = ('svr', 'lasso', 'enet')
 val_data = pd.concat([salaries.loc[salaries.year!=YEAR, ['player', 'pos', 'year']].reset_index(drop=True),
                       pd.Series(y_train, name='y_act'), all_pred[[c for c in all_pred.columns if c not in drop_models]].mean(axis=1)], axis=1)
 val_data.columns = ['player', 'pos', 'year', 'y_act', 'pred_salary']
@@ -390,12 +392,12 @@ mf.shap_plot([best_models['rf']], X_train, 0)
 #%%
 
 pred_sal = np.mean([
-                    best_models['lgbm'].predict(X_test),
-                    best_models['ridge'].predict(X_test),
+                  best_models['lgbm'].predict(X_test),
+                   best_models['ridge'].predict(X_test),
                     best_models['svr'].predict(X_test),
                     best_models['lasso'].predict(X_test),
                     best_models['enet'].predict(X_test),
-                    best_models['xgb'].predict(X_test),
+                   best_models['xgb'].predict(X_test),
                     best_models['knn'].predict(X_test),
                     best_models['gbm'].predict(X_test),
                     best_models['rf'].predict(X_test)
@@ -411,11 +413,17 @@ pred_results.pred_salary = pred_results.pred_salary.astype('int')
 pred_results['pred_diff'] = pred_results.pred_salary - pred_results.salary
 pred_results.sort_values(by='pred_diff', ascending=False).iloc[:25]
 
-print(pred_results.pred_diff.sum())
+total_diff = pred_results.pred_diff.sum()
+print('Total Diff:', total_diff)
+total_from_available = pred_results.iloc[:156].pred_salary.sum() - 3600
+print('Total from available:', total_from_available)
+total_off = -(total_diff + total_from_available)/2
+
 display(pred_results.iloc[:50])
 display(pred_results[np.abs(pred_results.pred_diff) > 4].sort_values(by='pred_diff', ascending=False))
 
-
+pred_results['pred_salary'] = (pred_results.pred_salary * (1+ (total_off / 3600))).astype('int')
+pred_results.iloc[:50]
 #%%
 
 for p in ['QB', 'RB', 'WR', 'TE']:
@@ -426,13 +434,24 @@ for p in ['QB', 'RB', 'WR', 'TE']:
     sd_m, max_m, min_m = get_std_splines(val_data_tmp, {'pred_salary': 1}, show_plot=True, k=2, 
                                         min_grps_den=int(val_data_tmp.shape[0]*0.1), 
                                         max_grps_den=int(val_data_tmp.shape[0]*0.05),
-                                        iso_spline='iso')
+                                        iso_spline='spline')
 
-    pred_results.loc[pred_results.pos==p, 'std_dev'] = sd_m.predict(sd_max_met)
-    pred_results.loc[pred_results.pos==p, 'max_score'] = max_m.predict(sd_max_met) + 5
-    pred_results.loc[pred_results.pos==p,'min_score'] = min_m.predict(sd_max_met)
+    pred_results.loc[pred_results.pos==p, 'std_dev'] = sd_m(sd_max_met)
+    pred_results.loc[pred_results.pos==p, 'max_score'] = max_m(sd_max_met)
+    pred_results.loc[pred_results.pos==p,'min_score'] = min_m(sd_max_met)
+
+pred_results.loc[pred_results.std_dev <= 0, 'std_dev'] = pred_results.loc[pred_results.std_dev <= 0, 'pred_salary'] / 10
+
+pred_results.loc[pred_results.max_score < pred_results.pred_salary, 'max_score'] = \
+    pred_results.loc[pred_results.max_score < pred_results.pred_salary, 'pred_salary'] + \
+        2 * pred_results.loc[pred_results.max_score < pred_results.pred_salary, 'std_dev']
+
+pred_results.loc[pred_results.min_score > pred_results.pred_salary, 'min_score'] = \
+    pred_results.loc[pred_results.min_score > pred_results.pred_salary, 'pred_salary'] - \
+        2 * pred_results.loc[pred_results.min_score > pred_results.pred_salary, 'std_dev']
+
+
 pred_results.iloc[:50]
-
 #%%
 pred_results['league'] = LEAGUE + 'pred'
 output = pred_results[['player', 'pred_salary', 'year', 'league', 'std_dev', 'min_score', 'max_score']]

@@ -435,6 +435,7 @@ def features_target(df, set_pos, year_start, year_split, median_features, sum_fe
         suffix = '/ age'
         for feature in age_features:
             feature_label = ' '.join([feature, suffix])
+            # past[feature_label] = past[feature] / np.exp(past.age)
             past[feature_label] = past[feature] / np.exp(past.age)
 
         suffix = '_inverse_age'
