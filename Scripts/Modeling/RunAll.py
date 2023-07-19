@@ -1,38 +1,39 @@
 #%%
+from Stacking_Model import *
+
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
 
-from Stacking_Model import *
 
 set_year = 2023
 show_plot = True
 
 runs = [
         # ['Rookie_RB', 'current', 'greater_equal', 0, ''],
-        # ['Rookie_RB', 'next', 'greater_equal', 0, ''],
-        # ['Rookie_WR', 'current', 'greater_equal', 0, ''],
-        # ['Rookie_WR', 'next', 'greater_equal', 0, ''],
-        # ['WR', 'current', 'greater_equal', 0, ''],
-        # ['WR', 'current', 'less_equal', 3, ''],
-        # ['WR', 'current', 'greater_equal', 4, ''],
-        # ['WR', 'next', 'greater_equal', 0, ''],
-        # ['WR', 'next', 'less_equal', 3, ''],
-        # ['WR', 'next', 'greater_equal', 4, ''],
-        # ['RB', 'current', 'greater_equal', 0, 'both'],
-        # ['RB', 'current', 'less_equal', 3, ''],
-        # ['RB', 'current', 'greater_equal', 4, ''],
-        # ['RB', 'next', 'greater_equal', 0, ''],
-        # ['RB', 'next', 'less_equal', 3, ''],
-        # ['RB', 'next', 'greater_equal', 4, ''],
-        # ['RB', 'current', 'greater_equal', 0, 'rush'],
-        # ['RB', 'current', 'greater_equal', 0, 'rec'],
-        # ['TE', 'current', 'greater_equal', 0, ''],
-        # ['TE', 'next', 'greater_equal', 0, ''],
-        # ['QB', 'current', 'greater_equal', 0, 'both'],
-        # ['QB', 'next', 'greater_equal', 0, 'both'],
-        # ['QB', 'current', 'greater_equal', 0, 'rush'],
-        # ['QB', 'current', 'greater_equal', 0, 'pass'],
+        ['Rookie_RB', 'next', 'greater_equal', 0, ''],
+        ['Rookie_WR', 'current', 'greater_equal', 0, ''],
+        ['Rookie_WR', 'next', 'greater_equal', 0, ''],
+        ['WR', 'current', 'greater_equal', 0, ''],
+        ['WR', 'current', 'less_equal', 4, ''],
+        ['WR', 'current', 'greater_equal', 5, ''],
+        ['WR', 'next', 'greater_equal', 0, ''],
+        ['WR', 'next', 'less_equal', 4, ''],
+        ['WR', 'next', 'greater_equal', 5, ''],
+        ['RB', 'current', 'greater_equal', 0, 'both'],
+        ['RB', 'current', 'less_equal', 3, ''],
+        ['RB', 'current', 'greater_equal', 4, ''],
+        ['RB', 'next', 'greater_equal', 0, ''],
+        ['RB', 'next', 'less_equal', 3, ''],
+        ['RB', 'next', 'greater_equal', 4, ''],
+        ['RB', 'current', 'greater_equal', 0, 'rush'],
+        ['RB', 'current', 'greater_equal', 0, 'rec'],
+        ['TE', 'current', 'greater_equal', 0, ''],
+        ['TE', 'next', 'greater_equal', 0, ''],
+        ['QB', 'current', 'greater_equal', 0, 'both'],
+        ['QB', 'next', 'greater_equal', 0, 'both'],
+        ['QB', 'current', 'greater_equal', 0, 'rush'],
+        ['QB', 'current', 'greater_equal', 0, 'pass'],
         
         
 ]
@@ -88,7 +89,7 @@ for sp, cn, fd, ye, rp in runs:
     # run all other models
     for m in ['qr_q', 'gbm_q', 'rf_q', 'lgbm_q', 'knn_q']:
         for alph in [0.8, 0.95]:
-            out_dict_quant, _, _ = get_model_output('gbm_q', df_train, 'quantile', out_dict_class, pos, set_pos, i, alpha=alph)
+            out_dict_quant, _, _ = get_model_output(m, df_train, 'quantile', out_dict_quant, pos, set_pos, i, alpha=alph)
     save_output_dict(out_dict_quant, model_output_path, 'quant')
 
     #------------
@@ -97,7 +98,7 @@ for sp, cn, fd, ye, rp in runs:
 
     # get the training data for stacking and prediction data after stacking
     X_stack, y_stack, models_reg, models_class, models_quant = load_all_stack_pred(model_output_path)
-    X_predict = get_stack_predict_data(df_train, df_predict, df_train_class, df_predict_class, 
+    _, X_predict = get_stack_predict_data(df_train, df_predict, df_train_class, df_predict_class, 
                                     models_reg, models_class, models_quant)
 
     # create the stacking models
@@ -113,7 +114,7 @@ for sp, cn, fd, ye, rp in runs:
 
     # create the output and add standard devations / max scores
     output = mf.create_output(output_start, best_predictions)
-    output = val_std_dev(model_output_path, output, best_val, iso_spline='spline', show_plot=show_plot)
+    output = val_std_dev(model_output_path, output, best_val, iso_spline='iso', show_plot=show_plot)
     print(output.sort_values(by='pred_fp_per_game', ascending=False).iloc[:50])
 
     # save out final results

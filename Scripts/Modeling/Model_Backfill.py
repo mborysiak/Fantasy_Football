@@ -267,6 +267,8 @@ dm.write_to_db(output, 'Simulation', f'Model_Predictions', 'append')
 
 # %%
 
+
+
 rp = dm.read(f'''SELECT player,
                         pos,
                         avg_pick,

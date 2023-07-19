@@ -68,7 +68,7 @@ def year_exp(df):
 def qb_run(df):
 
     qb_run = dm.read('SELECT * FROM QB_Stats', 'Season_Stats')
-    qb_run = qb_run[['team', 'qb_avg_pick', 'year', 'rush_att', 'rush_yds', 'rush_td', 'long_rush', 'rush_yd_per_att',
+    qb_run = qb_run[['team', 'qb_avg_pick', 'qb_games', 'year', 'rush_att', 'rush_yds', 'rush_td', 'long_rush', 'rush_yd_per_att',
                     'rz_20_pass_complete', 'rz_20_pass_att','rz_20_complete_pct', 
                     'rz_20_pass_yds', 'rz_20_pass_td', 'rz_20_int',
                     'rz_10_pass_complete', 'rz_10_pass_att', 'rz_10_complete_pct',
@@ -76,23 +76,20 @@ def qb_run(df):
                     'rz_20_rush_yds', 'rz_20_rush_td', 'rz_20_rush_pct', 'rz_10_rush_att',
                     'rz_10_rush_yds', 'rz_10_rush_td', 'rz_10_rush_pct', 'rz_5_rush_att',
                     'rz_5_rush_yds', 'rz_5_rush_td', 'rz_5_rush_pct']]
-    max_qb_pick = qb_run.groupby(['team','year']).agg({'qb_avg_pick':'max'}).reset_index()
+
+    max_qb_pick = qb_run.groupby(['team','year']).agg({'qb_avg_pick':'min'}).reset_index()
     qb_run = pd.merge(qb_run, max_qb_pick, how='inner', 
-                      left_on=['team', 'year', 'qb_avg_pick'],
-                      right_on=['team', 'year', 'qb_avg_pick']).drop('qb_avg_pick', axis=1)
-    cols = ['team', 'year']
-    cols.extend(['qb_' + c for c in qb_run.columns[2:]])
+                        left_on=['team', 'year', 'qb_avg_pick'],
+                        right_on=['team', 'year', 'qb_avg_pick']).drop('qb_avg_pick', axis=1)
+    cols = ['team', 'qb_games', 'year']
+    cols.extend(['qb_' + c for c in qb_run.columns[3:]])
     qb_run.columns = cols
 
-    qb_run = qb_run.groupby(['team', 'year']).agg('max').reset_index()
-
+    qb_run = qb_run.rename(columns={'qb_games': 'games'})
+    qb_run = per_game_rz(qb_run).drop('games', axis=1)
+    cols.remove('qb_games')
     df = pd.merge(df, qb_run, how='left', on=['team', 'year'])
-    print(df.isnull().sum()[df.isnull().sum()>0])
-    df.fillna(0,inplace=True)
-    print('')
-
-    df = per_game_rz(df)
-    print(df.isnull().sum()[df.isnull().sum()>0])
+    df = df.fillna(df.median())
     
     return df
 
@@ -163,7 +160,7 @@ def draft_value(df, pos):
 def per_game_rz(df):
     for c in df.columns:
         if 'rz_' in c and 'pct' not in c:
-            df[f'{c}_per_game'] = df[c] / df['games']
+            df[f'{c}_per_game'] = df[c] / (df['games']+1)
 
     return df
 

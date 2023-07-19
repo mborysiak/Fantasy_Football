@@ -99,7 +99,7 @@ rb = adjust_draft(rb)
 rb = fix_combine_stats(rb)
 rb = add_power5(rb)
 rb = rb.rename(columns={'rb_player': 'player', 'draft_draft_year': 'draft_year'})
-rb.player = rb.player.apply(dc.name_clean)
+rb.player = rb.player.apply(name_clean)
 
 wr = move_load(download_path, move_path_path, wr_path)
 wr = set_columns(wr)
@@ -108,12 +108,12 @@ wr = adjust_draft(wr)
 wr = fix_combine_stats(wr)
 wr = add_power5(wr)
 wr = wr.rename(columns={'wr_player': 'player', 'draft_draft_year': 'draft_year'})
-wr.player = wr.player.apply(dc.name_clean)
+wr.player = wr.player.apply(name_clean)
 
 
 # %%
 dm.write_to_db(rb, 'Season_Stats','RB_Spaceman_Raw',  'replace')
-dm.write_to_db(wr,'Season_Stats', 'WR_Spaceman_Raw','replace')
+dm.write_to_db(wr, 'Season_Stats', 'WR_Spaceman_Raw','replace')
 
 # %%
 
@@ -134,38 +134,55 @@ def add_team(df, pos):
     df = pd.merge(df, team, on=['player', 'draft_year'], how='left')
     return df
 
+def add_stats(df, year_diff):
+    target_data = pd.read_sql_query(f'''SELECT player, 
+                                              games games_{year_diff},
+                                              team team_fill, 
+                                              year-{year_diff} draft_year, 
+                                              rush_yd_per_game rush_yd_per_game_{year_diff},
+                                              rec_per_game rec_per_game_{year_diff},
+                                              rec_yd_per_game rec_yd_per_game_{year_diff}, 
+                                              td_per_game td_per_game_{year_diff} 
+                                   FROM RB_Stats''', conn)
+    df = pd.merge(df, target_data, on=['player', 'draft_year'], how='left')
+    df[f'fp_per_game_{year_diff}'] = (df[[f'rush_yd_per_game_{year_diff}', f'rec_per_game_{year_diff}', f'rec_yd_per_game_{year_diff}', 
+                                            f'td_per_game_{year_diff}']]*[0.1, 0.5, 0.1, 7]).sum(axis=1)
+
+    df.loc[df.team.isnull(), 'team'] = df.loc[df.team.isnull(), 'team_fill']
+    df = df.drop(['team_fill', f'rec_per_game_{year_diff}', f'rec_yd_per_game_{year_diff}', f'td_per_game_{year_diff}', f'rush_yd_per_game_{year_diff}'], axis=1)
+    df.loc[df[f'games_{year_diff}'].isnull(), f'fp_per_game_{year_diff}'] = np.nan
+    
+    return df
+
 rb = dm.read(f'''SELECT * FROM RB_Spaceman_Raw''', 'Season_Stats')
 rb = add_avg_pick(rb)
 rb = add_team(rb, 'RB')
+rb = add_stats(rb, 0)
+rb = add_stats(rb, 1)
+rb = add_stats(rb, 2)
 
-target_data = pd.read_sql_query('''SELECT player, team team_fill, year draft_year, games, rush_yd_per_game, rec_per_game, 
-                                          rec_yd_per_game, td_per_game 
-                                   FROM rb_stats''', conn)
-target_data_next = pd.read_sql_query('''SELECT player, year-1 draft_year, games games_next, 
-                                        rush_yd_per_game rush_yd_per_game_next, rec_per_game rec_per_game_next, 
-                                          rec_yd_per_game rec_yd_per_game_next, td_per_game td_per_game_next 
-                                   FROM rb_stats''', conn)
+rb = rb[ ((rb.games_0 > 6) \
+         | (rb.games_1 > 6)
+         | (rb.games_2 > 6)) \
 
-rb = pd.merge(rb, target_data, on=['player', 'draft_year'], how='left')
-rb = pd.merge(rb, target_data_next, on=['player', 'draft_year'], how='left')
-rb.loc[rb.team.isnull(), 'team'] = rb.loc[rb.team.isnull(), 'team_fill']
-rb = rb.drop(['team_fill'], axis=1)
+         & ((rb.fp_per_game_0 > 0) 
+            | (rb.fp_per_game_1 > 0)
+            | (rb.fp_per_game_2 > 0)) \
 
-rb['fp_per_game'] = (rb[['rush_yd_per_game', 'rec_per_game', 'rec_yd_per_game', 
-                                     'td_per_game']]*[0.1, 0.5, 0.1, 7]).sum(axis=1)
-rb['fp_per_game_next'] = (rb[['rush_yd_per_game_next', 'rec_per_game_next', 'rec_yd_per_game_next', 
-                                          'td_per_game_next']]*[0.1, 0.5, 0.1, 7]).sum(axis=1)
+         | (rb.draft_year==set_year)].reset_index(drop=True)
 
-rb = rb[((rb.games > 6) & \
-         (rb.games_next > 6) & \
-         (rb.fp_per_game > 3) & \
-         (rb.fp_per_game_next > 3)) | \
-           (rb.draft_year==set_year)].reset_index(drop=True)
 rb = rb.drop(['rb_school', 'rb_conf', 'rb_dob',
               'nfl_stats_finishes_and_milestones_top_5_rb', 
               'nfl_stats_finishes_and_milestones_top_24_rb',
               'nfl_stats_finishes_and_milestones_top_12_rb', 
-              'nfl_stats_finishes_and_milestones_avg_ppg_yr_1to3'], axis=1)
+              'nfl_stats_finishes_and_milestones_avg_ppg_yr_1to3'
+              ], axis=1)
+
+rb['fp_per_game_next'] = rb[['fp_per_game_0', 'fp_per_game_1', 'fp_per_game_2']].mean(axis=1)
+rb['games_next'] = rb[['games_0', 'games_1', 'games_2']].mean(axis=1)
+
+rb = rb.rename(columns={'fp_per_game_0': 'fp_per_game', 'games_0': 'games'})
+rb = rb.drop(['fp_per_game_1', 'fp_per_game_2', 'games_1', 'games_2'], axis=1)
 
 rb = rb.dropna(subset=['team']).reset_index(drop=True)
 for c in rb.isnull().sum()[rb.isnull().sum()>0].index:
@@ -178,36 +195,58 @@ dm.write_to_db(rb, 'Season_Stats', 'Rookie_RB_Stats', 'replace', create_backup=T
 
 #%%
 
+def add_stats(df, year_diff):
+    target_data = pd.read_sql_query(f'''SELECT player, 
+                                              games games_{year_diff},
+                                              team team_fill, 
+                                              year-{year_diff} draft_year, 
+                                              rec_per_game rec_per_game_{year_diff},
+                                              rec_yd_per_game rec_yd_per_game_{year_diff}, 
+                                              td_per_game td_per_game_{year_diff} 
+                                   FROM WR_Stats''', conn)
+    df = pd.merge(df, target_data, on=['player', 'draft_year'], how='left')
+    df[f'fp_per_game_{year_diff}'] = (df[[f'rec_per_game_{year_diff}', f'rec_yd_per_game_{year_diff}', 
+                                          f'td_per_game_{year_diff}']]*[0.5, 0.1, 7]).sum(axis=1)
+
+    df.loc[df.team.isnull(), 'team'] = df.loc[df.team.isnull(), 'team_fill']
+    df = df.drop(['team_fill', f'rec_per_game_{year_diff}', f'rec_yd_per_game_{year_diff}', f'td_per_game_{year_diff}'], axis=1)
+    df.loc[df[f'games_{year_diff}'].isnull(), f'fp_per_game_{year_diff}'] = np.nan
+    return df
+
 wr = dm.read(f'''SELECT * FROM WR_Spaceman_Raw''', 'Season_Stats')
 wr = add_avg_pick(wr)
 wr = add_team(wr, 'WR')
-target_data = pd.read_sql_query('''SELECT player, games, year draft_year, rec_per_game, rec_yd_per_game, td_per_game 
-                                   FROM WR_Stats''', conn)
-target_data_next = pd.read_sql_query('''SELECT player, team team_fill, games games_next, year-1 draft_year, 
-                                        rec_per_game rec_per_game_next, rec_yd_per_game rec_yd_per_game_next, 
-                                        td_per_game td_per_game_next 
-                                        FROM WR_Stats''', conn)                                  
-wr = pd.merge(wr, target_data, on=['player', 'draft_year'], how='left')
-wr = pd.merge(wr, target_data_next, on=['player', 'draft_year'], how='left')
+wr = add_stats(wr, 0)
+wr = add_stats(wr, 1)
+wr = add_stats(wr, 2)
 
-wr['fp_per_game'] = (wr[['rec_per_game', 'rec_yd_per_game', 'td_per_game']]*[0.5, 0.1, 7]).sum(axis=1)
-wr['fp_per_game_next'] = (wr[['rec_per_game_next', 'rec_yd_per_game_next', 'td_per_game_next']]*[0.5, 0.1, 7]).sum(axis=1)
-wr.loc[wr.team.isnull(), 'team'] = wr.loc[wr.team.isnull(), 'team_fill']
-wr = wr.drop(['team_fill'], axis=1)
+wr = wr[ ((wr.games_0 > 6) \
+         | (wr.games_1 > 6)
+         | (wr.games_2 > 6)) \
 
-wr = wr[((wr.games > 6) & \
-         (wr.games_next > 6) & \
-         (wr.fp_per_game > 3) & \
-         (wr.fp_per_game_next > 3)) | \
-           (wr.draft_year==set_year)].reset_index(drop=True)
+         & ((wr.fp_per_game_0 > 0) 
+            | (wr.fp_per_game_1 > 0)
+            | (wr.fp_per_game_2 > 0)) \
+
+         | (wr.draft_year==set_year)].reset_index(drop=True)
 
 wr = wr.drop(['ff_spaceman_school', 'ff_spaceman_conf', 'ff_spaceman_dob',
-'ms_rush_atts_19', 'career_average_kr_tds',
-       'career_average_punt_returns', 'career_average_pr_yards',
-       'career_average_pr_tds', 'nfl_stats_finishes_and_milestones_top_12_wr',
-       'nfl_stats_finishes_and_milestones_top_24_wr', 
-       'nfl_stats_finishes_and_milestones_avg_ppg_yr_1to3'
+              'ms_rush_atts_19', 'career_average_kr_tds',
+              'career_average_punt_returns', 'career_average_pr_yards',
+              'career_average_pr_tds', 
+               'nfl_stats_finishes_and_milestones_top_5_wr',
+              'nfl_stats_finishes_and_milestones_top_12_wr',
+              'nfl_stats_finishes_and_milestones_top_24_wr', 
+              'nfl_stats_finishes_and_milestones_avg_ppg_yr_1to3'
        ], axis=1)
+
+wr['fp_per_game_next'] = wr[['fp_per_game_0', 'fp_per_game_1', 'fp_per_game_2']].mean(axis=1)
+wr['games_next'] = wr[['games_0', 'games_1', 'games_2']].mean(axis=1)
+wr = wr.rename(columns={'fp_per_game_0': 'fp_per_game', 'games_0': 'games'})
+wr = wr.drop(['fp_per_game_1', 'fp_per_game_2', 'games_1', 'games_2'], axis=1)
+
+# wr = wr.drop('fp_per_game', axis=1).rename(columns={'nfl_stats_finishes_and_milestones_avg_ppg_yr_1to3':'fp_per_game'})
+
 wr = wr.dropna(subset=['team']).reset_index(drop=True)
 
 for c in wr.isnull().sum()[wr.isnull().sum()>0].index:
@@ -220,7 +259,7 @@ wr = wr.assign(pos='WR')
 dm.write_to_db(wr, 'Season_Stats', 'Rookie_WR_Stats', 'replace', create_backup=True)
 
 # %%
-corr_col = 'fp_per_game'
+corr_col = 'fp_per_game_next'
 df = rb.copy()
 
 display(df.corr()[[corr_col]].sort_values(by = corr_col).iloc[:40])

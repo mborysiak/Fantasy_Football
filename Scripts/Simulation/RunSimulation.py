@@ -83,7 +83,7 @@ proport = proport[['Position', 'Wts']]
 # set keepers for this year
 keepers = {
     'Rhamondre Stevenson': 35,
-    'Devonta Smith': 19,
+    'Devonta Smith': 21,
 
     "Ja'Marr Chase": 42,
     'Jaylen Waddle': 48,
