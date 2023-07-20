@@ -45,6 +45,19 @@ def name_clean(player_name):
     player_name = player_name.replace('-', ' ')
     player_name = player_name.title().rstrip().lstrip()
 
+    renames = [
+                ['Gabe Davis', 'Gabriel Davis'],
+                ['Eli Mitchell', 'Elijah Mitchell'],
+                ['Ken Walker', 'Kenneth Walker'],
+                ['Jeffery Wilson', 'Jeff Wilson'],
+                ['Josh Palmer', 'Joshua Palmer'],
+                ['Chig Okonkwo', 'Chigoziem Okonkwo'],
+                ['Tank Dell', 'Nathaniel Dell']
+            ]
+
+    for old_name, new_name in renames:
+        if player_name == old_name: player_name = new_name
+
     return player_name
 
 

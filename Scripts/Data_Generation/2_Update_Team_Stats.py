@@ -109,7 +109,8 @@ team_to_abb = {
     'Tampa Bay Buccaneers': 'TAM',
     'Tennessee Titans': 'TEN',
     'Tennessee Oilers': 'TEN',
-    'Washington Football Team': 'WAS'
+    'Washington Football Team': 'WAS',
+    'Washington Commanders': 'WAS'
 }
 
 df_team.team = df_team.team.map(team_to_abb)

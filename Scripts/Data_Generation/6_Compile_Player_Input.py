@@ -31,7 +31,7 @@ def adp_groupby(df, position):
     rookie_adp = dm.read(f'''SELECT team, draft_year-1 year, avg_pick 
                              FROM Rookie_ADP
                              WHERE pos='{position}' 
-                                   AND avg_pick < 10
+                                   AND avg_pick < 300
                                    ''', 'Season_Stats')
     rookie_adp['avg_pick'] = np.log(rookie_adp.avg_pick)
 

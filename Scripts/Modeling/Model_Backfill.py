@@ -186,20 +186,21 @@ print('Shape of Train Set', df_train.shape)
 
 #%%
 
-skm = SciKitModel(df_train)
+skm = SciKitModel(df_train, sera_wt=0, r2_wt=1)
 X, y = skm.Xy_split(y_metric='y_act', to_drop=['player'])
 cv_time_base = skm.cv_time_splits(X, 'year', 2012)
 
 predictions = pd.DataFrame()
 for m in [
-          'ridge', 
-          'lasso', 
+        #   'ridge', 
+        #   'lasso', 
           'gbm', 
-         # 'svr', 
-          'knn',  
+        #  'svr', 
+        #   'knn',  
+          'lgbm',
           'xgb', 
           'rf', 
-         # 'bridge'
+        #  'bridge'
           ]:
     
     print(m)
@@ -267,27 +268,34 @@ dm.write_to_db(output, 'Simulation', f'Model_Predictions', 'append')
 
 # %%
 
-
-
+date_mod =  dt.date(2022,7,18)
 rp = dm.read(f'''SELECT player,
                         pos,
                         avg_pick,
-                        SUM(pred_fp_per_game) pred_fp_per_game,
-                        SUM(std_dev) / 1.4 std_dev, 
-                        SUM(max_score) / 1.3 max_score
+                        pred_fp_per_game,
+                        std_dev, 
+                        max_score,
+                        date_modified
                 FROM Model_Predictions
                 WHERE rush_pass IN ('rush', 'pass', 'rec')
                       AND version='{pred_version}'
                       AND year = {set_year}
-                GROUP BY player, pos, year
              ''', 'Simulation').sort_values(by='avg_pick')
+
+rp.date_modified = pd.to_datetime(rp.date_modified).apply(lambda x: x.date())
+rp = rp[rp.date_modified >= date_mod].reset_index(drop=True)
+rp = rp.groupby(['player', 'pos','avg_pick']).agg({'pred_fp_per_game': 'sum', 
+                                               'std_dev': 'sum', 
+                                               'max_score': 'sum'}).reset_index()
+rp.std_dev = rp.std_dev / 1.4
+rp.max_score = rp.max_score / 1.3
 
 both = dm.read(f'''SELECT player, 
                           pos,
                           rush_pass,
                           pred_fp_per_game pred_fp_per_game,
                           std_dev,
-                          max_score
+                          max_score, date_modified
                 FROM Model_Predictions
                 WHERE (rush_pass NOT IN ('rush', 'pass', 'rec') OR rush_pass IS NULL)
                       AND version='{pred_version}'
@@ -295,12 +303,20 @@ both = dm.read(f'''SELECT player,
                       AND year = {set_year}
              ''', 'Simulation')
 
+both.date_modified = pd.to_datetime(both.date_modified).apply(lambda x: x.date())
+both = both[both.date_modified >= date_mod].reset_index(drop=True)
+
 preds = pd.concat([rp, both], axis=0)
+preds.pos = preds.pos.apply(lambda x: x.replace('Rookie_', ''))
 preds = preds.groupby(['player', 'pos'], as_index=False).agg({'pred_fp_per_game': 'mean', 
                                                               'std_dev': 'mean',
                                                               'max_score': 'mean'})
-preds.pos = preds.pos.apply(lambda x: x.replace('Rookie_', ''))
 preds = preds[preds.pred_fp_per_game > 0].reset_index(drop=True)
+
+preds.loc[preds.player=='Kyler Murray', 'pred_fp_per_game'] = 15
+preds.loc[preds.player=='Kyler Murray', 'pred_fp_per_game'] = 15
+preds.loc[preds.player=='Kyler Murray', 'pred_fp_per_game'] = 15
+
 display(preds[((preds.pos=='QB'))].sort_values(by='pred_fp_per_game', ascending=False).iloc[:15])
 display(preds[((preds.pos!='QB'))].sort_values(by='pred_fp_per_game', ascending=False).iloc[:50])
 
@@ -367,7 +383,7 @@ sim_output = create_sim_output(preds).reset_index(drop=True)
 
 #%%
 
-idx = sim_output[sim_output.player=="Antonio Gibson"].index[0]
+idx = sim_output[sim_output.player=="Bijan Robinson"].index[0]
 plot_distribution(sim_output.iloc[idx])
 
 

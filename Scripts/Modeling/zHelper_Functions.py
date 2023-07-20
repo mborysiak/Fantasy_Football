@@ -312,7 +312,7 @@ def add_exp_metrics(df, set_pos):
         d = d.rename(columns={lab: lab + '_exp'})
         df = pd.merge(df, d, how='inner', left_on='year_exp', right_on='year_exp')
         df[lab + '_exp_diff'] = df[lab] - df[lab + '_exp']
-        df[lab + '_exp_div'] = df[lab] / df[lab + '_exp']
+        df[lab + '_exp_div'] = df[lab] / (df[lab + '_exp']+0.01)
         
     return df
 
@@ -483,8 +483,8 @@ def features_target_v2(df, set_pos, year_start, year_split, median_features, sum
         past = past.join(past.groupby('player')[sum_features].sum(),on='player', rsuffix='_sum')
 
         for mf in median_features:
-            baseline = 0.01*past[mf].mean()
-            past[mf + '_over_median'] = (past[mf]-past[mf + '_median']) / (past[mf + '_median'] + baseline)
+            baseline = past[mf].mean()
+            past[mf + '_over_median'] = (past[mf]-past[mf + '_median']) / (past[mf + '_median'] + baseline + 0.1)
 
         # adding the age features
         suffix = '_times_age'

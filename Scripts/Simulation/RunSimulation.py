@@ -101,6 +101,7 @@ keepers = {
     'Garrett Wilson': 19,
 
     'Kenneth Walker': 27,
+    'Saquon Barkley': 86,
     
     'Cooper Kupp': 65,
     'Javonte Williams': 11,
@@ -400,7 +401,7 @@ main_color_rgba = f'rgba({main_color}, 0.8)'
 #--------------
 
 player_list = []
-for pl, row in d.sort_values(by='Salary', ascending=False)[['Salary', 'Position']].iterrows():
+for pl, row in d.sort_values(by=['Salary', 'player'], ascending=[False, True])[['Salary', 'Position']].iterrows():
     if row.Position != 'FLEX':
         player_list.append([row.Position, pl, row.Salary, 0])
 

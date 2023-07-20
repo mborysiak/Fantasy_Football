@@ -123,7 +123,8 @@ def add_avg_pick(df):
     df = pd.merge(df, rookie_adp, on=['player', 'draft_year'], how='left')
     df.avg_pick = df.avg_pick.fillna(250)
     df.loc[df.avg_pick > 250, 'avg_pick'] = 250
-    df = df.assign(log_avg_pick = np.log(df.avg_pick))
+    df = df.assign(avg_pick = np.log(df.avg_pick))
+    df['orig_avg_pick'] = np.exp(df.avg_pick)
     return df
 
 def add_team(df, pos):

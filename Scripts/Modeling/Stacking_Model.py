@@ -43,7 +43,7 @@ db_path = f'{root_path}/Data/Databases/'
 dm = DataManage(db_path)
 
 # set to position to analyze: 'RB', 'WR', 'QB', or 'TE'
-set_pos = 'Rookie_RB'
+set_pos = 'RB'
 
 # set year to analyze
 set_year = 2023
@@ -52,7 +52,7 @@ set_year = 2023
 vers = 'beta'
 
 # set with this year or next
-current_or_next_year = 'current'
+current_or_next_year = 'next'
 
 mse_wt = 1
 sera_wt = 0
@@ -62,7 +62,7 @@ matt_wt = 0
 
 # determine whether to do run/pass/rec separate or together
 pos['QB']['rush_pass'] = 'both'
-pos['RB']['rush_pass'] = 'both'
+pos['RB']['rush_pass'] = ''
 pos['WR']['rush_pass'] = ''
 pos['TE']['rush_pass'] = ''
 pos['Rookie_RB']['rush_pass'] = ''
@@ -122,14 +122,14 @@ pos['Rookie_RB']['use_ay'] = False
 pos['Rookie_WR']['use_ay'] = False
 
 pos['QB']['filter_data'] = 'greater_equal'
-pos['RB']['filter_data'] = 'greater_equal'
+pos['RB']['filter_data'] = 'less_equal'
 pos['WR']['filter_data'] = 'greater_equal'
 pos['TE']['filter_data'] = 'greater_equal'
 pos['Rookie_RB']['filter_data'] = 'greater_equal'
 pos['Rookie_WR']['filter_data'] = 'greater_equal'
 
 pos['QB']['year_exp'] = 0
-pos['RB']['year_exp'] = 0
+pos['RB']['year_exp'] = 3
 pos['WR']['year_exp'] = 0
 pos['TE']['year_exp'] = 0
 pos['Rookie_RB']['year_exp'] = 0
@@ -765,20 +765,20 @@ def save_out_results(df, db_name, table_name, pos, set_year, set_pos, current_or
 # Pull in the data and create train and predict sets
 #------------
 
-# pts_dict = create_pts_dict(pos, set_pos)
-# pos = class_cutoff(pos)
-# model_output_path = create_pkey(pos, set_pos,current_or_next_year)
-# df = pull_data(pts_dict, set_pos, set_year)
+pts_dict = create_pts_dict(pos, set_pos)
+pos = class_cutoff(pos)
+model_output_path = create_pkey(pos, set_pos,current_or_next_year)
+df = pull_data(pts_dict, set_pos, set_year)
 
-# if 'Rookie' not in set_pos:
-#     df, output_start = filter_df(df, pos, set_pos, set_year)
-#     df_train, df_predict, min_samples = get_reg_data(df, pos, set_pos)
-#     df_train_class, df_predict_class = get_class_data(df, pos, set_pos)
-# else:
-#     df_train, df_predict, df_train_class, df_predict_class, output_start, min_samples = prepare_rookie_data(df, set_pos, current_or_next_year)
+if 'Rookie' not in set_pos:
+    df, output_start = filter_df(df, pos, set_pos, set_year)
+    df_train, df_predict, min_samples = get_reg_data(df, pos, set_pos)
+    df_train_class, df_predict_class = get_class_data(df, pos, set_pos)
+else:
+    df_train, df_predict, df_train_class, df_predict_class, output_start, min_samples = prepare_rookie_data(df, set_pos, current_or_next_year)
 
-# if current_or_next_year == 'next' and 'Rookie' not in set_pos: 
-#     df_train, df_train_class = adjust_current_or_next(df_train, df_train_class)
+if current_or_next_year == 'next' and 'Rookie' not in set_pos: 
+    df_train, df_train_class = adjust_current_or_next(df_train, df_train_class)
 
 # #%%
 # #------------
@@ -800,40 +800,38 @@ def save_out_results(df, db_name, table_name, pos, set_year, set_pos, current_or
 #     out_dict_class, _, _= get_model_output(m, df_train_class, 'class', out_dict_class, pos, set_pos, i, min_samples)
 # save_output_dict(out_dict_class, model_output_path, 'class')
 
-# # run all other models
-# for m in ['qr_q', 'gbm_q', 'rf_q', 'lgbm_q', 'knn_q']:
-#     for alph in [0.8, 0.95]:
-#         out_dict_quant, _, _ = get_model_output(m, df_train, 'quantile', out_dict_quant, pos, set_pos, i, alpha=alph)
-# save_output_dict(out_dict_quant, model_output_path, 'quant')
+# run all other models
+for m in ['qr_q', 'gbm_q', 'rf_q', 'lgbm_q', 'knn_q']:
+    for alph in [0.65, 0.8]:
+        out_dict_quant, _, _ = get_model_output(m, df_train, 'quantile', out_dict_quant, pos, set_pos, i, alpha=alph)
+save_output_dict(out_dict_quant, model_output_path, 'quant')
 
-# #%%
-# #------------
-# # Run the Stacking Models and Generate Output
-# #------------
+#%%
+#------------
+# Run the Stacking Models and Generate Output
+#------------
 
-# # get the training data for stacking and prediction data after stacking
-# X_stack, y_stack, models_reg, models_class, models_quant = load_all_stack_pred(model_output_path)
-# _, X_predict = get_stack_predict_data(df_train, df_predict, df_train_class, df_predict_class, 
-#                                    models_reg, models_class, models_quant)
+# get the training data for stacking and prediction data after stacking
+X_stack, y_stack, models_reg, models_class, models_quant = load_all_stack_pred(model_output_path)
+_, X_predict = get_stack_predict_data(df_train, df_predict, df_train_class, df_predict_class, 
+                                      models_reg, models_class, models_quant)
 
-# X_predict = X_predict.dropna(axis=1)
+# create the stacking models
+final_models = ['rf', 'gbm', 'gbmh', 'huber', 'xgb', 'lgbm', 'knn', 'ridge', 'lasso', 'bridge']
+stack_val_pred = pd.DataFrame(); scores = []; best_models = []
+for i, fm in enumerate(final_models):
+    best_models, scores, stack_val_pred = run_stack_models(fm, i, X_stack, y_stack, best_models, scores, stack_val_pred, show_plots=True)
 
-# # create the stacking models
-# final_models = ['rf', 'gbm', 'gbmh', 'huber', 'xgb', 'lgbm', 'knn', 'ridge', 'lasso', 'bridge']
-# stack_val_pred = pd.DataFrame(); scores = []; best_models = []
-# for i, fm in enumerate(final_models):
-#     best_models, scores, stack_val_pred = run_stack_models(fm, i, X_stack, y_stack, best_models, scores, stack_val_pred, show_plots=True)
+# get the best stack predictions and average
+predictions = mf.stack_predictions(X_predict, best_models, final_models)
+best_val, best_predictions, best_score = average_stack_models(df_train, scores, final_models, y_stack, stack_val_pred, predictions, show_plot=True, min_include=2)
 
-# # get the best stack predictions and average
-# predictions = mf.stack_predictions(X_predict, best_models, final_models)
-# best_val, best_predictions, best_score = average_stack_models(df_train, scores, final_models, y_stack, stack_val_pred, predictions, show_plot=True, min_include=2)
+# create the output and add standard devations / max scores
+output = mf.create_output(output_start, best_predictions)
+output = val_std_dev(model_output_path, output, best_val, iso_spline='iso', show_plot=True)
+output.sort_values(by='pred_fp_per_game', ascending=False).iloc[:50]
 
-# # create the output and add standard devations / max scores
-# output = mf.create_output(output_start, best_predictions)
-# output = val_std_dev(model_output_path, output, best_val, iso_spline='iso', show_plot=True)
-# output.sort_values(by='pred_fp_per_game', ascending=False).iloc[:50]
-
-# #%%
+#%%
 
 # skm, _, _ = get_skm(df_train, 'reg', to_drop=['player', 'team', 'pos'])
 # skm.print_coef(models_reg['reg_ridge'][0])
@@ -914,3 +912,5 @@ def save_out_results(df, db_name, table_name, pos, set_year, set_pos, current_or
 #              ''', 'Simulation').sort_values(by='rp_pred', ascending=False)
 # rp.iloc[:50]
 # # %%
+
+# %%
