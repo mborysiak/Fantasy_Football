@@ -192,15 +192,15 @@ cv_time_base = skm.cv_time_splits(X, 'year', 2012)
 
 predictions = pd.DataFrame()
 for m in [
-        #   'ridge', 
-        #   'lasso', 
+          'ridge', 
+          'lasso', 
           'gbm', 
-        #  'svr', 
-        #   'knn',  
+         'svr', 
+          'knn',  
           'lgbm',
           'xgb', 
           'rf', 
-        #  'bridge'
+         'bridge'
           ]:
     
     print(m)
@@ -268,7 +268,7 @@ dm.write_to_db(output, 'Simulation', f'Model_Predictions', 'append')
 
 # %%
 
-date_mod =  dt.date(2022,7,18)
+date_mod =  dt.date(2022,7,20)
 rp = dm.read(f'''SELECT player,
                         pos,
                         avg_pick,
@@ -284,11 +284,15 @@ rp = dm.read(f'''SELECT player,
 
 rp.date_modified = pd.to_datetime(rp.date_modified).apply(lambda x: x.date())
 rp = rp[rp.date_modified >= date_mod].reset_index(drop=True)
+
+# wm = lambda x: np.average(x, weights=rp.loc[x.index, "pred_fp_per_game"])
+rp = rp.assign(std_dev=rp.std_dev**2, max_score=rp.max_score**2)
 rp = rp.groupby(['player', 'pos','avg_pick']).agg({'pred_fp_per_game': 'sum', 
-                                               'std_dev': 'sum', 
-                                               'max_score': 'sum'}).reset_index()
-rp.std_dev = rp.std_dev / 1.4
-rp.max_score = rp.max_score / 1.3
+                                                    'std_dev': 'sum', 
+                                                    'max_score': 'sum'}).reset_index()
+rp = rp.assign(std_dev=np.sqrt(rp.std_dev), max_score=np.sqrt(rp.max_score))
+# rp.std_dev = rp.std_dev / 1.4
+# rp.max_score = rp.max_score / 1.3
 
 both = dm.read(f'''SELECT player, 
                           pos,

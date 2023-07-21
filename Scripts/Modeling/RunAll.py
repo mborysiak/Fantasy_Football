@@ -11,18 +11,18 @@ show_plot = True
 
 runs = [
         # ['Rookie_RB', 'current', 'greater_equal', 0, ''],
-        ['Rookie_RB', 'next', 'greater_equal', 0, ''],
-        ['Rookie_WR', 'current', 'greater_equal', 0, ''],
-        ['Rookie_WR', 'next', 'greater_equal', 0, ''],
-        ['WR', 'current', 'greater_equal', 0, ''],
-        ['WR', 'current', 'less_equal', 4, ''],
-        ['WR', 'current', 'greater_equal', 5, ''],
-        ['WR', 'next', 'greater_equal', 0, ''],
-        ['WR', 'next', 'less_equal', 4, ''],
-        ['WR', 'next', 'greater_equal', 5, ''],
-        ['RB', 'current', 'greater_equal', 0, 'both'],
-        ['RB', 'current', 'less_equal', 3, ''],
-        ['RB', 'current', 'greater_equal', 4, ''],
+        # ['Rookie_RB', 'next', 'greater_equal', 0, ''],
+        # ['Rookie_WR', 'current', 'greater_equal', 0, ''],
+        # ['Rookie_WR', 'next', 'greater_equal', 0, ''],
+        # ['WR', 'current', 'greater_equal', 0, ''],
+        # ['WR', 'current', 'less_equal', 4, ''],
+        # ['WR', 'current', 'greater_equal', 5, ''],
+        # ['WR', 'next', 'greater_equal', 0, ''],
+        # ['WR', 'next', 'less_equal', 4, ''],
+        # ['WR', 'next', 'greater_equal', 5, ''],
+        # ['RB', 'current', 'greater_equal', 0, 'both'],
+        # ['RB', 'current', 'less_equal', 3, ''],
+        # ['RB', 'current', 'greater_equal', 4, ''],
         ['RB', 'next', 'greater_equal', 0, ''],
         ['RB', 'next', 'less_equal', 3, ''],
         ['RB', 'next', 'greater_equal', 4, ''],
@@ -88,7 +88,7 @@ for sp, cn, fd, ye, rp in runs:
 
     # run all other models
     for m in ['qr_q', 'gbm_q', 'rf_q', 'lgbm_q', 'knn_q']:
-        for alph in [0.8, 0.95]:
+        for alph in [0.65, 0.8]:
             out_dict_quant, _, _ = get_model_output(m, df_train, 'quantile', out_dict_quant, pos, set_pos, i, alpha=alph)
     save_output_dict(out_dict_quant, model_output_path, 'quant')
 
