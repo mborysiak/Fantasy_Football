@@ -62,7 +62,7 @@ class FootballSimulation():
     # Running the Simulation for Given League Settings and Keepers
     #==========
     
-    def run_simulation(self, league_info, to_drop, to_add, iterations=500):        
+    def run_simulation(self, league_info, to_drop, to_add, iterations=500, num_avg_pts=3):        
         '''
         Method that runs the actual simulation and returns the results.
         
@@ -159,7 +159,7 @@ class FootballSimulation():
                 data = self._df_shuffle(data)
             
             # pull out a random selection of points and salaries
-            points, salaries_tmp = self._random_select(data, salaries, inj_dist, replace_val)
+            points, salaries_tmp = self._random_select(data, salaries, inj_dist, replace_val, num_avg_pts)
 
             # run linear integer optimization
             x = self._run_opt(A, points, salaries_tmp, league_info['salary_cap'], pos_require)
@@ -487,7 +487,7 @@ class FootballSimulation():
         return x
     
     @staticmethod
-    def _random_select(data, salaries, inj_dist, replace_val):
+    def _random_select(data, salaries, inj_dist, replace_val, num_avg_pts):
         '''
         Random column selection for trial in simulation
         
@@ -495,21 +495,24 @@ class FootballSimulation():
         Return: Randomly selected array of points and salaries + skews for a given trial
         '''
         # select random number between 0 and sise of distributions
-        ran_num = random.randint(0, 1000-1)
+        # ran_num = random.randint(0, 1000-1)
+        ran_num = np.random.choice(range(999), size=num_avg_pts)
 
         # pull out a random column of points and convert to points per game
-        ppg = data.iloc[:, ran_num] / 16
-                
+        # ppg = data.iloc[:, ran_num] / 16
+        ppg = data.iloc[:, ran_num].mean(axis=1) / 16
+        ppg = pd.DataFrame(ppg, index=data.index)
+
         # pull a random selection of expected games missed
-        inj_adjust = inj_dist.iloc[:, ran_num]
+        inj_adjust = inj_dist.iloc[:, ran_num[0]]#.mean(axis=1)
         
         # calculate total points scored as the number of games played by expected ppg
         # plus the number of games missed times replacement level value
         points = -1.0*((ppg.values) * (16-inj_adjust.values) + \
                        (inj_adjust.values * pd.concat([replace_val, ppg], axis=1).min(axis=1).values))
-
+        
         # pull out a random skew and add to the original salaries
-        salaries_tmp = salaries[:, ran_num]
+        salaries_tmp = salaries[:, ran_num[0]]#.mean(axis=1)
         salaries_tmp = salaries_tmp.astype('double')
         salaries_tmp[salaries_tmp < 2] = 2
         
@@ -657,7 +660,7 @@ class FootballSimulation():
 # path = f'c:/Users/{os.getlogin()}/Documents/Github/Fantasy_Football/'
 # conn_sim = sqlite3.connect(f'{path}/Data/Databases/Simulation.sqlite3')
 
-# set_year = 2022
+# set_year = 2023
 # league='beta'
 # table_vers = 'Version' + league
 
@@ -683,6 +686,6 @@ class FootballSimulation():
 # to_add['players'] = []
 # to_add['salaries'] = []
 
-# sim.run_simulation(league_info, to_drop, to_add, iterations=iterations)
+# sim.run_simulation(league_info, to_drop, to_add, iterations=iterations, num_avg_pts=3)
 # sim.show_most_selected(to_add, iterations)
-# # %%
+# %%
