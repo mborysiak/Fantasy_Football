@@ -4,7 +4,7 @@
 # last year's statistics and adp to pull and append to database
 year = 2022
 
-from re import I
+# from re import 
 from ff.db_operations import DataManage
 from ff import general, data_clean as dc
 
@@ -210,7 +210,7 @@ url_rec = f'https://www.pro-football-reference.com/years/{year}/receiving.htm'
 data_rec = pd.read_html(url_rec)[0]
 
 # pulling historical player adp for runningbacks
-url_adp_rush = f'https://www71.myfantasyleague.com/{year+1}/reports?R=ADP&POS=RB&PERIOD=RECENT&CUTOFF=5&FCOUNT=0&ROOKIES=0&INJURED=1&IS_PPR=3&IS_KEEPER=N&IS_MOCK=1&PAGE=ALL'
+url_adp_rush = f'https://www45.myfantasyleague.com/{year+1}/reports?R=ADP&POS=RB&PERIOD=RECENT&CUTOFF=5&FCOUNT=0&ROOKIES=0&INJURED=1&IS_PPR=3&IS_KEEPER=N&IS_MOCK=1&PAGE=ALL'
 data_adp_rush = pd.read_html(url_adp_rush)[1]
 
 # pulling historical redzone receiving data
@@ -552,7 +552,7 @@ Pull in statistical and ADP data for the given years using the custom data_load 
 '''
 
 # pulling historical player adp
-url_adp_rec = f'https://www71.myfantasyleague.com/{year+1}/reports?R=ADP&POS=WR&PERIOD=RECENT&CUTOFF=5&FCOUNT=0&ROOKIES=0&INJURED=1&IS_PPR=3&IS_KEEPER=N&IS_MOCK=1&PAGE=ALL'
+url_adp_rec = f'https://www45.myfantasyleague.com/{year+1}/reports?R=ADP&POS=WR&PERIOD=RECENT&CUTOFF=5&FCOUNT=0&ROOKIES=0&INJURED=1&IS_PPR=3&IS_KEEPER=N&IS_MOCK=1&PAGE=ALL'
 data_adp_rec = pd.read_html(url_adp_rec)[1]
 
 #%%
@@ -655,7 +655,7 @@ updates = [{
 },
 {
     'filter_q': '(all_wr.player=="Calvin Ridley")',
-    'frac': 0.8,
+    'frac': 1,
     'player': "Calvin Ridley",
     'team': 'JAX',
     'age': np.log(28),

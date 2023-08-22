@@ -18,7 +18,8 @@ from zData_Functions import *
 pd.options.mode.chained_assignment = None
 import numpy as np
 
-SOURCE = 'fantasypros'
+#fantasypros or mfl
+SOURCE = 'mfl'
 
 #%%
 
@@ -80,7 +81,7 @@ def get_adp(year, pos, rook=0):
     
     if SOURCE == 'mfl':
         # get the dataset based on year + position
-        URL = f'https://www71.myfantasyleague.com/{year+1}/reports?R=ADP&POS={pos}&ROOKIES={rook}&INJURED=1&CUTOFF=5&FCOUNT=0&IS_PPR=3&IS_KEEPER=N&IS_MOCK=1&PERIOD=RECENT&PAGE=ALL'
+        URL = f'https://www45.myfantasyleague.com/{year+1}/reports?R=ADP&POS={pos}&PERIOD=RECENT&CUTOFF=5&FCOUNT=0&ROOKIES={rook}&INJURED=1&IS_PPR=3&IS_KEEPER=N&IS_MOCK=1&PAGE=ALL'
         data = pd.read_html(URL)[1]
 
         # clean the dataset and print out check dataset

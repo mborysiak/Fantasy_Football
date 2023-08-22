@@ -16,9 +16,6 @@ from sklearn.model_selection import RandomizedSearchCV
 import zHelper_Functions as hf
 pos = hf.pos
 
-import pandas_bokeh
-pandas_bokeh.output_notebook()
-
 import warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning) 
 warnings.filterwarnings("ignore", category=UserWarning) 
@@ -58,7 +55,7 @@ val_year_min = 2012
 
 # define point values for all statistical categories
 pass_yd_per_pt = 0.04 
-pass_td_pt = 4
+pass_td_pt = 5
 int_pts = -2
 sacks = -1
 rush_yd_per_pt = 0.1 
@@ -179,6 +176,7 @@ to_fill = dm.read(f'''SELECT DISTINCT player
                             AND year = {set_year} ''', 'Simulation')
 
 df_predict = df_predict[~df_predict.player.isin(list(to_fill.player))].reset_index(drop=True)
+# df_predict = df_predict.reset_index(drop=True)
 output_start = df_predict[['player', 'pos', 'avg_pick']].copy()
 
 # get the minimum number of training samples for the initial datasets
@@ -186,7 +184,7 @@ print('Shape of Train Set', df_train.shape)
 
 #%%
 
-skm = SciKitModel(df_train, sera_wt=0, r2_wt=1)
+skm = SciKitModel(df_train, sera_wt=0, mse_wt=1)
 X, y = skm.Xy_split(y_metric='y_act', to_drop=['player'])
 cv_time_base = skm.cv_time_splits(X, 'year', 2012)
 
@@ -246,8 +244,9 @@ for p in ['QB', 'RB', 'WR', 'TE']:
     pred_sd_max = pd.DataFrame(sc.transform(cur_predict.avg_pick.values.reshape(-1,1)))
     output.loc[output.pos==p, 'std_dev'] = sd_spline(pred_sd_max)
     output.loc[output.pos==p, 'max_score']  = max_spline(pred_sd_max)
+    output.loc[output.pos==p, 'min_score']  = min_spline(pred_sd_max)
 
-output.iloc[:50]
+output.sort_values(by='pred_fp_per_game', ascending=False).iloc[:50]
 
 #%%
 output['filter_data'] = 'Backfill'
@@ -268,8 +267,9 @@ dm.write_to_db(output, 'Simulation', f'Model_Predictions', 'append')
 
 # %%
 
-date_mod =  dt.date(2022,7,20)
+date_mod =  dt.date(2022,8,21)
 rp = dm.read(f'''SELECT player,
+                        current_or_next_year,
                         pos,
                         avg_pick,
                         pred_fp_per_game,
@@ -287,10 +287,11 @@ rp = rp[rp.date_modified >= date_mod].reset_index(drop=True)
 
 # wm = lambda x: np.average(x, weights=rp.loc[x.index, "pred_fp_per_game"])
 rp = rp.assign(std_dev=rp.std_dev**2, max_score=rp.max_score**2)
-rp = rp.groupby(['player', 'pos','avg_pick']).agg({'pred_fp_per_game': 'sum', 
-                                                    'std_dev': 'sum', 
-                                                    'max_score': 'sum'}).reset_index()
-rp = rp.assign(std_dev=np.sqrt(rp.std_dev), max_score=np.sqrt(rp.max_score))
+rp = rp.groupby(['player', 'current_or_next_year', 'pos','avg_pick']).agg({'pred_fp_per_game': 'sum', 
+                                                                           'std_dev': 'sum', 
+                                                                           'max_score': 'sum'}).reset_index()
+rp = rp.assign(std_dev=np.sqrt(rp.std_dev), max_score=np.sqrt(rp.max_score)).drop('current_or_next_year', axis=1)
+
 # rp.std_dev = rp.std_dev / 1.4
 # rp.max_score = rp.max_score / 1.3
 
@@ -303,7 +304,7 @@ both = dm.read(f'''SELECT player,
                 FROM Model_Predictions
                 WHERE (rush_pass NOT IN ('rush', 'pass', 'rec') OR rush_pass IS NULL)
                       AND version='{pred_version}'
-                      AND pos!='QB'
+                    --  AND pos!='QB'
                       AND year = {set_year}
              ''', 'Simulation')
 
@@ -392,7 +393,11 @@ plot_distribution(sim_output.iloc[idx])
 
 
 # %%
+import shutil
 
 dm.write_to_db(sim_output, 'Simulation', f'Version{sim_version}_{set_year}', 'replace')
 
+src = f'{root_path}/Data/Databases/Simulation.sqlite3'
+dst = f'/Users/borys/OneDrive/Documents/Github/Fantasy_Football_App/app/Simulation.sqlite3'
+shutil.copyfile(src, dst)
 # %%

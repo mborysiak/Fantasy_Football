@@ -13,8 +13,6 @@ from ff.db_operations import DataManage
 from ff import general
 from skmodel import SciKitModel
 from sklearn.model_selection import RandomizedSearchCV
-import pandas_bokeh
-pandas_bokeh.output_notebook()
 
 import warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning) 
@@ -39,13 +37,19 @@ ty_keepers = pd.DataFrame({
     'Rhamondre Stevenson': [35],
     'Devonta Smith': [19],
 
+    'Jk Dobbins': [27],
+    'Austin Ekeler': [85],
+
     "Ja'Marr Chase": [42],
     'Jaylen Waddle': [48],
+
+    'Amari Cooper': [20],
+    'Nick Chubb': [91],
 
     'Aj Brown': [55],
     'Amon Ra St Brown': [21],
 
-    'Breece Hall': [64],
+    'Stefon Diggs': [62],
     'Chris Olave': [26],
 
     'Jalen Hurts': [22],
@@ -54,6 +58,7 @@ ty_keepers = pd.DataFrame({
     'Josh Jacobs': [47],
     'Garrett Wilson': [19],
 
+    'Saquon Barkley': [86],
     'Kenneth Walker': [27],
     
     'Cooper Kupp': [65],
@@ -62,7 +67,6 @@ ty_keepers = pd.DataFrame({
     'Justin Jefferson': [49],
     'Joe Burrow': [22],
 
-    
 
 })
 
@@ -329,7 +333,7 @@ print('Baseline',  round(baseline, 3), round(baseline_r2, 3))
 
 # loop through each potential model
 best_models = {}
-model_list = ['lgbm', 'ridge', 'svr', 'lasso', 'enet', 'xgb', 'knn', 'gbm', 'rf']
+model_list = ['lgbm', 'ridge', 'svr', 'lasso', 'enet', 'xgb', 'knn', 'gbm', 'rf', 'gbmh', 'huber']
 all_pred = pd.DataFrame()
 for m in model_list:
 
@@ -364,12 +368,12 @@ for m in model_list:
 from sklearn.preprocessing import StandardScaler
 from Fix_Standard_Dev import *
 
-drop_models = ('svr', 'lasso', 'enet')
+drop_models = ()#('lgbm', 'svr', 'gbm', 'knn', 'rf', 'gbm', 'gbmh')
 val_data = pd.concat([salaries.loc[salaries.year!=YEAR, ['player', 'pos', 'year']].reset_index(drop=True),
                       pd.Series(y_train, name='y_act'), all_pred[[c for c in all_pred.columns if c not in drop_models]].mean(axis=1)], axis=1)
 val_data.columns = ['player', 'pos', 'year', 'y_act', 'pred_salary']
 mf.show_scatter_plot(val_data.y_act, val_data.pred_salary)
-
+print('MSE:', np.round(mean_squared_error(val_data.y_act, val_data.pred_salary), 3))
 
 #%%
 mf.shap_plot([best_models['lgbm']], X_train, 0)
@@ -392,15 +396,17 @@ mf.shap_plot([best_models['rf']], X_train, 0)
 #%%
 
 pred_sal = np.mean([
-                  best_models['lgbm'].predict(X_test),
+                 best_models['lgbm'].predict(X_test),
                    best_models['ridge'].predict(X_test),
-                    best_models['svr'].predict(X_test),
-                    best_models['lasso'].predict(X_test),
-                    best_models['enet'].predict(X_test),
+                  best_models['svr'].predict(X_test),
+                   best_models['lasso'].predict(X_test),
+                   best_models['enet'].predict(X_test),
                    best_models['xgb'].predict(X_test),
-                    best_models['knn'].predict(X_test),
-                    best_models['gbm'].predict(X_test),
-                    best_models['rf'].predict(X_test)
+                   best_models['knn'].predict(X_test),
+                   best_models['gbm'].predict(X_test),
+                   best_models['rf'].predict(X_test),
+                   best_models['gbmh'].predict(X_test),
+                    best_models['huber'].predict(X_test)
                     ], axis=0)
 
 pred_results = pd.concat([salaries.loc[salaries.year==YEAR,['player', 'pos', 'year', 'salary']].reset_index(drop=True), 
