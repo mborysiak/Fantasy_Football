@@ -70,26 +70,26 @@ for sp, cn, fd, ye, rp in runs:
     #------------
     # Run the Regression, Classification, and Quantiles
     #------------
-    # # set up blank dictionaries for all metrics
-    # out_dict_reg, out_dict_class, out_dict_quant = output_dict(), output_dict(), output_dict()
+    # set up blank dictionaries for all metrics
+    out_dict_reg, out_dict_class, out_dict_quant = output_dict(), output_dict(), output_dict()
 
-    # # run all other models
-    # model_list = ['adp', 'lgbm', 'ridge', 'svr', 'lasso', 'enet', 'huber', 'bridge', 'gbmh', 'xgb', 'knn', 'gbm', 'rf']
-    # for i, m in enumerate(model_list):
-    #     out_dict_reg, _, _ = get_model_output(m, df_train, 'reg', out_dict_reg, pos, set_pos, i, min_samples)
-    # save_output_dict(out_dict_reg, model_output_path, 'reg')
+    # run all other models
+    model_list = ['adp', 'lgbm', 'ridge', 'svr', 'lasso', 'enet', 'huber', 'bridge', 'gbmh', 'xgb', 'knn', 'gbm', 'rf']
+    for i, m in enumerate(model_list):
+        out_dict_reg, _, _ = get_model_output(m, df_train, 'reg', out_dict_reg, pos, set_pos, i, min_samples)
+    save_output_dict(out_dict_reg, model_output_path, 'reg')
 
-    # # run all other models
-    # model_list = ['rf_c', 'gbm_c', 'gbmh_c', 'xgb_c','lgbm_c', 'knn_c', 'lr_c']
-    # for i, m in enumerate(model_list):
-    #     out_dict_class, _, _= get_model_output(m, df_train_class, 'class', out_dict_class, pos, set_pos, i, min_samples)
-    # save_output_dict(out_dict_class, model_output_path, 'class')
+    # run all other models
+    model_list = ['rf_c', 'gbm_c', 'gbmh_c', 'xgb_c','lgbm_c', 'knn_c', 'lr_c']
+    for i, m in enumerate(model_list):
+        out_dict_class, _, _= get_model_output(m, df_train_class, 'class', out_dict_class, pos, set_pos, i, min_samples)
+    save_output_dict(out_dict_class, model_output_path, 'class')
 
-    # # run all other models
-    # for m in ['qr_q', 'gbm_q', 'gbmh_q', 'lgbm_q']:
-    #     for alph in [0.65, 0.8]:
-    #         out_dict_quant, _, _ = get_model_output(m, df_train, 'quantile', out_dict_quant, pos, set_pos, i, alpha=alph)
-    # save_output_dict(out_dict_quant, model_output_path, 'quant')
+    # run all other models
+    for m in ['qr_q', 'gbm_q', 'gbmh_q', 'lgbm_q']:
+        for alph in [0.65, 0.8]:
+            out_dict_quant, _, _ = get_model_output(m, df_train, 'quantile', out_dict_quant, pos, set_pos, i, alpha=alph)
+    save_output_dict(out_dict_quant, model_output_path, 'quant')
 
     #------------
     # Run the Stacking Models and Generate Output
@@ -101,7 +101,7 @@ for sp, cn, fd, ye, rp in runs:
         'num_k_folds': 3,
         'n_iter': 100,
 
-        'sd_metrics': {'pred_fp_per_game': 1, 'pred_fp_per_game_class': 1, 'pred_fp_per_game_quantile': 1}
+        'sd_metrics': {'pred_fp_per_game': 1, 'pred_fp_per_game_class': 1, 'pred_fp_per_game_quantile': 0}
     }
 
 
@@ -149,9 +149,9 @@ for sp, cn, fd, ye, rp in runs:
     #---------------
     # Create Output
     #---------------
-    output = create_output(output_start, predictions, predictions_class, predictions_quant)
+    output = create_output(output_start, best_predictions, best_predictions_class, best_predictions_quant)
     df_val_stack = create_final_val_df(X_stack_player, y_stack, best_val_reg, best_val_class, best_val_quant)
-    output = val_std_dev(output, df_val_stack, metrics=run_params['sd_metrics'], iso_spline='spline', show_plot=True)
+    output = val_std_dev(output, df_val_stack, metrics=run_params['sd_metrics'], iso_spline='iso', show_plot=True)
     display(output.sort_values(by='pred_fp_per_game', ascending=False).iloc[:50])
 
     # save out final results

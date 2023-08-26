@@ -267,7 +267,7 @@ dm.write_to_db(output, 'Simulation', f'Model_Predictions', 'append')
 
 # %%
 
-date_mod =  dt.date(2022,8,21)
+date_mod =  dt.date(2022,8,23)
 rp = dm.read(f'''SELECT player,
                         current_or_next_year,
                         pos,
@@ -312,6 +312,11 @@ both.date_modified = pd.to_datetime(both.date_modified).apply(lambda x: x.date()
 both = both[both.date_modified >= date_mod].reset_index(drop=True)
 
 preds = pd.concat([rp, both], axis=0)
+preds.loc[preds.max_score < preds.pred_fp_per_game, 'max_score'] = (
+    preds.loc[preds.max_score < preds.pred_fp_per_game, 'pred_fp_per_game'] +
+    preds.loc[preds.max_score < preds.pred_fp_per_game, 'std_dev'] * 1.5
+)
+
 preds.pos = preds.pos.apply(lambda x: x.replace('Rookie_', ''))
 preds = preds.groupby(['player', 'pos'], as_index=False).agg({'pred_fp_per_game': 'mean', 
                                                               'std_dev': 'mean',
@@ -388,7 +393,7 @@ sim_output = create_sim_output(preds).reset_index(drop=True)
 
 #%%
 
-idx = sim_output[sim_output.player=="Bijan Robinson"].index[0]
+idx = sim_output[sim_output.player=="Christian Kirk"].index[0]
 plot_distribution(sim_output.iloc[idx])
 
 

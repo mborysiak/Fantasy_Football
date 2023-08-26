@@ -50,7 +50,7 @@ set_year = 2023
 vers = 'beta'
 
 # set with this year or next
-current_or_next_year = 'current'
+current_or_next_year = 'next'
 
 mse_wt = 1
 sera_wt = 0
@@ -91,12 +91,12 @@ pos['TE']['earliest_year'] = 1998
 pos['Rookie_RB']['earliest_year'] = 1998
 pos['Rookie_WR']['earliest_year'] = 1998
 
-pos['QB']['val_start'] = 2012
-pos['RB']['val_start'] = 2012
-pos['WR']['val_start'] = 2012
-pos['TE']['val_start'] = 2012
-pos['Rookie_RB']['val_start'] = 2012
-pos['Rookie_WR']['val_start'] = 2012
+pos['QB']['val_start'] = 2014
+pos['RB']['val_start'] = 2014
+pos['WR']['val_start'] = 2014
+pos['TE']['val_start'] = 2014
+pos['Rookie_RB']['val_start'] = 2014
+pos['Rookie_WR']['val_start'] = 2016
 
 pos['QB']['features'] = 'v2'
 pos['RB']['features'] = 'v2'
@@ -916,7 +916,7 @@ def save_out_results(df, db_name, table_name, pos, set_year, set_pos, current_or
 #     'num_k_folds': 3,
 #     'n_iter': 50,
 
-#     'sd_metrics': {'pred_fp_per_game': 1, 'pred_fp_per_game_class': 1, 'pred_fp_per_game_quantile': 1}
+#     'sd_metrics': {'pred_fp_per_game': 1, 'pred_fp_per_game_class': 1, 'pred_fp_per_game_quantile': 0}
 # }
 
 
@@ -935,7 +935,7 @@ def save_out_results(df, db_name, table_name, pos, set_year, set_pos, current_or
 
 # # get the best stack predictions and average
 # predictions = stack_predictions(X_predict, best_models, final_models, 'reg')
-# best_val_reg, best_predictions, best_score = average_stack_models(scores, final_models, y_stack, stack_val_pred, predictions, 'reg', show_plot=True, min_include=2)
+# best_val_reg, best_predictions, best_score = average_stack_models(df_train, scores, final_models, y_stack, stack_val_pred, predictions, 'reg', show_plot=True, min_include=2)
 
 # #---------------
 # # Classification
@@ -947,7 +947,7 @@ def save_out_results(df, db_name, table_name, pos, set_year, set_pos, current_or
 
 # # get the best stack predictions and average
 # predictions_class = stack_predictions(X_predict, best_models_class, final_models_class, 'class')
-# best_val_class, best_predictions_class, _ = average_stack_models(scores_class, final_models_class, y_stack_class, stack_val_class, predictions_class, 'class', show_plot=True, min_include=2)
+# best_val_class, best_predictions_class, _ = average_stack_models(df_train, scores_class, final_models_class, y_stack_class, stack_val_class, predictions_class, 'class', show_plot=True, min_include=2)
 
 # #---------------
 # # Quantile
@@ -959,14 +959,14 @@ def save_out_results(df, db_name, table_name, pos, set_year, set_pos, current_or
 
 # # get the best stack predictions and average
 # predictions_quant = stack_predictions(X_predict, best_models_quant, final_models_quant, 'quantile')
-# best_val_quant, best_predictions_quant, _ = average_stack_models(scores_quant, final_models_quant, y_stack, stack_val_quant, predictions_quant, 'quantile', show_plot=True, min_include=2)
+# best_val_quant, best_predictions_quant, _ = average_stack_models(df_train, scores_quant, final_models_quant, y_stack, stack_val_quant, predictions_quant, 'quantile', show_plot=True, min_include=2)
 
 # #---------------
 # # Create Output
 # #---------------
-# output = create_output(output_start, predictions, predictions_class, predictions_quant)
+# output = create_output(output_start, best_predictions, best_predictions_class, best_predictions_quant)
 # df_val_stack = create_final_val_df(X_stack_player, y_stack, best_val_reg, best_val_class, best_val_quant)
-# output = val_std_dev(df_val_stack, metrics=run_params['sd_metrics'], iso_spline='iso', show_plot=True)
+# output = val_std_dev(output, df_val_stack, metrics=run_params['sd_metrics'], iso_spline='iso', show_plot=True)
 # output.sort_values(by='pred_fp_per_game', ascending=False).iloc[:50]
 
 
