@@ -47,7 +47,7 @@ set_pos = 'Rookie_WR'
 set_year = 2023
 
 # set the version
-vers = 'beta'
+vers = 'nv'
 
 # set with this year or next
 current_or_next_year = 'next'
@@ -91,10 +91,10 @@ pos['TE']['earliest_year'] = 1998
 pos['Rookie_RB']['earliest_year'] = 1998
 pos['Rookie_WR']['earliest_year'] = 1998
 
-pos['QB']['val_start'] = 2014
-pos['RB']['val_start'] = 2014
-pos['WR']['val_start'] = 2014
-pos['TE']['val_start'] = 2014
+pos['QB']['val_start'] = 2013
+pos['RB']['val_start'] = 2013
+pos['WR']['val_start'] = 2013
+pos['TE']['val_start'] = 2013
 pos['Rookie_RB']['val_start'] = 2014
 pos['Rookie_WR']['val_start'] = 2016
 
@@ -155,11 +155,12 @@ pos['Rookie_RB']['n_splits'] = 4
 pos['Rookie_WR']['n_splits'] = 4
 
 
-def create_pts_dict(pos, set_pos):
+def create_pts_dict(pos, set_pos, vers):
 
     # define point values for all statistical categories
     pass_yd_per_pt = 0.04 
-    pass_td_pt = 5
+    if vers=='beta': pass_td_pt = 5
+    elif vers=='nv': pass_td_pt = 4
     int_pts = -2
     sacks = -1
     rush_yd_per_pt = 0.1 
@@ -864,7 +865,7 @@ def save_out_results(df, db_name, table_name, pos, set_year, set_pos, current_or
 # # Pull in the data and create train and predict sets
 # #------------
 
-# pts_dict = create_pts_dict(pos, set_pos)
+# pts_dict = create_pts_dict(pos, set_pos, vers)
 # pos = class_cutoff(pos)
 # model_output_path = create_pkey(pos, set_pos,current_or_next_year)
 # df = pull_data(pts_dict, set_pos, set_year)
@@ -981,7 +982,7 @@ def save_out_results(df, db_name, table_name, pos, set_year, set_pos, current_or
 
 # set_pos = 'QB'
 # version = 'beta'
-# current_or_next_year = 'current'
+# current_or_next_year = 'next'
 # from sklearn.metrics import mean_squared_error
 
 # rp = dm.read(f'''SELECT player, 
@@ -1045,6 +1046,6 @@ def save_out_results(df, db_name, table_name, pos, set_year, set_pos, current_or
 #                 GROUP BY player, year
 #              ''', 'Simulation').sort_values(by='rp_pred', ascending=False)
 # rp.iloc[:50]
-# # %%
+# %%
 
 # %%

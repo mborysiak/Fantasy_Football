@@ -13,6 +13,8 @@ from ff.db_operations import DataManage
 from ff import general
 from skmodel import SciKitModel
 from sklearn.model_selection import RandomizedSearchCV
+from sklearn.model_selection import cross_val_predict
+from sklearn.metrics import r2_score, mean_squared_error
 
 import warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning) 
@@ -32,30 +34,55 @@ PATH = f'{root_path}/Data/'
 YEAR = 2023
 LEAGUE = 'beta'
 
-# set keepers for this year
-ty_keepers = pd.DataFrame({
+# ty_keepers = {
+#     'Jaylen Waddle': [35],
+#     'Kenneth Walker': [12],
+
+#     'Garrett Wilson': [16],
+#     'Nick Chubb': [54],
+
+#     'Justin Jefferson': [81],
+#     'Tyreek Hill': [64],
+
+#     'Calvin Ridley': [10],
+#     'Christian Mccaffrey': [65],
+
+#     'Saquon Barkley': [69],
+#     'Cooper Kupp': [67],
+
+#     'Aj Brown': [52],
+#     'Jamarr Chase': [31],
+
+#     'Jalen Hurts': [26],
+#     'Josh Jacobs': [63],
+
+#     'Deandre Hopkins': [19],
+#     'Trevor Lawrence': [19]
+# }
+
+ty_keepers = {
     'Rhamondre Stevenson': [35],
     'Devonta Smith': [19],
 
     'Jk Dobbins': [27],
-    'Austin Ekeler': [85],
+    'Tony Pollard': [36],
 
-    "Ja'Marr Chase": [42],
+    "Jamarr Chase": [42],
     'Jaylen Waddle': [48],
 
     'Amari Cooper': [20],
     'Nick Chubb': [91],
 
     'Aj Brown': [55],
-    'Amon Ra St Brown': [21],
+    'Amon Ra St Brown': [26],
 
-    'Stefon Diggs': [62],
-    'Chris Olave': [26],
+    'Travis Kelce': [65],
+    'Patrick Mahomes': [39],
 
     'Jalen Hurts': [22],
     'Ceedee Lamb': [59],
 
-    'Josh Jacobs': [47],
+    'James Conner': [28],
     'Garrett Wilson': [19],
 
     'Saquon Barkley': [86],
@@ -64,12 +91,10 @@ ty_keepers = pd.DataFrame({
     'Cooper Kupp': [65],
     'Javonte Williams': [11],
 
-    'Justin Jefferson': [49],
-    'Joe Burrow': [22],
+    'Justin Jefferson': [49]
+}
 
-
-})
-
+ty_keepers = pd.DataFrame(ty_keepers)
 ty_keepers = ty_keepers.T.reset_index()
 ty_keepers.columns = ['player', 'ty_keeper_sal']
 ty_keepers['year'] = YEAR
@@ -169,17 +194,21 @@ def clean_results(path, fname, year, league, team_split=True):
     
     return results
 
-FNAME = f'{LEAGUE}_{YEAR}_results'
-results = clean_results(PATH, FNAME, YEAR, LEAGUE)
-dm.delete_from_db('Simulation', 'Actual_Salaries', f"year='{YEAR}' AND league='{LEAGUE}'")
-dm.write_to_db(results, 'Simulation', 'Actual_Salaries', 'append')
+# FNAME = f'{LEAGUE}_{YEAR}_results'
+# results = clean_results(PATH, FNAME, YEAR, LEAGUE)
+# dm.delete_from_db('Simulation', 'Actual_Salaries', f"year='{YEAR}' AND league='{LEAGUE}'")
+# dm.write_to_db(results, 'Simulation', 'Actual_Salaries', 'append')
 
-# push the actuals to salary database to re-run simulation
-to_actual = dm.read(f"SELECT * FROM Actual_Salaries WHERE year={YEAR}", 'Simulation')
-to_actual = to_actual[['player', 'actual_salary', 'year', 'league']].rename(columns={'actual_salary': 'salary'})
-to_actual['league'] = to_actual.league.apply(lambda x: f'{x}_actual')
-dm.delete_from_db('Simulation', 'Salaries', f"year={YEAR} AND league='{LEAGUE}_actual'")
-dm.write_to_db(to_actual, 'Simulation', 'Salaries', 'append')
+# # push the actuals to salary database to re-run simulation
+# to_actual = dm.read(f"SELECT * FROM Actual_Salaries WHERE year={YEAR}", 'Simulation')
+# to_actual = to_actual[['player', 'actual_salary', 'year', 'league']].rename(columns={'actual_salary': 'salary'})
+# to_actual['league'] = to_actual.league.apply(lambda x: f'{x}_actual')
+# to_actual['std_dev'] = 0.1
+# to_actual['min_score'] = to_actual.salary - 1
+# to_actual['max_score'] = to_actual.salary + 1
+
+# dm.delete_from_db('Simulation', 'Salaries', f"year={YEAR} AND league='{LEAGUE}_actual'")
+# dm.write_to_db(to_actual, 'Simulation', 'Salaries', 'append')
 
 #%%
 
@@ -318,8 +347,7 @@ y_test = y[X_test.index].reset_index(drop=True); X_test.reset_index(drop=True, i
 
 
 #%%
-from sklearn.model_selection import cross_val_predict
-from sklearn.metrics import r2_score, mean_squared_error
+
 
 baseline_data = salaries[salaries.year!=YEAR]
 
@@ -396,9 +424,9 @@ mf.shap_plot([best_models['rf']], X_train, 0)
 #%%
 
 pred_sal = np.mean([
-                 best_models['lgbm'].predict(X_test),
+                   best_models['lgbm'].predict(X_test),
                    best_models['ridge'].predict(X_test),
-                  best_models['svr'].predict(X_test),
+                   best_models['svr'].predict(X_test),
                    best_models['lasso'].predict(X_test),
                    best_models['enet'].predict(X_test),
                    best_models['xgb'].predict(X_test),
@@ -409,27 +437,37 @@ pred_sal = np.mean([
                     best_models['huber'].predict(X_test)
                     ], axis=0)
 
-pred_results = pd.concat([salaries.loc[salaries.year==YEAR,['player', 'pos', 'year', 'salary']].reset_index(drop=True), 
+pred_results = pd.concat([salaries.loc[salaries.year==YEAR,['player', 'pos', 'year', 'salary', 'is_keeper', 'actual_salary']].reset_index(drop=True), 
                           pd.Series(pred_sal, name='pred_salary')], axis=1)
 
 pred_results = pred_results.sort_values(by='salary', ascending=False)
 pred_results.loc[pred_results.pred_salary<1, 'pred_salary'] = 1
 pred_results.pred_salary = pred_results.pred_salary.astype('int')
 
+# remove keepers and calculate extra dollars available to inflate predictions
+pred_results.loc[pred_results.is_keeper==1, 'pred_salary'] = pred_results.loc[pred_results.is_keeper==1, 'actual_salary']
 pred_results['pred_diff'] = pred_results.pred_salary - pred_results.salary
-pred_results.sort_values(by='pred_diff', ascending=False).iloc[:25]
 
+# use predictions minus available dollars to inflate predictions
 total_diff = pred_results.pred_diff.sum()
 print('Total Diff:', total_diff)
+
 total_from_available = pred_results.iloc[:156].pred_salary.sum() - 3600
 print('Total from available:', total_from_available)
-total_off = -(total_diff + total_from_available)/2
 
+# total_off = np.max([0,-(total_diff + total_from_available)/2])
+total_off = np.max([0, -total_from_available])
+
+# display the results
 display(pred_results.iloc[:50])
 display(pred_results[np.abs(pred_results.pred_diff) > 4].sort_values(by='pred_diff', ascending=False))
 
-pred_results['pred_salary'] = (pred_results.pred_salary * (1+ (total_off / 3600))).astype('int')
+pred_results.loc[pred_results.is_keeper==0, 'pred_salary'] = (
+                                                              pred_results.loc[pred_results.is_keeper==0, 'pred_salary'] 
+                                                              * (1 + (total_off / 3600))
+                                                              ).astype('int')
 pred_results.iloc[:50]
+
 #%%
 
 for p in ['QB', 'RB', 'WR', 'TE']:
@@ -472,7 +510,7 @@ dm.write_to_db(output, 'Simulation', 'Salaries', 'append')
 
 # +
 from sklearn.preprocessing import StandardScaler
-YEAR = 2022
+YEAR = 2023
 
 # read in the injury predictor file
 inj = pd.read_csv(f'{PATH}/OtherData/InjuryPredictor/injury_predictor_{YEAR}.csv', 
@@ -568,14 +606,26 @@ train = train.sample(frac=1).reset_index(drop=True)
 skm = SciKitModel(train)
 X_train, y_train = skm.Xy_split('y_act', to_drop=['player', 'games_missed'])
 
-pipe = skm.model_pipe([skm.piece('enet')])
-params = skm.default_params(pipe, 'rand')
-best_model = skm.random_search(pipe, X_train, y_train, params, cv=5)
+pipe = skm.model_pipe([
+                            skm.piece('std_scale'), 
+                            skm.piece('k_best'),
+                            skm.piece('bridge')
+                            ])
 
-best_model.fit(X_train, y_train)
+params = skm.default_params(pipe, 'rand')
+params['k_best__k'] = range(1,X_train.shape[1])
+
+search = RandomizedSearchCV(pipe, params, n_iter=50, scoring='neg_mean_squared_error',refit=True)
+search.fit(X_train, y_train)
+best_model = search.best_estimator_
+
+cv_pred = cross_val_predict(best_model, X_train, y_train)
+mse = np.round(mean_squared_error(cv_pred, y_train), 3)
+r2 = np.round(r2_score(cv_pred, y_train), 3)
+
 predictions = pd.Series(best_model.predict(X_test[X_train.columns]), name='mean_risk')
-print(skm.cv_score(best_model, X_train, y_train))
-mean_squared_error(np.full(len(y_train), y_train.mean()), y_train)
+print('Test Scores:', mse, r2)
+print('Null model:', mean_squared_error(np.full(len(y_train), y_train.mean()), y_train))
 
 # %%
 
@@ -587,4 +637,14 @@ predictions = pd.concat([X_test[['player']], predictions], axis=1).sort_values(b
 predictions['year'] = YEAR
 dm.delete_from_db('Simulation', 'Injuries', f"year='{YEAR}'")
 dm.write_to_db(predictions, 'Simulation', 'Injuries', 'append')
+# %%
+
+pred = dm.read("SELECT * FROM Salaries WHERE year=2023 AND league='betapred'", 'Simulation')
+actual = dm.read("SELECT * FROM Actual_Salaries WHERE year=2023 AND league='beta' AND is_keeper=0", 'Simulation')
+combined = pd.merge(pred[['player', 'salary']], actual[['player', 'actual_salary']], on='player')
+print(r2_score(combined.actual_salary, combined.salary))
+combined.plot.scatter(x='salary', y='actual_salary')
+combined['error'] = combined.actual_salary - combined.salary
+display(combined.sort_values(by='error').iloc[:40])
+display(combined.sort_values(by='error').iloc[-40:])
 # %%

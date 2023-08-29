@@ -10,26 +10,26 @@ set_year = 2023
 show_plot = True
 
 runs = [
-        ['Rookie_RB', 'current', 'greater_equal', 0, ''],
-        ['Rookie_RB', 'next', 'greater_equal', 0, ''],
-        ['Rookie_WR', 'current', 'greater_equal', 0, ''],
-        ['Rookie_WR', 'next', 'greater_equal', 0, ''],
-        ['WR', 'current', 'greater_equal', 0, ''],
-        ['WR', 'current', 'less_equal', 4, ''],
-        ['WR', 'current', 'greater_equal', 5, ''],
-        ['WR', 'next', 'greater_equal', 0, ''],
-        ['WR', 'next', 'less_equal', 4, ''],
-        ['WR', 'next', 'greater_equal', 5, ''],
-        ['RB', 'current', 'greater_equal', 0, 'both'],
-        ['RB', 'current', 'less_equal', 3, ''],
-        ['RB', 'current', 'greater_equal', 4, ''],
-        ['RB', 'next', 'greater_equal', 0, ''],
-        ['RB', 'next', 'less_equal', 3, ''],
-        ['RB', 'next', 'greater_equal', 4, ''],
-        ['RB', 'current', 'greater_equal', 0, 'rush'],
-        ['RB', 'current', 'greater_equal', 0, 'rec'],
-        ['TE', 'current', 'greater_equal', 0, ''],
-        ['TE', 'next', 'greater_equal', 0, ''],
+        # ['Rookie_RB', 'current', 'greater_equal', 0, ''],
+        # ['Rookie_RB', 'next', 'greater_equal', 0, ''],
+        # ['Rookie_WR', 'current', 'greater_equal', 0, ''],
+        # ['Rookie_WR', 'next', 'greater_equal', 0, ''],
+        # ['WR', 'current', 'greater_equal', 0, ''],
+        # ['WR', 'current', 'less_equal', 4, ''],
+        # ['WR', 'current', 'greater_equal', 5, ''],
+        # ['WR', 'next', 'greater_equal', 0, ''],
+        # ['WR', 'next', 'less_equal', 4, ''],
+        # ['WR', 'next', 'greater_equal', 5, ''],
+        # ['RB', 'current', 'greater_equal', 0, 'both'],
+        # ['RB', 'current', 'less_equal', 3, ''],
+        # ['RB', 'current', 'greater_equal', 4, ''],
+        # ['RB', 'next', 'greater_equal', 0, ''],
+        # ['RB', 'next', 'less_equal', 3, ''],
+        # ['RB', 'next', 'greater_equal', 4, ''],
+        # ['RB', 'current', 'greater_equal', 0, 'rush'],
+        # ['RB', 'current', 'greater_equal', 0, 'rec'],
+        # ['TE', 'current', 'greater_equal', 0, ''],
+        # ['TE', 'next', 'greater_equal', 0, ''],
         ['QB', 'current', 'greater_equal', 0, 'both'],
         ['QB', 'next', 'greater_equal', 0, 'both'],
         ['QB', 'current', 'greater_equal', 0, 'rush'],
@@ -52,7 +52,7 @@ for sp, cn, fd, ye, rp in runs:
     # Pull in the data and create train and predict sets
     #------------
 
-    pts_dict = create_pts_dict(pos, set_pos)
+    pts_dict = create_pts_dict(pos, set_pos, vers)
     pos = class_cutoff(pos)
     model_output_path = create_pkey(pos, set_pos, cn)
     df = pull_data(pts_dict, set_pos, set_year)
@@ -67,29 +67,29 @@ for sp, cn, fd, ye, rp in runs:
     if current_or_next_year == 'next' and 'Rookie' not in set_pos: 
         df_train, df_train_class = adjust_current_or_next(df_train, df_train_class)
 
-    #------------
-    # Run the Regression, Classification, and Quantiles
-    #------------
-    # set up blank dictionaries for all metrics
-    out_dict_reg, out_dict_class, out_dict_quant = output_dict(), output_dict(), output_dict()
+    # #------------
+    # # Run the Regression, Classification, and Quantiles
+    # #------------
+    # # set up blank dictionaries for all metrics
+    # out_dict_reg, out_dict_class, out_dict_quant = output_dict(), output_dict(), output_dict()
 
-    # run all other models
-    model_list = ['adp', 'lgbm', 'ridge', 'svr', 'lasso', 'enet', 'huber', 'bridge', 'gbmh', 'xgb', 'knn', 'gbm', 'rf']
-    for i, m in enumerate(model_list):
-        out_dict_reg, _, _ = get_model_output(m, df_train, 'reg', out_dict_reg, pos, set_pos, i, min_samples)
-    save_output_dict(out_dict_reg, model_output_path, 'reg')
+    # # run all other models
+    # model_list = ['adp', 'lgbm', 'ridge', 'svr', 'lasso', 'enet', 'huber', 'bridge', 'gbmh', 'xgb', 'knn', 'gbm', 'rf']
+    # for i, m in enumerate(model_list):
+    #     out_dict_reg, _, _ = get_model_output(m, df_train, 'reg', out_dict_reg, pos, set_pos, i, min_samples)
+    # save_output_dict(out_dict_reg, model_output_path, 'reg')
 
-    # run all other models
-    model_list = ['rf_c', 'gbm_c', 'gbmh_c', 'xgb_c','lgbm_c', 'knn_c', 'lr_c']
-    for i, m in enumerate(model_list):
-        out_dict_class, _, _= get_model_output(m, df_train_class, 'class', out_dict_class, pos, set_pos, i, min_samples)
-    save_output_dict(out_dict_class, model_output_path, 'class')
+    # # run all other models
+    # model_list = ['rf_c', 'gbm_c', 'gbmh_c', 'xgb_c','lgbm_c', 'knn_c', 'lr_c']
+    # for i, m in enumerate(model_list):
+    #     out_dict_class, _, _= get_model_output(m, df_train_class, 'class', out_dict_class, pos, set_pos, i, min_samples)
+    # save_output_dict(out_dict_class, model_output_path, 'class')
 
-    # run all other models
-    for m in ['qr_q', 'gbm_q', 'gbmh_q', 'lgbm_q']:
-        for alph in [0.65, 0.8]:
-            out_dict_quant, _, _ = get_model_output(m, df_train, 'quantile', out_dict_quant, pos, set_pos, i, alpha=alph)
-    save_output_dict(out_dict_quant, model_output_path, 'quant')
+    # # run all other models
+    # for m in ['qr_q', 'gbm_q', 'gbmh_q', 'lgbm_q']:
+    #     for alph in [0.65, 0.8]:
+    #         out_dict_quant, _, _ = get_model_output(m, df_train, 'quantile', out_dict_quant, pos, set_pos, i, alpha=alph)
+    # save_output_dict(out_dict_quant, model_output_path, 'quant')
 
     #------------
     # Run the Stacking Models and Generate Output
@@ -163,4 +163,25 @@ for sp, cn, fd, ye, rp in runs:
 
 # %%
  
+# %%
+from Stacking_Model import *
+
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning)
+warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
+
+
+set_year = 2023
+show_plot = True
+
+df = dm.read(f'''SELECT * 
+                 FROM Model_Predictions
+                 WHERE year={set_year}
+                       AND version='beta' 
+             ''', "Simulation")
+df = df[df.pos!='QB'].reset_index(drop=True)
+df['version'] = 'nv'
+
+dm.delete_from_db('Simulation', 'Model_Predictions', f'''year={set_year} AND version='nv' ''')
+dm.write_to_db(df, db_name='Simulation', table_name='Model_Predictions', if_exist='append')
 # %%

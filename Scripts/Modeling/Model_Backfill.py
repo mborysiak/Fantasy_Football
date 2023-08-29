@@ -32,8 +32,8 @@ set_config(display='diagram')
 #==========
 
 
-pred_version = 'beta'
-sim_version = 'beta'
+pred_version = 'nv'
+sim_version = 'nv'
 
 #############
 
@@ -267,7 +267,7 @@ dm.write_to_db(output, 'Simulation', f'Model_Predictions', 'append')
 
 # %%
 
-date_mod =  dt.date(2022,8,23)
+date_mod =  dt.date(2022,8,26)
 rp = dm.read(f'''SELECT player,
                         current_or_next_year,
                         pos,
@@ -323,8 +323,6 @@ preds = preds.groupby(['player', 'pos'], as_index=False).agg({'pred_fp_per_game'
                                                               'max_score': 'mean'})
 preds = preds[preds.pred_fp_per_game > 0].reset_index(drop=True)
 
-preds.loc[preds.player=='Kyler Murray', 'pred_fp_per_game'] = 15
-preds.loc[preds.player=='Kyler Murray', 'pred_fp_per_game'] = 15
 preds.loc[preds.player=='Kyler Murray', 'pred_fp_per_game'] = 15
 
 display(preds[((preds.pos=='QB'))].sort_values(by='pred_fp_per_game', ascending=False).iloc[:15])
