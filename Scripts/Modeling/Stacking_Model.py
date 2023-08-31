@@ -41,13 +41,13 @@ db_path = f'{root_path}/Data/Databases/'
 dm = DataManage(db_path)
 
 # set to position to analyze: 'RB', 'WR', 'QB', or 'TE'
-set_pos = 'Rookie_WR'
+set_pos = 'QB'
 
 # set year to analyze
 set_year = 2023
 
 # set the version
-vers = 'nv'
+vers = 'beta'
 
 # set with this year or next
 current_or_next_year = 'next'
@@ -421,6 +421,22 @@ def adjust_current_or_next(df_train, df_train_class):
     df_train_class = df_train_class.dropna().sort_values(by='year').reset_index(drop=True)
 
     return df_train, df_train_class
+
+
+def adjust_three_year_avg(df_train):
+    
+    df_train = df_train.sort_values(by=['player', 'year']).reset_index(drop=True)
+    
+    df_train['y_act_next'] = df_train.groupby('player').y_act.shift(-1)
+    df_train['y_act_two_years'] = df_train.groupby('player').y_act.shift(-2)
+    
+    df_train['future_counts'] = df_train[['y_act', 'y_act_next', 'y_act_two_years']].count(axis=1)
+    df_train = df_train[df_train.future_counts >= 2].reset_index(drop=True)
+    
+    df_train['y_act'] = df_train[['y_act', 'y_act_next', 'y_act_two_years']].mean(axis=1)
+    df_train = df_train.drop(['y_act_next', 'y_act_two_years', 'future_counts'], axis=1).sort_values(by='year').reset_index(drop=True)
+    
+    return df_train
 
 #=================
 # Model Functions
@@ -880,7 +896,8 @@ def save_out_results(df, db_name, table_name, pos, set_year, set_pos, current_or
 # if current_or_next_year == 'next' and 'Rookie' not in set_pos: 
 #     df_train, df_train_class = adjust_current_or_next(df_train, df_train_class)
 
-# #%%
+
+#%%
 # #------------
 # # Run the Regression, Classification, and Quantiles
 # #------------

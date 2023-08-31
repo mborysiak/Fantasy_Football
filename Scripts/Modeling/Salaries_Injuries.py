@@ -32,67 +32,67 @@ dm = DataManage(db_path)
 # set core path
 PATH = f'{root_path}/Data/'
 YEAR = 2023
-LEAGUE = 'beta'
-
-# ty_keepers = {
-#     'Jaylen Waddle': [35],
-#     'Kenneth Walker': [12],
-
-#     'Garrett Wilson': [16],
-#     'Nick Chubb': [54],
-
-#     'Justin Jefferson': [81],
-#     'Tyreek Hill': [64],
-
-#     'Calvin Ridley': [10],
-#     'Christian Mccaffrey': [65],
-
-#     'Saquon Barkley': [69],
-#     'Cooper Kupp': [67],
-
-#     'Aj Brown': [52],
-#     'Jamarr Chase': [31],
-
-#     'Jalen Hurts': [26],
-#     'Josh Jacobs': [63],
-
-#     'Deandre Hopkins': [19],
-#     'Trevor Lawrence': [19]
-# }
+LEAGUE = 'nv'
 
 ty_keepers = {
-    'Rhamondre Stevenson': [35],
-    'Devonta Smith': [19],
+    'Jaylen Waddle': [35],
+    'Kenneth Walker': [12],
 
-    'Jk Dobbins': [27],
-    'Tony Pollard': [36],
+    'Garrett Wilson': [16],
+    'Nick Chubb': [54],
 
-    "Jamarr Chase": [42],
-    'Jaylen Waddle': [48],
+    'Justin Jefferson': [81],
+    'Tyreek Hill': [64],
 
-    'Amari Cooper': [20],
-    'Nick Chubb': [91],
+    'Calvin Ridley': [10],
+    'Christian Mccaffrey': [65],
 
-    'Aj Brown': [55],
-    'Amon Ra St Brown': [26],
+    'Saquon Barkley': [69],
+    'Cooper Kupp': [67],
 
-    'Travis Kelce': [65],
-    'Patrick Mahomes': [39],
+    'Aj Brown': [52],
+    'Jamarr Chase': [31],
 
-    'Jalen Hurts': [22],
-    'Ceedee Lamb': [59],
+    'Jalen Hurts': [26],
+    'Josh Jacobs': [63],
 
-    'James Conner': [28],
-    'Garrett Wilson': [19],
-
-    'Saquon Barkley': [86],
-    'Kenneth Walker': [27],
-    
-    'Cooper Kupp': [65],
-    'Javonte Williams': [11],
-
-    'Justin Jefferson': [49]
+    'Deandre Hopkins': [19],
+    'Trevor Lawrence': [19]
 }
+
+# ty_keepers = {
+#     'Rhamondre Stevenson': [35],
+#     'Devonta Smith': [19],
+
+#     'Jk Dobbins': [27],
+#     'Tony Pollard': [36],
+
+#     "Jamarr Chase": [42],
+#     'Jaylen Waddle': [48],
+
+#     'Amari Cooper': [20],
+#     'Nick Chubb': [91],
+
+#     'Aj Brown': [55],
+#     'Amon Ra St Brown': [26],
+
+#     'Travis Kelce': [65],
+#     'Patrick Mahomes': [39],
+
+#     'Jalen Hurts': [22],
+#     'Ceedee Lamb': [59],
+
+#     'James Conner': [28],
+#     'Garrett Wilson': [19],
+
+#     'Saquon Barkley': [86],
+#     'Kenneth Walker': [27],
+    
+#     'Cooper Kupp': [65],
+#     'Javonte Williams': [11],
+
+#     'Justin Jefferson': [49]
+# }
 
 ty_keepers = pd.DataFrame(ty_keepers)
 ty_keepers = ty_keepers.T.reset_index()
@@ -194,21 +194,21 @@ def clean_results(path, fname, year, league, team_split=True):
     
     return results
 
-# FNAME = f'{LEAGUE}_{YEAR}_results'
-# results = clean_results(PATH, FNAME, YEAR, LEAGUE)
-# dm.delete_from_db('Simulation', 'Actual_Salaries', f"year='{YEAR}' AND league='{LEAGUE}'")
-# dm.write_to_db(results, 'Simulation', 'Actual_Salaries', 'append')
+FNAME = f'{LEAGUE}_{YEAR}_results'
+results = clean_results(PATH, FNAME, YEAR, LEAGUE)
+dm.delete_from_db('Simulation', 'Actual_Salaries', f"year='{YEAR}' AND league='{LEAGUE}'")
+dm.write_to_db(results, 'Simulation', 'Actual_Salaries', 'append')
 
-# # push the actuals to salary database to re-run simulation
-# to_actual = dm.read(f"SELECT * FROM Actual_Salaries WHERE year={YEAR}", 'Simulation')
-# to_actual = to_actual[['player', 'actual_salary', 'year', 'league']].rename(columns={'actual_salary': 'salary'})
-# to_actual['league'] = to_actual.league.apply(lambda x: f'{x}_actual')
-# to_actual['std_dev'] = 0.1
-# to_actual['min_score'] = to_actual.salary - 1
-# to_actual['max_score'] = to_actual.salary + 1
+# push the actuals to salary database to re-run simulation
+to_actual = dm.read(f"SELECT * FROM Actual_Salaries WHERE year={YEAR}", 'Simulation')
+to_actual = to_actual[['player', 'actual_salary', 'year', 'league']].rename(columns={'actual_salary': 'salary'})
+to_actual['league'] = to_actual.league.apply(lambda x: f'{x}_actual')
+to_actual['std_dev'] = 0.1
+to_actual['min_score'] = to_actual.salary - 1
+to_actual['max_score'] = to_actual.salary + 1
 
-# dm.delete_from_db('Simulation', 'Salaries', f"year={YEAR} AND league='{LEAGUE}_actual'")
-# dm.write_to_db(to_actual, 'Simulation', 'Salaries', 'append')
+dm.delete_from_db('Simulation', 'Salaries', f"year={YEAR} AND league='{LEAGUE}_actual'")
+dm.write_to_db(to_actual, 'Simulation', 'Salaries', 'append')
 
 #%%
 
@@ -307,7 +307,8 @@ def remove_outliers(salaries):
                     ['Leonard Fournette', 2020], #waived
                     ['Ronald Jones', 2020], #fournette came
                     ['Derrius Guice', 2019], #injured
-                    ['Brian Robinson', 2022] #shot
+                    ['Brian Robinson', 2022], #shot
+                  #  ['Jonathan Taylor', 2023] # pup / holdout
                     ]
     for p, y in outlier_list:
         salaries = salaries[~((salaries.player==p) & (salaries.year==y))].reset_index(drop=True)
@@ -494,8 +495,8 @@ pred_results.loc[pred_results.min_score > pred_results.pred_salary, 'min_score']
     pred_results.loc[pred_results.min_score > pred_results.pred_salary, 'pred_salary'] - \
         2 * pred_results.loc[pred_results.min_score > pred_results.pred_salary, 'std_dev']
 
-
 pred_results.iloc[:50]
+
 #%%
 pred_results['league'] = LEAGUE + 'pred'
 output = pred_results[['player', 'pred_salary', 'year', 'league', 'std_dev', 'min_score', 'max_score']]
@@ -529,35 +530,6 @@ inj.player = inj.player.apply(name_clean)
 dm.delete_from_db('Simulation', 'Injuries_Source', f"year='{YEAR}'")
 dm.write_to_db(inj, 'Simulation', 'Injuries_Source', 'append')
 
-#%%
-
-# inj = dm.read(f'''SELECT * FROM Injuries_Source WHERE year={YEAR}''', 'Simulation')
-# inj = inj.drop(['inj_risk', 'year'], axis=1)
-# inj.player = inj.player.apply(name_clean)
-
-# # scale the data and set minimum to 0
-# X = StandardScaler().fit_transform(inj.iloc[:, 1:])
-# inj = pd.concat([pd.DataFrame(inj.player),
-#                  pd.DataFrame(X, columns=['pct_miss_one', 'proj_games_missed', 'pct_per_game'])], 
-#                  axis=1)
-# for col in ['pct_miss_one', 'proj_games_missed', 'pct_per_game']:
-#     inj[col] = inj[col] + abs(inj[col].min())
-    
-# # take the mean risk value
-# inj['mean_risk'] = inj.iloc[:, 1:].mean(axis=1)
-# inj = inj[['player', 'mean_risk']].sort_values(by='mean_risk').reset_index(drop=True)
-
-
-# # adjust specific players if needed
-# pts = []
-# players = []
-# for pt, pl in zip(pts, players):
-#     inj.loc[inj.player==pl, 'mean_risk'] = inj.loc[inj.player==pl, 'mean_risk'] + pt
-    
-# inj['year'] = YEAR
-
-# dm.delete_from_db('Simulation', 'Injuries', f"year='{YEAR}'")
-# dm.write_to_db(inj, 'Simulation', 'Injuries', 'append')
 
 # %%
 
@@ -637,10 +609,11 @@ predictions = pd.concat([X_test[['player']], predictions], axis=1).sort_values(b
 predictions['year'] = YEAR
 dm.delete_from_db('Simulation', 'Injuries', f"year='{YEAR}'")
 dm.write_to_db(predictions, 'Simulation', 'Injuries', 'append')
+
 # %%
 
-pred = dm.read("SELECT * FROM Salaries WHERE year=2023 AND league='betapred'", 'Simulation')
-actual = dm.read("SELECT * FROM Actual_Salaries WHERE year=2023 AND league='beta' AND is_keeper=0", 'Simulation')
+pred = dm.read("SELECT * FROM Salaries WHERE year=2023 AND league='nvpred'", 'Simulation')
+actual = dm.read("SELECT * FROM Actual_Salaries WHERE year=2023 AND league='nv' AND is_keeper=0", 'Simulation')
 combined = pd.merge(pred[['player', 'salary']], actual[['player', 'actual_salary']], on='player')
 print(r2_score(combined.actual_salary, combined.salary))
 combined.plot.scatter(x='salary', y='actual_salary')
