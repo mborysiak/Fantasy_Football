@@ -2,7 +2,7 @@
 #%%
 
 # last year's statistics and adp to pull and append to database
-year = 2022
+year = 2023
 
 # from re import 
 from ff.db_operations import DataManage
@@ -210,7 +210,7 @@ url_rec = f'https://www.pro-football-reference.com/years/{year}/receiving.htm'
 data_rec = pd.read_html(url_rec)[0]
 
 # pulling historical player adp for runningbacks
-url_adp_rush = f'https://www45.myfantasyleague.com/{year+1}/reports?R=ADP&POS=RB&PERIOD=RECENT&CUTOFF=5&FCOUNT=0&ROOKIES=0&INJURED=1&IS_PPR=3&IS_KEEPER=N&IS_MOCK=1&PAGE=ALL'
+url_adp_rush = f'https://api.myfantasyleague.com/{year+1}/reports?R=ADP&POS=RB&PERIOD=RECENT&CUTOFF=5&FCOUNT=0&ROOKIES=0&INJURED=1&IS_PPR=3&IS_KEEPER=N&IS_MOCK=1&PAGE=ALL'
 data_adp_rush = pd.read_html(url_adp_rush)[1]
 
 # pulling historical redzone receiving data
@@ -342,29 +342,21 @@ all_rb =dm.read("SELECT * FROM rb_stats", 'Season_Stats')
 df_rb = df_rb.drop([c for c in df_rb.columns if c not in all_rb], axis=1)
 rb_updates = [
     {
-        'filter_q': '(all_rb.player=="Jonathan Taylor")',
-        'frac': 1,
-        'player': "Breece Hall",
-        'team': 'NYJ',
-        'age': 22,
+        'filter_q': '(all_rb.player=="Nick Chubb")',
+        'frac': 0.75,
+        'player': "Nick Chubb",
+        'team': 'CLE',
+        'age': 28,
         'pos': 'RB'
     },
     {
-        'filter_q': '(all_rb.player=="Melvin Gordon") & (all_rb.games > 12)',
-        'frac': 0.9,
-        'player': "Javonte Williams",
-        'team': 'DEN',
-        'age': 22,
+        'filter_q': '(all_rb.player=="Jk Dobbins")',
+        'frac': 1,
+        'player': "Jk Dobbins",
+        'team': 'LAC',
+        'age': 26,
         'pos': 'RB'
     }, 
-    {
-        'filter_q': '(all_rb.player=="Rashaad Penny") | (all_rb.player=="Miles Sanders")',
-        'frac': 1,
-        'player': "Rashaad Penny",
-        'team': 'PHI',
-        'age': 27,
-        'pos': 'RB'
-    },
     
 ]
 
@@ -552,7 +544,7 @@ Pull in statistical and ADP data for the given years using the custom data_load 
 '''
 
 # pulling historical player adp
-url_adp_rec = f'https://www45.myfantasyleague.com/{year+1}/reports?R=ADP&POS=WR&PERIOD=RECENT&CUTOFF=5&FCOUNT=0&ROOKIES=0&INJURED=1&IS_PPR=3&IS_KEEPER=N&IS_MOCK=1&PAGE=ALL'
+url_adp_rec = f'https://api.myfantasyleague.com/{year+1}/reports?R=ADP&POS=WR&PERIOD=RECENT&CUTOFF=5&FCOUNT=0&ROOKIES=0&INJURED=1&IS_PPR=3&IS_KEEPER=N&IS_MOCK=1&PAGE=ALL'
 data_adp_rec = pd.read_html(url_adp_rec)[1]
 
 #%%
@@ -618,50 +610,15 @@ missing[(missing.games.isnull()) | (missing.games < 8)]
 all_wr = dm.read("SELECT * FROM WR_Stats", 'Season_Stats')
 
 updates = [{
-    'filter_q': '((all_wr.player=="Rashod Bateman") | (all_wr.player=="Stefon Diggs"))',
-    'frac': 0.6,
-    'player': "Rashod Bateman",
-    'team': 'BAL',
-    'age': np.log(24),
-    'new_team': 0,
-    'pos': 'WR'
-},
- {
-    'filter_q': '((all_wr.player=="Will Fuller") & (all_wr.games > 12))',
-    'frac': 1,
-    'player': "Jameson Williams",
-    'team': 'DET',
-    'age': np.log(23),
-    'new_team': 0,
-    'pos': 'WR'
-},
- {
-    'filter_q': '(all_wr.player=="Michael Thomas")',
-    'frac': 0.65,
-    'player': "Michael Thomas",
-    'team': 'NOR',
-    'age': np.log(30.5),
-    'new_team': 0,
-    'pos': 'WR'
-},
-{
-    'filter_q': '(all_wr.player=="Wandale Robinson") | (all_wr.player=="Tyler Lockett")',
+    'filter_q': '(all_wr.player=="Mike Williams")',
     'frac': 0.8,
-    'player': "Wandale Robinson",
-    'team': 'NYG',
-    'age': np.log(23),
-    'new_team': 0,
-    'pos': 'WR'
-},
-{
-    'filter_q': '(all_wr.player=="Calvin Ridley")',
-    'frac': 1,
-    'player': "Calvin Ridley",
-    'team': 'JAX',
-    'age': np.log(28),
+    'player': "Mike Williams",
+    'team': 'NYJ',
+    'age': np.log(30),
     'new_team': 1,
     'pos': 'WR'
 },
+ 
 ]
 
 for pl in updates:
@@ -696,7 +653,7 @@ url_qb = 'https://www.pro-football-reference.com/years/' + str(year) + '/passing
 data_qb = pd.read_html(url_qb)[0]
 
 # pulling historical player adp
-url_adp_qb = f'https://www71.myfantasyleague.com/{year+1}/reports?R=ADP&POS=QB&ROOKIES=0&INJURED=1&CUTOFF=5&FCOUNT=0&IS_PPR=3&IS_KEEPER=N&IS_MOCK=1&PERIOD=RECENT'
+url_adp_qb = f'https://api.myfantasyleague.com/{year+1}/reports?R=ADP&POS=QB&ROOKIES=0&INJURED=1&CUTOFF=5&FCOUNT=0&IS_PPR=3&IS_KEEPER=N&IS_MOCK=1&PERIOD=RECENT'
 data_adp_qb = pd.read_html(url_adp_qb)[1]
 
 # pulling historical redzone passing data
@@ -746,7 +703,7 @@ colnames_pass = {
 
 # rename columns
 df_qb = df_qb.rename(columns=colnames_pass)
-df_qb = df_qb.drop('first_downs', axis=1)
+df_qb = df_qb.drop(['first_downs', 'Succ%'], axis=1)
 
 # cleaning player name and stat categories
 df_qb['player'] = df_qb.player.apply(name_clean)
@@ -860,6 +817,7 @@ df_qb['sacks_per_game'] = df_qb.qb_sacks / df_qb.qb_games
 df_qb['rush_td_per_game'] = df_qb.rush_td / df_qb.qb_games
 
 # sort columns
+df_qb = df_qb.drop('Succ%', axis=1)
 df_qb = df_qb.sort_values(['year', 'qb_avg_pick'], ascending=[False, True]).reset_index(drop=True)
 missing = pd.merge(df_adp_qb[['player', 'qb_avg_pick']], df_qb[['player', 'qb_games']], on=['player'], how='left')
 missing[(missing.qb_games.isnull()) | (missing.qb_games < 8)]
@@ -871,12 +829,21 @@ all_qb = dm.read("SELECT * FROM QB_Stats", 'Season_Stats')
 updates = [
 {
     'filter_q': '(all_qb.player=="Deshaun Watson")',
-    'frac': 0.9,
+    'frac': 0.8,
     'player': "Deshaun Watson",
     'team': 'CLE',
-    'age': 27,
+    'age': 28,
     'pos': 'QB'
-}
+},
+{
+    'filter_q': '((all_qb.player=="Josh Allen") | (all_qb.player=="Lamar Jackson"))',
+    'frac': 0.8,
+    'player': "Anthony Richardson",
+    'team': 'IND',
+    'age': 22,
+    'pos': 'QB'
+},
+
 ]
 
 for pl in updates:
@@ -900,7 +867,7 @@ dm.write_to_db(df_qb, 'Season_Stats', 'QB_Stats', if_exist='append')
 # # Update TE
 
 # pull TE ADP
-url_adp_te = f'https://www71.myfantasyleague.com/{year+1}/reports?R=ADP&POS=TE&ROOKIES=0&INJURED=1&CUTOFF=5&FCOUNT=0&IS_PPR=3&IS_KEEPER=N&IS_MOCK=1&PERIOD=RECENT'
+url_adp_te = f'https://api.myfantasyleague.com/{year+1}/reports?R=ADP&POS=TE&ROOKIES=0&INJURED=1&CUTOFF=5&FCOUNT=0&IS_PPR=3&IS_KEEPER=N&IS_MOCK=1&PERIOD=RECENT'
 data_adp_te = pd.read_html(url_adp_te)[1]
 
 #%%
@@ -969,78 +936,3 @@ missing[(missing.games.isnull()) | (missing.games < 8)]
 # write out the running back data
 dm.delete_from_db('Season_Stats', 'TE_Stats', f"year={year}")
 dm.write_to_db(df_te, 'Season_Stats', 'TE_Stats', if_exist='append')
-
-#%%
-# # Create Air Yards Table
-
-# +
-import requests
-
-air_year = year
-df_air_json = requests.get(f'http://api.airyards.com/{air_year}/weeks')
-
-df_air = pd.DataFrame(df_air_json.json())
-
-df_air = df_air[df_air.position.isin(['WR', 'RB', 'TE'])].reset_index(drop=True)
-df_air = df_air[['full_name', 'position', 'team', 'week', 'air_yards', 'tar', 'rec', 'rec_yards', 'tm_att', 
-                   'team_air', 'aypt', 'racr', 'ms_air_yards', 'target_share', 'wopr', 'yac']]
-df_air['year'] = air_year
-df_air = df_air.rename(columns={'week': 'games', 'full_name': 'player'})
-
-col_agg = {'air_yards': 'sum',
-           'rec_yards': 'sum',
-           'rec': 'sum',
-           'tar': 'sum',
-           'tm_att': 'sum',
-           'team_air': 'sum',
-           'yac': 'sum',
-           'games': 'count'}
-
-df_air_player = df_air.groupby(['player', 'team', 'year', 'position']).agg(col_agg).reset_index()
-
-dup_players = df_air_player.groupby('player').agg({'tar': 'max'}).reset_index()
-dup_teams = pd.merge(df_air_player[['player', 'team', 'tar']], dup_players, on=['player', 'tar']).drop('tar', axis=1)
-
-col_agg['games'] = 'sum'
-df_air_player = df_air_player.groupby(['player', 'year', 'position']).agg(col_agg).reset_index()
-df_air_player = pd.merge(df_air_player, dup_teams, on='player')
-
-df_air_player['ay_per_game'] = df_air_player.air_yards / df_air_player.games
-df_air_player['yac_per_game'] = df_air_player.yac / df_air_player.games
-df_air_player['racr'] = df_air_player.rec_yards / (df_air_player.air_yards + 1.5)
-df_air_player['ay_per_tar'] = df_air_player.air_yards / (df_air_player.tar + 1.5)
-df_air_player['ay_per_rec'] = df_air_player.air_yards / (df_air_player.rec + 1.5)
-df_air_player['tgt_mkt_share'] = df_air_player.tar / df_air_player.tm_att
-df_air_player['ay_converted'] = (df_air_player.rec_yards - df_air_player.yac) / (df_air_player.air_yards+1.5)
-df_air_player['yac_per_ay'] = df_air_player.yac / (df_air_player.air_yards+1.5)
-df_air_player['air_yd_mkt_share'] = df_air_player.air_yards / df_air_player.team_air
-df_air_player['wopr'] = 1.5*df_air_player.tgt_mkt_share + 0.7*df_air_player.air_yd_mkt_share
-df_air_player['rec_yds_per_ay'] = df_air_player.rec_yards / (df_air_player.air_yards + 1)
-df_air_player['yac_plus_ay'] = df_air_player.yac + df_air_player.air_yards
-
-team_agg = {'tm_att': 'max',
-            'team_air': 'max',
-            'rec_yards': 'sum',
-            'yac': 'sum'}
-
-df_air_team = df_air.groupby(['team', 'games']).agg(team_agg)
-df_air_team = df_air_team.groupby('team').agg({'tm_att': 'sum', 'team_air': 'sum', 'rec_yards': 'sum', 'yac': 'sum'})
-df_air_team = df_air_team.rename(columns={'yac': 'team_yac'})
-df_air_team['tm_air_per_att'] = df_air_team.team_air / df_air_team.tm_att
-df_air_team['tm_ay_converted'] = (df_air_team.rec_yards - df_air_team.team_yac) / df_air_team.team_air
-df_air_team['tm_rec_yds_per_ay'] = df_air_team.rec_yards / df_air_team.team_air
-df_air_team['tm_yac_per_ay'] = df_air_team.team_yac / df_air_team.team_air
-df_air_team = df_air_team.drop('rec_yards', axis=1)
-
-df_air_player = df_air_player.drop(['tm_att', 'team_air', 'rec_yards', 'rec'], axis=1)
-df_air_player = pd.merge(df_air_player, df_air_team, on=['team'])
-df_air_player['tm_ay_per_game'] = df_air_player.team_air / df_air_player.games
-df_air_player['total_tgt_mkt_share'] = df_air_player.tar / df_air_player.tm_att
-df_air_player['yac_mkt_share'] = df_air_player.yac / df_air_player.team_yac
-df_air_player['yac_wopr'] =  1.5*df_air_player.tgt_mkt_share + 0.7*df_air_player.air_yd_mkt_share + df_air_player.yac_mkt_share
-df_air_player = df_air_player.drop(['tar', 'games', 'team'], axis=1)
-# -
-
-append_to_db(df_air_player, db_name='Season_Stats', table_name='AirYards', if_exist='append')
-
-# %%

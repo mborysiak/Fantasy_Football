@@ -4,7 +4,7 @@ from ff import general
 from skmodel import SciKitModel
 import pandas as pd
 import numpy as np
-import shap
+# import shap
 import gzip
 import matplotlib.pyplot as plt
 from sklearn.pipeline import Pipeline

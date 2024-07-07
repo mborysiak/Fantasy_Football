@@ -2,7 +2,7 @@
 # # User Inputs
 
 # +
-year = 2022
+year = 2023
 
 from ff.db_operations import DataManage
 from ff import general, data_clean as dc
@@ -227,7 +227,7 @@ url_player = 'https://www.pro-football-reference.com/years/' + str(year) + '/pas
 data_player = pd.read_html(url_player)[0]
 
 # pulling historical player adp
-url_adp_qb = f'https://www71.myfantasyleague.com/{year+1}/reports?R=ADP&POS=QB&ROOKIES=0&INJURED=1&CUTOFF=5&FCOUNT=0&IS_PPR=3&IS_KEEPER=N&IS_MOCK=1&PERIOD=RECENT'
+url_adp_qb = f'https://api.myfantasyleague.com/{year+1}/reports?R=ADP&POS=QB&ROOKIES=0&INJURED=1&CUTOFF=5&FCOUNT=0&IS_PPR=3&IS_KEEPER=N&IS_MOCK=1&PERIOD=RECENT'
 data_adp_qb = pd.read_html(url_adp_qb)[1]
 
 # +

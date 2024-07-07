@@ -1,7 +1,7 @@
 #%%
 # set to 1 year prior to current (i.e. the year that has stats)
 # will auto update updates to current year for drafting
-year = 2022
+year = 2023
 
 from ff.db_operations import DataManage
 from ff import general, data_clean as dc
@@ -183,8 +183,8 @@ allow for grouped statistics generation.
 query = ''' 
     SELECT * 
     FROM RB_Stats A 
-    INNER JOIN OLine_Stats B ON A.team = B.team AND A.year = B.year
-    INNER JOIN Team_Offense_DVOA C ON A.team = C.team AND A.year = C.year
+  --  INNER JOIN OLine_Stats B ON A.team = B.team AND A.year = B.year
+  --  INNER JOIN Team_Offense_DVOA C ON A.team = C.team AND A.year = C.year
     INNER JOIN Team_Offensive_Stats D ON A.team = D.team AND A.year = D.year
     INNER JOIN QB_PosPred E ON A.team = E.team AND A.year = E.year
     LEFT JOIN Team_Drafts F ON A.team = F.team AND A.year = F.year 
@@ -273,8 +273,8 @@ allow for grouped statistics generation.
 query = ''' 
     SELECT * 
     FROM WR_Stats A 
-    INNER JOIN OLine_Stats B ON A.team = B.team AND A.year = B.year
-    INNER JOIN Team_Offense_DVOA C ON A.team = C.team AND A.year = C.year
+  --  INNER JOIN OLine_Stats B ON A.team = B.team AND A.year = B.year
+  --  INNER JOIN Team_Offense_DVOA C ON A.team = C.team AND A.year = C.year
     INNER JOIN Team_Offensive_Stats D ON A.team = D.team AND A.year = D.year
     INNER JOIN QB_PosPred E ON A.team = E.team AND A.year = E.year
     INNER JOIN Team_Drafts F ON A.team = F.team AND A.year = F.year'''
@@ -352,8 +352,8 @@ allow for grouped statistics generation.
 query = ''' 
     SELECT * 
     FROM QB_Stats A 
-    INNER JOIN OLine_Stats B ON A.team = B.team AND A.year = B.year
-    INNER JOIN Team_Offense_DVOA C ON A.team = C.team AND A.year = C.year
+ --   INNER JOIN OLine_Stats B ON A.team = B.team AND A.year = B.year
+ --   INNER JOIN Team_Offense_DVOA C ON A.team = C.team AND A.year = C.year
     INNER JOIN Team_Offensive_Stats D ON A.team = D.team AND A.year = D.year
     INNER JOIN QB_PosPred E ON A.team = E.team AND A.year = E.year
      INNER JOIN Team_Drafts F ON A.team = F.team AND A.year = F.year
@@ -403,8 +403,8 @@ allow for grouped statistics generation.
 query = ''' 
     SELECT * 
     FROM TE_Stats A 
-    INNER JOIN OLine_Stats B ON A.team = B.team AND A.year = B.year
-    INNER JOIN Team_Offense_DVOA C ON A.team = C.team AND A.year = C.year
+ --   INNER JOIN OLine_Stats B ON A.team = B.team AND A.year = B.year
+ --   INNER JOIN Team_Offense_DVOA C ON A.team = C.team AND A.year = C.year
     INNER JOIN Team_Offensive_Stats D ON A.team = D.team AND A.year = D.year
     INNER JOIN QB_PosPred E ON A.team = E.team AND A.year = E.year
     INNER JOIN Team_Drafts F ON A.team = F.team AND A.year = F.year'''
@@ -486,9 +486,9 @@ rookie_rb = dm.read("select * from rookie_rb_stats", 'Season_Stats')
 rookie_rb = rookie_rb.rename(columns={'draft_year': 'year'})
 rookie_rb['year'] = rookie_rb['year'] - 1
 
-team_stats_q = '''SELECT * FROM OLine_Stats A 
-    INNER JOIN Team_Offense_DVOA C ON A.team = C.team AND A.year = C.year
-    INNER JOIN Team_Offensive_Stats D ON A.team = D.team AND A.year = D.year
+team_stats_q = '''SELECT * FROM Team_Offensive_Stats A 
+ --   INNER JOIN Team_Offense_DVOA C ON A.team = C.team AND A.year = C.year
+ --   INNER JOIN Oline_Stats D ON A.team = D.team AND A.year = D.year
     INNER JOIN QB_PosPred E ON A.team = E.team AND A.year = E.year'''
 team_stats =  dm.read(team_stats_q, 'Season_Stats')
 
@@ -581,9 +581,9 @@ rookie_wr = dm.read("select * from rookie_wr_stats", 'Season_Stats')
 rookie_wr = rookie_wr.rename(columns={'draft_year': 'year'})
 rookie_wr['year'] = rookie_wr['year'] - 1
 
-team_stats_q = '''SELECT * FROM OLine_Stats A 
-    INNER JOIN Team_Offense_DVOA C ON A.team = C.team AND A.year = C.year
-    INNER JOIN Team_Offensive_Stats D ON A.team = D.team AND A.year = D.year
+team_stats_q = '''SELECT * FROM Team_Offensive_Stats A 
+   -- INNER JOIN Team_Offense_DVOA C ON A.team = C.team AND A.year = C.year
+   -- INNER JOIN Oline_stats D ON A.team = D.team AND A.year = D.year
     INNER JOIN QB_PosPred E ON A.team = E.team AND A.year = E.year'''
 team_stats = dm.read(team_stats_q, 'Season_Stats')
 

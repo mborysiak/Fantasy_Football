@@ -20,20 +20,14 @@ dm = DataManage(db_path)
 
 
 # set the year for last year's stats to pull
-set_year=2022
+set_year=2023
 
-# set core path
-path = f'/Users/{os.getlogin()}/Documents/Github/Fantasy_Football'
-
-# set the database name
-db_name = 'Season_Stats'
-conn = sqlite3.connect(f'{path}/Data/Databases/{db_name}.sqlite3')
 
 # set the api path for collge football data
 CS_API = 'https://api.collegefootballdata.com'
 
 def adp_url(adp_pos, y=set_year+1):
-    return f'https://www71.myfantasyleague.com/{y}/reports?R=ADP&POS={adp_pos}&ROOKIES=1&INJURED=1&CUTOFF=5&FCOUNT=0&IS_PPR=3&IS_KEEPER=N&IS_MOCK=1&PERIOD=RECENT'
+    return f'https://api.myfantasyleague.com/{y}/reports?R=ADP&POS={adp_pos}&ROOKIES=1&INJURED=1&CUTOFF=5&FCOUNT=0&IS_PPR=3&IS_KEEPER=N&IS_MOCK=1&PERIOD=RECENT'
 
 #%%
 # -
@@ -197,6 +191,113 @@ dm.delete_from_db('Season_Stats', 'Combine_Data_Raw', f"year={set_year+1}")
 dm.write_to_db(comb_df, 'Season_Stats', 'Combine_Data_Raw', if_exist='append')
 
 #%%
+# Begin Creating Cleaned up Datasets
+from sklearn.linear_model import LinearRegression, Ridge
+from sklearn.preprocessing import StandardScaler
+
+def fill_metrics(met, df, X_cols):
+    
+    print(f'============\n{met}\n------------')
+    
+    train = df[~df[met].isnull()]
+    predict = df[df[met].isnull()]
+    
+    y = train[met]
+    X = train[X_cols]
+    
+    sc = StandardScaler()
+
+    X_sc = pd.DataFrame(sc.fit_transform(X), columns=X_cols)
+    pred_sc = sc.transform(predict[X_cols])
+    pred_sc = pd.DataFrame(pred_sc, columns=X_cols)
+
+    lr = LinearRegression()
+    lr.fit(X_sc, y)
+    print('R2 Score', round(lr.score(X_sc, y), 3))
+    print(pd.Series(lr.coef_, index=X.columns))
+    
+    df.loc[df[met].isnull(), met] = lr.predict(pred_sc)
+    
+    return df
+
+
+def reverse_metrics(met, train, predict, X_cols):
+    
+    print(f'============\n{met}\n------------')
+    
+    y = train[met]
+    X = train[X_cols]
+    
+    sc = StandardScaler()
+
+    X_sc = pd.DataFrame(sc.fit_transform(X), columns=X_cols)
+    pred_sc = sc.transform(predict[X_cols])
+    pred_sc = pd.DataFrame(pred_sc, columns=X_cols)
+
+    lr = LinearRegression()
+    lr.fit(X_sc, y)
+    print('R2 Score', round(lr.score(X_sc, y), 3))
+    print(pd.Series(lr.coef_, index=X.columns))
+    
+    predict[met] = lr.predict(pred_sc)
+    
+    return predict
+
+
+# +
+comb_df = dm.read('''SELECT * FROM combine_data_raw''', 'Season_Stats').drop('pp_age', axis=1)
+
+for c in ['bench_press', 'three_cone']:
+    comb_df.loc[comb_df[c]=='', c] = np.nan
+    comb_df[c] = comb_df[c].astype('float')
+    
+draft_info = dm.read('''SELECT * FROM draft_positions''', 'Season_Stats')
+draft_values = dm.read('''SELECT * FROM draft_values''', 'Season_Stats')
+
+draft_info = pd.merge(draft_info, draft_values, on=['Round', 'Pick'])
+
+comb_df = pd.merge(comb_df, draft_info[['year', 'player', 'Value']], on=['year', 'player'], how='left')
+comb_df.Value = comb_df.Value.fillna(1)
+comb_df = pd.concat([comb_df, pd.get_dummies(comb_df.pos)], axis=1).drop('pos', axis=1)
+
+pred_cols = ['height', 'weight', 'Value', 'QB', 'RB', 'TE', 'WR']
+comb_df = fill_metrics('forty', comb_df, pred_cols)
+
+pred_cols.append('forty')
+comb_df = fill_metrics('vertical', comb_df, pred_cols)
+
+pred_cols.append('vertical')
+comb_df = fill_metrics('broad_jump', comb_df, pred_cols)
+
+pred_cols.append('broad_jump')
+comb_df = fill_metrics('three_cone', comb_df, pred_cols)
+
+pred_cols.append('three_cone')
+comb_df = fill_metrics('shuffle_20_yd', comb_df, pred_cols)
+
+pred_cols.append('shuffle_20_yd')
+comb_df = fill_metrics('bench_press', comb_df, pred_cols)
+
+# ## Predict Player Profiler Data
+rb = dm.read('''SELECT * FROM Rookie_RB_Stats_Old''', 'Season_Stats')
+wr = dm.read('''SELECT * FROM Rookie_WR_Stats_Old''', 'Season_Stats')
+
+pp = pd.concat([rb, wr], axis=0).reset_index(drop=True)
+X_cols = [c for c in comb_df if c not in ('year', 'player', 'Value', 'pp_age', 'QB', 'RB', 'TE', 'WR')]
+
+comb_df = reverse_metrics('hand_size', pp, comb_df, X_cols)
+comb_df = reverse_metrics('arm_length', pp, comb_df, X_cols)
+comb_df = reverse_metrics('speed_score', pp, comb_df, X_cols)
+comb_df = reverse_metrics('athlete_score', pp, comb_df, X_cols)
+comb_df = reverse_metrics('sparq', pp, comb_df, X_cols)
+comb_df = reverse_metrics('bmi', pp, comb_df, X_cols)
+comb_df = reverse_metrics('burst_score', pp, comb_df, X_cols)
+comb_df = reverse_metrics('agility_score', pp, comb_df, X_cols)
+
+dm.write_to_db(comb_df, 'Season_Stats', 'Combine_Data_Filled', 'replace', create_backup=True)
+
+
+#%%
 
 # ## Get College Player ADP
 
@@ -267,112 +368,6 @@ rookie_adp.player = rookie_adp.player.apply(name_clean)
 #%%
 dm.delete_from_db('Season_Stats', 'Rookie_ADP', f"draft_year={set_year+1}")
 dm.write_to_db(rookie_adp, 'Season_Stats', 'Rookie_ADP', if_exist='append')
-
-#%%
-# Begin Creating Cleaned up Datasets
-from sklearn.linear_model import LinearRegression, Ridge
-from sklearn.preprocessing import StandardScaler
-
-def fill_metrics(met, df, X_cols):
-    
-    print(f'============\n{met}\n------------')
-    
-    train = df[~df[met].isnull()]
-    predict = df[df[met].isnull()]
-    
-    y = train[met]
-    X = train[X_cols]
-    
-    sc = StandardScaler()
-
-    X_sc = sc.fit_transform(X)
-    pred_sc = sc.transform(predict[X_cols])
-    pred_sc = pd.DataFrame(pred_sc, columns=X_cols)
-
-    lr = LinearRegression()
-    lr.fit(X_sc, y)
-    print('R2 Score', round(lr.score(X_sc, y), 3))
-    print(pd.Series(lr.coef_, index=X.columns))
-    
-    df.loc[df[met].isnull(), met] = lr.predict(pred_sc)
-    
-    return df
-
-
-def reverse_metrics(met, train, predict, X_cols):
-    
-    print(f'============\n{met}\n------------')
-    
-    y = train[met]
-    X = train[X_cols]
-    
-    sc = StandardScaler()
-
-    X_sc = sc.fit_transform(X)
-    pred_sc = sc.transform(predict[X_cols])
-    pred_sc = pd.DataFrame(pred_sc, columns=X_cols)
-
-    lr = LinearRegression()
-    lr.fit(X_sc, y)
-    print('R2 Score', round(lr.score(X_sc, y), 3))
-    print(pd.Series(lr.coef_, index=X.columns))
-    
-    predict[met] = lr.predict(pred_sc)
-    
-    return predict
-
-
-# +
-comb_df = dm.read('''SELECT * FROM combine_data_raw''', 'Season_Stats').drop('pp_age', axis=1)
-
-for c in ['bench_press', 'three_cone']:
-    comb_df.loc[comb_df[c]=='', c] = np.nan
-    comb_df[c] = comb_df[c].astype('float')
-    
-draft_info = dm.read('''SELECT * FROM draft_positions''', 'Season_Stats')
-draft_values = dm.read('''SELECT * FROM draft_values''', 'Season_Stats')
-
-draft_info = pd.merge(draft_info, draft_values, on=['Round', 'Pick'])
-
-comb_df = pd.merge(comb_df, draft_info[['year', 'player', 'Value']], on=['year', 'player'], how='left')
-comb_df.Value = comb_df.Value.fillna(1)
-comb_df = pd.concat([comb_df, pd.get_dummies(comb_df.pos)], axis=1).drop('pos', axis=1)
-
-pred_cols = ['height', 'weight', 'Value', 'QB', 'RB', 'TE', 'WR']
-comb_df = fill_metrics('forty', comb_df, pred_cols)
-
-pred_cols.append('forty')
-comb_df = fill_metrics('vertical', comb_df, pred_cols)
-
-pred_cols.append('vertical')
-comb_df = fill_metrics('broad_jump', comb_df, pred_cols)
-
-pred_cols.append('broad_jump')
-comb_df = fill_metrics('three_cone', comb_df, pred_cols)
-
-pred_cols.append('three_cone')
-comb_df = fill_metrics('shuffle_20_yd', comb_df, pred_cols)
-
-pred_cols.append('shuffle_20_yd')
-comb_df = fill_metrics('bench_press', comb_df, pred_cols)
-#%%
-
-# ## Predict Player Profiler Data
-rb = dm.read('''SELECT * FROM Rookie_RB_Stats_Old''', 'Season_Stats')
-wr = dm.read('''SELECT * FROM Rookie_WR_Stats_Old''', 'Season_Stats')
-
-pp = pd.concat([rb, wr], axis=0).reset_index(drop=True)
-X_cols = [c for c in comb_df if c not in ('year', 'player', 'Value', 'pp_age', 'QB', 'RB', 'TE', 'WR')]
-
-comb_df = reverse_metrics('hand_size', pp, comb_df, X_cols)
-comb_df = reverse_metrics('arm_length', pp, comb_df, X_cols)
-comb_df = reverse_metrics('speed_score', pp, comb_df, X_cols)
-comb_df = reverse_metrics('athlete_score', pp, comb_df, X_cols)
-comb_df = reverse_metrics('sparq', pp, comb_df, X_cols)
-comb_df = reverse_metrics('bmi', pp, comb_df, X_cols)
-comb_df = reverse_metrics('burst_score', pp, comb_df, X_cols)
-comb_df = reverse_metrics('agility_score', pp, comb_df, X_cols)
-
 
 #%%
 from sklearn.preprocessing import RobustScaler
