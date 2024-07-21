@@ -14,6 +14,8 @@ from Fix_Standard_Dev import *
 import zModel_Functions as mf
 from sklearn.metrics import brier_score_loss
 import matplotlib.pyplot as plt
+from hyperopt import Trials
+from hyperopt import hp
 
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -41,7 +43,7 @@ db_path = f'{root_path}/Data/Databases/'
 dm = DataManage(db_path)
 
 # set to position to analyze: 'RB', 'WR', 'QB', or 'TE'
-set_pos = 'Rookie_WR'
+set_pos = 'WR'
 
 # set year to analyze
 set_year = 2024
@@ -50,7 +52,7 @@ set_year = 2024
 vers = 'beta'
 
 # set with this year or next
-current_or_next_year = 'next'
+current_or_next_year = 'current'
 
 mse_wt = 1
 sera_wt = 0
@@ -70,40 +72,12 @@ pos['Rookie_WR']['rush_pass'] = ''
 # Model Settings
 #==========
 
-pos['QB']['req_touch'] = 250
-pos['RB']['req_touch'] = 60
-pos['WR']['req_touch'] = 50
-pos['TE']['req_touch'] = 40
-pos['Rookie_RB']['req_touch'] = 1
-pos['Rookie_WR']['req_touch'] = 1
-
-pos['QB']['req_games'] = 8
-pos['RB']['req_games'] = 8
-pos['WR']['req_games'] = 8
-pos['TE']['req_games'] = 8
-pos['Rookie_RB']['req_games'] = 5
-pos['Rookie_WR']['req_games'] = 5
-
-pos['QB']['earliest_year'] = 2004 # first year QBR available
-pos['RB']['earliest_year'] = 1998
-pos['WR']['earliest_year'] = 1998
-pos['TE']['earliest_year'] = 1998
-pos['Rookie_RB']['earliest_year'] = 1998
-pos['Rookie_WR']['earliest_year'] = 1998
-
-pos['QB']['val_start'] = 2013
-pos['RB']['val_start'] = 2013
-pos['WR']['val_start'] = 2013
-pos['TE']['val_start'] = 2013
-pos['Rookie_RB']['val_start'] = 2014
+pos['QB']['val_start'] = 2016
+pos['RB']['val_start'] = 2016
+pos['WR']['val_start'] = 2016
+pos['TE']['val_start'] = 2016
+pos['Rookie_RB']['val_start'] = 2016
 pos['Rookie_WR']['val_start'] = 2016
-
-pos['QB']['features'] = 'v2'
-pos['RB']['features'] = 'v2'
-pos['WR']['features'] = 'v2'
-pos['TE']['features'] = 'v2'
-pos['Rookie_RB']['features'] = 'v1'
-pos['Rookie_WR']['features'] = 'v1'
 
 pos['QB']['test_years'] = 1
 pos['RB']['test_years'] = 1
@@ -112,121 +86,40 @@ pos['TE']['test_years'] = 1
 pos['Rookie_RB']['test_years'] = 1
 pos['Rookie_WR']['test_years'] = 1
 
-pos['QB']['use_ay'] = False
-pos['RB']['use_ay'] = False
-pos['WR']['use_ay'] = False
-pos['TE']['use_ay'] = False
-pos['Rookie_RB']['use_ay'] = False
-pos['Rookie_WR']['use_ay'] = False
-
 pos['QB']['filter_data'] = 'greater_equal'
-pos['RB']['filter_data'] = 'less_equal'
+pos['RB']['filter_data'] = 'greater_equal'
 pos['WR']['filter_data'] = 'greater_equal'
 pos['TE']['filter_data'] = 'greater_equal'
 pos['Rookie_RB']['filter_data'] = 'greater_equal'
 pos['Rookie_WR']['filter_data'] = 'greater_equal'
 
 pos['QB']['year_exp'] = 0
-pos['RB']['year_exp'] = 3
+pos['RB']['year_exp'] = 0
 pos['WR']['year_exp'] = 0
 pos['TE']['year_exp'] = 0
 pos['Rookie_RB']['year_exp'] = 0
 pos['Rookie_WR']['year_exp'] = 0
 
-pos['QB']['pct_off'] = 0
-pos['RB']['pct_off'] = 0
-pos['WR']['pct_off'] = 0
-pos['TE']['pct_off'] = 0
-pos['Rookie_RB']['pct_off'] = 0
-pos['Rookie_WR']['pct_off'] = 0
-
-pos['QB']['iters'] = 25
-pos['RB']['iters'] = 25
-pos['WR']['iters'] = 25
-pos['TE']['iters'] = 25
-pos['Rookie_RB']['iters'] = 25
-pos['Rookie_WR']['iters'] = 25
+pos['QB']['iters'] = 15
+pos['RB']['iters'] = 15
+pos['WR']['iters'] = 15
+pos['TE']['iters'] = 15
 
 pos['QB']['n_splits'] = 5
 pos['RB']['n_splits'] = 5
 pos['WR']['n_splits'] = 5
 pos['TE']['n_splits'] = 5
-pos['Rookie_RB']['n_splits'] = 4
-pos['Rookie_WR']['n_splits'] = 4
 
 
-def create_pts_dict(pos, set_pos, vers):
 
-    # define point values for all statistical categories
-    pass_yd_per_pt = 0.04 
-    if vers=='beta': pass_td_pt = 5
-    elif vers=='nv': pass_td_pt = 4
-    int_pts = -2
-    sacks = -1
-    rush_yd_per_pt = 0.1 
-    rec_yd_per_pt = 0.1
-    rush_td = 7
-    rec_td = 7
-    ppr = 0.5
+def create_pkey(pos, dataset, set_pos, cur_next, bayes_rand, hp_algo):
 
-    if set_pos=='QB' and pos['QB']['rush_pass'] == 'rush':
-        pass_yd_per_pt = 0 
-        pass_td_pt = 0
-        int_pts = 0
-        sacks = 0
-
-    elif set_pos=='QB' and pos['QB']['rush_pass'] == 'pass':
-        rush_yd_per_pt = 0
-        rush_td = 0
-
-    elif set_pos == 'RB' and pos['RB']['rush_pass'] == 'rush':
-        rec_yd_per_pt = 0
-        rec_td = 0
-        ppr = 0
-
-    elif set_pos=='RB' and pos['RB']['rush_pass'] == 'rec':
-        rush_yd_per_pt = 0
-        rush_td = 0
-
-    else:
-        pass
-
-    # creating dictionary containing point values for each position
-    pts_dict = {}
-    pts_dict['QB'] = [pass_yd_per_pt, pass_td_pt, rush_yd_per_pt, rush_td, int_pts, sacks]
-    pts_dict['RB'] = [rush_yd_per_pt, rec_yd_per_pt, ppr, rush_td, rec_td]
-    pts_dict['WR'] = [rec_yd_per_pt, ppr, rec_td]
-    pts_dict['TE'] = [rec_yd_per_pt, ppr, rec_td]
-    pts_dict['Rookie_RB'] = [rush_yd_per_pt, rec_yd_per_pt, ppr, rush_td, rec_td]
-    pts_dict['Rookie_WR'] = [rec_yd_per_pt, ppr, rec_td]
-
-    return pts_dict
-
-def class_cutoff(pos):
-
-    if pos['QB']['rush_pass'] == 'rush': pos['QB']['act_ppg'] = 4
-    elif pos['QB']['rush_pass'] == 'pass': pos['QB']['act_ppg'] = 17
-    else: pos['QB']['act_ppg'] = 19
-
-    if pos['RB']['rush_pass'] == 'rush': pos['RB']['act_ppg'] = 13
-    elif pos['RB']['rush_pass'] == 'rec': pos['RB']['act_ppg'] = 6
-    else: pos['RB']['act_ppg'] = 17
-
-    pos['WR']['act_ppg'] = 15
-    pos['TE']['act_ppg'] = 12
-    pos['Rookie_RB']['act_ppg'] = 13
-    pos['Rookie_WR']['act_ppg'] = 11
-
-    return pos
-
-
-def create_pkey(pos, set_pos, cur_next):
-
-    all_vars = ['req_touch', 'req_games', 'earliest_year', 'val_start', 
-                'features', 'test_years', 'use_ay', 'filter_data', 'year_exp', 
-                'act_ppg', 'pct_off', 'iters', 'rush_pass']
+    all_vars = ['val_start', 'test_years', 'filter_data', 'year_exp', 'iters', 'rush_pass']
 
     pkey = str(set_pos)
+    pkey = pkey + '_' + dataset
+    pkey = pkey + '_' + bayes_rand
+    pkey = pkey + '_' + hp_algo
     for var in all_vars:
         v = str(pos[set_pos][var])
         pkey = pkey + '_' + v
@@ -249,11 +142,6 @@ def load_pickle(path, fname):
         loaded_object = pickle.load(f)
         return loaded_object
 
-def filter_less_equal(df, pos, set_pos):
-    if pos[set_pos]['filter_data']=='less_equal':
-        df = df.loc[df.year_exp != pos[set_pos]['year_exp']+1, :].reset_index(drop=True)
-    return df
-
 def update_output_dict(label, m, suffix, out_dict, oof_data, best_models):
 
     # append all of the metric outputs
@@ -264,7 +152,7 @@ def update_output_dict(label, m, suffix, out_dict, oof_data, best_models):
     out_dict['models'][lbl] = best_models
     out_dict['full_hold'][lbl] = oof_data['full_hold']
 
-    return out_dict
+    return lbl, out_dict
 
 def save_output_dict(out_dict, model_output_path, label):
 
@@ -278,165 +166,53 @@ def save_output_dict(out_dict, model_output_path, label):
 # Pull and clean compiled data
 #==========
 
-def pull_data(pts_dict, set_pos, set_year):
+def pull_data(set_pos, set_year, dataset):
 
     # load data and filter down
-    df = dm.read(f'''SELECT * FROM {set_pos}_2024''', 'Model_Inputs')
+    df = dm.read(f'''SELECT * FROM {set_pos}_{set_year}_{dataset}''', 'Model_Inputs')
+    if dataset=='Rookie': df = df.assign(year_exp=0, team='team', pos=set_pos)
 
-    # calculate FP for a given set of scoring values
-    df = hf.calculate_fp(df, pts_dict, pos=set_pos).reset_index(drop=True)
-    df['rules_change'] = np.where(df.year>=2010, 1, 0)
-    
     # add in data to match up with Daily code
     df['week'] = 1
     df['game_date'] = df.year
+
+    df = df.sort_values(by='year', ascending=True).reset_index(drop=True)
+    try:df = df.drop(['season', 'games', 'games_next'], axis=1)
+    except: df = df.drop(['games', 'games_next'], axis=1)
 
     return df
 
 
 def filter_df(df, pos, set_pos, set_year): 
 
-    # apply the specified touches and game filters
-    df, _, _ = hf.touch_game_filter(df, pos, set_pos, set_year)
-
     # # filter dataset
     if pos[set_pos]['filter_data']=='greater_equal':
         df = df.loc[df.year_exp >= pos[set_pos]['year_exp']].reset_index(drop=True)
 
     elif pos[set_pos]['filter_data']=='less_equal':
-        df = df.loc[df.year_exp <= pos[set_pos]['year_exp']+1].reset_index(drop=True)
+        df = df.loc[df.year_exp <= pos[set_pos]['year_exp']].reset_index(drop=True)
 
-    # get the train and prediction dataframes for FP per game
-    _, output_start = hf.get_train_predict(df, 'fp_per_game', pos, set_pos, 
-                                           set_year-pos[set_pos]['test_years'], 
-                                           pos[set_pos]['earliest_year'], pos[set_pos]['features'])
-
-    output_start = filter_less_equal(output_start, pos, set_pos)
-    output_start = output_start[['player', 'avg_pick']]
+    output_start = df.loc[df.year==set_year, ['player', 'team', 'pos', 'avg_pick', 'year', 'year_exp']].copy()
+    output_start = output_start[['player', 'avg_pick']].reset_index(drop=True)
 
     return df, output_start
 
-
-def prepare_rookie_data(df, set_pos, current_or_next):
-
-    df = df.sort_values(by='year').reset_index(drop=True)
-    
-    if current_or_next == 'current':
-        df = df[(df.games > 6) | (df.year==set_year-1)].reset_index(drop=True)
-        df = df.rename(columns={'fp_per_game': 'y_act'})
-        df = df.drop(['fp_per_game_next', 'games', 'games_next'], axis=1)
-
-    elif current_or_next == 'next':
-        df = df[(df.games_next > 6) | (df.year==set_year-1)].reset_index(drop=True)
-        df = df.rename(columns={'fp_per_game_next': 'y_act'})
-        df = df.drop(['fp_per_game', 'games', 'games_next'], axis=1)
-
-    df_train = df[(df.year < set_year-1) & (df.y_act > 0)].reset_index(drop=True)
-    df_predict = df[df.year == set_year-1].reset_index(drop=True)
-
-    output_start = df_predict[['player', 'avg_pick']].copy()
-    print(set_pos, df_train.shape[0], df_predict.shape[0])
-
-    df_predict = df_predict.fillna(0)
-    for c in df_predict.columns:
-        if len(df_predict[df_predict[c]==np.inf]) > 0:
-            df_predict.loc[df_predict[c]==np.inf, c] = 0
-        if len(df_predict[df_predict[c]==-np.inf]) > 0:
-            df_predict.loc[df_predict[c]==-np.inf, c] = 0
-
-    df_train_class = df_train.copy()
-    df_predict_class = df_predict.copy()
-
-    if set_pos == 'Rookie_WR':
-        df_train_class['y_act'] = np.where(df_train_class.y_act >= 11, 1, 0)
-
-    elif set_pos == 'Rookie_RB':
-        df_train_class['y_act'] = np.where(df_train_class.y_act >= 13, 1, 0)
-
-    min_samples = 3
-    return df_train, df_predict, df_train_class, df_predict_class, output_start,min_samples
 
 #==============
 # Create Datasets
 #==============
 
-def get_reg_data(df, pos, set_pos):
+def get_train_predict(df, set_year):
 
-    # get the train and prediction dataframes for FP per game
-    df_train, df_predict = hf.get_train_predict(df, 'fp_per_game', pos, set_pos, 
-                                                set_year-pos[set_pos]['test_years'], 
-                                                pos[set_pos]['earliest_year'], 
-                                                pos[set_pos]['features'])
-    df_predict = filter_less_equal(df_predict, pos, set_pos)
+    df_train = df.loc[df.year < set_year, :].reset_index(drop=True).drop('y_act_class', axis=1)
+    df_predict = df.loc[df.year == set_year, :].reset_index(drop=True).drop('y_act_class', axis=1)
 
-    # get the minimum number of training samples for the initial datasets
-    min_samples = int(df_train[df_train.year <= df_train.year.min()].shape[0])  
+    df_train_class = df.loc[df.year < set_year, :].copy().drop('y_act', axis=1).rename(columns={'y_act_class': 'y_act'})
+    df_predict_class = df.loc[df.year == set_year, :].copy().drop('y_act', axis=1).rename(columns={'y_act_class': 'y_act'})
+
     print('Shape of Train Set', df_train.shape)
 
-    return df_train, df_predict, min_samples
-
-
-def get_class_data(df, pos, set_pos):
-
-    breakout_metric = 'fp_per_game'
-    adp_ppg_high = '<100'
-    adp_ppg_low = '>=0'
-    act_ppg = '>=' + str(pos[set_pos]['act_ppg'])
-    pct_off = '>=' +  str(pos[set_pos]['pct_off'])
-
-    # get the train and prediction dataframes for FP per game
-    df_train_class, df_predict_class = hf.get_train_predict(df, breakout_metric, pos, set_pos, 
-                                                        set_year-pos[set_pos]['test_years'], 
-                                                        pos[set_pos]['earliest_year'], 
-                                                        pos[set_pos]['features'])
-
-    # get the adp predictions and merge back to the training dataframe
-    df_train_class, df_predict_class, _ = hf.get_adp_predictions(df_train_class, df_predict_class, 1)
-    df_predict_class = filter_less_equal(df_predict_class, pos, set_pos)
-
-    # filter to adp cutoffs
-    df_train_class = hf.adp_filter(df_train_class, adp_ppg_low, adp_ppg_high)
-    df_predict_class = hf.adp_filter(df_predict_class, adp_ppg_low, adp_ppg_high)
-
-    # generate labels for prediction based on cutoffs
-    df_train_class = hf.class_label(df_train_class, pct_off, act_ppg)
-    df_predict_class = hf.class_label(df_predict_class, pct_off, act_ppg)
-    df_predict_class = df_predict_class.drop('y_act', axis=1).fillna(0)
-
-    # print the value-counts
-    print('Training Value Counts:', df_train_class.y_act.value_counts()[0], '|', df_train_class.y_act.value_counts()[1])
-    print(f'Number of Features: {df_train_class.shape[1]}')
-    
-    return  df_train_class, df_predict_class
-
-
-def adjust_current_or_next(df_train, df_train_class):
-
-    df_train = df_train.sort_values(by=['player', 'year']).reset_index(drop=True)
-    df_train['y_act'] = df_train.groupby('player').y_act.shift(-1)
-    df_train = df_train.dropna().sort_values(by='year').reset_index(drop=True)
-
-    df_train_class = df_train_class.sort_values(by=['player', 'year']).reset_index(drop=True)
-    df_train_class['y_act'] = df_train_class.groupby('player').y_act.shift(-1)
-    df_train_class = df_train_class.dropna().sort_values(by='year').reset_index(drop=True)
-
-    return df_train, df_train_class
-
-
-def adjust_three_year_avg(df_train):
-    
-    df_train = df_train.sort_values(by=['player', 'year']).reset_index(drop=True)
-    
-    df_train['y_act_next'] = df_train.groupby('player').y_act.shift(-1)
-    df_train['y_act_two_years'] = df_train.groupby('player').y_act.shift(-2)
-    
-    df_train['future_counts'] = df_train[['y_act', 'y_act_next', 'y_act_two_years']].count(axis=1)
-    df_train = df_train[df_train.future_counts >= 2].reset_index(drop=True)
-    
-    df_train['y_act'] = df_train[['y_act', 'y_act_next', 'y_act_two_years']].mean(axis=1)
-    df_train = df_train.drop(['y_act_next', 'y_act_two_years', 'future_counts'], axis=1).sort_values(by='year').reset_index(drop=True)
-    
-    return df_train
+    return df_train, df_predict,df_train_class, df_predict_class
 
 #=================
 # Model Functions
@@ -445,16 +221,17 @@ def adjust_three_year_avg(df_train):
 def output_dict():
     return {'pred': {}, 'actual': {}, 'scores': {}, 'models': {}, 'full_hold':{}}
 
-def get_skm(skm_df, model_obj, to_drop=['player', 'team', 'pos']):
+def get_skm(skm_df, model_obj, hp_algo='atpe'):
     
+    to_drop = list(skm_df.dtypes[skm_df.dtypes=='object'].index)
     skm = SciKitModel(skm_df, model_obj=model_obj, sera_wt=sera_wt, mse_wt=mse_wt, 
-                      r2_wt=r2_wt, brier_wt=brier_wt, matt_wt=matt_wt)
+                      r2_wt=r2_wt, brier_wt=brier_wt, matt_wt=matt_wt, hp_algo=hp_algo)
     X, y = skm.Xy_split(y_metric='y_act', to_drop=to_drop)
 
     return skm, X, y
 
 
-def get_full_pipe(skm, m, alpha=None, stack_model=False, min_samples=10):
+def get_full_pipe(skm, m, bayes_rand, alpha=None, stack_model=False, min_samples=10):
 
     if m == 'adp':
         
@@ -505,20 +282,20 @@ def get_full_pipe(skm, m, alpha=None, stack_model=False, min_samples=10):
 
 
     # get the params for the current pipe and adjust if needed
-    params = skm.default_params(pipe, 'rand', min_samples=min_samples)
+    params = skm.default_params(pipe, bayes_rand, min_samples=min_samples)
 
-    if skm.model_obj =='reg' and m!='adp': params['feature_union__pca__n_components'] = range(2,20)
-    if m=='adp': params['feature_select__cols'] = [['avg_pick'], ['avg_pick', 'year']]
+    if m=='adp': params['feature_select__cols'] = hp.choice('cols', [['avg_pick'], ['avg_pick', 'year']]) 
     
     if skm.model_obj == 'quantile':
         if m in ('qr_q', 'gbmh_q'): pipe.set_params(**{f'{m}__quantile': alpha})
         elif m in ('rf_q', 'knn_q'): pipe.set_params(**{f'{m}__q': alpha})
+        elif m == 'cb_q': pipe.set_params(**{f'{m}__loss_function': f'Quantile:alpha={alpha}'})
         else: pipe.set_params(**{f'{m}__alpha': alpha})
 
     return pipe, params
 
 
-def get_full_pipe_stack(skm, m, alpha=None, stack_model=False, min_samples=10, bayes_rand='rand'):
+def get_full_pipe_stack(skm, m, bayes_rand,  alpha=None, stack_model=False, min_samples=10):
 
     if skm.model_obj=='class': kb = 'k_best_c'
     else: kb = 'k_best'
@@ -574,28 +351,39 @@ def get_full_pipe_stack(skm, m, alpha=None, stack_model=False, min_samples=10, b
     if skm.model_obj == 'quantile':
         if m in ('qr_q', 'gbmh_q'): pipe.set_params(**{f'{m}__quantile': alpha})
         elif m in ('rf_q', 'knn_q'): pipe.set_params(**{f'{m}__q': alpha})
+        elif m == 'cb_q': pipe.set_params(**{f'{m}__loss_function': f'Quantile:alpha={alpha}'})
         else: pipe.set_params(**{f'{m}__alpha': alpha})
 
     return pipe, params
 
 
-def get_model_output(model_name, cur_df, model_obj, out_dict, pos, set_pos, i, min_samples=10, alpha=''):
+def get_model_output(model_name, cur_df, model_obj, out_dict, pos, set_pos, hp_algo, bayes_rand, i, alpha=''):
 
     print(f'\n{model_name}\n============\n')
 
-    skm, X, y = get_skm(cur_df, model_obj)
-    pipe, params = get_full_pipe(skm, model_name, alpha, min_samples=min_samples)
+    skm, X, y = get_skm(cur_df, model_obj, hp_algo)
+    pipe, params = get_full_pipe(skm, model_name, bayes_rand, alpha)
 
     if model_obj == 'class': proba = True 
     else: proba = False
 
     # fit and append the ADP model
-    best_models, oof_data, _, _ = skm.time_series_cv(pipe, X, y, params, n_iter=pos[set_pos]['iters'], n_splits=pos[set_pos]['n_splits'],
-                                                  col_split='year', time_split=pos[set_pos]['val_start'],
-                                                  bayes_rand='rand', proba=proba, random_seed=(i+7)*19+(i*12)+6)
-    out_dict = update_output_dict(model_obj, model_name, str(alpha), out_dict, oof_data, best_models)
+    best_models, oof_data, _, _ = skm.time_series_cv(pipe, X, y, params, n_iter=pos[set_pos]['iters'], 
+                                                     n_splits=pos[set_pos]['n_splits'],
+                                                     col_split='year', time_split=pos[set_pos]['val_start'],
+                                                     bayes_rand=bayes_rand, proba=proba, trials=Trials(),
+                                                     random_seed=(i+7)*19+(i*12)+6)
+    lbl, out_dict = update_output_dict(model_obj, model_name, str(alpha), out_dict, oof_data, best_models)
 
-    return out_dict, best_models, oof_data
+    return out_dict#, best_models, oof_data
+
+
+def extract_par_results(results, out_dict_reg):
+    for k in out_dict_reg.keys():
+        for r in results:
+            model_lbl = list(r['pred'].keys())[0]
+            out_dict_reg[k][model_lbl] = r[k][model_lbl]
+    return out_dict_reg
 
 
 #====================
@@ -613,8 +401,8 @@ def load_all_stack_pred(model_output_path):
     X_stack_class, y_stack_class = mf.X_y_stack('class', full_hold_class, pred_class, actual_class)
 
     # load the quantile predictions
-    pred_quant, actual_quant, models_quant, _, full_hold_quant = mf.load_all_pickles(model_output_path, 'quant')
-    X_stack_quant, _ = mf.X_y_stack('quant', full_hold_quant, pred_quant, actual_quant)
+    pred_quant, actual_quant, models_quant, _, full_hold_quant = mf.load_all_pickles(model_output_path, 'quantile')
+    X_stack_quant, _ = mf.X_y_stack('quantile', full_hold_quant, pred_quant, actual_quant)
 
     # concat all the predictions together
     X_stack = pd.concat([X_stack, X_stack_class, X_stack_quant], axis=1)
@@ -630,45 +418,44 @@ def get_proba_adp_coef(model_obj, final_m, run_params):
     if model_obj in ('class', 'quantile'): run_adp = False
     else: run_adp = True
 
-    if 'gbmh' in final_m or 'knn' in final_m or 'full_stack' in run_params['stack_model']: print_coef = False
+    if 'gbmh' in final_m or 'knn' in final_m  or 'mlp' in final_m or \
+        'cb' in final_m or 'full_stack' in run_params['stack_model']: print_coef = False
     else: print_coef = run_params['print_coef']
 
     return proba, run_adp, print_coef
 
 
-def run_stack_models(final_m, X_stack, y_stack, best_models, scores, stack_val_pred, i, model_obj, alpha,  run_params):
+def run_stack_models(final_m, X_stack, y_stack, i, model_obj, alpha, run_params, hp_algo):
 
     print(f'\n{final_m}')
 
     min_samples = int(len(y_stack)/10)
     proba, run_adp, print_coef = get_proba_adp_coef(model_obj, final_m, run_params)
 
-    skm, _, _ = get_skm(pd.concat([X_stack, y_stack], axis=1), model_obj, to_drop=[])
-    pipe, params = get_full_pipe_stack(skm, final_m, stack_model=run_params['stack_model'], alpha=alpha, 
-                                      min_samples=min_samples, bayes_rand=run_params['opt_type'])
+    skm, _, _ = get_skm(pd.concat([X_stack, y_stack], axis=1), model_obj, hp_algo=hp_algo)
+    pipe, params = get_full_pipe_stack(skm, final_m, stack_model=run_params['stack_model'],
+                                       bayes_rand=run_params['opt_type'], alpha=alpha, 
+                                       min_samples=min_samples, )
     
     best_model, stack_scores, stack_pred, _ = skm.best_stack(pipe, params, X_stack, y_stack, 
                                                                 n_iter=run_params['n_iter'], alpha=alpha,
-                                                                bayes_rand=run_params['opt_type'],
+                                                                bayes_rand=run_params['opt_type'],trials=Trials(),
                                                                 run_adp=run_adp, print_coef=print_coef,
                                                                 proba=proba, num_k_folds=run_params['num_k_folds'],
                                                                 random_state=(i*2)+(i*7))
-    
-    best_models.append(best_model)
-    scores.append(stack_scores['stack_score'])
-    stack_val_pred = pd.concat([stack_val_pred, pd.Series(stack_pred['stack_pred'], name=final_m)], axis=1)
+    stack_val_pred =  pd.Series(stack_pred['stack_pred'], name=final_m)
 
-    return best_models, scores, stack_val_pred
+    return best_model, stack_scores['stack_score'], stack_val_pred
     
 
 def fit_and_predict(m, df_predict, X, y, proba):
-    try:
-        m.fit(X,y)
+    # try:
+    m.fit(X,y)
 
-        if proba: cur_predict = m.predict_proba(df_predict[X.columns])[:,1]
-        else: cur_predict = m.predict(df_predict[X.columns])
-    except:
-        cur_predict = []
+    if proba: cur_predict = m.predict_proba(df_predict[X.columns])[:,1]
+    else: cur_predict = m.predict(df_predict[X.columns])
+    # except:
+        # cur_predict = []
 
     return cur_predict
 
@@ -687,17 +474,17 @@ def create_stack_predict(df_predict, models, X, y, proba=False):
 def get_stack_predict_data(df_train, df_predict, df_train_class, df_predict_class,
                            models_reg, models_class, models_quant):
 
-    _, X, y = get_skm(df_train, 'reg', to_drop=['player', 'team', 'pos'])
+    _, X, y = get_skm(df_train, 'reg')
     print('Predicting Regression Models')
     X_predict = create_stack_predict(df_predict, models_reg, X, y)
 
     print('Predicting Class Models')
-    _, X, y = get_skm(df_train_class, 'class', to_drop=['player', 'team', 'pos'])
+    _, X, y = get_skm(df_train_class, 'class')
     X_predict_class = create_stack_predict(df_predict_class, models_class, X, y, proba=True)
     X_predict = pd.concat([X_predict, X_predict_class], axis=1)
 
     print('Predicting Quant Models')
-    _, X, y = get_skm(df_train, 'quantile', to_drop=['player', 'team', 'pos'])
+    _, X, y = get_skm(df_train, 'quantile')
     X_predict_quant = create_stack_predict(df_predict, models_quant, X, y)
     X_predict = pd.concat([X_predict, X_predict_quant], axis=1)
 
@@ -736,8 +523,8 @@ def val_std_dev(output, val_data, metrics={'pred_fp_per_game': 1}, iso_spline='i
 
     if iso_spline=='iso':
         sd_m, max_m, min_m = get_std_splines(val_data, metrics, show_plot=show_plot, k=2, 
-                                            min_grps_den=int(val_data.shape[0]*0.1), 
-                                            max_grps_den=int(val_data.shape[0]*0.05),
+                                            min_grps_den=int(val_data.shape[0]*0.12), 
+                                            max_grps_den=int(val_data.shape[0]*0.08),
                                             iso_spline=iso_spline)
         output['std_dev'] = sd_m.predict(sd_max_met)
         output['max_score'] = max_m.predict(sd_max_met)
@@ -745,8 +532,8 @@ def val_std_dev(output, val_data, metrics={'pred_fp_per_game': 1}, iso_spline='i
 
     elif iso_spline=='spline':
         sd_m, max_m, min_m = get_std_splines(val_data, metrics, show_plot=show_plot, k=2, 
-                                            min_grps_den=int(val_data.shape[0]*0.1), 
-                                            max_grps_den=int(val_data.shape[0]*0.05),
+                                            min_grps_den=int(val_data.shape[0]*0.12), 
+                                            max_grps_den=int(val_data.shape[0]*0.08),
                                             iso_spline=iso_spline)
         output['std_dev'] = sd_m(sd_max_met)
         output['max_score'] = max_m(sd_max_met)
@@ -772,7 +559,7 @@ def stack_predictions(X_predict, best_models, final_models, model_obj='reg'):
 
 def best_average_models(df_train, scores, final_models, y_stack, stack_val_pred, predictions, model_obj, min_include = 3):
     
-    skm, _, _ = get_skm(df_train, model_obj=model_obj, to_drop=[])
+    skm, _, _ = get_skm(df_train, model_obj=model_obj)
     
     n_scores = []
     models_included = []
@@ -809,6 +596,17 @@ def average_stack_models(df_train, scores, final_models, y_stack, stack_val_pred
 
     
     return best_val, best_predictions, best_score
+
+def unpack_stack_results(results):
+    best_models = []
+    scores = []
+    stack_val = pd.DataFrame()
+    for r in results:
+        best_models.append(r[0])
+        scores.append(r[1])
+        stack_val = pd.concat([stack_val, r[2]], axis=1)
+    return best_models, scores, stack_val
+
 
 def create_final_val_df(X_stack_player, y_stack, best_val_reg, best_val_class, best_val_quant):
     df_val_final = pd.concat([X_stack_player[['player', 'year']], 
@@ -851,21 +649,24 @@ def validation_compare_df(model_output_path, best_val):
     
     return val_compare
 
-def save_out_results(df, db_name, table_name, pos, set_year, set_pos, current_or_next_year):
+def save_out_results(df, db_name, table_name, pos, set_year, set_pos, dataset, current_or_next_year):
 
     import datetime as dt
 
     df['pos'] = set_pos
     df['rush_pass'] = pos[set_pos]['rush_pass']
+    df['dataset'] = dataset
     df['filter_data'] = pos[set_pos]['filter_data']
     df['year_exp'] = pos[set_pos]['year_exp']
     df['current_or_next_year'] = current_or_next_year
     df['version'] = vers
     df['year'] = set_year
+
     df['date_modified'] = dt.datetime.now().strftime('%m-%d-%Y %H:%M')
 
     del_str = f'''pos='{set_pos}' 
                   AND rush_pass='{pos[set_pos]['rush_pass']}'
+                  AND dataset='{dataset}'
                   AND filter_data='{pos[set_pos]['filter_data']}'
                   AND year_exp={pos[set_pos]['year_exp']}
                   AND current_or_next_year = '{current_or_next_year}'
@@ -875,130 +676,168 @@ def save_out_results(df, db_name, table_name, pos, set_year, set_pos, current_or
     dm.delete_from_db(db_name, table_name, del_str)
     dm.write_to_db(df, db_name, table_name, if_exist='append')
 
+
 #%%
 
 #------------
 # Pull in the data and create train and predict sets
 #------------
 
-pts_dict = create_pts_dict(pos, set_pos, vers)
-pos = class_cutoff(pos)
-model_output_path = create_pkey(pos, set_pos,current_or_next_year)
-df = pull_data(pts_dict, set_pos, set_year)
+dataset = 'ProjOnly'
+hp_algo = 'atpe'
+bayes_rand = 'bayes'
+
+model_output_path = create_pkey(pos, dataset, set_pos,current_or_next_year, bayes_rand, hp_algo)
+df = pull_data(set_pos, set_year, dataset)
 
 obj_cols = list(df.dtypes[df.dtypes=='object'].index)
 obj_cols = [c for c in obj_cols if c not in ['player', 'team', 'pos']]
 df= df.drop(obj_cols, axis=1)
 
-if 'Rookie' not in set_pos:
-    df, output_start = filter_df(df, pos, set_pos, set_year)
-    df_train, df_predict, min_samples = get_reg_data(df, pos, set_pos)
-    df_train_class, df_predict_class = get_class_data(df, pos, set_pos)
-else:
-    df_train, df_predict, df_train_class, df_predict_class, output_start, min_samples = prepare_rookie_data(df, set_pos, current_or_next_year)
-
-if current_or_next_year == 'next' and 'Rookie' not in set_pos: 
-    df_train, df_train_class = adjust_current_or_next(df_train, df_train_class)
-
-
+df, output_start = filter_df(df, pos, set_pos, set_year)
+df_train, df_predict, df_train_class, df_predict_class = get_train_predict(df, set_year)
 
 #%%
 #------------
 # Run the Regression, Classification, and Quantiles
 #------------
 
-# set up blank dictionaries for all metrics
-out_dict_reg, out_dict_class, out_dict_quant = output_dict(), output_dict(), output_dict()
+# # set up blank dictionaries for all metrics
+# out_dict_reg, out_dict_class, out_dict_quant = output_dict(), output_dict(), output_dict()
 
-# run all other models
-model_list = ['adp', 'lgbm', 'ridge', 'svr', 'lasso', 'enet', 'huber', 'bridge', 'gbmh', 'xgb', 'knn', 'gbm', 'rf']
-for i, m in enumerate(model_list):
-    out_dict_reg, _, _ = get_model_output(m, df_train, 'reg', out_dict_reg, pos, set_pos, i, min_samples)
-save_output_dict(out_dict_reg, model_output_path, 'reg')
-
-# run all other models
-model_list = ['rf_c', 'gbm_c', 'gbmh_c', 'xgb_c','lgbm_c', 'knn_c', 'lr_c']
-for i, m in enumerate(model_list):
-    out_dict_class, _, _= get_model_output(m, df_train_class, 'class', out_dict_class, pos, set_pos, i, min_samples)
-save_output_dict(out_dict_class, model_output_path, 'class')
-
-# run all other models
-for m in ['qr_q', 'gbm_q', 'gbmh_q', 'lgbm_q']:
-    for alph in [0.65, 0.8]:
-        out_dict_quant, _, _ = get_model_output(m, df_train, 'quantile', out_dict_quant, pos, set_pos, i, alpha=alph)
-save_output_dict(out_dict_quant, model_output_path, 'quant')
+# # # run all other models
+# model_list = ['adp', 'rf', 'gbm', 'gbmh', 'mlp', 'cb', 'huber', 'xgb', 'lgbm', 'knn', 'ridge', 'lasso', 'bridge', 'enet']
+# model_list = ['lr_c', 'rf_c', 'gbm_c', 'gbmh_c', 'mlp_c', 'cb_c', 'xgb_c', 'lgbm_c', 'knn_c',  ]
+# model_list = ['qr_q', 'gbm_q', 'gbmh_q', 'lgbm_q', 'rf_q', 'cb_q']
+# # model_list = ['cb_q']
+# for i, m in enumerate(model_list):
+#     out_dict_class = get_model_output(m, df_train, 'reg', out_dict_reg, pos, set_pos, hp_algo, bayes_rand, i)
 
 #%%
-#------------
-# Run the Stacking Models and Generate Output
-#------------
-run_params = {
-    'stack_model': 'random_kbest',
-    'print_coef': True,
-    'opt_type': 'rand',
-    'num_k_folds': 3,
-    'n_iter': 50,
 
-    'sd_metrics': {'pred_fp_per_game': 1, 'pred_fp_per_game_class': 1, 'pred_fp_per_game_quantile': 0}
-}
+# # set up blank dictionaries for all metrics
+# out_dict_reg, out_dict_class, out_dict_quant = output_dict(), output_dict(), output_dict()
+
+# model_list = ['adp', 'lasso', 'lgbm', 'rf', 'gbm', 'gbmh', 'mlp', 'cb', 'huber', 'xgb', 'knn', 'ridge', 'bridge', 'enet']
+# results = Parallel(n_jobs=-1, verbose=1)(
+#                 delayed(get_model_output)
+#                 (m, df_train, 'reg', out_dict_reg, pos, set_pos, hp_algo, bayes_rand, i) \
+#                 for i, m in enumerate(model_list) 
+#                 )
+
+# out_dict_reg = extract_par_results(results, out_dict_reg)
+# save_output_dict(out_dict_reg, model_output_path, 'reg')
+
+# # run all other models
+# model_list = ['lgbm_c', 'knn_c', 'lr_c', 'rf_c', 'gbm_c', 'gbmh_c', 'mlp_c', 'cb_c', 'xgb_c']
+# results = Parallel(n_jobs=-1, verbose=1)(
+#                 delayed(get_model_output)
+#                 (m, df_train_class, 'class', out_dict_class, pos, set_pos, hp_algo, bayes_rand, i) \
+#                 for i, m in enumerate(model_list) 
+#                 )
+# out_dict_class = extract_par_results(results, out_dict_class)
+# save_output_dict(out_dict_class, model_output_path, 'class')
+
+# # run all other models
+# model_list = ['qr_q','lgbm_q', 'gbm_q', 'gbmh_q', 'cb_q']
+# models_q = [[alph, m] for alph in [0.6, 0.8] for m in model_list]
+# results = Parallel(n_jobs=-1, verbose=1)(
+#                 delayed(get_model_output)
+#                 (m[1], df_train, 'quantile', out_dict_quant, pos, set_pos, hp_algo, bayes_rand, i, alpha=m[0]) \
+#                 for i, m in enumerate(models_q) 
+#                 )
+
+# out_dict_quant = extract_par_results(results, out_dict_quant)
+# save_output_dict(out_dict_quant, model_output_path, 'quantile')
+
+# #%%
+# #------------
+# # Run the Stacking Models and Generate Output
+# #------------
+# run_params = {
+#     'stack_model': 'random_kbest',
+#     'print_coef': False,
+#     'opt_type': 'bayes',
+#     'num_k_folds': 3,
+#     'n_iter': 25,
+
+#     'sd_metrics': {'pred_fp_per_game': 1, 'pred_fp_per_game_class': 1, 'pred_fp_per_game_quantile': 0.5}
+# }
 
 
-# get the training data for stacking and prediction data after stacking
-X_stack_player, X_stack, y_stack, y_stack_class, models_reg, models_class, models_quant = load_all_stack_pred(model_output_path)
-_, X_predict = get_stack_predict_data(df_train, df_predict, df_train_class, df_predict_class, 
-                                      models_reg, models_class, models_quant)
+# # get the training data for stacking and prediction data after stacking
+# X_stack_player, X_stack, y_stack, y_stack_class, models_reg, models_class, models_quant = load_all_stack_pred(model_output_path)
+# _, X_predict = get_stack_predict_data(df_train, df_predict, df_train_class, df_predict_class, 
+#                                       models_reg, models_class, models_quant)
 
-#---------------
-# Regression
-#---------------
-final_models = ['rf', 'gbm', 'gbmh', 'huber', 'xgb', 'lgbm', 'knn', 'ridge', 'lasso', 'bridge']
-stack_val_pred = pd.DataFrame(); scores = []; best_models = []
-for i, fm in enumerate(final_models):
-    best_models, scores, stack_val_pred = run_stack_models(fm, X_stack, y_stack, best_models, scores, stack_val_pred, i, 'reg', None, run_params)
+# #---------------
+# # Regression
+# #---------------
+# final_models = ['bridge', 'enet', 'rf', 'gbm', 'gbmh', 'mlp', 'cb', 'huber', 'lgbm', 'knn', 'ridge', 'lasso', 'xgb']
+# stack_val_pred = pd.DataFrame(); scores = []; best_models = []
 
-# get the best stack predictions and average
-predictions = stack_predictions(X_predict, best_models, final_models, 'reg')
-best_val_reg, best_predictions, best_score = average_stack_models(df_train, scores, final_models, y_stack, stack_val_pred, predictions, 'reg', show_plot=True, min_include=2)
+# results = Parallel(n_jobs=-1, verbose=1)(
+#                 delayed(run_stack_models)
+#                 (fm, X_stack, y_stack, i, 'reg', None, run_params) \
+#                 for i, fm in enumerate(final_models) 
+#                 )
 
-#---------------
-# Classification
-#---------------
-final_models_class = ['rf_c', 'gbm_c', 'gbmh_c', 'xgb_c','lgbm_c',# 'knn_c',
-                       'lr_c']
-stack_val_class = pd.DataFrame(); scores_class = []; best_models_class = []
-for i, fm in enumerate(final_models_class):
-    best_models_class, scores_class, stack_val_class = run_stack_models(fm, X_stack, y_stack_class, best_models_class, scores_class, stack_val_class, i, 'class', None, run_params)
+# best_models, scores, stack_val_pred = unpack_stack_results(results)
 
-# get the best stack predictions and average
-predictions_class = stack_predictions(X_predict, best_models_class, final_models_class, 'class')
-best_val_class, best_predictions_class, _ = average_stack_models(df_train, scores_class, final_models_class, y_stack_class, stack_val_class, predictions_class, 'class', show_plot=True, min_include=2)
+# # get the best stack predictions and average
+# predictions = stack_predictions(X_predict, best_models, final_models, 'reg')
+# best_val_reg, best_predictions, best_score = average_stack_models(df_train, scores, final_models, y_stack, stack_val_pred, predictions, 'reg', show_plot=True, min_include=2)
 
-#---------------
-# Quantile
-#---------------
-final_models_quant = ['qr_q', 'gbm_q', 'gbmh_q', 'lgbm_q']
-stack_val_quant = pd.DataFrame(); scores_quant = []; best_models_quant = []
-for i, fm in enumerate(final_models_quant):
-    best_models_quant, scores_quant, stack_val_quant = run_stack_models(fm, X_stack, y_stack, best_models, scores_quant, stack_val_quant, i, 'quantile', 0.8, run_params)
+# #---------------
+# # Classification
+# #---------------
+# final_models_class = [ 'lgbm_c', 'lr_c', 'rf_c', 'gbm_c', 'gbmh_c', 'mlp_c', 'cb_c', 'xgb_c', ]
+# stack_val_class = pd.DataFrame(); scores_class = []; best_models_class = []
+# results = Parallel(n_jobs=-1, verbose=1)(
+#                 delayed(run_stack_models)
+#                 (fm, X_stack, y_stack_class, i, 'class', None, run_params) \
+#                 for i, fm in enumerate(final_models_class) 
+#                 )
 
-# get the best stack predictions and average
-predictions_quant = stack_predictions(X_predict, best_models_quant, final_models_quant, 'quantile')
-best_val_quant, best_predictions_quant, _ = average_stack_models(df_train, scores_quant, final_models_quant, y_stack, stack_val_quant, predictions_quant, 'quantile', show_plot=True, min_include=2)
+# best_models_class, scores_class, stack_val_class = unpack_stack_results(results)
 
-#---------------
-# Create Output
-#---------------
-output = create_output(output_start, best_predictions, best_predictions_class, best_predictions_quant)
-df_val_stack = create_final_val_df(X_stack_player, y_stack, best_val_reg, best_val_class, best_val_quant)
-output = val_std_dev(output, df_val_stack, metrics=run_params['sd_metrics'], iso_spline='iso', show_plot=True)
-output.sort_values(by='pred_fp_per_game', ascending=False).iloc[:50]
+# # get the best stack predictions and average
+# predictions_class = stack_predictions(X_predict, best_models_class, final_models_class, 'class')
+# best_val_class, best_predictions_class, _ = average_stack_models(df_train, scores_class, final_models_class, y_stack_class, stack_val_class, predictions_class, 'class', show_plot=True, min_include=2)
+
+# #------------
+# # Quantile
+# #---------------
+
+# final_models_quant = ['qr_q', 'gbm_q', 'gbmh_q', 'rf_q', 'lgbm_q', 'cb_q']
+# stack_val_quant = pd.DataFrame(); scores_quant = []; best_models_quant = []
+
+# results = Parallel(n_jobs=-1, verbose=1)(
+#                 delayed(run_stack_models)
+#                 (fm, X_stack, y_stack, i, 'quantile', 0.8, run_params) \
+#                 for i, fm in enumerate(final_models_quant) 
+# )
+
+# best_models_quant, scores_quant, stack_val_quant = unpack_stack_results(results)
+
+# # get the best stack predictions and average
+# predictions_quant = stack_predictions(X_predict, best_models_quant, final_models_quant, 'quantile')
+# best_val_quant, best_predictions_quant, _ = average_stack_models(df_train, scores_quant, final_models_quant, y_stack, stack_val_quant, predictions_quant, 'quantile', show_plot=True, min_include=2)
+
+# #---------------
+# # Create Output
+# #---------------
+# output = create_output(output_start, best_predictions, best_predictions_class, best_predictions_quant)
+# df_val_stack = create_final_val_df(X_stack_player, y_stack, best_val_reg, best_val_class, best_val_quant)
+# output = val_std_dev(output, df_val_stack, metrics=run_params['sd_metrics'], iso_spline='spline', show_plot=True)
+# output.sort_values(by='pred_fp_per_game', ascending=False).iloc[:50]
 
 
 # #%%
 # # save out final results
 # val_compare = validation_compare_df(model_output_path, best_val_reg)
-# save_out_results(val_compare, 'Simulation', 'Model_Validations', pos, set_year, set_pos, current_or_next_year)
-# save_out_results(output, 'Simulation', 'Model_Predictions', pos, set_year, set_pos, current_or_next_year)
+# save_out_results(val_compare, 'Simulation', 'Model_Validations', pos, set_year, set_pos, dataset, current_or_next_year)
+# save_out_results(output, 'Simulation', 'Model_Predictions', pos, set_year, set_pos, dataset, current_or_next_year)
 
 
 #%%

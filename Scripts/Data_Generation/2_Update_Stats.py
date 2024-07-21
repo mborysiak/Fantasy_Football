@@ -62,6 +62,7 @@ for pos in ['QB', 'RB', 'WR', 'TE']:
     df_all = df_all[cols]
 
     df_all = df_all.sort_values(by=['year', 'fantasy_pts_per_game'], ascending=[True, False]).reset_index(drop=True)
+    df_all.player = df_all.player.apply(dc.name_clean)
     dm_ff.write_to_db(df_all, 'Season_Stats_New', f'{pos}_Stats', if_exist='replace')
 
 

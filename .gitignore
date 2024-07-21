@@ -15,6 +15,7 @@ DB_Versioning/
 *.p
 .p
 
+*catboost*
 # jupyter notebooks
 *.ipynb
 *.parquet
@@ -141,3 +142,4 @@ Website/logs/microblog.log.6
 Website/logs/microblog.log.7
 Website/logs/microblog.log.8
 Website/logs/microblog.log.9
+Data/Databases/Model_Inputs.sqlite3

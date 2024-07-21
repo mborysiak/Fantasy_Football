@@ -21,6 +21,7 @@ pd.set_option('display.max_columns', 999)
 root_path = general.get_main_path('Fantasy_Football')
 db_path = f'{root_path}/Data/Databases/'
 dm = DataManage(db_path)
+DB_NAME = 'Season_Stats_New'
 
 def name_cleanup(df):
     df.player = df.player.apply(name_clean)
@@ -65,22 +66,22 @@ def add_rolling_stats(df, gcols, rcols, perform_check=True):
     df = df.sort_values(by=[gcols[0], 'year']).reset_index(drop=True)
 
     if perform_check:
-        cnt_check = df.groupby([gcols[0], 'year'])['fft_proj_pts'].count()
+        cnt_check = df.groupby([gcols[0], 'year'])['year'].count()
         print(f'Counts of Groupby Category Over 17: {cnt_check[cnt_check>1]}')
 
-    rolls3_mean = rolling_stats(df, gcols, rcols, 2, agg_type='mean')
-    rolls3_max = rolling_stats(df, gcols, rcols, 2, agg_type='max')
+    rolls3_mean = rolling_stats(df, gcols, rcols, 3, agg_type='mean')
+    rolls3_max = rolling_stats(df, gcols, rcols, 3, agg_type='max')
 
-    rolls8_mean = rolling_stats(df, gcols, rcols, 4, agg_type='mean')
-    rolls8_max = rolling_stats(df, gcols, rcols, 4, agg_type='max')
-    rolls8_std = rolling_stats(df, gcols, rcols, 4, agg_type='std')
+    # rolls8_mean = rolling_stats(df, gcols, rcols, 4, agg_type='mean')
+    # rolls8_max = rolling_stats(df, gcols, rcols, 4, agg_type='max')
+    # rolls8_std = rolling_stats(df, gcols, rcols, 4, agg_type='std')
 
     # hist_mean = rolling_expand(df, gcols, rcols, agg_type='mean')
     # hist_std = rolling_expand(df, gcols, rcols, agg_type='std')
     # hist_p80 = rolling_expand(df, gcols, rcols, agg_type='p95')
 
     df = pd.concat([df, 
-                    rolls8_mean, rolls8_max, rolls8_std,
+                   # rolls8_mean, rolls8_max, #rolls8_std,
                     rolls3_mean, rolls3_max,
                     #hist_mean, hist_std, hist_p80
                     ], axis=1)
@@ -106,11 +107,23 @@ def fftoday_proj(pos):
                      FROM FFToday_Projections 
                      WHERE pos='{pos}'
                            AND team!='FA'
-                 ''', 'Season_Stats')
+                 ''', DB_NAME)
     df.team = df.team.map(team_map)
     df['fft_rank'] = df.groupby(['year'])['fft_proj_pts'].rank(ascending=False, method='min').values
     return df
 
+def add_adp(df, pos, source):
+    adp = dm.read(f'''SELECT player, year, avg_pick, avg_pick_no_log
+                      FROM ADP_Ranks
+                      WHERE pos='{pos}'
+                            AND source = '{source}'
+                      ''', DB_NAME)
+    
+    if source == 'fpros':
+        adp = adp.rename(columns={'avg_pick': 'fpros_avg_pick', 
+                                  'avg_pick_no_log': 'fpros_avg_pick_no_log'})
+    df = pd.merge(df, adp, on=['player', 'year'], how='left')
+    return df
 
 def fantasy_pros_new(df, pos):
 
@@ -118,7 +131,7 @@ def fantasy_pros_new(df, pos):
                      FROM FantasyPros_Projections
                      WHERE pos='{pos}' 
                           
-                         ''', 'Season_Stats').drop('pos', axis=1)
+                         ''', DB_NAME).drop('pos', axis=1)
     fp = name_cleanup(fp)
     fp.year = fp.year.astype('int')
     df = pd.merge(df, fp, on=['player', 'year'], how='left')
@@ -142,7 +155,7 @@ def ffa_compile(df, table_name, pos):
             cols =  ['player', 'year', 'ffa_rush_yds', 'ffa_rush_yds_sd', 'ffa_rush_tds', 'ffa_rush_tds_sd',
                       'ffa_rec_yds', 'ffa_rec_tds']
 
-    ffa = dm.read(f"SELECT * FROM {table_name} WHERE position='{pos}'", 'Season_Stats')
+    ffa = dm.read(f"SELECT * FROM {table_name} WHERE position='{pos}'", DB_NAME)
     ffa = ffa[cols].drop_duplicates()
 
     df = pd.merge(df, ffa, on=['player', 'year'], how='left')
@@ -154,7 +167,7 @@ def fantasy_data_proj(df, pos):
     fd = dm.read(f'''SELECT * 
                      FROM FantasyData
                      WHERE pos='{pos}' 
-                    ''', 'Season_Stats')
+                    ''', DB_NAME)
     
     fd = fd.drop(['team', 'pos'], axis=1)
     
@@ -191,7 +204,7 @@ def get_pff_proj(df, pos):
     pff = dm.read(f'''SELECT *
                           FROM PFF_Projections
                             WHERE pos='{pos}'
-                    ''', 'Season_Stats').drop(['team', 'pos'], axis=1)
+                    ''', DB_NAME).drop(['team', 'pos'], axis=1)
     df = pd.merge(df, pff, on=['player', 'year'], how='left')
 
     return df
@@ -219,7 +232,8 @@ def consensus_fill(df):
 
         # point and rank fills
         'proj_points': ['ffa_points', 'fpros_proj_pts', 'fft_proj_pts', 'fdta_fantasy_points_total', 'pff_proj_points'],
-        'proj_rank': ['fft_rank', 'ffa_rank', 'ffa_position_rank', 'fdta_rank', 'pff_rank']
+        'proj_rank': ['fft_rank', 'ffa_rank', 'ffa_position_rank', 'fdta_rank', 'pff_rank'],
+        'avg_pick': ['fpros_avg_pick', 'avg_pick'],
         }
 
     for k, tf in to_fill.items():
@@ -243,20 +257,6 @@ def consensus_fill(df):
     return df
 
 
-def fill_ratio_nulls(df):
-    ratio_fill_cols = ['ffa_sd_pts', 'ffa_dropoff', 'ffa_floor', 'ffa_ceiling', 'ffa_points_vor', 'ffa_floor_vor',
-                        'ffa_ceiling_vor', 'ffa_rank', 'ffa_floor_rank', 'ffa_ceiling_rank', 'ffa_rec_sd',
-                        'ffa_tier', 'ffa_uncertainty','ffa_pass_yds_sd', 'ffa_pass_tds_sd', 'ffa_pass_int_sd',
-                        'ffa_rush_yds_sd',  'ffa_rush_tds_sd', 'fc_proj_rushing_stats_pct', 'fc_proj_rushing_stats_att_tar', 
-                        'fc_proj_receiving_stats_pct', 'fc_projected_values_floor', 'fc_projected_values_ceiling',
-                        'ffa_sd_pts', 'ffa_uncertainty', 'ffa_dst_int_sd', 'ffa_dst_sacks_sd',
-                        'ffa_dst_safety_sd', 'ffa_dst_td_sd', 'fc_proj_defensive_stats_pts']
-    for c in ratio_fill_cols:
-        if c in df.columns:
-            fill_ratio = (df[c] / (df['ffa_points']+1)).mean()
-            df.loc[df[c].isnull(), c] = df.loc[df[c].isnull(), 'ffa_points'] * fill_ratio + fill_ratio
-    return df
-
 def log_rank_cols(df):
     rank_cols = [c for c in df.columns if 'rank' in c or 'expert' in c]
     for c in rank_cols:
@@ -269,9 +269,9 @@ def rolling_proj_stats(df):
                  or 'fft' in c or 'expert' in c or 'Pts' in c or 'Points' in c or 'points' in c or 'fdta' in c]
     df = add_rolling_stats(df, ['player'], proj_cols)
 
-    for c in proj_cols:
-        df[f'trend_diff_{c}'] = df[f'rmean2_{c}'] - df[f'rmean2_{c}']
-        df[f'trend_chg_{c}'] = df[f'trend_diff_{c}'] / (df[f'rmean2_{c}']+5)
+    # for c in proj_cols:
+    #     df[f'trend_diff_{c}'] = df[f'rmean2_{c}'] - df[f'rmean2_{c}']
+    #     df[f'trend_chg_{c}'] = df[f'trend_diff_{c}'] / (df[f'rmean2_{c}']+5)
 
     df = df.fillna(0)
 
@@ -399,7 +399,6 @@ def get_max_qb():
     df = fantasy_data_proj(df, pos); print(df.shape[0])
 
     df = consensus_fill(df); print(df.shape[0])
-    # df = fill_ratio_nulls(df); print(df.shape[0])
     df = log_rank_cols(df); print(df.shape[0])
     df = df.dropna(axis=1)
 
@@ -427,6 +426,36 @@ def get_max_qb():
 
     return df
 
+def add_draft_year_exp(df, pos):
+
+    draft_year = dm.read(f'''
+                        SELECT player, 
+                                team, 
+                                year draft_year, 
+                                Round draft_round, 
+                                Pick draft_pick 
+                        FROM Draft_Positions 
+                        WHERE pos='{pos}'
+                        ''', DB_NAME)
+    draft_year.team = draft_year.team.map(team_map)
+    df = pd.merge(df, draft_year, on=['player', 'team'], how='left')
+    df = forward_fill(df)
+
+    min_year = df.groupby('player')['season'].min().reset_index().rename(columns={'season': 'min_year'})
+    df = pd.merge(df, min_year, on='player')
+    df = df.fillna({'draft_year': df.min_year, 'draft_round': 7, 'draft_pick': 300}).drop('min_year', axis=1)
+    df['year_exp'] = df.year - df.draft_year
+
+    return df
+
+def drop_duplicate_players(df, order_col, rookie=False):
+    df = df.sort_values(by=['player', 'year', order_col],
+                    ascending=[True, True,  False])
+    if rookie: df = df.drop_duplicates(subset=['player'], keep='first').reset_index(drop=True)
+    else: df = df.drop_duplicates(subset=['player', 'year'], keep='first').reset_index(drop=True)
+    
+    return df
+
 
 def remove_low_corrs(df, corr_cut=0.015):
     obj_cols = df.dtypes[df.dtypes=='object'].index
@@ -435,7 +464,7 @@ def remove_low_corrs(df, corr_cut=0.015):
                          index=[c for c in df.columns if c not in obj_cols])
     corrs = corrs['y_act']
     low_corrs = list(corrs[abs(corrs) < corr_cut].index)
-    low_corrs = [c for c in low_corrs if c not in ('week', 'year', 'fd_salary')]
+    low_corrs = [c for c in low_corrs if c not in ('week', 'year', 'pos', 'games', 'games_next')]
     df = df.drop(low_corrs, axis=1)
     print(f'Removed {len(low_corrs)}/{df.shape[1]} columns')
     
@@ -450,13 +479,73 @@ def remove_low_corrs(df, corr_cut=0.015):
                    corrs.index.str.contains('qb')].iloc[-20:])
     return df
 
+def drop_y_act_except_current(df, year):
+    
+    df = df[~(df.y_act.isnull()) | (df.year==year)].reset_index(drop=True)
+    df.loc[(df.year==year), 'y_act'] = 0
+
+    return df
+
+def drop_games(df, year, games=0, games_next=0):
+    df = df[((df.games >= games) & \
+             (df.games >= games_next)) | \
+             (df.year==year)].reset_index(drop=True)
+    return df
+
+def y_act_class(df, df_quant):
+    df['avg_proj_points_per_game'] = np.where(df.year >= 2021, df.avg_proj_points / 17, df.avg_proj_points / 16)
+    df['y_act_class'] = 0
+
+    df_quant['avg_proj_points_per_game'] = np.where(df_quant.year >= 2021, df_quant.avg_proj_points / 17, df_quant.avg_proj_points / 16)
+    df_quant['proj_var'] = df_quant.y_act - df_quant.avg_proj_points_per_game   
+    df_proj_quant = df_quant[df_quant.games_next > 4].groupby('year')['proj_var'].quantile(0.75).reset_index()
+    df_act_quant = df_quant[df_quant.games_next > 4].groupby('year')['y_act'].quantile(0.75).reset_index().rename(columns={'y_act': 'y_act_quantile'})
+    
+    df = pd.merge(df, df_proj_quant, on='year')
+    df = pd.merge(df, df_act_quant, on='year')
+    
+    df.loc[(df.y_act > df.avg_proj_points_per_game + df.proj_var) & \
+           (df.games_next > 8) & \
+           (df.y_act >= df.y_act_quantile),
+           'y_act_class'] = 1
+    df = df.drop(['proj_var', 'y_act_quantile'], axis=1)
+
+    return df
+
+
+def show_calibration_curve(y_true, y_pred, n_bins=10):
+    import matplotlib.pyplot as plt
+    from sklearn.metrics import brier_score_loss
+    from sklearn.calibration import calibration_curve
+
+    # Plot perfectly calibrated
+    plt.plot([0, 1], [0, 1], linestyle = '--', label = 'Ideally Calibrated')
+    
+    # Plot model's calibration curve
+    x, y = calibration_curve(y_true, y_pred, n_bins=n_bins, strategy='quantile')
+    plt.plot(y, x, marker = '.', label = 'Quantile')
+
+    # Plot model's calibration curve
+    x, y = calibration_curve(y_true, y_pred, n_bins=n_bins, strategy='uniform')
+    plt.plot(y, x, marker = '+', label = 'Uniform')
+    
+    leg = plt.legend(loc = 'upper left')
+    plt.xlabel('Average Predicted Probability in each bin')
+    plt.ylabel('Ratio of positives')
+    plt.show()
+
+    print('Brier Score:', brier_score_loss(y_true, y_pred))
+
 #%%
 
-pos='RB'
 
+pos='WR'
 
 # pull all projections and ranks
 df = fftoday_proj(pos); print(df.shape[0])
+df = drop_duplicate_players(df, 'fft_proj_pts')
+df = add_adp(df, pos, 'mfl'); print(df.shape[0])
+df = add_adp(df, pos, 'fpros'); print(df.shape[0])
 df = fantasy_pros_new(df, pos); print(df.shape[0])
 df = get_pff_proj(df, pos); print(df.shape[0])
 df = ffa_compile(df, 'FFA_Projections', pos); print(df.shape[0])
@@ -465,8 +554,14 @@ df = fantasy_data_proj(df, pos); print(df.shape[0])
 if pos == 'QB':
     df = df.drop([c for c in df.columns if 'rec' in c], axis=1)
 
+df['log_avg_proj_rank'] = np.log(df[[c for c in df.columns if 'rank' in c]].mean(axis=1))
+df.loc[df.avg_pick.isnull(), 'avg_pick'] = df.loc[df.avg_pick.isnull(), 'log_avg_proj_rank'] * 0.676 + 1.71
+df.loc[df.avg_pick.isnull(), 'fpros_avg_pick'] = df.loc[df.avg_pick.isnull(), 'log_avg_proj_rank'] * 0.676 + 1.71
+
+
 df = consensus_fill(df); print(df.shape[0])
 df = log_rank_cols(df); print(df.shape[0])
+
 df = df.dropna(axis=1)
 df = rolling_proj_stats(df); print(df.shape[0])
 df = remove_non_uniques(df); print(df.shape[0])
@@ -483,19 +578,183 @@ if pos != 'QB':
     max_qb = get_max_qb()
     df = pd.merge(df, max_qb, on=['team', 'year']); print(df.shape[0])
 
+df = drop_duplicate_players(df, 'avg_proj_points')
+
+#-----------
+# Save out Projection data
+#-----------
+stats = dm.read(f'SELECT * FROM {pos}_Stats', DB_NAME)
+stats = drop_duplicate_players(stats, 'sum_fantasy_pts')
+df_proj = pd.merge(stats[['player', 'year', 'season', 'games', 'games_next', 'y_act']], df, on=['player', 'year'], how='right')
+
+# only drop next year's game limit since last year's are not being
+# used for model predictions and don't matter if they are missing
+df_proj = drop_y_act_except_current(df_proj, year)
+df_proj = drop_games(df_proj, year, games=0, games_next=4)
+df_proj = remove_low_corrs(df_proj.dropna(subset=['y_act']), corr_cut=0.02)
+df_proj = add_draft_year_exp(df_proj, pos)
+df_proj = y_act_class(df_proj, df_proj.copy())
+
+dm.write_to_db(df_proj, 'Model_Inputs', f'{pos}_{year}_ProjOnly', if_exist='replace')
+
+#------------
+# Save out Full Data
+#------------
+stats = add_rolling_stats(stats, ['player'], [c for c in stats.columns if 'pass' in c or 'rush' in c or 'rec' in c])
+stats = remove_non_uniques(stats)
+df_stats = pd.merge(stats, df, on=['player', 'year']); print(df.shape[0])
+
+# drop both last year's and next year's game limits
+# since you need y_act to be relevant and last year's stats to be relvant
+df_stats = drop_y_act_except_current(df_stats, year)
+df_stats = drop_games(df_stats, year, games=4, games_next=4)
+df_stats = remove_low_corrs(df_stats.dropna(subset=['y_act']), corr_cut=0.02)
+df_stats = add_draft_year_exp(df_stats, pos)
+df_stats = y_act_class(df_stats, df_stats.copy())
+
+dm.write_to_db(df_stats, 'Model_Inputs', f'{pos}_{year}_Stats', if_exist='replace')
+
+#------------
+# Save out Rookie Data
+#------------
+if pos in ('RB', 'WR'):
+
+    df_rookie = dm.read(f'''SELECT * FROM Rookie_{pos}_Stats''', DB_NAME).rename(columns={'draft_year': 'year'})
+
+    stats = dm.read(f'''SELECT player, 
+                                season year, 
+                                games, 
+                                games_next, 
+                                fantasy_pts_per_game y_act 
+                        FROM {pos}_Stats''', DB_NAME)
+    stats = drop_duplicate_players(stats, 'y_act', rookie=True)
+
+    df_rookie = pd.merge(stats, df_rookie, on=['player', 'year'], how='right')
+    df_rookie = pd.merge(df_rookie, df, on=['player', 'year'])
+    df_rookie = drop_y_act_except_current(df_rookie, year)
+    df_rookie = drop_games(df_rookie, year, games=4, games_next=0)
+
+    df_rookie = remove_low_corrs(df_rookie, corr_cut=0.02)
+    df_rookie = y_act_class(df_rookie.fillna({'games_next': 16}), df_proj.copy())
+    df_rookie = drop_duplicate_players(df_rookie, 'y_act', rookie=True)
+
+    dm.write_to_db(df_rookie, 'Model_Inputs', f'{pos}_{year}_Rookie', if_exist='replace')
+
+
+
+# xx = pd.merge(stats.loc[stats.year>2007,['player', 'year', 'games', 'games_next', 'y_act']], 
+#               df[['player', 'year', 'avg_proj_points']], on=['player', 'year'], how='outer'); print(df.shape[0])
+
+# # xx[xx.avg_proj_points.isnull()].dropna(subset=['y_act']).sort_values(by='y_act').iloc[-50:]
+# xx[xx.y_act.isnull()].dropna(subset=['avg_proj_points']).sort_values(by='avg_proj_points').iloc[-50:]
+
+
 #%%
 
-# df = pd.merge(df, stats, on=['player', 'year'])
-# df = remove_low_corrs(df, corr_cut=0.02)
-# df
-#%%
-chk =  pd.merge(df[['player', 'year', 'avg_proj_points']], stats, on=['player', 'year'], how='outer')
-chk[(chk.avg_proj_points.isnull()) & (chk.year >= 2008)].sort_values(by=['year', 'avg_proj_points'], ascending=[True, False]).iloc[:50]
+pos = 'WR'
+
+
+from skmodel import SciKitModel
+from hyperopt import Trials
+
+alpha = 0.8
+proba = True
+model_obj = 'class'
+
+# Xy = dm.read(f"SELECT * FROM {pos}_{year}_ProjOnly WHERE pos='{pos}' ", 'Model_Inputs')
+Xy = dm.read(f"SELECT * FROM {pos}_{year}_Stats WHERE pos='{pos}' ", 'Model_Inputs')
+# Xy = dm.read(f"SELECT * FROM {pos}_{year}_Rookie ", 'Model_Inputs')
+
+Xy = Xy.sort_values(by='year').reset_index(drop=True)
+Xy['team'] = 'team'
+Xy['week'] = 1
+Xy['game_date'] = Xy.year
+
+if proba: Xy = Xy.drop('y_act', axis=1).rename(columns={'y_act_class': 'y_act'})
+else: Xy = Xy.drop('y_act_class', axis=1)
+
+pred = Xy[Xy.year==2024].copy().reset_index(drop=True)
+train = Xy[Xy.year<2024].copy().reset_index(drop=True)
+print(Xy.shape)
+
+preds = []
+actuals = []
+
+skm = SciKitModel(train, model_obj=model_obj, alpha=alpha, hp_algo='atpe')
+to_drop = list(train.dtypes[train.dtypes=='object'].index)
+to_drop.extend(['games_next'])
+X, y = skm.Xy_split('y_act', to_drop = to_drop)
+
+pipe = skm.model_pipe([skm.piece('random_sample'),
+                        skm.piece('std_scale'), 
+                        skm.piece('select_perc_c'),
+                        # skm.feature_union([
+                        #                skm.piece('agglomeration'), 
+                        #                 skm.piece('k_best_c'),
+                        #                 skm.piece('pca')
+                        #                 ]),
+                        skm.piece('k_best_c'),
+                        skm.piece('lr_c')
+                    ])
+
+params = skm.default_params(pipe, 'bayes')
 
 #%%
-chk[(chk.avg_proj_points.isnull()) & (chk.year >= 2008)].groupby('player').agg({'y_act': 'sum', 'year': 'count'}).sort_values(by='y_act', ascending=False).iloc[:50]
+# pipe.steps[-1][-1].set_params(**{'loss_function': f'Quantile:alpha={alpha}'})
+best_models, oof_data, param_scores, _ = skm.time_series_cv(pipe, X, y, params, n_iter=10,
+                                                                col_split='year',n_splits=5,
+                                                                time_split=2016, alpha=alpha,
+                                                                bayes_rand='bayes', proba=proba,
+                                                                sample_weight=False, trials=Trials(),
+                                                                random_seed=12345)
+
+oof_data['full_hold'].plot.scatter(x='pred', y='y_act')
+try: show_calibration_curve(oof_data['full_hold'].y_act, oof_data['full_hold'].pred, n_bins=6)
+except: pass
 
 #%%
-chk[(chk.avg_pick.isnull()) & (chk.year >= 2008)].groupby('player').agg({'avg_pick': 'mean', 'year': 'count'}).sort_values(by='year', ascending=False).iloc[:50]
+
+oof_data['full_hold'].sort_values(by='pred', ascending=False).iloc[:50]#[(oof_data['full_hold'].pred < 7.5) & (oof_data['full_hold'].y_act > 15)]#%%
+# %%
+
+pred = pred.fillna({'games': 16})
+try: pred['pred'] = best_models[-1].fit(X,y).predict_proba(pred[X.columns].fillna(pred.mean()))[:,1]
+except: pred['pred'] = best_models[-1].fit(X,y).predict(pred[X.columns].fillna(pred.mean()))
+pred[['player', 'year', 'pred']].sort_values(by='pred', ascending=False).iloc[:30]
+
+# %%
+
+import optuna
+from sklearn.model_selection import cross_val_score
+import functools
+def objective(trial, pipe, params_list, X, y):
+    
+    params = {}
+    for k, v in params_list.items():
+        if v[0] == 'float': params[k] = trial.suggest_float(k, v[1], v[2], log=v[3])
+        elif v[0] == 'int': params[k] = trial.suggest_int(k, v[1], v[2])
+        elif v[0] == 'categorical': params[k] = trial.suggest_categorical(k, v[1])
+
+    print(params)
+    pipe.set_params(**params)
+    return cross_val_score(pipe, X, y, cv=5, scoring='neg_mean_squared_error').mean()
+
+params_list = {
+              'lr_c__C': ['float', 0.001, 100, True],#trial.suggest_float('lr_c__C', 0.001, 100, log=True),
+              'k_best_c__k': ['int', 1, 30],# trial.suggest_int('k_best_c__k', 1, 30),
+              'lr_c__solver': ['categorical', ['saga', 'liblinear']],
+            #   'select_perc_c__percentile': trial.suggest_float('select_perc_c__percentile', 0.2, 0.5),
+            #   'random_sample__seed': trial.suggest_int('random_sample__seed', 10, 1000),
+            #   'random_sample__frac': trial.suggest_float('random_sample__frac', 0.2, 0.5),
+          
+              }
+
+study = optuna.create_study(
+    direction="minimize",
+    storage="sqlite:///db.sqlite3",  # Specify the storage URL here.
+    study_name="test"
+)
+study.optimize(functools.partial(objective, pipe=pipe, params_list=params_list, X=X, y=y), n_trials=100, timeout=10)
+print(study.best_trial)
 
 # %%

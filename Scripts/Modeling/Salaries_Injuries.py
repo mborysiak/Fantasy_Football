@@ -214,13 +214,8 @@ dm.write_to_db(to_actual, 'Simulation', 'Salaries', 'append')
 
 def get_adp():
     all_stats = pd.DataFrame()
-    for pos in ['QB', 'RB', 'WR', 'TE', 'Rookie_RB', 'Rookie_WR']:
-        if pos!='QB': ap='avg_pick' 
-        else: ap = 'qb_avg_pick'
-        if 'Rookie' in pos: yr = 'draft_year'; yr_add=0
-        else: yr = 'year';  yr_add=1
-
-        stats = dm.read(f"SELECT player, pos, {yr}+{yr_add} year, {ap} avg_pick FROM {pos}_Stats", 'Season_Stats')
+    for pos in ['QB', 'RB', 'WR', 'TE']:
+        stats = dm.read(f"SELECT player, pos, year, avg_pick, avg_proj_points FROM {pos}_Stats", 'Season_Stats')
         all_stats = pd.concat([all_stats, stats], axis=0)
     return all_stats
 
