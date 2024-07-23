@@ -41,35 +41,35 @@ runs = [
 ]
 
 runs = [
-        ['RB', 'current', 'greater_equal', 0, '', 'Rookie'],
-        ['WR', 'current', 'greater_equal', 0, '', 'Rookie'],
+        # ['RB', 'current', 'greater_equal', 0, '', 'Rookie'],
+        # ['WR', 'current', 'greater_equal', 0, '', 'Rookie'],
     
-        ['WR', 'current', 'greater_equal', 0, '', 'ProjOnly'],
-        ['WR', 'current', 'less_equal', 3, '', 'ProjOnly'],
-        ['WR', 'current', 'greater_equal', 4, '', 'ProjOnly'],
+        # ['WR', 'current', 'greater_equal', 0, '', 'ProjOnly'],
+        # ['WR', 'current', 'less_equal', 3, '', 'ProjOnly'],
+        # ['WR', 'current', 'greater_equal', 4, '', 'ProjOnly'],
 
-        ['WR', 'current', 'greater_equal', 0, '', 'Stats'],
-        ['WR', 'current', 'less_equal', 3, '', 'Stats'],
-        ['WR', 'current', 'greater_equal', 4, '', 'Stats'],
+        # ['WR', 'current', 'greater_equal', 0, '', 'Stats'],
+        # ['WR', 'current', 'less_equal', 3, '', 'Stats'],
+        # ['WR', 'current', 'greater_equal', 4, '', 'Stats'],
 
-        ['RB', 'current', 'greater_equal', 0, '', 'ProjOnly'],
-        ['RB', 'current', 'less_equal', 3, '', 'ProjOnly'],
-        ['RB', 'current', 'greater_equal', 4, '', 'ProjOnly'],
+        # ['RB', 'current', 'greater_equal', 0, '', 'ProjOnly'],
+        # ['RB', 'current', 'less_equal', 3, '', 'ProjOnly'],
+        # ['RB', 'current', 'greater_equal', 4, '', 'ProjOnly'],
 
-        ['RB', 'current', 'greater_equal', 0, '', 'Stats'],
-        ['RB', 'current', 'less_equal', 3, '', 'Stats'],
-        ['RB', 'current', 'greater_equal', 4, '', 'Stats'],
+        # ['RB', 'current', 'greater_equal', 0, '', 'Stats'],
+        # ['RB', 'current', 'less_equal', 3, '', 'Stats'],
+        # ['RB', 'current', 'greater_equal', 4, '', 'Stats'],
 
-        ['TE', 'current', 'greater_equal', 0, '', 'ProjOnly'],
-        ['TE', 'current', 'greater_equal', 0, '', 'Stats'],
+        # ['TE', 'current', 'greater_equal', 0, '', 'ProjOnly'],
+        # ['TE', 'current', 'greater_equal', 0, '', 'Stats'],
 
-        ['QB', 'current', 'greater_equal', 0, 'both', 'ProjOnly'],
-        ['QB', 'current', 'greater_equal', 0, 'rush', 'ProjOnly'],
-        ['QB', 'current', 'greater_equal', 0, 'pass', 'ProjOnly'],
+        # ['QB', 'current', 'greater_equal', 0, 'both', 'ProjOnly'],
+        # # ['QB', 'current', 'greater_equal', 0, 'rush', 'ProjOnly'],
+        # # ['QB', 'current', 'greater_equal', 0, 'pass', 'ProjOnly'],
 
         ['QB', 'current', 'greater_equal', 0, 'both', 'Stats'],
-        ['QB', 'current', 'greater_equal', 0, 'rush', 'Stats'],
-        ['QB', 'current', 'greater_equal', 0, 'pass', 'Stats'],
+        # ['QB', 'current', 'greater_equal', 0, 'rush', 'Stats'],
+        # ['QB', 'current', 'greater_equal', 0, 'pass', 'Stats'],
 
 ]
 
@@ -276,11 +276,11 @@ both = dm.read(f'''SELECT player,
                           rush_pass,
                           pred_fp_per_game pred_fp_per_game,
                           std_dev,
+                          min_score,   
                           max_score, date_modified
                 FROM Model_Predictions
                 WHERE (rush_pass NOT IN ('rush', 'pass', 'rec') OR rush_pass IS NULL)
                       AND version='{vers}'
-                    --  AND pos!='QB'
                       AND year = {set_year}
              ''', 'Simulation')
 
@@ -289,91 +289,37 @@ both = both[both.date_modified >= date_mod].reset_index(drop=True)
 
 # preds = pd.concat([rp, both], axis=0)
 preds = both.copy()
+
+preds.loc[preds.std_dev < 0, 'std_dev'] = 1
+
 preds.loc[preds.max_score < preds.pred_fp_per_game, 'max_score'] = (
     preds.loc[preds.max_score < preds.pred_fp_per_game, 'pred_fp_per_game'] +
     preds.loc[preds.max_score < preds.pred_fp_per_game, 'std_dev'] * 1.5
 )
 
+preds.loc[preds.min_score > preds.pred_fp_per_game, 'min_score'] = (
+    preds.loc[preds.min_score > preds.pred_fp_per_game, 'pred_fp_per_game'] -
+    preds.loc[preds.min_score > preds.pred_fp_per_game, 'std_dev'] * 1.5
+)
+
+
 preds = preds.groupby(['player', 'pos'], as_index=False).agg({'pred_fp_per_game': 'mean', 
                                                               'std_dev': 'mean',
+                                                              'min_score': 'mean',
                                                               'max_score': 'mean'})
 preds = preds[preds.pred_fp_per_game > 0].reset_index(drop=True)
+preds['dataset'] = 'final_ensemble'
+preds['version'] = vers
+preds['year'] = set_year
 
 display(preds[((preds.pos=='QB'))].sort_values(by='pred_fp_per_game', ascending=False).iloc[:15])
 display(preds[((preds.pos!='QB'))].sort_values(by='pred_fp_per_game', ascending=False).iloc[:50])
 
 # %%
-
-
-def plot_distribution(estimates):
-
-    from IPython.core.pylabtools import figsize
-    import seaborn as sns
-    import matplotlib.pyplot as plt
-
-    print('\n', estimates.player)
-    estimates = estimates.iloc[2:]
-
-    # Plot all the estimates
-    plt.figure(figsize(8, 8))
-    sns.distplot(estimates, hist = True, kde = True, bins = 19,
-                 hist_kws = {'edgecolor': 'k', 'color': 'darkblue'},
-                 kde_kws = {'linewidth' : 4},
-                 label = 'Estimated Dist.')
-
-    # Plot the mean estimate
-    plt.vlines(x = estimates.mean(), ymin = 0, ymax = 0.01, 
-                linestyles = '--', colors = 'red',
-                label = 'Pred Estimate',
-                linewidth = 2.5)
-
-    plt.legend(loc = 1)
-    plt.title('Density Plot for Test Observation');
-    plt.xlabel('Grade'); plt.ylabel('Density');
-
-    # Prediction information
-    sum_stats = (np.percentile(estimates, 5), np.percentile(estimates, 95), estimates.std() /estimates.mean())
-    print('Average Estimate = %0.4f' % estimates.mean())
-    print('5%% Estimate = %0.4f    95%% Estimate = %0.4f    Std Error = %0.4f' % sum_stats) 
-
-def create_distribution(player_data, num_samples=1000):
-    
-    import scipy.stats as stats
-
-    # create truncated distribution
-    lower, upper = 0,  player_data.max_score
-    lower_bound = (lower - player_data.pred_fp_per_game) / player_data.std_dev, 
-    upper_bound = (upper - player_data.pred_fp_per_game) / player_data.std_dev
-    trunc_dist = stats.truncnorm(lower_bound, upper_bound, loc= player_data.pred_fp_per_game, scale= player_data.std_dev)
-    
-    estimates = trunc_dist.rvs(num_samples)
-
-    return estimates
-
-
-def create_sim_output(output, num_samples=1000):
-    sim_out = pd.DataFrame()
-    for _, row in output.iterrows():
-        cur_out = pd.DataFrame([row.player, row.pos]).T
-        cur_out.columns=['player', 'pos']
-        dists = 16*pd.DataFrame(create_distribution(row, num_samples)).T
-        cur_out = pd.concat([cur_out, dists], axis=1)
-        sim_out = pd.concat([sim_out, cur_out], axis=0)
-    
-    return sim_out
-
-sim_output = create_sim_output(preds).reset_index(drop=True)
-
-idx = sim_output[sim_output.player=="Christian Mccaffrey"].index[0]
-plot_distribution(sim_output.iloc[idx])
-
-
-# %%
 import shutil
 
-sim_version = 'v1'
-
-dm.write_to_db(sim_output, 'Simulation', f'Version{sim_version}_{set_year}', 'replace')
+dm.delete_from_db('Simulation', 'Model_Predictions', f"version='{vers}' AND year={set_year} AND dataset='final_ensemble'")
+dm.write_to_db(preds, 'Simulation', 'Model_Predictions', 'append')
 
 src = f'{root_path}/Data/Databases/Simulation.sqlite3'
 dst = f'/Users/borys/OneDrive/Documents/Github/Fantasy_Football_App/app/Simulation.sqlite3'

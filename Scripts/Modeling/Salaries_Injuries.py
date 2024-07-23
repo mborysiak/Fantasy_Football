@@ -11,6 +11,7 @@ import zModel_Functions as mf
 
 from ff.db_operations import DataManage
 from ff import general
+import ff.data_clean as dc
 from skmodel import SciKitModel
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.model_selection import cross_val_predict
@@ -31,88 +32,72 @@ dm = DataManage(db_path)
 
 # set core path
 PATH = f'{root_path}/Data/'
-YEAR = 2023
-LEAGUE = 'nv'
-
-ty_keepers = {
-    'Jaylen Waddle': [35],
-    'Kenneth Walker': [12],
-
-    'Garrett Wilson': [16],
-    'Nick Chubb': [54],
-
-    'Justin Jefferson': [81],
-    'Tyreek Hill': [64],
-
-    'Calvin Ridley': [10],
-    'Christian Mccaffrey': [65],
-
-    'Saquon Barkley': [69],
-    'Cooper Kupp': [67],
-
-    'Aj Brown': [52],
-    'Jamarr Chase': [31],
-
-    'Jalen Hurts': [26],
-    'Josh Jacobs': [63],
-
-    'Deandre Hopkins': [19],
-    'Trevor Lawrence': [19]
-}
+YEAR = 2024
+LEAGUE = 'beta'
 
 # ty_keepers = {
-#     'Rhamondre Stevenson': [35],
-#     'Devonta Smith': [19],
+#     'Jaylen Waddle': [35],
+#     'Kenneth Walker': [12],
 
-#     'Jk Dobbins': [27],
-#     'Tony Pollard': [36],
+#     'Garrett Wilson': [16],
+#     'Nick Chubb': [54],
 
-#     "Jamarr Chase": [42],
-#     'Jaylen Waddle': [48],
+#     'Justin Jefferson': [81],
+#     'Tyreek Hill': [64],
 
-#     'Amari Cooper': [20],
-#     'Nick Chubb': [91],
+#     'Calvin Ridley': [10],
+#     'Christian Mccaffrey': [65],
 
-#     'Aj Brown': [55],
-#     'Amon Ra St Brown': [26],
+#     'Saquon Barkley': [69],
+#     'Cooper Kupp': [67],
 
-#     'Travis Kelce': [65],
-#     'Patrick Mahomes': [39],
+#     'Aj Brown': [52],
+#     'Jamarr Chase': [31],
 
-#     'Jalen Hurts': [22],
-#     'Ceedee Lamb': [59],
+#     'Jalen Hurts': [26],
+#     'Josh Jacobs': [63],
 
-#     'James Conner': [28],
-#     'Garrett Wilson': [19],
-
-#     'Saquon Barkley': [86],
-#     'Kenneth Walker': [27],
-    
-#     'Cooper Kupp': [65],
-#     'Javonte Williams': [11],
-
-#     'Justin Jefferson': [49]
+#     'Deandre Hopkins': [19],
+#     'Trevor Lawrence': [19]
 # }
+
+ty_keepers = {
+    'Jahmyr Gibbs': [68],
+    'Drake London': [34],
+
+    'Dj Moore': [38],
+    # 'Tony Pollard': [37],
+
+    'Kyren Williams': [11],
+    'Isiah Pacheco': [27],
+
+    'Raheem Mostert': [13],
+    'Nico Collins': [12],
+
+    'Amon Ra St Brown': [46],
+    'Aj Brown': [70],
+
+    # 'James Cook': [40],
+    # 'Jonathan Taylor': [88],
+
+    'Brandon Aiyuk': [24],
+    # 'Jalen Hurts': [37],
+
+    # 'Travis Etienne': [79],
+    'Kenneth Walker': [42],
+    
+    'Sam Laporta': [11],
+    'Michael Pittman': [20],
+
+    'Breece Hall': [44],
+    'Zay Flowers': [24],
+}
 
 ty_keepers = pd.DataFrame(ty_keepers)
 ty_keepers = ty_keepers.T.reset_index()
 ty_keepers.columns = ['player', 'ty_keeper_sal']
 ty_keepers['year'] = YEAR
 
-
-# removing un-needed characters
-def name_clean(player_name):
-
-    # replace common characters to remove from names with no space
-    characters = ['*', "'", '+', '%', ',' ,'III', 'II', '.', 'Jr']
-    for c in characters:
-        player_name = player_name.replace(c, '')
-        
-    # replace dashes with space and title case / strip whitespace
-    player_name = player_name.replace('-', ' ')
-    player_name = player_name.title().rstrip().lstrip()
-
-    return player_name
 
 #%%
 
@@ -158,7 +143,7 @@ def scrape_values(df):
 salaries = scrape_values(df)
 salaries['year'] = YEAR
 salaries['league'] = LEAGUE
-salaries.player = salaries.player.apply(name_clean)
+salaries.player = salaries.player.apply(dc.name_clean)
 
 dm.delete_from_db('Simulation', 'Salaries', f"year='{YEAR}' AND league='{LEAGUE}'")
 dm.write_to_db(salaries, 'Simulation', 'Salaries', 'append')
@@ -187,35 +172,39 @@ def clean_results(path, fname, year, league, team_split=True):
     
     # convert salary columns to float after stripping $ and remove bad player name formatting
     results.actual_salary = results.actual_salary.apply(lambda x: float(x.replace('$', '')))
-    results.player = results.player.apply(name_clean)
+    results.player = results.player.apply(dc.name_clean)
     
     results['year'] = year
     results['league'] = league
     
     return results
 
-FNAME = f'{LEAGUE}_{YEAR}_results'
-results = clean_results(PATH, FNAME, YEAR, LEAGUE)
-dm.delete_from_db('Simulation', 'Actual_Salaries', f"year='{YEAR}' AND league='{LEAGUE}'")
-dm.write_to_db(results, 'Simulation', 'Actual_Salaries', 'append')
+# FNAME = f'{LEAGUE}_{YEAR}_results'
+# results = clean_results(PATH, FNAME, YEAR, LEAGUE)
+# dm.delete_from_db('Simulation', 'Actual_Salaries', f"year='{YEAR}' AND league='{LEAGUE}'")
+# dm.write_to_db(results, 'Simulation', 'Actual_Salaries', 'append')
 
-# push the actuals to salary database to re-run simulation
-to_actual = dm.read(f"SELECT * FROM Actual_Salaries WHERE year={YEAR}", 'Simulation')
-to_actual = to_actual[['player', 'actual_salary', 'year', 'league']].rename(columns={'actual_salary': 'salary'})
-to_actual['league'] = to_actual.league.apply(lambda x: f'{x}_actual')
-to_actual['std_dev'] = 0.1
-to_actual['min_score'] = to_actual.salary - 1
-to_actual['max_score'] = to_actual.salary + 1
+# # push the actuals to salary database to re-run simulation
+# to_actual = dm.read(f"SELECT * FROM Actual_Salaries WHERE year={YEAR}", 'Simulation')
+# to_actual = to_actual[['player', 'actual_salary', 'year', 'league']].rename(columns={'actual_salary': 'salary'})
+# to_actual['league'] = to_actual.league.apply(lambda x: f'{x}_actual')
+# to_actual['std_dev'] = 0.1
+# to_actual['min_score'] = to_actual.salary - 1
+# to_actual['max_score'] = to_actual.salary + 1
 
-dm.delete_from_db('Simulation', 'Salaries', f"year={YEAR} AND league='{LEAGUE}_actual'")
-dm.write_to_db(to_actual, 'Simulation', 'Salaries', 'append')
+# dm.delete_from_db('Simulation', 'Salaries', f"year={YEAR} AND league='{LEAGUE}_actual'")
+# dm.write_to_db(to_actual, 'Simulation', 'Salaries', 'append')
 
 #%%
 
 def get_adp():
     all_stats = pd.DataFrame()
     for pos in ['QB', 'RB', 'WR', 'TE']:
-        stats = dm.read(f"SELECT player, pos, year, avg_pick, avg_proj_points FROM {pos}_Stats", 'Season_Stats')
+        stats = dm.read(f'''SELECT player, year, avg_pick, avg_proj_points 
+                            FROM {pos}_{YEAR}_ProjOnly
+                            
+                         ''', 'Model_Inputs')
+        stats['pos'] = pos
         all_stats = pd.concat([all_stats, stats], axis=0)
     return all_stats
 
@@ -248,21 +237,24 @@ def get_salaries():
     return salaries
 
 def add_player_age(salaries):
-    player_age = dm.read('''SELECT * FROM player_birthdays''', 'Season_Stats')   
+    player_age = dm.read('''SELECT * FROM player_birthdays''', 'Season_Stats_New')   
     salaries = pd.merge(salaries, player_age, on=['player'])
     return salaries
 
 def add_osu(salaries):
     osu = dm.read('''SELECT DISTINCT player, 1 as is_OSU 
                     FROM college_stats
-                    where team='Ohio State' ''', 'Season_Stats')
+                    where team='Ohio State' ''', 'Season_Stats_New')
     salaries = pd.merge(salaries, osu, on=['player'], how='left')
     salaries.is_OSU = salaries.is_OSU.fillna(0)
 
     return salaries
 
 def add_rookie(salaries):
-    rookies = dm.read('''SELECT player, draft_year year FROM rookie_adp''', 'Season_Stats')
+    rookies = dm.read('''SELECT player, year 
+                         FROM Draft_Positions
+                         WHERE pos IN ('RB', 'WR', 'TE', 'QB')
+                      ''', 'Season_Stats_New')
     rookies['is_rookie'] = 1
     salaries = pd.merge(salaries, rookies, on=['player', 'year'], how='left')
     salaries.is_rookie = salaries.is_rookie.fillna(0)
@@ -330,7 +322,7 @@ salaries = salaries.sample(frac=1, random_state=1234).reset_index(drop=True)
 #%%
 
 skm = SciKitModel(salaries)
-X, y = skm.Xy_split_list('actual_salary', ['year', 'sal_rank', 'inflation', 'salary', 'pos',  
+X, y = skm.Xy_split_list('actual_salary', ['year', 'sal_rank', 'inflation', 'salary', 'pos', 'avg_proj_points', 
                                             'is_rookie', 'is_OSU', 'avg_pick', 'year_exp', 'pos_rank'])
 X = pd.concat([X, pd.get_dummies(X.pos, drop_first=True)], axis=1).drop('pos', axis=1)
 X['rookie_rb'] = X.RB * X.is_rookie
@@ -357,7 +349,7 @@ print('Baseline',  round(baseline, 3), round(baseline_r2, 3))
 
 # loop through each potential model
 best_models = {}
-model_list = ['lgbm', 'ridge', 'svr', 'lasso', 'enet', 'xgb', 'knn', 'gbm', 'rf', 'gbmh', 'huber']
+model_list = ['lgbm', 'ridge', 'svr', 'lasso', 'enet', 'xgb', 'knn', 'gbm', 'rf', 'gbmh', 'huber', 'cb', 'mlp']
 all_pred = pd.DataFrame()
 for m in model_list:
 
@@ -372,9 +364,8 @@ for m in model_list:
                             ])
     params = skm.default_params(pipe, 'rand')
     params['k_best__k'] = range(1,X_train.shape[1])
-    if m=='lgbm': params = {k:v for k,v in params.items() if k!='lgbm__learning_rate' }
 
-    search = RandomizedSearchCV(pipe, params, n_iter=50, scoring='neg_mean_squared_error',refit=True)
+    search = RandomizedSearchCV(pipe, params, n_iter=50, scoring='neg_mean_squared_error',refit=True, n_jobs=-1)
     search.fit(X_train, y_train)
     best_model = search.best_estimator_
 
@@ -430,7 +421,9 @@ pred_sal = np.mean([
                    best_models['gbm'].predict(X_test),
                    best_models['rf'].predict(X_test),
                    best_models['gbmh'].predict(X_test),
-                    best_models['huber'].predict(X_test)
+                    best_models['huber'].predict(X_test),
+                    best_models['cb'].predict(X_test),
+                    best_models['mlp'].predict(X_test)
                     ], axis=0)
 
 pred_results = pd.concat([salaries.loc[salaries.year==YEAR,['player', 'pos', 'year', 'salary', 'is_keeper', 'actual_salary']].reset_index(drop=True), 
@@ -499,111 +492,6 @@ output = output.rename(columns={'pred_salary': 'salary'})
 
 dm.delete_from_db('Simulation', 'Salaries', f"year={YEAR} AND league='{LEAGUE}pred'")
 dm.write_to_db(output, 'Simulation', 'Salaries', 'append')
-
-#%%
-
-# # Pushing Injuries to Season_Stats Database
-
-# +
-from sklearn.preprocessing import StandardScaler
-YEAR = 2023
-
-# read in the injury predictor file
-inj = pd.read_csv(f'{PATH}/OtherData/InjuryPredictor/injury_predictor_{YEAR}.csv', 
-                  header=None)
-
-# fix the columns and formatting
-inj.columns = ['player', 'pct_miss_one', 'proj_games_missed', 'inj_pct_per_game', 'inj_risk', 'points']
-inj.player = inj.player.apply(lambda x: x.split(',')[0])
-inj.pct_miss_one = inj.pct_miss_one.apply(lambda x: float(x.strip('%')))
-inj.inj_pct_per_game = inj.inj_pct_per_game.apply(lambda x: float(x.strip('%')))
-inj = inj.drop('points', axis=1)
-inj['year'] = YEAR
-
-inj.player = inj.player.apply(name_clean)
-
-dm.delete_from_db('Simulation', 'Injuries_Source', f"year='{YEAR}'")
-dm.write_to_db(inj, 'Simulation', 'Injuries_Source', 'append')
-
-
-# %%
-
-inj = dm.read('''SELECT * FROM Injuries_Source''', 'Simulation')
-inj = inj.drop('inj_risk', axis=1)
-
-inj.player = inj.player.apply(name_clean)
-
-games = dm.read('''SELECT player, year+1 year, age, pos, games, rush_att, tgt, 0 as pass_att, 0 as sacks_per_game
-                   FROM RB_Stats
-                   UNION
-                   SELECT player, year+1 year, age, pos, games, 0 as rush_att, tgt, 0 as pass_att, 0 as sacks_per_game
-                   FROM WR_Stats
-                   UNION
-                   SELECT player, year+1 year, age, pos, games, 0 as rush_att, tgt, 0 as pass_att, 0 as sacks_per_game
-                   FROM TE_Stats
-                   UNION 
-                   SELECT player, year+1 year, qb_age age, pos, qb_games games, 
-                          rush_att, 0 as tgt, qb_att as pass_att, sacks_per_game
-                   FROM QB_Stats''', 'Season_Stats')
-
-games.loc[games.pos=='QB', 'age'] = np.log(games.loc[games.pos=='QB', 'age'])
-games = pd.concat([games, pd.get_dummies(games.pos)], axis=1).drop('pos', axis=1)
-
-inj_data = pd.merge(inj, games, on=['player', 'year'])
-
-inj_data.loc[inj_data.games < 2021, 'games_missed'] = 16-inj_data.loc[inj_data.games < 2021, 'games']
-inj_data.loc[inj_data.year >= 2021, 'games_missed'] = 17-inj_data.loc[inj_data.year >= 2021, 'games']
-
-inj_data['IsCovid'] = 0
-inj_data.loc[(inj_data.year >= 2020) & (inj_data.year<=2021), 'IsCovid'] = 1
-
-inj_data = inj_data.sort_values(by=['player', 'year']).reset_index(drop=True)
-inj_data['games_missed_total'] = inj_data.groupby('player')['games_missed'].rolling(3, min_periods=1).sum().values
-
-inj_data['y_act'] = inj_data.groupby('player')['games_missed'].shift(-1)
-inj_data = inj_data.fillna(0)
-
-train = inj_data[inj_data.year < YEAR].reset_index(drop=True)
-X_test = inj_data[inj_data.year==YEAR].reset_index(drop=True)
-
-#%%
-
-train = train.sample(frac=1).reset_index(drop=True)
-
-skm = SciKitModel(train)
-X_train, y_train = skm.Xy_split('y_act', to_drop=['player', 'games_missed'])
-
-pipe = skm.model_pipe([
-                            skm.piece('std_scale'), 
-                            skm.piece('k_best'),
-                            skm.piece('bridge')
-                            ])
-
-params = skm.default_params(pipe, 'rand')
-params['k_best__k'] = range(1,X_train.shape[1])
-
-search = RandomizedSearchCV(pipe, params, n_iter=50, scoring='neg_mean_squared_error',refit=True)
-search.fit(X_train, y_train)
-best_model = search.best_estimator_
-
-cv_pred = cross_val_predict(best_model, X_train, y_train)
-mse = np.round(mean_squared_error(cv_pred, y_train), 3)
-r2 = np.round(r2_score(cv_pred, y_train), 3)
-
-predictions = pd.Series(best_model.predict(X_test[X_train.columns]), name='mean_risk')
-print('Test Scores:', mse, r2)
-print('Null model:', mean_squared_error(np.full(len(y_train), y_train.mean()), y_train))
-
-# %%
-
-try: pd.Series(best_model.steps[-1][1].coef_, index=X_train.columns).sort_values().plot.barh()
-except: pd.Series(best_model.steps[-1][1].feature_importances_, index=X_train.columns).sort_values().plot.barh()
-# %%
-
-predictions = pd.concat([X_test[['player']], predictions], axis=1).sort_values(by='mean_risk')
-predictions['year'] = YEAR
-dm.delete_from_db('Simulation', 'Injuries', f"year='{YEAR}'")
-dm.write_to_db(predictions, 'Simulation', 'Injuries', 'append')
 
 # %%
 

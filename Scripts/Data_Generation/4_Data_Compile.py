@@ -492,13 +492,16 @@ def drop_games(df, year, games=0, games_next=0):
              (df.year==year)].reset_index(drop=True)
     return df
 
-def y_act_class(df, df_quant):
+def y_act_class(df, df_quant, pos):
     df['avg_proj_points_per_game'] = np.where(df.year >= 2021, df.avg_proj_points / 17, df.avg_proj_points / 16)
     df['y_act_class'] = 0
 
+    if pos == 'QB': quant_cut = 0.5
+    else: quant_cut = 0.75
+
     df_quant['avg_proj_points_per_game'] = np.where(df_quant.year >= 2021, df_quant.avg_proj_points / 17, df_quant.avg_proj_points / 16)
     df_quant['proj_var'] = df_quant.y_act - df_quant.avg_proj_points_per_game   
-    df_proj_quant = df_quant[df_quant.games_next > 4].groupby('year')['proj_var'].quantile(0.75).reset_index()
+    df_proj_quant = df_quant[df_quant.games_next > 4].groupby('year')['proj_var'].quantile(quant_cut).reset_index()
     df_act_quant = df_quant[df_quant.games_next > 4].groupby('year')['y_act'].quantile(0.75).reset_index().rename(columns={'y_act': 'y_act_quantile'})
     
     df = pd.merge(df, df_proj_quant, on='year')
@@ -538,8 +541,7 @@ def show_calibration_curve(y_true, y_pred, n_bins=10):
 
 #%%
 
-
-pos='WR'
+pos='TE'
 
 # pull all projections and ranks
 df = fftoday_proj(pos); print(df.shape[0])
@@ -585,7 +587,10 @@ df = drop_duplicate_players(df, 'avg_proj_points')
 #-----------
 stats = dm.read(f'SELECT * FROM {pos}_Stats', DB_NAME)
 stats = drop_duplicate_players(stats, 'sum_fantasy_pts')
-df_proj = pd.merge(stats[['player', 'year', 'season', 'games', 'games_next', 'y_act']], df, on=['player', 'year'], how='right')
+stats_proj = stats[['player', 'season', 'games', 'games_next', 'fantasy_pts_per_game']].copy()
+stats_proj = stats_proj.rename(columns={'fantasy_pts_per_game': 'y_act', 'season': 'year'})
+df_proj = pd.merge(stats_proj, df, on=['player', 'year'], how='right')
+df_proj['season'] = df_proj.year - 1
 
 # only drop next year's game limit since last year's are not being
 # used for model predictions and don't matter if they are missing
@@ -593,7 +598,7 @@ df_proj = drop_y_act_except_current(df_proj, year)
 df_proj = drop_games(df_proj, year, games=0, games_next=4)
 df_proj = remove_low_corrs(df_proj.dropna(subset=['y_act']), corr_cut=0.02)
 df_proj = add_draft_year_exp(df_proj, pos)
-df_proj = y_act_class(df_proj, df_proj.copy())
+df_proj = y_act_class(df_proj, df_proj.copy(), pos)
 
 dm.write_to_db(df_proj, 'Model_Inputs', f'{pos}_{year}_ProjOnly', if_exist='replace')
 
@@ -610,7 +615,7 @@ df_stats = drop_y_act_except_current(df_stats, year)
 df_stats = drop_games(df_stats, year, games=4, games_next=4)
 df_stats = remove_low_corrs(df_stats.dropna(subset=['y_act']), corr_cut=0.02)
 df_stats = add_draft_year_exp(df_stats, pos)
-df_stats = y_act_class(df_stats, df_stats.copy())
+df_stats = y_act_class(df_stats, df_stats.copy(), pos)
 
 dm.write_to_db(df_stats, 'Model_Inputs', f'{pos}_{year}_Stats', if_exist='replace')
 
@@ -635,7 +640,7 @@ if pos in ('RB', 'WR'):
     df_rookie = drop_games(df_rookie, year, games=4, games_next=0)
 
     df_rookie = remove_low_corrs(df_rookie, corr_cut=0.02)
-    df_rookie = y_act_class(df_rookie.fillna({'games_next': 16}), df_proj.copy())
+    df_rookie = y_act_class(df_rookie.fillna({'games_next': 16}), df_proj.copy(), pos)
     df_rookie = drop_duplicate_players(df_rookie, 'y_act', rookie=True)
 
     dm.write_to_db(df_rookie, 'Model_Inputs', f'{pos}_{year}_Rookie', if_exist='replace')
@@ -651,7 +656,7 @@ if pos in ('RB', 'WR'):
 
 #%%
 
-pos = 'WR'
+pos = 'QB'
 
 
 from skmodel import SciKitModel
@@ -661,8 +666,8 @@ alpha = 0.8
 proba = True
 model_obj = 'class'
 
-# Xy = dm.read(f"SELECT * FROM {pos}_{year}_ProjOnly WHERE pos='{pos}' ", 'Model_Inputs')
-Xy = dm.read(f"SELECT * FROM {pos}_{year}_Stats WHERE pos='{pos}' ", 'Model_Inputs')
+Xy = dm.read(f"SELECT * FROM {pos}_{year}_ProjOnly WHERE pos='{pos}' ", 'Model_Inputs')
+# Xy = dm.read(f"SELECT * FROM {pos}_{year}_Stats WHERE pos='{pos}' ", 'Model_Inputs')
 # Xy = dm.read(f"SELECT * FROM {pos}_{year}_Rookie ", 'Model_Inputs')
 
 Xy = Xy.sort_values(by='year').reset_index(drop=True)
@@ -699,9 +704,8 @@ pipe = skm.model_pipe([skm.piece('random_sample'),
 
 params = skm.default_params(pipe, 'bayes')
 
-#%%
 # pipe.steps[-1][-1].set_params(**{'loss_function': f'Quantile:alpha={alpha}'})
-best_models, oof_data, param_scores, _ = skm.time_series_cv(pipe, X, y, params, n_iter=10,
+best_models, oof_data, param_scores, _ = skm.time_series_cv(pipe, X, y, params, n_iter=20,
                                                                 col_split='year',n_splits=5,
                                                                 time_split=2016, alpha=alpha,
                                                                 bayes_rand='bayes', proba=proba,
@@ -721,40 +725,5 @@ pred = pred.fillna({'games': 16})
 try: pred['pred'] = best_models[-1].fit(X,y).predict_proba(pred[X.columns].fillna(pred.mean()))[:,1]
 except: pred['pred'] = best_models[-1].fit(X,y).predict(pred[X.columns].fillna(pred.mean()))
 pred[['player', 'year', 'pred']].sort_values(by='pred', ascending=False).iloc[:30]
-
-# %%
-
-import optuna
-from sklearn.model_selection import cross_val_score
-import functools
-def objective(trial, pipe, params_list, X, y):
-    
-    params = {}
-    for k, v in params_list.items():
-        if v[0] == 'float': params[k] = trial.suggest_float(k, v[1], v[2], log=v[3])
-        elif v[0] == 'int': params[k] = trial.suggest_int(k, v[1], v[2])
-        elif v[0] == 'categorical': params[k] = trial.suggest_categorical(k, v[1])
-
-    print(params)
-    pipe.set_params(**params)
-    return cross_val_score(pipe, X, y, cv=5, scoring='neg_mean_squared_error').mean()
-
-params_list = {
-              'lr_c__C': ['float', 0.001, 100, True],#trial.suggest_float('lr_c__C', 0.001, 100, log=True),
-              'k_best_c__k': ['int', 1, 30],# trial.suggest_int('k_best_c__k', 1, 30),
-              'lr_c__solver': ['categorical', ['saga', 'liblinear']],
-            #   'select_perc_c__percentile': trial.suggest_float('select_perc_c__percentile', 0.2, 0.5),
-            #   'random_sample__seed': trial.suggest_int('random_sample__seed', 10, 1000),
-            #   'random_sample__frac': trial.suggest_float('random_sample__frac', 0.2, 0.5),
-          
-              }
-
-study = optuna.create_study(
-    direction="minimize",
-    storage="sqlite:///db.sqlite3",  # Specify the storage URL here.
-    study_name="test"
-)
-study.optimize(functools.partial(objective, pipe=pipe, params_list=params_list, X=X, y=y), n_trials=100, timeout=10)
-print(study.best_trial)
 
 # %%
