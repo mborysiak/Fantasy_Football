@@ -102,20 +102,6 @@ def get_adp(year, pos, source):
 
     return df
 
-year=2024
-fp_adp = get_adp(year, 'all', 'fantasypros')
-
-for pos in ['QB', 'RB', 'WR', 'TE']:
-    print(year, pos)
-    mfl_adp = get_adp(year, pos, 'mfl')
-    dm.delete_from_db(DB_NAME, 'ADP_Ranks', f"year={year} and pos='{pos}'", create_backup=False)
-    dm.write_to_db(mfl_adp, DB_NAME, 'ADP_Ranks', 'append')
-
-dm.write_to_db(fp_adp, DB_NAME, 'ADP_Ranks', 'append')
-
-
-#%%
-
 def move_download_to_folder(root_path, folder, fname, set_year):
     try:
         os.replace(f"/Users/borys/Downloads/{fname}", 
@@ -154,7 +140,7 @@ def pull_fftoday(pos, year):
 
     cols = {
             'QB': ['player', 'team', 'bye', 'fft_pass_comp', 'fft_pass_att', 'fft_pass_yds', 'fft_pass_td',
-                'fft_pass_int', 'fft_rush_att', 'fft_rush_yds', 'fft_rush_td', 'fft_proj_pts'],
+                   'fft_pass_int', 'fft_rush_att', 'fft_rush_yds', 'fft_rush_td', 'fft_proj_pts'],
             'WR': ['player', 'team', 'bye', 'fft_rec', 'fft_rec_yds', 'fft_rec_td', 'fft_rush_att', 'fft_rush_yds', 'fft_rush_td', 'fft_proj_pts'],
             'RB': ['player', 'team', 'bye', 'fft_rush_att', 'fft_rush_yds', 'fft_rush_td', 
                 'fft_rec', 'fft_rec_yds', 'fft_rec_td', 'fft_proj_pts'],
@@ -164,7 +150,7 @@ def pull_fftoday(pos, year):
     df = pd.DataFrame()
     for page_num in num_pages[pos]:
         try:
-            fft_url = f"https://fftoday.com/rankings/playerproj.php?Season={year}&PosID={pos_ids[pos]}&LeagueID=&order_by=FFPts&sort_order=DESC&cur_page={page_num}"
+            fft_url = f"https://fftoday.com/rankings/playerproj.php?Season={year}&PosID={pos_ids[pos]}&LeagueID=193033&order_by=FFPts&sort_order=DESC&cur_page={page_num}"
 
             df_cur = pd.read_html(fft_url)[7]
             df_cur = df_cur.iloc[2:, 1:]
@@ -184,34 +170,94 @@ def pull_fftoday(pos, year):
     return df
 
 
+def predict_fft_sacks(df_ty):
+
+    fft  = dm.read("SELECT * FROM FFToday_Projections", DB_NAME)
+    qb_stats = dm.read("SELECT player, season year, sum_sack_sum FROM QB_Stats WHERE games>12", DB_NAME)
+    fft = pd.merge(fft, qb_stats, on=['player', 'year']).dropna().sample(frac=1)
+
+    X = fft[['fft_pass_comp', 'fft_pass_att', 'fft_pass_yds', 'fft_pass_td', 'fft_pass_int', 'fft_rush_att', 'fft_rush_yds']]
+    X['fft_pass_yds_per_att'] = X.fft_pass_yds / (X.fft_pass_att+1)
+    X['fft_pass_yds_per_cmp'] = X.fft_pass_yds / (X.fft_pass_comp+1)
+    X['fft_pass_td_per_att'] = 100*X.fft_pass_td / (X.fft_pass_att+1)
+    y = fft.sum_sack_sum
+
+    from sklearn.linear_model import ElasticNet
+    from sklearn.model_selection import cross_val_predict
+    from sklearn.preprocessing import StandardScaler
+    from sklearn.pipeline import make_pipeline
+    import matplotlib.pyplot as plt
+    from sklearn.metrics import r2_score
+
+    pipe = make_pipeline(StandardScaler(),ElasticNet(alpha=0.01, l1_ratio=0.1))
+    preds = cross_val_predict(pipe, X, y, cv=5)
+    print(r2_score(y, preds))
+    plt.plot(preds, y, 'o')
+
+    pipe.fit(X, y)
+
+    for c in df_ty.columns:
+        try: df_ty[c] = df_ty[c].astype('float')
+        except: pass
+
+    df_ty['fft_pass_yds_per_att'] = df_ty.fft_pass_yds / (df_ty.fft_pass_att+1)
+    df_ty['fft_pass_yds_per_cmp'] = df_ty.fft_pass_yds / (df_ty.fft_pass_comp+1)
+    df_ty['fft_pass_td_per_att'] = 100*df_ty.fft_pass_td / (df_ty.fft_pass_att+1)
+    df_ty['fft_sacks'] = pipe.predict(df_ty[X.columns])
+
+    return df_ty
+
+
 def pull_fantasy_data(fname, set_year):
 
     # move fantasydata projections
     df = move_download_to_folder(root_path, 'FantasyData', fname, year)
     
 
+    # cols = {
+    #         'Rank': 'fdta_rank',
+    #         'Name': 'player', 
+    #         'Team': 'team', 
+    #         'Position': 'pos',
+    #         'PassingYards': 'fdta_pass_yds',
+    #         'PassingTouchdowns': 'fdta_pass_td',
+    #         'PassingInterceptions': 'fdta_pass_int',
+    #         'RushingYards': 'fdta_rush_yds',
+    #         'RushingTouchdowns': 'fdta_rush_td',
+    #         'Receptions': 'fdta_rec',
+    #         'ReceivingYards': 'fdta_rec_yds',
+    #         'ReceivingTouchdowns': 'fdta_rec_td',
+    #         'Sacks': 'fdta_sack',
+    #         'Interceptions': 'fdta_int',
+    #         'FumblesRecovered': 'fdta_fum_rec',
+    #         'FumblesForced': 'fdta_fum_forced',
+    #         'FantasyPointsPerGameHalfPointPPR': 'fdta_fantasy_points_per_game',
+    #         'FantasyPointsHalfPointPpr': 'fdta_fantasy_points_total',
+    #         }
+    
     cols = {
-            'Rank': 'fdta_rank',
-            'Name': 'player', 
-            'Team': 'team', 
-            'Position': 'pos',
-            'PassingYards': 'fdta_pass_yds',
-            'PassingTouchdowns': 'fdta_pass_td',
-            'PassingInterceptions': 'fdta_pass_int',
-            'RushingYards': 'fdta_rush_yds',
-            'RushingTouchdowns': 'fdta_rush_td',
-            'Receptions': 'fdta_rec',
-            'ReceivingYards': 'fdta_rec_yds',
-            'ReceivingTouchdowns': 'fdta_rec_td',
-            'Sacks': 'fdta_sack',
-            'Interceptions': 'fdta_int',
-            'FumblesRecovered': 'fdta_fum_rec',
-            'FumblesForced': 'fdta_fum_forced',
-            'FantasyPointsPerGameHalfPointPPR': 'fdta_fantasy_points_per_game',
-            'FantasyPointsHalfPointPpr': 'fdta_fantasy_points_total',
+            'rank': 'fdta_rank',
+            'player': 'player', 
+            'team': 'team', 
+            'pos': 'pos',
+            'pass_yds': 'fdta_pass_yds',
+            'pass_td': 'fdta_pass_td',
+            'pass_int': 'fdta_pass_int',
+            'rush_yds': 'fdta_rush_yds',
+            'rush_td': 'fdta_rush_td',
+            'rec': 'fdta_rec',
+            'rec_yds': 'fdta_rec_yds',
+            'rec_td': 'fdta_rec_td',
+            'def_sck': 'fdta_sack',
+            'def_int': 'fdta_int',
+            'fum_recovered': 'fdta_fum_rec',
+            'fum_forced': 'fdta_fum_forced',
+            'fpts_ppr_per_gp': 'fdta_fantasy_points_per_game',
+            'fpts_ppr': 'fdta_fantasy_points_total',
             }
-    df = df[df.Position.isin(['QB', 'RB', 'WR', 'TE', 'DST'])].reset_index(drop=True)
+    
     df = df.rename(columns=cols)
+    df = df[df.pos.isin(['QB', 'RB', 'WR', 'TE', 'DST'])].reset_index(drop=True)
     df = df.assign(year=set_year)
 
     df.player = df.player.apply(dc.name_clean)
@@ -241,6 +287,17 @@ def format_ffa(df, table_name, set_year):
     df = df[col_arr]
     return df
 
+#%%
+
+fp_adp = get_adp(year, 'all', 'fantasypros')
+dm.write_to_db(fp_adp, DB_NAME, 'ADP_Ranks', 'append')
+
+for pos in ['QB', 'RB', 'WR', 'TE']:
+    print(year, pos)
+    mfl_adp = get_adp(year, pos, 'mfl')
+    dm.delete_from_db(DB_NAME, 'ADP_Ranks', f"year={year} and pos='{pos}'", create_backup=False)
+    dm.write_to_db(mfl_adp, DB_NAME, 'ADP_Ranks', 'append')
+
 
 
 #%%
@@ -253,7 +310,16 @@ for pos in ['QB', 'RB', 'WR', 'TE']:
 
 output = output.fillna(0)
 output = convert_to_float(output)
-df['player'] = df.player.apply(dc.name_clean)
+output['player'] = output.player.apply(dc.name_clean)
+output = predict_fft_sacks(output).round(1)
+output['fft_proj_pts'] = (0.04 * output.fft_pass_yds + 5 * output.fft_pass_td - 2*output.fft_pass_int - 1*output.fft_sacks
+                          + 0.1*output.fft_rush_yds + 7*output.fft_rush_td
+                          + 0.1*output.fft_rec_yds + 7*output.fft_rec_td + 0.5*output.fft_rec)
+
+output['fft_rush_yds_per_att'] = output.fft_rush_yds / (output.fft_rush_att+1)
+output['fft_rush_td_per_att'] = 100*output.fft_rush_td / (output.fft_rush_att+1)
+output['fft_rec_yds_per_rec'] = output.fft_rec_yds / (output.fft_rec+1)
+output['fft_rec_td_per_rec'] = 100*output.fft_rec_td / (output.fft_rec+1)
 
 dm.delete_from_db(DB_NAME, 'FFToday_Projections', f"year={year}", create_backup=False)
 dm.write_to_db(output, DB_NAME, 'FFToday_Projections', 'append')
@@ -261,13 +327,32 @@ dm.write_to_db(output, DB_NAME, 'FFToday_Projections', 'append')
 #%%
 
 # pull fantasydata projections
-df = pull_fantasy_data(f'fantasy-football-weekly-projections.csv', year)
+try:
+    fdta_file = [f for f in os.listdir('c:/Users/borys/Downloads') if 'fantasy-football-weekly-projections' in f][0]
+    new_fname = '-'.join(fdta_file.split('-')[:-1])+'.csv'
+    os.rename(f'/Users/borys/Downloads/{fdta_file}', f'/Users/borys/Downloads/{new_fname}')
+except: 
+    print('No new Fantasy Data file found')
+
+fdta_file = 'fantasy-football-weekly-projections.csv'
+df = pull_fantasy_data(fdta_file, year)
+
+sacks = dm.read("SELECT player, year, pos, fft_sacks FROM FFToday_Projections", DB_NAME)
+df = pd.merge(df, sacks, on=['player', 'year', 'pos'], how='left').fillna(0)
+
+df['fdta_fantasy_points_total'] = (0.04 * df.fdta_pass_yds + 5 * df.fdta_pass_td - 2*df.fdta_pass_int - 1*df.fft_sacks
+                                    + 0.1*df.fdta_rush_yds + 7*df.fdta_rush_td
+                                    + 0.1*df.fdta_rec_yds + 7*df.fdta_rec_td + 0.5*df.fdta_rec)
+df = df.drop('fft_sacks', axis=1)
+df['fdta_rec_yds_per_rec'] = df.fdta_rec_yds / (df.fdta_rec+1)
+df['fdta_rec_td_per_rec'] = 100*df.fdta_rec_td / (df.fdta_rec+1)
+
 dm.delete_from_db(DB_NAME, 'FantasyData', f"year={year}", create_backup=False)
 dm.write_to_db(df, DB_NAME, 'FantasyData', 'append')
 
+
+
 #%%
-
-
 df = move_download_to_folder(root_path, 'FFA', f'projections_{year}_wk0.csv', year)
 df = format_ffa(df, 'Projections', year)
 df = df[~df.team.isnull()].reset_index(drop=True)
@@ -280,11 +365,18 @@ df = move_download_to_folder(root_path, 'FFA', f'raw_stats_{year}_wk0.csv', year
 df = format_ffa(df, 'RawStats', year)
 df = df[~df.team.isnull()].reset_index(drop=True)
 
+sacks = dm.read("SELECT player, year, pos position, fft_rec, fft_sacks FROM FFToday_Projections", DB_NAME)
+df = pd.merge(df, sacks, on=['player', 'year', 'position'], how='left').fillna(0)
+df['ffa_proj_points'] = (0.04 * df.ffa_pass_yds + 5 * df.ffa_pass_tds - 2*df.ffa_pass_int - 1*df.fft_sacks
+                         + 0.1*df.ffa_rush_yds + 7*df.ffa_rush_tds
+                         + 0.1*df.ffa_rec_yds + 7*df.ffa_rec_tds + 0.5*df.fft_rec)
+df = df.drop(['fft_rec','fft_sacks'], axis=1)
+
 dm.delete_from_db(DB_NAME, 'FFA_RawStats', f"year={year}", create_backup=False)
 dm.write_to_db(df, DB_NAME, 'FFA_RawStats', 'append')
 
-#%%
 
+#%%
 rename_cols = {
     'Player': 'player',
     'PASSING_ATT': 'fpros_pass_att',
@@ -307,26 +399,44 @@ rename_cols = {
     'MISC_FPTS': 'fpros_proj_pts',
 }
 
+df = pd.DataFrame()
 for pos in ['qb', 'rb', 'wr', 'te']:
     print(pos, year)
     
-    df = pd.read_html(f'https://www.fantasypros.com/nfl/projections/{pos}.php?week=draft')[0]
-    cols = [f'{c[0]}_{c[1]}' if 'Unnamed' not in c[0] else c[1] for c in df.columns]
+    df_cur = pd.read_html(f'https://www.fantasypros.com/nfl/projections/{pos}.php?week=draft')[0]
+    cols = [f'{c[0]}_{c[1]}' if 'Unnamed' not in c[0] else c[1] for c in df_cur.columns]
 
-    df.columns = cols
-    df = df.rename(columns=rename_cols).assign(pos=pos.upper(), year=year)
-    df.player = df.player.apply(lambda x: x.split(' ')[0] + ' ' + x.split(' ')[1])
-    df.player = df.player.apply(dc.name_clean)
+    df_cur.columns = cols
+    df_cur = df_cur.rename(columns=rename_cols).assign(pos=pos.upper(), year=year)
+    df_cur.player = df_cur.player.apply(lambda x: x.split(' ')[0] + ' ' + x.split(' ')[1])
+    df_cur.player = df_cur.player.apply(dc.name_clean)
     col_order = ['player', 'pos', 'year']
-    col_order.extend([c for c in df.columns if 'fpros' in c])
-    df = df[col_order]
+    col_order.extend([c for c in df_cur.columns if 'fpros' in c])
+    df_cur = df_cur[col_order]
+    df = pd.concat([df, df_cur], axis=0)
 
-    dm.delete_from_db(DB_NAME, 'FantasyPros_Projections', f"year={year} and pos='{pos}'", create_backup=False)
-    dm.write_to_db(df, DB_NAME, 'FantasyPros_Projections', 'append')
+df = df.fillna(0)
+sacks = dm.read("SELECT player, year, pos, fft_sacks FROM FFToday_Projections", DB_NAME)
+df = pd.merge(df, sacks, on=['player', 'year', 'pos'], how='left').fillna(0)
+
+df['fpros_proj_pts_calc'] = (0.04 * df.fpros_pass_yds + 5 * df.fpros_pass_td - 2*df.fpros_pass_int - 1*df.fft_sacks
+                                + 0.1*df.fpros_rush_yds + 7*df.fpros_rush_td
+                                + 0.1*df.fpros_rec_yds + 7*df.fpros_rec_td + 0.5*df.fpros_rec)
+df = df.drop('fft_sacks', axis=1)
+
+df['fpros_pass_yds_per_att'] = df.fpros_pass_yds / (df.fpros_pass_att+1)
+df['fpros_pass_td_per_att'] = 100*df.fpros_pass_td / (df.fpros_pass_att+1)
+df['fpros_rush_yds_per_att'] = df.fpros_rush_yds / (df.fpros_rush_att+1)
+df['fpros_rush_td_per_att'] = 100*df.fpros_rush_td / (df.fpros_rush_att+1)
+df['fpros_rec_yds_per_rec'] = df.fpros_rec_yds / (df.fpros_rec+1)
+df['fpros_rec_td_per_rec'] = 100*df.fpros_rec_td / (df.fpros_rec+1)
+df = df.round(2)
+
+dm.delete_from_db(DB_NAME, 'FantasyPros_Projections', f"year={year}", create_backup=False)
+dm.write_to_db(df, DB_NAME, 'FantasyPros_Projections', 'append')
 
 
 #%%
-
 df = move_download_to_folder(root_path, 'PFF_Projections', f'projections.csv', year)
 
 rename_cols = {
@@ -363,10 +473,27 @@ col_order = ['player', 'pos', 'team', 'year']
 col_order.extend([c for c in df.columns if 'pff' in c])
 df = df[col_order]
 
+df['pff_proj_pts_calc'] = (0.04 * df.pff_pass_yds + 5 * df.pff_pass_td - 2*df.pff_pass_int - 1*df.pff_pass_sacked
+                         + 0.1*df.pff_rush_yds + 7*df.pff_rush_td
+                         + 0.1*df.pff_rec_yds + 7*df.pff_rec_td + 0.5*df.pff_rec_receptions)
+
+df['pff_pass_yds_per_att'] = df.pff_pass_yds / (df.pff_pass_att+1)
+df['pff_pass_td_per_att'] = 100*df.pff_pass_td / (df.pff_pass_att+1)
+df['pff_rush_yds_per_att'] = df.pff_rush_yds / (df.pff_rush_att+1)
+df['pff_rush_td_per_att'] = 100*df.pff_rush_td / (df.pff_rush_att+1)
+df['pff_rec_yds_per_rec'] = df.pff_rec_yds / (df.pff_rec_receptions+1)
+df['pff_rec_td_per_rec'] = 100*df.pff_rec_td / (df.pff_rec_receptions+1)
+df = df.round(2)
+
 dm.delete_from_db(DB_NAME, 'PFF_Projections', f"year={year}", create_backup=False)
 dm.write_to_db(df, DB_NAME, 'PFF_Projections', 'append')
 
 #%%
+
+
+# for i, yr in enumerate(range(2024, 2006)):
+move_download_to_folder(root_path, 'PFF_Stats', 'passing_summary', year)
+
 
 
 #%%
@@ -550,5 +677,3 @@ dm.write_to_db(team_values, DB_NAME, table_name='Team_Drafts', if_exist='replace
 
 # # dm.delete_from_db('Season_Stats', 'FantasyPros_Projections', f"year={year} and pos='{pos}'", create_backup=False)
 # dm.write_to_db(df_out, 'Season_Stats', 'FantasyPros_Projections', 'replace')
-
-# %%

@@ -216,31 +216,12 @@ def add_stats(df, year_diff):
     return df
 
 rb = dm.read(f'''SELECT * FROM RB_PHoward_Raw''', 'Season_Stats_New')
-# rb = add_avg_pick(rb)
 rb = add_team(rb, 'RB')
-# rb = add_stats(rb, 0)
-# rb = add_stats(rb, 1)
-# rb = add_stats(rb, 2)
 
-# rb = rb[ ((rb.games_0 > 6) \
-#          | (rb.games_1 > 6)
-#          | (rb.games_2 > 6)) \
-
-#          & ((rb.fp_per_game_0 > 0) 
-#             | (rb.fp_per_game_1 > 0)
-#             | (rb.fp_per_game_2 > 0)) \
-
-#          | (rb.draft_year==set_year)].reset_index(drop=True)
 
 drop_cols = [c for c in rb.columns if 'nfl_stats' in c or 'conference' in c]
 drop_cols.extend(['cfb_id', 'nflfastr', 'pff', 'pfr_id', 'pos', 'dob', 'landing_team', 'college'])
 rb = rb.drop(drop_cols, axis=1)
-
-# rb['fp_per_game_next'] = rb[['fp_per_game_0', 'fp_per_game_1', 'fp_per_game_2']].mean(axis=1)
-# rb['games_next'] = rb[['games_0', 'games_1', 'games_2']].mean(axis=1)
-
-# rb = rb.rename(columns={'fp_per_game_0': 'fp_per_game', 'games_0': 'games'})
-# rb = rb.drop(['fp_per_game_1', 'fp_per_game_2', 'games_1', 'games_2'], axis=1)
 
 rb = rb.dropna(subset=['team']).reset_index(drop=True)
 for c in rb.isnull().sum()[rb.isnull().sum()>0].index:
@@ -272,30 +253,12 @@ def add_stats(df, year_diff):
     return df
 
 wr = dm.read(f'''SELECT * FROM WR_PHoward_Raw''', 'Season_Stats_New')
-# wr = add_avg_pick(wr)
 wr = add_team(wr, 'WR')
-# wr = add_stats(wr, 0)
-# wr = add_stats(wr, 1)
-# wr = add_stats(wr, 2)
 
-# wr = wr[ ((wr.games_0 > 6) \
-#          | (wr.games_1 > 6)
-#          | (wr.games_2 > 6)) \
-
-#          & ((wr.fp_per_game_0 > 0) 
-#             | (wr.fp_per_game_1 > 0)
-#             | (wr.fp_per_game_2 > 0)) \
-
-#          | (wr.draft_year==set_year)].reset_index(drop=True)
 
 drop_cols = [c for c in wr.columns if 'nfl_stats' in c or 'conference' in c]
 drop_cols.extend(['cfb_id', 'nflfastr', 'pff', 'pfr_id', 'pos', 'dob', 'landing_team', 'college'])
 wr = wr.drop(drop_cols, axis=1)
-
-# wr['fp_per_game_next'] = wr[['fp_per_game_0', 'fp_per_game_1', 'fp_per_game_2']].mean(axis=1)
-# wr['games_next'] = wr[['games_0', 'games_1', 'games_2']].mean(axis=1)
-# wr = wr.rename(columns={'fp_per_game_0': 'fp_per_game', 'games_0': 'games'})
-# wr = wr.drop(['fp_per_game_1', 'fp_per_game_2', 'games_1', 'games_2'], axis=1)
 
 wr = wr.dropna(subset=['team']).reset_index(drop=True)
 
@@ -309,9 +272,6 @@ wr = wr.assign(pos='WR')
 dm.write_to_db(wr, 'Season_Stats_New', 'Rookie_WR_Stats', 'replace', create_backup=True)
 
 # %%
-corr_col = 'fp_per_game_next'
-df = wr.copy()
 
-display(df.corr()[[corr_col]].sort_values(by = corr_col).iloc[:40])
-df.corr()[[corr_col]].sort_values(by = corr_col).iloc[-40:]
+wr[wr.player=="Garrett Wilson"]
 # %%

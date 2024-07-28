@@ -1,7 +1,5 @@
 #%%
 
-YEAR = 2023
-
 import pandas as pd 
 import numpy as np
 from ff.db_operations import DataManage
@@ -25,7 +23,10 @@ pd.set_option('display.max_columns', 999)
 #%%
 
 for pos in ['QB', 'RB', 'WR', 'TE']:
-    df = dm_daily.read(f'''SELECT * FROM {pos}_Stats''', 'FastR_Beta')
+    df = dm_daily.read(f'''SELECT * 
+                           FROM {pos}_Stats
+                           WHERE (season >= 2021 AND week <= 17)
+                                  OR (season < 2021 AND week <= 16)''', 'FastR_Beta')
     stat_cols = [c for c in df.columns if c not in ('player', 'team', 'season', 'week', 'position')]
 
     def perc_agg80(x):
@@ -66,56 +67,5 @@ for pos in ['QB', 'RB', 'WR', 'TE']:
     dm_ff.write_to_db(df_all, 'Season_Stats_New', f'{pos}_Stats', if_exist='replace')
 
 
-#%%
-
-from skmodel import SciKitModel
-
-Xy = df_all.drop([c for c in df_all if 'fantasy_pts' in c], axis=1)
-Xy = Xy.sort_values(by='year').reset_index(drop=True)
-Xy['team'] = 'team'
-Xy['week'] = 1
-Xy['game_date'] = Xy.year
-pred = Xy[Xy.year==2024].copy().reset_index(drop=True)
-Xy = Xy[(Xy.games >= 4) & (Xy.games_next >= 4)].dropna().reset_index(drop=True)
-
-print(Xy.shape)
-
-preds = []
-actuals = []
-
-skm = SciKitModel(Xy)
-X, y = skm.Xy_split('y_act', to_drop = ['player', 'team', 'games_next'])
-
-pipe = skm.model_pipe([ skm.piece('random_sample'),
-                        skm.piece('std_scale'), 
-                        skm.piece('select_perc'),
-                        skm.feature_union([
-                                        skm.piece('agglomeration'), 
-                                        skm.piece('k_best'),
-                                        skm.piece('pca')
-                                        ]),
-                        skm.piece('k_best'),
-                        skm.piece('enet')
-                    ])
-
-params = skm.default_params(pipe, 'bayes')
-
-best_models, oof_data, param_scores, _ = skm.time_series_cv(pipe, X, y, params, n_iter=20,
-                                                                col_split='year',n_splits=5,
-                                                                time_split=2014,
-                                                                bayes_rand='bayes', proba=False,
-                                                                sample_weight=False, trials=Trials(),
-                                                                random_seed=12345)
-
-#%%
-
-oof_data['full_hold'].plot.scatter(x='pred', y='y_act')
-
-#%%
-
-oof_data['full_hold'][(oof_data['full_hold'].pred < 7.5) & (oof_data['full_hold'].y_act > 15)]
-#%%
-
-preds = best_models[0].fit(X,y).predict(pred[X.columns])
-pred['pred'] = preds
-pred[['player', 'year', 'pred']].sort_values(by='pred', ascending=False).iloc[:20]
+#
+# %%

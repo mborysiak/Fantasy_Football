@@ -16,6 +16,7 @@ from sklearn.metrics import brier_score_loss
 import matplotlib.pyplot as plt
 from hyperopt import Trials
 from hyperopt import hp
+import optuna
 
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
@@ -100,10 +101,10 @@ pos['TE']['year_exp'] = 0
 pos['Rookie_RB']['year_exp'] = 0
 pos['Rookie_WR']['year_exp'] = 0
 
-pos['QB']['iters'] = 15
-pos['RB']['iters'] = 15
-pos['WR']['iters'] = 15
-pos['TE']['iters'] = 15
+pos['QB']['iters'] = 20
+pos['RB']['iters'] = 20
+pos['WR']['iters'] = 20
+pos['TE']['iters'] = 20
 
 pos['QB']['n_splits'] = 5
 pos['RB']['n_splits'] = 5
@@ -129,7 +130,9 @@ def create_pkey(pos, dataset, set_pos, cur_next, bayes_rand, hp_algo):
     model_output_path = f'{root_path}/Model_Outputs/{set_year}/{pkey}/'
     if not os.path.exists(model_output_path): os.makedirs(model_output_path)
     
-    return model_output_path
+    pkey = '_'.join(model_output_path.split('/')[-2:])[:-1]
+
+    return model_output_path, pkey
 
 def save_pickle(obj, path, fname, protocol=-1):
     with gzip.open(f"{path}/{fname}.p", 'wb') as f:
@@ -204,15 +207,22 @@ def filter_df(df, pos, set_pos, set_year):
 
 def get_train_predict(df, set_year):
 
-    df_train = df.loc[df.year < set_year, :].reset_index(drop=True).drop('y_act_class', axis=1)
-    df_predict = df.loc[df.year == set_year, :].reset_index(drop=True).drop('y_act_class', axis=1)
+    df_train = df.loc[df.year < set_year, :].reset_index(drop=True).drop(['y_act_class_top','y_act_class_upside'], axis=1)
+    df_predict = df.loc[df.year == set_year, :].reset_index(drop=True).drop(['y_act_class_top','y_act_class_upside'], axis=1)
 
-    df_train_class = df.loc[df.year < set_year, :].copy().drop('y_act', axis=1).rename(columns={'y_act_class': 'y_act'})
-    df_predict_class = df.loc[df.year == set_year, :].copy().drop('y_act', axis=1).rename(columns={'y_act_class': 'y_act'})
+    df_train_upside = df.loc[df.year < set_year, :].copy()
+    df_train_upside = df_train_upside.drop(['y_act_class_top','y_act'], axis=1).rename(columns={'y_act_class_upside': 'y_act'})
+    df_predict_upside = df.loc[df.year == set_year, :].copy()
+    df_predict_upside = df_predict_upside.drop(['y_act_class_top','y_act'], axis=1).rename(columns={'y_act_class_upside': 'y_act'})
+
+    df_train_top = df.loc[df.year < set_year, :].copy()
+    df_train_top = df_train_top.drop(['y_act_class_upside','y_act'], axis=1).rename(columns={'y_act_class_top': 'y_act'})
+    df_predict_top = df.loc[df.year == set_year, :].copy()
+    df_predict_top = df_predict_top.drop(['y_act_class_upside','y_act'], axis=1).rename(columns={'y_act_class_top': 'y_act'})
 
     print('Shape of Train Set', df_train.shape)
 
-    return df_train, df_predict,df_train_class, df_predict_class
+    return df_train, df_predict, df_train_upside, df_predict_upside, df_train_top, df_predict_top
 
 #=================
 # Model Functions
@@ -357,6 +367,74 @@ def get_full_pipe_stack(skm, m, bayes_rand,  alpha=None, stack_model=False, min_
     return pipe, params
 
 
+
+
+# def rename_existing(study_db, study_name):
+#     import datetime as dt
+#     new_study_name = study_name + '_' + dt.datetime.now().strftime('%Y%m%d%H%M%S')
+#     optuna.copy_study(from_study_name=study_name, from_storage=study_db, to_storage=study_db, to_study_name=new_study_name)
+#     optuna.delete_study(study_name=study_name, storage=study_db)
+
+
+# def get_new_study(db, old_name, new_name, num_trials):
+
+#     storage = optuna.storages.RDBStorage(
+#                                 url=db,
+#                                 engine_kwargs={"pool_size": 64, 
+#                                             "connect_args": {"timeout": 10},
+#                                             },
+#                                 )
+    
+#     if old_name is not None:
+#         old_study = optuna.create_study(
+#             study_name=old_name,
+#             storage=storage,
+#             load_if_exists=True
+#         )
+    
+#     try:
+#         next_study = optuna.create_study(
+#             study_name=new_name, 
+#             storage=storage, 
+#             load_if_exists=False
+#         )
+
+#     except:
+#         rename_existing(storage, new_name)
+#         next_study = optuna.create_study(
+#             study_name=new_name, 
+#             storage=storage, 
+#             load_if_exists=False
+#         )
+    
+#     if old_name is not None and len(old_study.trials) > 0:
+#         print(f"Loaded {new_name} study with {old_name} {len(old_study.trials)} trials")
+#         next_study.add_trials(old_study.trials[-num_trials:])
+
+#     return next_study
+    
+# def get_optuna_study(pkey, model_name, model_obj, alpha):
+#     old_name = f"{final_m}_{model_obj}{alpha}_{pkey}"
+#     new_name =f"{final_m}_{model_obj}{alpha}_{pkey}"
+#     next_study = get_new_study(run_params['study_db'], old_name, new_name, run_params['num_recent_trials'])
+#     return next_study
+
+def get_new_study():
+
+    storage = optuna.storages.RDBStorage(
+                                url="sqlite:///optuna/weekly_train.sqlite3",
+                                engine_kwargs={"pool_size": 64, 
+                                            "connect_args": {"timeout": 10},
+                                            },
+                                )
+
+    study = optuna.create_study(
+            storage=storage,
+        )
+
+    return study
+
+
 def get_model_output(model_name, cur_df, model_obj, out_dict, pos, set_pos, hp_algo, bayes_rand, i, alpha=''):
 
     print(f'\n{model_name}\n============\n')
@@ -367,12 +445,17 @@ def get_model_output(model_name, cur_df, model_obj, out_dict, pos, set_pos, hp_a
     if model_obj == 'class': proba = True 
     else: proba = False
 
+    if bayes_rand == 'bayes': trials = Trials()
+    elif bayes_rand == 'optuna': 
+        trials = get_new_study()
+        optuna_timeout = 60*5
+
     # fit and append the ADP model
     best_models, oof_data, _, _ = skm.time_series_cv(pipe, X, y, params, n_iter=pos[set_pos]['iters'], 
-                                                     n_splits=pos[set_pos]['n_splits'],
+                                                     n_splits=pos[set_pos]['n_splits'], alpha=alpha,
                                                      col_split='year', time_split=pos[set_pos]['val_start'],
-                                                     bayes_rand=bayes_rand, proba=proba, trials=Trials(),
-                                                     random_seed=(i+7)*19+(i*12)+6)
+                                                     bayes_rand=bayes_rand, proba=proba, trials=trials,
+                                                     random_seed=(i+7)*19+(i*12)+6, optuna_timeout=optuna_timeout)
     lbl, out_dict = update_output_dict(model_obj, model_name, str(alpha), out_dict, oof_data, best_models)
 
     return out_dict#, best_models, oof_data
@@ -397,18 +480,21 @@ def load_all_stack_pred(model_output_path):
     X_stack, y_stack = mf.X_y_stack('reg', full_hold_reg, pred, actual)
 
     # load the class predictions
-    pred_class, actual_class, models_class, _, full_hold_class = mf.load_all_pickles(model_output_path, 'class')
-    X_stack_class, y_stack_class = mf.X_y_stack('class', full_hold_class, pred_class, actual_class)
+    pred_top, actual_top, models_top, _, full_hold_top = mf.load_all_pickles(model_output_path, 'class_top')
+    X_stack_top, y_stack_top = mf.X_y_stack('class_top', full_hold_top, pred_top, actual_top)
+
+    pred_upside, actual_upside, models_upside, _, full_hold_upside = mf.load_all_pickles(model_output_path, 'class_upside')
+    X_stack_upside, y_stack_upside = mf.X_y_stack('class_upside', full_hold_upside, pred_upside, actual_upside)
 
     # load the quantile predictions
     pred_quant, actual_quant, models_quant, _, full_hold_quant = mf.load_all_pickles(model_output_path, 'quantile')
     X_stack_quant, _ = mf.X_y_stack('quantile', full_hold_quant, pred_quant, actual_quant)
 
     # concat all the predictions together
-    X_stack = pd.concat([X_stack, X_stack_class, X_stack_quant], axis=1)
+    X_stack = pd.concat([X_stack, X_stack_upside, X_stack_top, X_stack_quant], axis=1)
     X_stack_player = full_hold_reg['reg_adp'][['player', 'year']].reset_index(drop=True)
 
-    return X_stack_player, X_stack, y_stack, y_stack_class, models_reg, models_class, models_quant
+    return X_stack_player, X_stack, y_stack, y_stack_upside, y_stack_top, models_reg, models_upside, models_top, models_quant
 
 
 def get_proba_adp_coef(model_obj, final_m, run_params):
@@ -437,12 +523,17 @@ def run_stack_models(final_m, X_stack, y_stack, i, model_obj, alpha, run_params,
                                        bayes_rand=run_params['opt_type'], alpha=alpha, 
                                        min_samples=min_samples, )
     
+    if run_params['opt_type'] == 'bayes': trials = Trials()
+    elif run_params['opt_type'] == 'optuna': 
+        trials = get_new_study()
+        optuna_timeout = 60
+    
     best_model, stack_scores, stack_pred, _ = skm.best_stack(pipe, params, X_stack, y_stack, 
                                                                 n_iter=run_params['n_iter'], alpha=alpha,
-                                                                bayes_rand=run_params['opt_type'],trials=Trials(),
+                                                                bayes_rand=run_params['opt_type'],trials=trials,
                                                                 run_adp=run_adp, print_coef=print_coef,
                                                                 proba=proba, num_k_folds=run_params['num_k_folds'],
-                                                                random_state=(i*2)+(i*7))
+                                                                random_state=(i*2)+(i*7), optuna_timeout=optuna_timeout)
     stack_val_pred =  pd.Series(stack_pred['stack_pred'], name=final_m)
 
     return best_model, stack_scores['stack_score'], stack_val_pred
@@ -471,17 +562,22 @@ def create_stack_predict(df_predict, models, X, y, proba=False):
 
     return X_predict
 
-def get_stack_predict_data(df_train, df_predict, df_train_class, df_predict_class,
-                           models_reg, models_class, models_quant):
+def get_stack_predict_data(df_train, df_predict, df_train_upside, df_predict_upside, df_train_top, df_predict_top,
+                          models_reg, models_upside, models_top, models_quant):
 
     _, X, y = get_skm(df_train, 'reg')
     print('Predicting Regression Models')
     X_predict = create_stack_predict(df_predict, models_reg, X, y)
 
-    print('Predicting Class Models')
-    _, X, y = get_skm(df_train_class, 'class')
-    X_predict_class = create_stack_predict(df_predict_class, models_class, X, y, proba=True)
-    X_predict = pd.concat([X_predict, X_predict_class], axis=1)
+    print('Predicting Upside Models')
+    _, X, y = get_skm(df_train_upside, 'class')
+    X_predict_upside = create_stack_predict(df_predict_upside, models_upside, X, y, proba=True)
+    X_predict = pd.concat([X_predict, X_predict_upside], axis=1)
+
+    print('Predicting Top Models')
+    _, X, y = get_skm(df_train_top, 'class')
+    X_predict_top = create_stack_predict(df_predict_top, models_top, X, y, proba=True)
+    X_predict = pd.concat([X_predict, X_predict_top], axis=1)
 
     print('Predicting Quant Models')
     _, X, y = get_skm(df_train, 'quantile')
@@ -608,23 +704,27 @@ def unpack_stack_results(results):
     return best_models, scores, stack_val
 
 
-def create_final_val_df(X_stack_player, y_stack, best_val_reg, best_val_class, best_val_quant):
+def create_final_val_df(X_stack_player, y_stack, best_val_reg, best_val_upside, best_val_top, best_val_quant):
     df_val_final = pd.concat([X_stack_player[['player', 'year']], 
                               pd.Series(best_val_reg.mean(axis=1), name='pred_fp_per_game'),
-                              pd.Series(best_val_class.mean(axis=1), name='pred_fp_per_game_class'),
+                              pd.Series(best_val_upside.mean(axis=1), name='pred_fp_per_game_upside'),
+                              pd.Series(best_val_top.mean(axis=1), name='pred_fp_per_game_top'),
                               pd.Series(best_val_quant.mean(axis=1), name='pred_fp_per_game_quantile'),
                               y_stack], axis=1)
     # df_val_final = pd.merge(df_val_final, y_stack, on=['player', 'team', 'week', 'year'])
     return df_val_final
 
 
-def create_output(output_start, predictions, predictions_class=None, predictions_quantile=None):
+def create_output(output_start, predictions, predictions_upside=None, predictions_top=None, predictions_quantile=None):
 
     output = output_start.copy()
     output['pred_fp_per_game'] = predictions.mean(axis=1)
 
-    if predictions_class is not None: 
-        output['pred_fp_per_game_class'] = predictions_class.mean(axis=1)
+    if predictions_upside is not None: 
+        output['pred_fp_per_game_upside'] = predictions_upside.mean(axis=1)
+    
+    if predictions_top is not None: 
+        output['pred_fp_per_game_top'] = predictions_top.mean(axis=1)
 
     if predictions_quantile is not None:
         output['pred_fp_per_game_quantile'] = predictions_quantile.mean(axis=1)
@@ -684,10 +784,10 @@ def save_out_results(df, db_name, table_name, pos, set_year, set_pos, dataset, c
 #------------
 
 dataset = 'ProjOnly'
-hp_algo = 'atpe'
-bayes_rand = 'bayes'
+hp_algo = 'tpe'
+bayes_rand = 'optuna'
 
-model_output_path = create_pkey(pos, dataset, set_pos,current_or_next_year, bayes_rand, hp_algo)
+model_output_path, pkey = create_pkey(pos, dataset, set_pos,current_or_next_year, bayes_rand, hp_algo)
 df = pull_data(set_pos, set_year, dataset)
 
 obj_cols = list(df.dtypes[df.dtypes=='object'].index)
@@ -695,7 +795,7 @@ obj_cols = [c for c in obj_cols if c not in ['player', 'team', 'pos']]
 df= df.drop(obj_cols, axis=1)
 
 df, output_start = filter_df(df, pos, set_pos, set_year)
-df_train, df_predict, df_train_class, df_predict_class = get_train_predict(df, set_year)
+df_train, df_predict, df_train_upside, df_predict_upside, df_train_top, df_predict_top = get_train_predict(df, set_year)
 
 #%%
 #------------
@@ -705,18 +805,18 @@ df_train, df_predict, df_train_class, df_predict_class = get_train_predict(df, s
 # # set up blank dictionaries for all metrics
 # out_dict_reg, out_dict_class, out_dict_quant = output_dict(), output_dict(), output_dict()
 
-# # # run all other models
+# # run all other models
 # model_list = ['adp', 'rf', 'gbm', 'gbmh', 'mlp', 'cb', 'huber', 'xgb', 'lgbm', 'knn', 'ridge', 'lasso', 'bridge', 'enet']
 # model_list = ['lr_c', 'rf_c', 'gbm_c', 'gbmh_c', 'mlp_c', 'cb_c', 'xgb_c', 'lgbm_c', 'knn_c',  ]
 # model_list = ['qr_q', 'gbm_q', 'gbmh_q', 'lgbm_q', 'rf_q', 'cb_q']
-# # model_list = ['cb_q']
+# model_list = ['cb_q']
 # for i, m in enumerate(model_list):
-#     out_dict_class = get_model_output(m, df_train, 'reg', out_dict_reg, pos, set_pos, hp_algo, bayes_rand, i)
+#     out_dict_class = get_model_output(m, df_train_top, 'class', out_dict_class, pos, set_pos, hp_algo, bayes_rand, i, '_top')
 
 #%%
 
 # # set up blank dictionaries for all metrics
-# out_dict_reg, out_dict_class, out_dict_quant = output_dict(), output_dict(), output_dict()
+# out_dict_reg, out_dict_top, out_dict_upside, out_dict_quant = output_dict(), output_dict(), output_dict(), output_dict()
 
 # model_list = ['adp', 'lasso', 'lgbm', 'rf', 'gbm', 'gbmh', 'mlp', 'cb', 'huber', 'xgb', 'knn', 'ridge', 'bridge', 'enet']
 # results = Parallel(n_jobs=-1, verbose=1)(
@@ -732,11 +832,21 @@ df_train, df_predict, df_train_class, df_predict_class = get_train_predict(df, s
 # model_list = ['lgbm_c', 'knn_c', 'lr_c', 'rf_c', 'gbm_c', 'gbmh_c', 'mlp_c', 'cb_c', 'xgb_c']
 # results = Parallel(n_jobs=-1, verbose=1)(
 #                 delayed(get_model_output)
-#                 (m, df_train_class, 'class', out_dict_class, pos, set_pos, hp_algo, bayes_rand, i) \
+#                 (m, df_train_top, 'class', out_dict_top, pos, set_pos, hp_algo, bayes_rand, i, '_top') \
 #                 for i, m in enumerate(model_list) 
 #                 )
-# out_dict_class = extract_par_results(results, out_dict_class)
-# save_output_dict(out_dict_class, model_output_path, 'class')
+# out_dict_top = extract_par_results(results, out_dict_top)
+# save_output_dict(out_dict_top, model_output_path, 'class_top')
+
+# # run all other models
+# model_list = ['lgbm_c', 'knn_c', 'lr_c', 'rf_c', 'gbm_c', 'gbmh_c', 'mlp_c', 'cb_c', 'xgb_c']
+# results = Parallel(n_jobs=-1, verbose=1)(
+#                 delayed(get_model_output)
+#                 (m, df_train_upside, 'class', out_dict_upside, pos, set_pos, hp_algo, bayes_rand, i, '_upside') \
+#                 for i, m in enumerate(model_list) 
+#                 )
+# out_dict_upside = extract_par_results(results, out_dict_upside)
+# save_output_dict(out_dict_upside, model_output_path, 'class_upside')
 
 # # run all other models
 # model_list = ['qr_q','lgbm_q', 'gbm_q', 'gbmh_q', 'cb_q']
@@ -755,20 +865,21 @@ df_train, df_predict, df_train_class, df_predict_class = get_train_predict(df, s
 # # Run the Stacking Models and Generate Output
 # #------------
 # run_params = {
-#     'stack_model': 'random_kbest',
+#     'stack_model': 'random_full_stack',
 #     'print_coef': False,
-#     'opt_type': 'bayes',
+#     'opt_type': 'optuna',
 #     'num_k_folds': 3,
-#     'n_iter': 25,
+#     'n_iter': 50,
 
 #     'sd_metrics': {'pred_fp_per_game': 1, 'pred_fp_per_game_class': 1, 'pred_fp_per_game_quantile': 0.5}
 # }
 
 
 # # get the training data for stacking and prediction data after stacking
-# X_stack_player, X_stack, y_stack, y_stack_class, models_reg, models_class, models_quant = load_all_stack_pred(model_output_path)
-# _, X_predict = get_stack_predict_data(df_train, df_predict, df_train_class, df_predict_class, 
-#                                       models_reg, models_class, models_quant)
+# X_stack_player, X_stack, y_stack, y_stack_upside, y_stack_top, 
+# models_reg, models_upside, models_top, models_quant = load_all_stack_pred(model_output_path)
+# _, X_predict = get_stack_predict_data(df_train, df_predict, df_train_upside, df_predict_upside, df_train_top, df_predict_top,
+#                                       models_reg, models_upside, models_top, models_quant)
 
 # #---------------
 # # Regression
@@ -786,24 +897,44 @@ df_train, df_predict, df_train_class, df_predict_class = get_train_predict(df, s
 
 # # get the best stack predictions and average
 # predictions = stack_predictions(X_predict, best_models, final_models, 'reg')
-# best_val_reg, best_predictions, best_score = average_stack_models(df_train, scores, final_models, y_stack, stack_val_pred, predictions, 'reg', show_plot=True, min_include=2)
+# best_val_reg, best_predictions, best_score = average_stack_models(df_train, scores, final_models, y_stack, stack_val_pred, predictions, 'reg', show_plot=True, min_include=3)
 
 # #---------------
-# # Classification
+# # Classification Top
 # #---------------
-# final_models_class = [ 'lgbm_c', 'lr_c', 'rf_c', 'gbm_c', 'gbmh_c', 'mlp_c', 'cb_c', 'xgb_c', ]
-# stack_val_class = pd.DataFrame(); scores_class = []; best_models_class = []
+# final_models_top = [ 'lgbm_c', 'lr_c', 'rf_c', 'gbm_c', 'gbmh_c', 'mlp_c', 'cb_c', 'xgb_c', ]
+# stack_val_top = pd.DataFrame(); scores_top = []; best_models_top = []
 # results = Parallel(n_jobs=-1, verbose=1)(
 #                 delayed(run_stack_models)
-#                 (fm, X_stack, y_stack_class, i, 'class', None, run_params) \
-#                 for i, fm in enumerate(final_models_class) 
+#                 (fm, X_stack, y_stack_top, i, 'class', None, run_params) \
+#                 for i, fm in enumerate(final_models_top) 
 #                 )
 
-# best_models_class, scores_class, stack_val_class = unpack_stack_results(results)
+# best_models_top, scores_top, stack_val_top = unpack_stack_results(results)
 
 # # get the best stack predictions and average
-# predictions_class = stack_predictions(X_predict, best_models_class, final_models_class, 'class')
-# best_val_class, best_predictions_class, _ = average_stack_models(df_train, scores_class, final_models_class, y_stack_class, stack_val_class, predictions_class, 'class', show_plot=True, min_include=2)
+# predictions_top = stack_predictions(X_predict, best_models_top, final_models_top, 'class')
+# best_val_top, best_predictions_top, _ = average_stack_models(df_train, scores_top, final_models_top, y_stack_top, 
+#                                                              stack_val_top, predictions_top, 'class', show_plot=True, min_include=2)
+
+# #---------------
+# # Classification Upside
+# #---------------
+# final_models_upside = [ 'lgbm_c', 'lr_c', 'rf_c', 'gbm_c', 'gbmh_c', 'mlp_c', 'cb_c', 'xgb_c', ]
+# stack_val_upside = pd.DataFrame(); scores_upside = []; best_models_upside = []
+# results = Parallel(n_jobs=-1, verbose=1)(
+#                 delayed(run_stack_models)
+#                 (fm, X_stack, y_stack_upside, i, 'class', None, run_params) \
+#                 for i, fm in enumerate(final_models_upside) 
+#                 )
+
+# best_models_upside, scores_upside, stack_val_upside = unpack_stack_results(results)
+
+# # get the best stack predictions and average
+# predictions_upside = stack_predictions(X_predict, best_models_upside, final_models_upside, 'class')
+# best_val_upside, best_predictions_upside, _ = average_stack_models(df_train, scores_upside, final_models_upside, y_stack_upside, 
+#                                                                   stack_val_upside, predictions_upside, 'class', show_plot=True, min_include=2)
+
 
 # #------------
 # # Quantile
@@ -827,8 +958,8 @@ df_train, df_predict, df_train_class, df_predict_class = get_train_predict(df, s
 # #---------------
 # # Create Output
 # #---------------
-# output = create_output(output_start, best_predictions, best_predictions_class, best_predictions_quant)
-# df_val_stack = create_final_val_df(X_stack_player, y_stack, best_val_reg, best_val_class, best_val_quant)
+# output = create_output(output_start, best_predictions, best_predictions_upside, best_predictions_top, best_predictions_quant)
+# df_val_stack = create_final_val_df(X_stack_player, y_stack, best_val_reg, best_val_upside, best_val_top, best_val_quant)
 # output = val_std_dev(output, df_val_stack, metrics=run_params['sd_metrics'], iso_spline='spline', show_plot=True)
 # output.sort_values(by='pred_fp_per_game', ascending=False).iloc[:50]
 

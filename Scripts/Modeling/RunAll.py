@@ -145,11 +145,11 @@ for sp, cn, fd, ye, rp, dset in runs:
     # Run the Stacking Models and Generate Output
     #------------
     run_params = {
-        'stack_model': 'random_kbest',
+        'stack_model': 'random_full_stack',
         'print_coef': False,
-        'opt_type': 'bayes',
+        'opt_type': 'optuna',
         'num_k_folds': 3,
-        'n_iter': 25,
+        'n_iter': 50,
 
         'sd_metrics': {'pred_fp_per_game': 1, 'pred_fp_per_game_class': 1, 'pred_fp_per_game_quantile': 0.5}
     }
@@ -316,12 +316,7 @@ display(preds[((preds.pos=='QB'))].sort_values(by='pred_fp_per_game', ascending=
 display(preds[((preds.pos!='QB'))].sort_values(by='pred_fp_per_game', ascending=False).iloc[:50])
 
 # %%
-import shutil
 
-dm.delete_from_db('Simulation', 'Model_Predictions', f"version='{vers}' AND year={set_year} AND dataset='final_ensemble'")
-dm.write_to_db(preds, 'Simulation', 'Model_Predictions', 'append')
-
-src = f'{root_path}/Data/Databases/Simulation.sqlite3'
-dst = f'/Users/borys/OneDrive/Documents/Github/Fantasy_Football_App/app/Simulation.sqlite3'
-shutil.copyfile(src, dst)
+dm.delete_from_db('Simulation', 'Final_Predictions', f"version='{vers}' AND year={set_year} AND dataset='final_ensemble'")
+dm.write_to_db(preds, 'Simulation', 'Final_Predictions', 'append')
 # %%

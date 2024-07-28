@@ -64,6 +64,7 @@ LEAGUE = 'beta'
 ty_keepers = {
     'Jahmyr Gibbs': [68],
     'Drake London': [34],
+    'Trey Mcbride': [11],
 
     'Dj Moore': [38],
     # 'Tony Pollard': [37],
@@ -79,6 +80,8 @@ ty_keepers = {
 
     # 'James Cook': [40],
     # 'Jonathan Taylor': [88],
+
+    'Garrett Wilson': [31],
 
     'Brandon Aiyuk': [24],
     # 'Jalen Hurts': [37],
@@ -200,23 +203,13 @@ def clean_results(path, fname, year, league, team_split=True):
 def get_adp():
     all_stats = pd.DataFrame()
     for pos in ['QB', 'RB', 'WR', 'TE']:
-        stats = dm.read(f'''SELECT player, year, avg_pick, avg_proj_points 
+        stats = dm.read(f'''SELECT player, year, avg_pick, avg_proj_points, year_exp
                             FROM {pos}_{YEAR}_ProjOnly
                             
                          ''', 'Model_Inputs')
         stats['pos'] = pos
         all_stats = pd.concat([all_stats, stats], axis=0)
     return all_stats
-
-def year_exp(df):
-
-    # adding years of experience
-    min_year = df.groupby(['player', 'pos']).agg('min')['year'].reset_index()
-    min_year = min_year.rename(columns={'year': 'min_year'})
-    df = pd.merge(df, min_year, how='left', on=['player', 'pos'])
-    df['year_exp'] = df.year - df.min_year
-    
-    return df
 
 def fill_ty_keepers(salaries, ty_keepers):
     salaries = pd.merge(salaries, ty_keepers, on=['player', 'year'], how='left')
@@ -234,11 +227,6 @@ def get_salaries():
                                 FROM Salaries 
                                 WHERE League='{LEAGUE}' ''', 'Simulation')
     salaries = pd.merge(actual_sal, base_sal, on=['player', 'year'], how='right')
-    return salaries
-
-def add_player_age(salaries):
-    player_age = dm.read('''SELECT * FROM player_birthdays''', 'Season_Stats_New')   
-    salaries = pd.merge(salaries, player_age, on=['player'])
     return salaries
 
 def add_osu(salaries):
@@ -303,13 +291,11 @@ def remove_outliers(salaries):
 
 
 salaries = get_salaries()
-salaries = add_player_age(salaries)
 salaries = add_osu(salaries)
 salaries = add_rookie(salaries)
 
 adp_stats = get_adp()
-adp_stats = year_exp(adp_stats)
-salaries = pd.merge(salaries, adp_stats, on=['player', 'year', 'pos'])
+salaries = pd.merge(salaries, adp_stats, on=['player', 'year'])
 salaries = fill_ty_keepers(salaries, ty_keepers)
 salaries = calc_inflation(salaries)
 
@@ -318,7 +304,6 @@ salaries = add_salary_pos_rank(salaries)
 
 salaries = remove_outliers(salaries)
 salaries = salaries.sample(frac=1, random_state=1234).reset_index(drop=True)
-
 #%%
 
 skm = SciKitModel(salaries)
@@ -389,24 +374,6 @@ val_data = pd.concat([salaries.loc[salaries.year!=YEAR, ['player', 'pos', 'year'
 val_data.columns = ['player', 'pos', 'year', 'y_act', 'pred_salary']
 mf.show_scatter_plot(val_data.y_act, val_data.pred_salary)
 print('MSE:', np.round(mean_squared_error(val_data.y_act, val_data.pred_salary), 3))
-
-#%%
-mf.shap_plot([best_models['lgbm']], X_train, 0)
-
-#%%
-mf.shap_plot([best_models['ridge']], X_train, 0)
-#%%
-mf.shap_plot([best_models['svr']], X_train, 0)
-#%%
-mf.shap_plot([best_models['lasso']], X_train, 0)
-#%%
-mf.shap_plot([best_models['enet']], X_train, 0)
-#%%
-mf.shap_plot([best_models['xgb']], X_train, 0)
-#%%
-mf.shap_plot([best_models['gbm']], X_train, 0)
-#%%
-mf.shap_plot([best_models['rf']], X_train, 0)
 
 #%%
 
@@ -490,8 +457,16 @@ pred_results['league'] = LEAGUE + 'pred'
 output = pred_results[['player', 'pred_salary', 'year', 'league', 'std_dev', 'min_score', 'max_score']]
 output = output.rename(columns={'pred_salary': 'salary'})
 
-dm.delete_from_db('Simulation', 'Salaries', f"year={YEAR} AND league='{LEAGUE}pred'")
-dm.write_to_db(output, 'Simulation', 'Salaries', 'append')
+dm.delete_from_db('Simulation', 'Salaries_Pred', f"year={YEAR} AND league='{LEAGUE}pred'")
+dm.write_to_db(output, 'Simulation', 'Salaries_Pred', 'append')
+
+#%%
+
+import shutil
+
+src = f'{root_path}/Data/Databases/Simulation.sqlite3'
+dst = f'/Users/borys/OneDrive/Documents/Github/Fantasy_Football_App/app/Simulation.sqlite3'
+shutil.copyfile(src, dst)
 
 # %%
 

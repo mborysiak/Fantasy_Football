@@ -46,7 +46,7 @@ class FootballSimulation:
                                           std_dev, 
                                           min_score, 
                                           max_score
-                                   FROM Model_Predictions
+                                   FROM Final_Predictions
                                    WHERE year={self.set_year}
                                          AND dataset='{self.pred_vers}'
                                          AND version='{self.league}'
@@ -64,7 +64,7 @@ class FootballSimulation:
                                                 std_dev salary_std_dev,
                                                 min_score salary_min_score,
                                                 max_score salary_max_score
-                                         FROM Salaries
+                                         FROM Salaries_Pred
                                          WHERE year={self.set_year}
                                                AND league='{self.league+'pred'}' ''', 
                                         self.conn)
