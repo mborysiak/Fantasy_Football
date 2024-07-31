@@ -73,33 +73,25 @@ pos['Rookie_WR']['rush_pass'] = ''
 # Model Settings
 #==========
 
-pos['QB']['val_start'] = 2016
-pos['RB']['val_start'] = 2016
-pos['WR']['val_start'] = 2016
-pos['TE']['val_start'] = 2016
-pos['Rookie_RB']['val_start'] = 2016
-pos['Rookie_WR']['val_start'] = 2016
+pos['QB']['val_start'] = 2017
+pos['RB']['val_start'] = 2017
+pos['WR']['val_start'] = 2017
+pos['TE']['val_start'] = 2017
 
 pos['QB']['test_years'] = 1
 pos['RB']['test_years'] = 1
 pos['WR']['test_years'] = 1
 pos['TE']['test_years'] = 1
-pos['Rookie_RB']['test_years'] = 1
-pos['Rookie_WR']['test_years'] = 1
 
 pos['QB']['filter_data'] = 'greater_equal'
 pos['RB']['filter_data'] = 'greater_equal'
-pos['WR']['filter_data'] = 'greater_equal'
+pos['WR']['filter_data'] = 'less_equal'
 pos['TE']['filter_data'] = 'greater_equal'
-pos['Rookie_RB']['filter_data'] = 'greater_equal'
-pos['Rookie_WR']['filter_data'] = 'greater_equal'
 
 pos['QB']['year_exp'] = 0
 pos['RB']['year_exp'] = 0
-pos['WR']['year_exp'] = 0
+pos['WR']['year_exp'] = 3
 pos['TE']['year_exp'] = 0
-pos['Rookie_RB']['year_exp'] = 0
-pos['Rookie_WR']['year_exp'] = 0
 
 pos['QB']['iters'] = 20
 pos['RB']['iters'] = 20
@@ -435,7 +427,7 @@ def get_new_study():
     return study
 
 
-def get_model_output(model_name, cur_df, model_obj, out_dict, pos, set_pos, hp_algo, bayes_rand, i, alpha=''):
+def get_model_output(model_name, cur_df, model_obj, out_dict, pos, set_pos, hp_algo, bayes_rand, i, alpha='', optuna_timeout=60):
 
     print(f'\n{model_name}\n============\n')
 
@@ -448,7 +440,6 @@ def get_model_output(model_name, cur_df, model_obj, out_dict, pos, set_pos, hp_a
     if bayes_rand == 'bayes': trials = Trials()
     elif bayes_rand == 'optuna': 
         trials = get_new_study()
-        optuna_timeout = 60*5
 
     # fit and append the ADP model
     best_models, oof_data, _, _ = skm.time_series_cv(pipe, X, y, params, n_iter=pos[set_pos]['iters'], 
@@ -481,10 +472,10 @@ def load_all_stack_pred(model_output_path):
 
     # load the class predictions
     pred_top, actual_top, models_top, _, full_hold_top = mf.load_all_pickles(model_output_path, 'class_top')
-    X_stack_top, y_stack_top = mf.X_y_stack('class_top', full_hold_top, pred_top, actual_top)
+    X_stack_top, y_stack_top = mf.X_y_stack('top', full_hold_top, pred_top, actual_top)
 
     pred_upside, actual_upside, models_upside, _, full_hold_upside = mf.load_all_pickles(model_output_path, 'class_upside')
-    X_stack_upside, y_stack_upside = mf.X_y_stack('class_upside', full_hold_upside, pred_upside, actual_upside)
+    X_stack_upside, y_stack_upside = mf.X_y_stack('upside', full_hold_upside, pred_upside, actual_upside)
 
     # load the quantile predictions
     pred_quant, actual_quant, models_quant, _, full_hold_quant = mf.load_all_pickles(model_output_path, 'quantile')
@@ -511,14 +502,14 @@ def get_proba_adp_coef(model_obj, final_m, run_params):
     return proba, run_adp, print_coef
 
 
-def run_stack_models(final_m, X_stack, y_stack, i, model_obj, alpha, run_params, hp_algo):
+def run_stack_models(final_m, X_stack, y_stack, i, model_obj, alpha, run_params):
 
     print(f'\n{final_m}')
 
     min_samples = int(len(y_stack)/10)
     proba, run_adp, print_coef = get_proba_adp_coef(model_obj, final_m, run_params)
 
-    skm, _, _ = get_skm(pd.concat([X_stack, y_stack], axis=1), model_obj, hp_algo=hp_algo)
+    skm, _, _ = get_skm(pd.concat([X_stack, y_stack], axis=1), model_obj, hp_algo=run_params['hp_algo'])
     pipe, params = get_full_pipe_stack(skm, final_m, stack_model=run_params['stack_model'],
                                        bayes_rand=run_params['opt_type'], alpha=alpha, 
                                        min_samples=min_samples, )
@@ -526,14 +517,13 @@ def run_stack_models(final_m, X_stack, y_stack, i, model_obj, alpha, run_params,
     if run_params['opt_type'] == 'bayes': trials = Trials()
     elif run_params['opt_type'] == 'optuna': 
         trials = get_new_study()
-        optuna_timeout = 60
     
     best_model, stack_scores, stack_pred, _ = skm.best_stack(pipe, params, X_stack, y_stack, 
                                                                 n_iter=run_params['n_iter'], alpha=alpha,
                                                                 bayes_rand=run_params['opt_type'],trials=trials,
                                                                 run_adp=run_adp, print_coef=print_coef,
                                                                 proba=proba, num_k_folds=run_params['num_k_folds'],
-                                                                random_state=(i*2)+(i*7), optuna_timeout=optuna_timeout)
+                                                                random_state=(i*2)+(i*7), optuna_timeout=run_params['optuna_timeout'])
     stack_val_pred =  pd.Series(stack_pred['stack_pred'], name=final_m)
 
     return best_model, stack_scores['stack_score'], stack_val_pred
@@ -612,7 +602,7 @@ def show_calibration_curve(y_true, y_pred, n_bins=10):
     print('Brier Score:', brier_score_loss(y_true, y_pred))
 
 
-def val_std_dev(output, val_data, metrics={'pred_fp_per_game': 1}, iso_spline='iso', show_plot=True):
+def val_std_dev(output, val_data, metrics={'pred_fp_per_game': 1}, iso_spline='iso', show_plot=True, max_grps_den=0.08, min_grps_den=0.12):
         
     sd_max_met = StandardScaler().fit(val_data[list(metrics.keys())]).transform(output[list(metrics.keys())])
     sd_max_met = np.mean(sd_max_met, axis=1)
@@ -628,8 +618,8 @@ def val_std_dev(output, val_data, metrics={'pred_fp_per_game': 1}, iso_spline='i
 
     elif iso_spline=='spline':
         sd_m, max_m, min_m = get_std_splines(val_data, metrics, show_plot=show_plot, k=2, 
-                                            min_grps_den=int(val_data.shape[0]*0.12), 
-                                            max_grps_den=int(val_data.shape[0]*0.08),
+                                            min_grps_den=int(val_data.shape[0]*min_grps_den), 
+                                            max_grps_den=int(val_data.shape[0]*max_grps_den),
                                             iso_spline=iso_spline)
         output['std_dev'] = sd_m(sd_max_met)
         output['max_score'] = max_m(sd_max_met)
@@ -779,23 +769,24 @@ def save_out_results(df, db_name, table_name, pos, set_year, set_pos, dataset, c
 
 #%%
 
-#------------
-# Pull in the data and create train and predict sets
-#------------
+# #------------
+# # Pull in the data and create train and predict sets
+# #------------
 
-dataset = 'ProjOnly'
-hp_algo = 'tpe'
-bayes_rand = 'optuna'
+# dataset = 'ProjOnly'
+# hp_algo = 'tpe'
+# bayes_rand = 'optuna'
+# optuna_timeout = 30
 
-model_output_path, pkey = create_pkey(pos, dataset, set_pos,current_or_next_year, bayes_rand, hp_algo)
-df = pull_data(set_pos, set_year, dataset)
+# model_output_path, pkey = create_pkey(pos, dataset, set_pos,current_or_next_year, bayes_rand, hp_algo)
+# df = pull_data(set_pos, set_year, dataset)
 
-obj_cols = list(df.dtypes[df.dtypes=='object'].index)
-obj_cols = [c for c in obj_cols if c not in ['player', 'team', 'pos']]
-df= df.drop(obj_cols, axis=1)
+# obj_cols = list(df.dtypes[df.dtypes=='object'].index)
+# obj_cols = [c for c in obj_cols if c not in ['player', 'team', 'pos']]
+# df= df.drop(obj_cols, axis=1)
 
-df, output_start = filter_df(df, pos, set_pos, set_year)
-df_train, df_predict, df_train_upside, df_predict_upside, df_train_top, df_predict_top = get_train_predict(df, set_year)
+# df, output_start = filter_df(df, pos, set_pos, set_year)
+# df_train, df_predict, df_train_upside, df_predict_upside, df_train_top, df_predict_top = get_train_predict(df, set_year)
 
 #%%
 #------------
@@ -868,19 +859,21 @@ df_train, df_predict, df_train_upside, df_predict_upside, df_train_top, df_predi
 #     'stack_model': 'random_full_stack',
 #     'print_coef': False,
 #     'opt_type': 'optuna',
+#     'hp_algo': 'tpe',
 #     'num_k_folds': 3,
-#     'n_iter': 50,
+#     'n_iter': 5,
 
 #     'sd_metrics': {'pred_fp_per_game': 1, 'pred_fp_per_game_class': 1, 'pred_fp_per_game_quantile': 0.5}
 # }
 
-
+# #%%
 # # get the training data for stacking and prediction data after stacking
-# X_stack_player, X_stack, y_stack, y_stack_upside, y_stack_top, 
-# models_reg, models_upside, models_top, models_quant = load_all_stack_pred(model_output_path)
+# X_stack_player, X_stack, y_stack, y_stack_upside, y_stack_top, \
+#  models_reg, models_upside, models_top, models_quant = load_all_stack_pred(model_output_path)
+
 # _, X_predict = get_stack_predict_data(df_train, df_predict, df_train_upside, df_predict_upside, df_train_top, df_predict_top,
 #                                       models_reg, models_upside, models_top, models_quant)
-
+# #%%
 # #---------------
 # # Regression
 # #---------------
@@ -958,87 +951,22 @@ df_train, df_predict, df_train_upside, df_predict_upside, df_train_top, df_predi
 # #---------------
 # # Create Output
 # #---------------
+# #%%
+# if X_stack.shape[0] < 200: iso_spline = 'iso'
+# else: iso_spline = 'spline'
 # output = create_output(output_start, best_predictions, best_predictions_upside, best_predictions_top, best_predictions_quant)
 # df_val_stack = create_final_val_df(X_stack_player, y_stack, best_val_reg, best_val_upside, best_val_top, best_val_quant)
-# output = val_std_dev(output, df_val_stack, metrics=run_params['sd_metrics'], iso_spline='spline', show_plot=True)
+# output = val_std_dev(output, df_val_stack, metrics=run_params['sd_metrics'], iso_spline=iso_spline, show_plot=True, max_grps_den=0.04, min_grps_den=0.08)
 # output.sort_values(by='pred_fp_per_game', ascending=False).iloc[:50]
 
+# output.loc[output.std_dev < 1, 'std_dev'] = output.loc[output.std_dev < 1, 'pred_fp_per_game'] * 0.15
+# output.loc[output.max_score < (output.pred_fp_per_game + output.std_dev), 'max_score'] = output.pred_fp_per_game + output.std_dev*1.5
+# y_max = df_train.y_act.max()
+# output.loc[output.max_score > y_max, 'max_score'] = y_max + output.std_dev / 3
+# output = output.round(3)
 
-# #%%
 # # save out final results
 # val_compare = validation_compare_df(model_output_path, best_val_reg)
-# save_out_results(val_compare, 'Simulation', 'Model_Validations', pos, set_year, set_pos, dataset, current_or_next_year)
+# save_out_results(val_compare, 'Validations', 'Model_Validations', pos, set_year, set_pos, dataset, current_or_next_year)
 # save_out_results(output, 'Simulation', 'Model_Predictions', pos, set_year, set_pos, dataset, current_or_next_year)
 
-
-#%%
-
-# set_pos = 'QB'
-# version = 'beta'
-# current_or_next_year = 'next'
-# from sklearn.metrics import mean_squared_error
-
-# rp = dm.read(f'''SELECT player, 
-#                         season, 
-#                         SUM(pred_fp_per_game) rp_pred, 
-#                         SUM(y_act) rp_y_act
-#                 FROM Model_Validations
-#                 WHERE rush_pass != 'both'
-#                       AND pos = '{set_pos}'
-#                       AND year_exp=0
-#                       AND filter_data = 'greater_equal'
-#                       AND current_or_next_year = '{current_or_next_year}'
-#                       AND year = '{set_year}'
-#                       AND version = '{vers}'
-#                 GROUP BY player, season
-#              ''', 'Simulation')
-
-# both = dm.read(f'''SELECT player, 
-#                          season, 
-#                          pred_fp_per_game both_pred, 
-#                          y_act both_y_act
-#                 FROM Model_Validations
-#                 WHERE rush_pass = 'both'
-#                       AND pos = '{set_pos}'
-#                       AND year_exp=0
-#                       AND filter_data ='greater_equal'
-#                       AND current_or_next_year = '{current_or_next_year}'
-#                       AND year = '{set_year}'
-#                     AND version = '{vers}'
-#                 ''', 'Simulation')
-
-
-
-# # rp = rp[rp.rp_pred < 22].reset_index(drop=True)
-# rp = pd.merge(rp, both, on=['player', 'season'])
-
-# mf.show_scatter_plot(rp.rp_pred, rp.rp_y_act, r2=True)
-# mf.show_scatter_plot(rp.both_pred, rp.both_y_act, r2=True)
-
-# print('\nRP MSE:', np.sqrt(mean_squared_error(rp.rp_pred, rp.rp_y_act)))
-# print('Both MSE:', np.sqrt(mean_squared_error(rp.both_pred, rp.both_y_act)))
-# print(rp[abs(rp.both_y_act - rp.rp_y_act) > 0.001])
-
-
-# #%%
-
-# rp = dm.read(f'''SELECT player, 
-#                         year, 
-#                         SUM(pred_fp_per_game) rp_pred,
-#                         AVG(avg_pick) avg_pick,
-#                         SUM(std_dev)/1.4 std_dev,
-#                         SUM(max_score)/1.3 max_score
-#                 FROM Model_Predictions
-#                 WHERE rush_pass != 'both'
-#                       AND pos = '{set_pos}'
-#                       AND year_exp='{pos[set_pos]['year_exp']}'
-#                       AND filter_data = '{pos[set_pos]['filter_data']}'
-#                       AND current_or_next_year = '{current_or_next_year}'
-#                       AND year = '{set_year}'
-#                       AND version = '{vers}'
-#                 GROUP BY player, year
-#              ''', 'Simulation').sort_values(by='rp_pred', ascending=False)
-# rp.iloc[:50]
-# %%
-
-# %%

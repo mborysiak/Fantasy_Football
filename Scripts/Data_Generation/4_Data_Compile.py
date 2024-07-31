@@ -413,13 +413,18 @@ def get_max_qb():
     df = fftoday_proj(pos); print(df.shape[0])
     df = fantasy_pros_new(df, pos); print(df.shape[0])
     df = get_pff_proj(df, pos); print(df.shape[0])
+    df = add_adp(df, pos, 'mfl'); print(df.shape[0])
+    df = add_adp(df, pos, 'fpros'); print(df.shape[0])
     df = ffa_compile(df, 'FFA_Projections', pos); print(df.shape[0])
     df = ffa_compile(df, 'FFA_RawStats', pos); print(df.shape[0])
     df = fantasy_data_proj(df, pos); print(df.shape[0])
 
     df = consensus_fill(df); print(df.shape[0])
     df = log_rank_cols(df); print(df.shape[0])
-    df = df.dropna(axis=1)
+
+    df['log_avg_proj_rank'] = np.log(df[[c for c in df.columns if 'rank' in c]].mean(axis=1))
+    df.loc[df.avg_pick.isnull(), 'avg_pick'] = df.loc[df.avg_pick.isnull(), 'log_avg_proj_rank'] * 0.676 + 1.71
+    df.loc[df.avg_pick.isnull(), 'fpros_avg_pick'] = df.loc[df.avg_pick.isnull(), 'log_avg_proj_rank'] * 0.676 + 1.71
 
     qb_cols = [
                'team', 'year', 
@@ -431,17 +436,21 @@ def get_max_qb():
                 'avg_proj_rush_yds', 'std_proj_rush_yds', 'max_proj_rush_yds',
                 'avg_proj_rush_att', 'std_proj_rush_att', 'max_proj_rush_att',
                 'avg_proj_rush_td', 'std_proj_rush_td', 'max_proj_rush_td',
-                'avg_proj_rec', 'std_proj_rec', 'max_proj_rec', 'avg_proj_rec_yds',
-                'std_proj_rec_yds', 'max_proj_rec_yds', 'avg_proj_rec_td',
-                'std_proj_rec_td', 'max_proj_rec_td', 'avg_proj_points',
-                'std_proj_points', 'max_proj_points', 'avg_proj_rank', 'std_proj_rank', 'minproj_rank'
+                 'avg_proj_points','std_proj_points', 'max_proj_points', 
+                 'avg_proj_rank', 'std_proj_rank', 'minproj_rank',
+                'avg_pick', 'fpros_avg_pick'
                ]
     df = df.sort_values(by=['team', 'year', 'avg_proj_points'],
                         ascending=[True, True, False])
     df = df.drop_duplicates(subset=['team', 'year'], keep='first').reset_index(drop=True)
     df = df[qb_cols]
+    df = df.dropna(axis=1)
     df.columns = ['qb_'+c if c not in ('team', 'year') else c for c in df.columns]
     df = remove_non_uniques(df)
+
+    df['rush_pass_att_ratio'] = df.qb_avg_proj_rush_att / (df.qb_avg_proj_pass_att + 10)
+    df['rush_pass_yds_ratio'] = df.qb_avg_proj_rush_yds / (df.qb_avg_proj_pass_yds + 100)
+    df['rush_pass_td_ratio'] = df.qb_avg_proj_rush_td / (df.qb_avg_proj_pass_td + 1)
 
     return df
 
@@ -520,7 +529,7 @@ def y_act_class(df, df_quant, proj_var_cut, y_act_cut, suffix):
     df_quant['proj_var'] = df_quant.y_act - df_quant.avg_proj_points_per_game   
     df_proj_quant = df_quant[df_quant.games_next > 4].groupby('year')['proj_var'].quantile(proj_var_cut).reset_index()
     df_act_quant = df_quant[df_quant.games_next > 4].groupby('year')['y_act'].quantile(y_act_cut).reset_index().rename(columns={'y_act': 'y_act_quantile'})
-    print(df_proj_quant)
+    
     df = pd.merge(df, df_proj_quant, on='year', how='left')
     df = pd.merge(df, df_act_quant, on='year', how='left')
     
@@ -558,7 +567,7 @@ def show_calibration_curve(y_true, y_pred, n_bins=10):
 
 #%%
 
-pos='RB'
+pos='TE'
 
 class_cuts = {
     'WR': {
@@ -590,7 +599,6 @@ class_cuts = {
            'upside': {'y_act': 0.7, 'proj_var': 0.7},
            'top':  {'y_act': 0.75, 'proj_var': 0.5}
         },
-
 }
 
 # pull all projections and ranks
@@ -670,8 +678,8 @@ df_stats = drop_y_act_except_current(df_stats, year)
 df_stats = drop_games(df_stats, year, games=4, games_next=4)
 df_stats = remove_low_corrs(df_stats.dropna(subset=['y_act']), corr_cut=0.02)
 df_stats = add_draft_year_exp(df_stats, pos)
-df_proj = y_act_class(df_stats, df_stats.copy(), class_cuts[pos]['upside']['proj_var'], class_cuts[pos]['upside']['y_act'], 'upside')
-df_proj = y_act_class(df_stats, df_stats.copy(), class_cuts[pos]['top']['proj_var'], class_cuts[pos]['top']['y_act'], 'top')
+df_stats = y_act_class(df_stats, df_stats.copy(), class_cuts[pos]['upside']['proj_var'], class_cuts[pos]['upside']['y_act'], 'upside')
+df_stats = y_act_class(df_stats, df_stats.copy(), class_cuts[pos]['top']['proj_var'], class_cuts[pos]['top']['y_act'], 'top')
 
 
 dm.write_to_db(df_stats, 'Model_Inputs', f'{pos}_{year}_Stats', if_exist='replace')
