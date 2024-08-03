@@ -491,9 +491,6 @@ dm.write_to_db(df, DB_NAME, 'PFF_Projections', 'append')
 #%%
 
 
-# for i, yr in enumerate(range(2024, 2006)):
-move_download_to_folder(root_path, 'PFF_Stats', 'passing_summary', year)
-
 
 
 #%%

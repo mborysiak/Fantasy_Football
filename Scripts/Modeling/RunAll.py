@@ -292,6 +292,8 @@ both = dm.read(f'''SELECT player,
                           pos,
                           rush_pass,
                           pred_fp_per_game pred_fp_per_game,
+                          pred_fp_per_game_upside pred_prob_upside,
+                          pred_fp_per_game_top pred_prob_top,
                           std_dev,
                           min_score,   
                           max_score, date_modified
@@ -321,6 +323,8 @@ preds.loc[preds.min_score > preds.pred_fp_per_game, 'min_score'] = (
 
 
 preds = preds.groupby(['player', 'pos'], as_index=False).agg({'pred_fp_per_game': 'mean', 
+                                                              'pred_prob_upside': 'mean',
+                                                              'pred_prob_top': 'mean',
                                                               'std_dev': 'mean',
                                                               'min_score': 'mean',
                                                               'max_score': 'mean'})
@@ -337,7 +341,7 @@ import shutil
 
 dm.delete_from_db('Simulation', 'Final_Predictions', f"version='{vers}' AND year={set_year} AND dataset='final_ensemble'")
 dm.write_to_db(preds, 'Simulation', 'Final_Predictions', 'append')
-
+#%%
 src = f'{root_path}/Data/Databases/Simulation.sqlite3'
 dst = f'/Users/borys/OneDrive/Documents/Github/Fantasy_Football_App/app/Simulation.sqlite3'
 shutil.copyfile(src, dst)

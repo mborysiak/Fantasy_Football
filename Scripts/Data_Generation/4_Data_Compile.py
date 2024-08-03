@@ -454,6 +454,34 @@ def get_max_qb():
 
     return df
 
+def add_pff_stats(df, pos, stat):
+
+    if pos == 'RB': pos = 'HB'
+
+    pff = dm.read(f'''SELECT *
+                      FROM PFF_{stat}_Stats
+                      WHERE position='{pos}'
+                      ''', DB_NAME).drop(['player_id', 'position', 'team_name'], axis=1)
+    pff = pff.rename(columns={'year': 'season'})
+    pff.columns = [f'pff_{stat.lower()}_{c}' if c not in ('player', 'season') else c for c in pff.columns ]
+    df = pd.merge(df, pff, on=['player', 'season'], how='left')
+    df[[c for c in df.columns if f'pff_{stat.lower()}' in c]] = df[[c for c in df.columns if f'pff_{stat.lower()}' in c]].fillna(0)
+
+    if stat == 'Rec':
+        roll_cols = ['grades_offense', 'grades_pass_route', 'slot_rate', 'slot_snaps', 'wide_snaps', 'targeted_qb_rating',
+                    'yprr', 'avg_depth_of_target', 'grades_hands_drop', 'route_rate', 'wide_rate']
+    
+    if stat == 'Rush':
+        roll_cols = ['attempts', 'avoided_tackles', 'breakaway_attempts', 'breakaway_percent', 'breakaway_yards',
+                     'designed_yards', 'elu_recv_mtf', 'elu_rush_mtf', 'elu_yco', 'elusive_rating', 'explosive',
+                     'first_downs', 'gap_attempts', 'grades_offense', 'grades_pass_block','grades_pass_route', 'grades_run',
+                     'yards_after_contact', 'yco_attempt', 'ypa','zone_attempts']
+        
+    roll_cols = [f'pff_{stat.lower()}_{c}' for c in roll_cols]
+    df = add_rolling_stats(df, ['player'], roll_cols)
+
+    return df
+
 def add_draft_year_exp(df, pos):
 
     draft_year = dm.read(f'''
@@ -567,7 +595,7 @@ def show_calibration_curve(y_true, y_pred, n_bins=10):
 
 #%%
 
-pos='TE'
+pos='QB'
 
 class_cuts = {
     'WR': {
@@ -644,10 +672,21 @@ df = drop_duplicate_players(df, 'avg_proj_points')
 #-----------
 # Save out Projection data
 #-----------
-stats = dm.read(f'SELECT * FROM {pos}_Stats', DB_NAME)
-stats = drop_duplicate_players(stats, 'sum_fantasy_pts')
-stats_proj = stats[['player', 'season', 'games', 'games_next', 'fantasy_pts_per_game']].copy()
-stats_proj = stats_proj.rename(columns={'fantasy_pts_per_game': 'y_act', 'season': 'year'})
+stats_proj = dm.read(f'SELECT * FROM {pos}_Stats', DB_NAME)
+stats_proj = drop_duplicate_players(stats_proj, 'sum_fantasy_pts')
+
+if pos == 'QB': 
+    stat_cols = ['player', 'season', 'games', 'games_next', 'fantasy_pts_per_game', 
+                 'fantasy_pts_rush_per_game', 'fantasy_pts_pass_per_game']
+    stats_proj = stats_proj[stat_cols].rename(columns={'season': 'year',
+                                                        'fantasy_pts_per_game': 'y_act', 
+                                                        'fantasy_pts_rush_per_game': 'y_act_rush', 
+                                                        'fantasy_pts_pass_per_game': 'y_act_pass'})
+    
+else: 
+    stat_cols = ['player', 'season', 'games', 'games_next', 'fantasy_pts_per_game']
+    stats_proj = stats_proj[stat_cols].rename(columns={'fantasy_pts_per_game': 'y_act', 'season': 'year'})
+
 df_proj = pd.merge(stats_proj, df, on=['player', 'year'], how='right')
 df_proj['season'] = df_proj.year - 1
 
@@ -655,7 +694,7 @@ df_proj['season'] = df_proj.year - 1
 # used for model predictions and don't matter if they are missing
 df_proj = drop_y_act_except_current(df_proj, year)
 df_proj = drop_games(df_proj, year, games=0, games_next=4)
-df_proj = remove_low_corrs(df_proj.dropna(subset=['y_act']), corr_cut=0.02)
+df_proj = remove_low_corrs(df_proj.dropna(subset=['y_act']), corr_cut=0.04)
 df_proj = add_draft_year_exp(df_proj, pos)
 
 df_proj.loc[df_proj.year >= year-1, ['games_next']] = 16
@@ -668,19 +707,31 @@ dm.write_to_db(df_proj, 'Model_Inputs', f'{pos}_{year}_ProjOnly', if_exist='repl
 # Save out Full Data
 #------------
 
+stats = dm.read(f'SELECT * FROM {pos}_Stats', DB_NAME)
+stats = drop_duplicate_players(stats, 'sum_fantasy_pts')
+
 stats = add_rolling_stats(stats, ['player'], [c for c in stats.columns if 'pass' in c or 'rush' in c or 'rec' in c])
 stats = remove_non_uniques(stats)
 df_stats = pd.merge(stats, df, on=['player', 'year']); print(df.shape[0])
 
 # drop both last year's and next year's game limits
 # since you need y_act to be relevant and last year's stats to be relvant
+if pos == 'RB':
+    df_stats = add_pff_stats(df_stats, pos, 'Rec')
+    df_stats = add_pff_stats(df_stats, pos, 'Rush')
+elif pos in ('WR', 'RB'):
+    df_stats = add_pff_stats(df_stats, pos, 'Rec')
+elif pos == 'QB':
+    df_stats = add_pff_stats(df_stats, pos, 'Pass')
+    df_stats = add_pff_stats(df_stats, pos, 'Rush')
+df_stats = drop_duplicate_players(df_stats, 'sum_fantasy_pts')
+
 df_stats = drop_y_act_except_current(df_stats, year)
 df_stats = drop_games(df_stats, year, games=4, games_next=4)
-df_stats = remove_low_corrs(df_stats.dropna(subset=['y_act']), corr_cut=0.02)
+df_stats = remove_low_corrs(df_stats.dropna(subset=['y_act']), corr_cut=0.04)
 df_stats = add_draft_year_exp(df_stats, pos)
 df_stats = y_act_class(df_stats, df_stats.copy(), class_cuts[pos]['upside']['proj_var'], class_cuts[pos]['upside']['y_act'], 'upside')
 df_stats = y_act_class(df_stats, df_stats.copy(), class_cuts[pos]['top']['proj_var'], class_cuts[pos]['top']['y_act'], 'top')
-
 
 dm.write_to_db(df_stats, 'Model_Inputs', f'{pos}_{year}_Stats', if_exist='replace')
 
@@ -704,7 +755,7 @@ if pos in ('RB', 'WR'):
     df_rookie = drop_y_act_except_current(df_rookie, year)
     df_rookie = drop_games(df_rookie, year, games=4, games_next=0)
 
-    df_rookie = remove_low_corrs(df_rookie, corr_cut=0.02)
+    df_rookie = remove_low_corrs(df_rookie, corr_cut=0.04)
     df_rookie = y_act_class(df_rookie.fillna({'games_next': 16}), df_proj.copy(), 
                             class_cuts[f'Rookie_{pos}']['upside']['proj_var'], class_cuts[f'Rookie_{pos}']['upside']['y_act'], 'upside')
     df_rookie = y_act_class(df_rookie.fillna({'games_next': 16}), df_proj.copy(), 
@@ -725,22 +776,22 @@ if pos in ('RB', 'WR'):
 
 #%%
 
-pos = 'RB'
+pos = 'TE'
 
 from skmodel import SciKitModel
 from hyperopt import Trials
 from sklearn.metrics import r2_score
 alpha = 0.8
-model_obj = 'class'
 
-class_metric = 'top'
+model_obj = 'reg'
+class_metric = 'upside'
 
 if model_obj =='class': proba = True
-else: False
+else: proba = False
 
 # Xy = dm.read(f"SELECT * FROM {pos}_{year}_ProjOnly WHERE pos='{pos}' ", 'Model_Inputs')
-# Xy = dm.read(f"SELECT * FROM {pos}_{year}_Stats WHERE pos='{pos}' ", 'Model_Inputs')
-Xy = dm.read(f"SELECT * FROM {pos}_{year}_Rookie ", 'Model_Inputs')
+Xy = dm.read(f"SELECT * FROM {pos}_{year}_Stats WHERE pos='{pos}' ", 'Model_Inputs')
+# Xy = dm.read(f"SELECT * FROM {pos}_{year}_Rookie ", 'Model_Inputs')
 
 Xy = Xy.sort_values(by='year').reset_index(drop=True)
 Xy['team'] = 'team'
@@ -765,11 +816,12 @@ X, y = skm.Xy_split('y_act', to_drop = to_drop)
 if proba:
     p = 'select_perc_c'
     kb = 'k_best_c'
-    m = 'lr_c'
+    m = 'lgbm_c'
 else:
     p = 'select_perc'
     kb = 'k_best'
     m = 'lgbm'
+
 pipe = skm.model_pipe([skm.piece('random_sample'),
                         skm.piece('std_scale'), 
                         skm.piece(p),
