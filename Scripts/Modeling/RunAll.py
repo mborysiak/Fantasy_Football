@@ -20,27 +20,27 @@ runs = [
         # ['WR', 'current', 'greater_equal', 4, '', 'ProjOnly'],
 
         # ['WR', 'current', 'greater_equal', 0, '', 'Stats'],
-        ['WR', 'current', 'less_equal', 3, '', 'Stats'],
-        ['WR', 'current', 'greater_equal', 4, '', 'Stats'],
+        # ['WR', 'current', 'less_equal', 3, '', 'Stats'],
+        # ['WR', 'current', 'greater_equal', 4, '', 'Stats'],
 
-        ['RB', 'current', 'greater_equal', 0, '', 'ProjOnly'],
-        ['RB', 'current', 'less_equal', 3, '', 'ProjOnly'],
-        ['RB', 'current', 'greater_equal', 4, '', 'ProjOnly'],
+        # ['RB', 'current', 'greater_equal', 0, '', 'ProjOnly'],
+        # ['RB', 'current', 'less_equal', 3, '', 'ProjOnly'],
+        # ['RB', 'current', 'greater_equal', 4, '', 'ProjOnly'],
 
-        ['RB', 'current', 'greater_equal', 0, '', 'Stats'],
-        ['RB', 'current', 'less_equal', 3, '', 'Stats'],
-        ['RB', 'current', 'greater_equal', 4, '', 'Stats'],
+        # ['RB', 'current', 'greater_equal', 0, '', 'Stats'],
+        # ['RB', 'current', 'less_equal', 3, '', 'Stats'],
+        # ['RB', 'current', 'greater_equal', 4, '', 'Stats'],
 
-        ['TE', 'current', 'greater_equal', 0, '', 'ProjOnly'],
-        ['TE', 'current', 'greater_equal', 0, '', 'Stats'],
+        # ['TE', 'current', 'greater_equal', 0, '', 'ProjOnly'],
+        # ['TE', 'current', 'greater_equal', 0, '', 'Stats'],
 
-        ['QB', 'current', 'greater_equal', 0, 'both', 'ProjOnly'],
-        # ['QB', 'current', 'greater_equal', 0, 'rush', 'ProjOnly'],
-        # ['QB', 'current', 'greater_equal', 0, 'pass', 'ProjOnly'],
+        # ['QB', 'current', 'greater_equal', 0, 'both', 'ProjOnly'],
+        ['QB', 'current', 'greater_equal', 0, 'rush', 'ProjOnly'],
+        ['QB', 'current', 'greater_equal', 0, 'pass', 'ProjOnly'],
 
-        ['QB', 'current', 'greater_equal', 0, 'both', 'Stats'],
-        # ['QB', 'current', 'greater_equal', 0, 'rush', 'Stats'],
-        # ['QB', 'current', 'greater_equal', 0, 'pass', 'Stats'],
+        # ['QB', 'current', 'greater_equal', 0, 'both', 'Stats'],
+        ['QB', 'current', 'greater_equal', 0, 'rush', 'Stats'],
+        ['QB', 'current', 'greater_equal', 0, 'pass', 'Stats'],
 
 ]
 
@@ -73,7 +73,7 @@ for sp, cn, fd, ye, rp, dset in runs:
     df= df.drop(obj_cols, axis=1)
 
     df, output_start = filter_df(df, pos, set_pos, set_year)
-    df_train, df_predict, df_train_upside, df_predict_upside, df_train_top, df_predict_top = get_train_predict(df, set_year)
+    df_train, df_predict, df_train_upside, df_predict_upside, df_train_top, df_predict_top = get_train_predict(df, set_year, pos[set_pos]['rush_pass'])
 
     #------------
     # Run the Regression, Classification, and Quantiles
@@ -142,151 +142,182 @@ for sp, cn, fd, ye, rp, dset in runs:
         'sd_metrics': {'pred_fp_per_game': 1, 'pred_fp_per_game_upside': 1, 'pred_fp_per_game_top': 1, 'pred_fp_per_game_quantile': 1}
     }
 
+    if 'Rookie' in dataset: repeats = 3
+    else: repeats = 1
 
-    # get the training data for stacking and prediction data after stacking
-    X_stack_player, X_stack, y_stack, y_stack_upside, y_stack_top, \
-    models_reg, models_upside, models_top, models_quant = load_all_stack_pred(model_output_path)
+    for i in range(repeats):
 
-    _, X_predict = get_stack_predict_data(df_train, df_predict, df_train_upside, df_predict_upside, df_train_top, df_predict_top,
-                                        models_reg, models_upside, models_top, models_quant)
+        # get the training data for stacking and prediction data after stacking
+        X_stack_player, X_stack, y_stack, y_stack_upside, y_stack_top, \
+        models_reg, models_upside, models_top, models_quant = load_all_stack_pred(model_output_path)
 
-    #--------------
-    # Regression
-    #---------------
-    final_models = ['bridge', 'enet', 'rf', 'gbm', 'gbmh', 'mlp', 'cb', 'huber', 'lgbm', 'knn', 'ridge', 'lasso', 'xgb']
-    stack_val_pred = pd.DataFrame(); scores = []; best_models = []
+        _, X_predict = get_stack_predict_data(df_train, df_predict, df_train_upside, df_predict_upside, df_train_top, df_predict_top,
+                                            models_reg, models_upside, models_top, models_quant)
 
-    results = Parallel(n_jobs=-1, verbose=1)(
-                    delayed(run_stack_models)
-                    (fm, X_stack, y_stack, i, 'reg', None, run_params) \
-                    for i, fm in enumerate(final_models) 
-                    )
+        #--------------
+        # Regression
+        #---------------
 
-    best_models, scores, stack_val_pred = unpack_stack_results(results)
+        final_models = ['bridge', 'enet', 'rf', 'gbm', 'gbmh', 'mlp', 'cb', 'huber', 'lgbm', 'knn', 'ridge', 'lasso', 'xgb']
+        stack_val_pred = pd.DataFrame(); scores = []; best_models = []
 
-    # get the best stack predictions and average
-    predictions = stack_predictions(X_predict, best_models, final_models, 'reg')
-    best_val_reg, best_predictions, best_score = average_stack_models(df_train, scores, final_models, y_stack, stack_val_pred, predictions, 'reg', show_plot=True, min_include=3)
+        results = Parallel(n_jobs=-1, verbose=1)(
+                        delayed(run_stack_models)
+                        (fm, X_stack, y_stack, i, 'reg', None, run_params) \
+                        for i, fm in enumerate(final_models) 
+                        )
 
-    #---------------
-    # Classification Top
-    #---------------
-    final_models_top = [ 'lgbm_c', 'lr_c', 'rf_c', 'gbm_c', 'gbmh_c', 'mlp_c', 'cb_c', 'xgb_c', ]
-    stack_val_top = pd.DataFrame(); scores_top = []; best_models_top = []
-    results = Parallel(n_jobs=-1, verbose=1)(
-                    delayed(run_stack_models)
-                    (fm, X_stack, y_stack_top, i, 'class', None, run_params) \
-                    for i, fm in enumerate(final_models_top) 
-                    )
+        best_models, scores, stack_val_pred = unpack_stack_results(results)
 
-    best_models_top, scores_top, stack_val_top = unpack_stack_results(results)
+        # get the best stack predictions and average
+        predictions = stack_predictions(X_predict, best_models, final_models, 'reg')
+        best_val_reg, best_predictions, best_score = average_stack_models(df_train, scores, final_models, y_stack, stack_val_pred, 
+                                                                          predictions, 'reg', show_plot=True, min_include=3+i)
 
-    # get the best stack predictions and average
-    predictions_top = stack_predictions(X_predict, best_models_top, final_models_top, 'class')
-    best_val_top, best_predictions_top, _ = average_stack_models(df_train, scores_top, final_models_top, y_stack_top, 
-                                                                stack_val_top, predictions_top, 'class', show_plot=True, min_include=3)
+        #---------------
+        # Classification Top
+        #---------------
+        final_models_top = [ 'lgbm_c', 'lr_c', 'rf_c', 'gbm_c', 'gbmh_c', 'mlp_c', 'cb_c', 'xgb_c', ]
+        stack_val_top = pd.DataFrame(); scores_top = []; best_models_top = []
+        results = Parallel(n_jobs=-1, verbose=1)(
+                        delayed(run_stack_models)
+                        (fm, X_stack, y_stack_top, i, 'class', None, run_params) \
+                        for i, fm in enumerate(final_models_top) 
+                        )
 
-    #---------------
-    # Classification Upside
-    #---------------
-    final_models_upside = [ 'lgbm_c', 'lr_c', 'rf_c', 'gbm_c', 'gbmh_c', 'mlp_c', 'cb_c', 'xgb_c', ]
-    stack_val_upside = pd.DataFrame(); scores_upside = []; best_models_upside = []
-    results = Parallel(n_jobs=-1, verbose=1)(
-                    delayed(run_stack_models)
-                    (fm, X_stack, y_stack_upside, i, 'class', None, run_params) \
-                    for i, fm in enumerate(final_models_upside) 
-                    )
+        best_models_top, scores_top, stack_val_top = unpack_stack_results(results)
 
-    best_models_upside, scores_upside, stack_val_upside = unpack_stack_results(results)
+        # get the best stack predictions and average
+        predictions_top = stack_predictions(X_predict, best_models_top, final_models_top, 'class')
+        best_val_top, best_predictions_top, _ = average_stack_models(df_train, scores_top, final_models_top, y_stack_top, 
+                                                                    stack_val_top, predictions_top, 'class', show_plot=True, min_include=3+i)
 
-    # get the best stack predictions and average
-    predictions_upside = stack_predictions(X_predict, best_models_upside, final_models_upside, 'class')
-    best_val_upside, best_predictions_upside, _ = average_stack_models(df_train, scores_upside, final_models_upside, y_stack_upside, 
-                                                                    stack_val_upside, predictions_upside, 'class', show_plot=True, min_include=3)
+        #---------------
+        # Classification Upside
+        #---------------
+        final_models_upside = [ 'lgbm_c', 'lr_c', 'rf_c', 'gbm_c', 'gbmh_c', 'mlp_c', 'cb_c', 'xgb_c', ]
+        stack_val_upside = pd.DataFrame(); scores_upside = []; best_models_upside = []
+        results = Parallel(n_jobs=-1, verbose=1)(
+                        delayed(run_stack_models)
+                        (fm, X_stack, y_stack_upside, i, 'class', None, run_params) \
+                        for i, fm in enumerate(final_models_upside) 
+                        )
+
+        best_models_upside, scores_upside, stack_val_upside = unpack_stack_results(results)
+
+        # get the best stack predictions and average
+        predictions_upside = stack_predictions(X_predict, best_models_upside, final_models_upside, 'class')
+        best_val_upside, best_predictions_upside, _ = average_stack_models(df_train, scores_upside, final_models_upside, y_stack_upside, 
+                                                                           stack_val_upside, predictions_upside, 'class', show_plot=True, min_include=3+i)
 
 
-    #------------
-    # Quantile
-    #---------------
+        #------------
+        # Quantile
+        #---------------
 
-    final_models_quant = ['qr_q', 'gbm_q', 'gbmh_q', 'rf_q', 'lgbm_q', 'cb_q']
-    stack_val_quant = pd.DataFrame(); scores_quant = []; best_models_quant = []
+        final_models_quant = ['qr_q', 'gbm_q', 'gbmh_q', 'rf_q', 'lgbm_q', 'cb_q']
+        stack_val_quant = pd.DataFrame(); scores_quant = []; best_models_quant = []
 
-    results = Parallel(n_jobs=-1, verbose=1)(
-                    delayed(run_stack_models)
-                    (fm, X_stack, y_stack, i, 'quantile', 0.85, run_params) \
-                    for i, fm in enumerate(final_models_quant) 
-    )
+        results = Parallel(n_jobs=-1, verbose=1)(
+                        delayed(run_stack_models)
+                        (fm, X_stack, y_stack, i, 'quantile', 0.85, run_params) \
+                        for i, fm in enumerate(final_models_quant) 
+        )
 
-    best_models_quant, scores_quant, stack_val_quant = unpack_stack_results(results)
+        best_models_quant, scores_quant, stack_val_quant = unpack_stack_results(results)
 
-    # get the best stack predictions and average
-    predictions_quant = stack_predictions(X_predict, best_models_quant, final_models_quant, 'quantile')
-    best_val_quant, best_predictions_quant, _ = average_stack_models(df_train, scores_quant, final_models_quant, y_stack, stack_val_quant, predictions_quant, 'quantile', show_plot=True, min_include=3)
+        # get the best stack predictions and average
+        predictions_quant = stack_predictions(X_predict, best_models_quant, final_models_quant, 'quantile')
+        best_val_quant, best_predictions_quant, _ = average_stack_models(df_train, scores_quant, final_models_quant, y_stack, stack_val_quant, 
+                                                                         predictions_quant, 'quantile', show_plot=True, min_include=3)
 
-    #---------------
-    # Create Output
-    #---------------
+        #---------------
+        # Create Output
+        #---------------
 
-    if X_stack.shape[0] < 150: iso_spline = 'iso'
-    else: iso_spline = 'spline'
-    output = create_output(output_start, best_predictions, best_predictions_upside, best_predictions_top, best_predictions_quant)
-    df_val_stack = create_final_val_df(X_stack_player, y_stack, best_val_reg, best_val_upside, best_val_top, best_val_quant)
-    output = val_std_dev(output, df_val_stack, metrics=run_params['sd_metrics'], iso_spline=iso_spline, show_plot=True, max_grps_den=0.04, min_grps_den=0.08)
-    output.sort_values(by='pred_fp_per_game', ascending=False).iloc[:50]
+        if X_stack.shape[0] < 150: iso_spline = 'iso'
+        else: iso_spline = 'spline'
+        output = create_output(output_start, best_predictions, best_predictions_upside, best_predictions_top, best_predictions_quant)
+        df_val_stack = create_final_val_df(X_stack_player, y_stack, best_val_reg, best_val_upside, best_val_top, best_val_quant)
+        output = val_std_dev(output, df_val_stack, metrics=run_params['sd_metrics'], iso_spline=iso_spline, show_plot=True, max_grps_den=0.04, min_grps_den=0.08)
 
-    output.loc[output.std_dev < 1, 'std_dev'] = output.loc[output.std_dev < 1, 'pred_fp_per_game'] * 0.15
-    output.loc[output.max_score < (output.pred_fp_per_game + output.std_dev), 'max_score'] = \
-        output.loc[output.max_score < (output.pred_fp_per_game + output.std_dev), 'pred_fp_per_game'] + \
-        output.loc[output.max_score < (output.pred_fp_per_game + output.std_dev), 'std_dev'] * 1.5
-    
-    output.loc[output.min_score > (output.pred_fp_per_game - output.std_dev), 'min_score'] = \
-        output.loc[output.min_score > (output.pred_fp_per_game - output.std_dev), 'pred_fp_per_game'] - \
-        output.loc[output.min_score > (output.pred_fp_per_game - output.std_dev), 'std_dev'] * 2
+        output.loc[output.std_dev < 1, 'std_dev'] = output.loc[output.std_dev < 1, 'pred_fp_per_game'] * 0.15
+        output.loc[output.max_score < (output.pred_fp_per_game + output.std_dev), 'max_score'] = \
+            output.loc[output.max_score < (output.pred_fp_per_game + output.std_dev), 'pred_fp_per_game'] + \
+            output.loc[output.max_score < (output.pred_fp_per_game + output.std_dev), 'std_dev'] * 1.5
+        
+        output.loc[output.min_score > (output.pred_fp_per_game - output.std_dev), 'min_score'] = \
+            output.loc[output.min_score > (output.pred_fp_per_game - output.std_dev), 'pred_fp_per_game'] - \
+            output.loc[output.min_score > (output.pred_fp_per_game - output.std_dev), 'std_dev'] * 2
 
-    y_max = df_train.y_act.max()
-    output.loc[output.max_score > y_max, 'max_score'] = y_max + (output.loc[output.max_score > y_max, 'std_dev'] / 5)
-    output = output.round(3)
-    display(output.iloc[:50])
-    # save out final results
-    val_compare = validation_compare_df(model_output_path, best_val_reg)
-    save_out_results(val_compare, 'Validations', 'Model_Validations', pos, set_year, set_pos, dataset, current_or_next_year)
-    save_out_results(output, 'Simulation', 'Model_Predictions', pos, set_year, set_pos, dataset, current_or_next_year)
+        y_max = df_train.y_act.max()
+        output.loc[output.max_score > y_max, 'max_score'] = y_max + (output.loc[output.max_score > y_max, 'std_dev'] / 5)
+        output = output.round(3)
+        display(output.iloc[:50])
+        # save out final results
+        val_compare = validation_compare_df(model_output_path, best_val_reg)
+
+        if i > 0: dataset_out = f'{dataset}_{i}'
+        else: dataset_out = dataset
+
+        save_out_results(val_compare, 'Validations', 'Model_Validations', pos, set_year, set_pos, dataset_out, current_or_next_year)
+        save_out_results(output, 'Simulation', 'Model_Predictions', pos, set_year, set_pos, dataset_out, current_or_next_year)
 
 
 # %%
-
-# date_mod =  dt.date(2022,8,26)
-# rp = dm.read(f'''SELECT player,
-#                         current_or_next_year,
-#                         pos,
-#                         avg_pick,
-#                         pred_fp_per_game,
-#                         std_dev, 
-#                         max_score,
-#                         date_modified
-#                 FROM Model_Predictions
-#                 WHERE rush_pass IN ('rush', 'pass', 'rec')
-#                       AND version='{pred_version}'
-#                       AND year = {set_year}
-#              ''', 'Simulation').sort_values(by='avg_pick')
-
-# rp.date_modified = pd.to_datetime(rp.date_modified).apply(lambda x: x.date())
-# rp = rp[rp.date_modified >= date_mod].reset_index(drop=True)
-
-# # wm = lambda x: np.average(x, weights=rp.loc[x.index, "pred_fp_per_game"])
-# rp = rp.assign(std_dev=rp.std_dev**2, max_score=rp.max_score**2)
-# rp = rp.groupby(['player', 'current_or_next_year', 'pos','avg_pick']).agg({'pred_fp_per_game': 'sum', 
-#                                                                            'std_dev': 'sum', 
-#                                                                            'max_score': 'sum'}).reset_index()
-# rp = rp.assign(std_dev=np.sqrt(rp.std_dev), max_score=np.sqrt(rp.max_score)).drop('current_or_next_year', axis=1)
-
-# rp.std_dev = rp.std_dev / 1.4
-# rp.max_score = rp.max_score / 1.3
-
 import datetime as dt
 
 date_mod =  dt.date(2024,7,20)
+
+
+rp = dm.read(f'''SELECT player, 
+                        pos,
+                        rush_pass,
+                        AVG(pred_fp_per_game) pred_fp_per_game,
+                        AVG(pred_fp_per_game_upside) pred_prob_upside,
+                        AVG(pred_fp_per_game_top) pred_prob_top,
+                        AVG(std_dev) std_dev,
+                        AVG(min_score) min_score,   
+                        AVG(max_score) max_score, 
+                        MAX(date_modified) date_modified
+                FROM Model_Predictions
+                WHERE rush_pass IN ('rush', 'pass', 'rec')
+                      AND version='{vers}'
+                      AND year = {set_year}
+                GROUP BY player, pos, rush_pass
+             ''', 'Simulation')
+
+rp.date_modified = pd.to_datetime(rp.date_modified).apply(lambda x: x.date())
+rp = rp[rp.date_modified >= date_mod].reset_index(drop=True)
+
+wm = lambda x: np.average(x, weights=rp.loc[x.index, "pred_fp_per_game"])
+rp = rp.assign(std_dev=rp.std_dev**2, max_score=rp.max_score**2)
+rp = rp.groupby(['player', 'pos'], as_index=False).agg({'pred_fp_per_game': 'sum', 
+                                                        'pred_prob_upside': wm,
+                                                        'pred_prob_top': wm,
+                                                        'std_dev': 'sum',
+                                                        'min_score': 'sum',
+                                                        'max_score': 'sum'})
+rp = rp.assign(std_dev=np.sqrt(rp.std_dev), max_score=np.sqrt(rp.max_score))
+rp = rp.sort_values(by='pred_fp_per_game', ascending=False).reset_index(drop=True)
+
+rookies = dm.read(f'''SELECT player, 
+                             pos,
+                             rush_pass,
+                             AVG(pred_fp_per_game) pred_fp_per_game,
+                             AVG(pred_fp_per_game_upside) pred_prob_upside,
+                             AVG(pred_fp_per_game_top) pred_prob_top,
+                             AVG(std_dev) std_dev,
+                             AVG(min_score) min_score,   
+                             AVG(max_score) max_score, 
+                             date_modified
+                FROM Model_Predictions
+                WHERE (rush_pass NOT IN ('rush', 'pass', 'rec') OR rush_pass IS NULL)
+                       AND version='{vers}'
+                       AND year = {set_year}
+                       AND dataset NOT LIKE '%Rookie%'
+                GROUP BY player, pos, rush_pass, date_modified
+             ''', 'Simulation')
 
 both = dm.read(f'''SELECT player, 
                           pos,
@@ -299,15 +330,16 @@ both = dm.read(f'''SELECT player,
                           max_score, date_modified
                 FROM Model_Predictions
                 WHERE (rush_pass NOT IN ('rush', 'pass', 'rec') OR rush_pass IS NULL)
-                      AND version='{vers}'
-                      AND year = {set_year}
+                       AND version='{vers}'
+                       AND year = {set_year}
+                       AND dataset LIKE '%Rookie%'
              ''', 'Simulation')
 
+both = pd.concat([rookies, both], axis=0)
 both.date_modified = pd.to_datetime(both.date_modified).apply(lambda x: x.date())
 both = both[both.date_modified >= date_mod].reset_index(drop=True)
-
-# preds = pd.concat([rp, both], axis=0)
 preds = both.copy()
+preds = pd.concat([rp, rp, rp, preds], axis=0).reset_index(drop=True)
 
 preds.loc[preds.std_dev < 0, 'std_dev'] = 1
 
@@ -321,7 +353,6 @@ preds.loc[preds.min_score > preds.pred_fp_per_game, 'min_score'] = (
     preds.loc[preds.min_score > preds.pred_fp_per_game, 'std_dev'] * 1.5
 )
 
-
 preds = preds.groupby(['player', 'pos'], as_index=False).agg({'pred_fp_per_game': 'mean', 
                                                               'pred_prob_upside': 'mean',
                                                               'pred_prob_top': 'mean',
@@ -332,17 +363,83 @@ preds = preds[preds.pred_fp_per_game > 0].reset_index(drop=True)
 preds['dataset'] = 'final_ensemble'
 preds['version'] = vers
 preds['year'] = set_year
+preds = preds.sort_values(by='pred_fp_per_game', ascending=False).reset_index(drop=True)
+preds['pos_rank'] = preds.groupby('pos')['pred_fp_per_game'].rank(ascending=False, method='first')
+preds = preds[~((preds.pos=='QB') & (preds.pos_rank > 32))].reset_index(drop=True).drop('pos_rank', axis=1)
 
-display(preds[((preds.pos=='QB'))].sort_values(by='pred_fp_per_game', ascending=False).iloc[:15])
-display(preds[((preds.pos!='QB'))].sort_values(by='pred_fp_per_game', ascending=False).iloc[:50])
+display(preds[((preds.pos=='QB'))].iloc[:15])
+display(preds[((preds.pos!='QB'))].iloc[:50])
+
+preds.loc[preds.player=='Nick Chubb', 'pred_fp_per_game'] = preds.loc[preds.player=='Nick Chubb', 'pred_fp_per_game'] * 0.75
+preds.loc[preds.player=='Devin Singletary', 'pred_fp_per_game'] = preds.loc[preds.player=='Devin Singletary', 'pred_fp_per_game'] * 0.75
 
 # %%
 import shutil
 
 dm.delete_from_db('Simulation', 'Final_Predictions', f"version='{vers}' AND year={set_year} AND dataset='final_ensemble'")
 dm.write_to_db(preds, 'Simulation', 'Final_Predictions', 'append')
-#%%
+
 src = f'{root_path}/Data/Databases/Simulation.sqlite3'
 dst = f'/Users/borys/OneDrive/Documents/Github/Fantasy_Football_App/app/Simulation.sqlite3'
 shutil.copyfile(src, dst)
+
+
+#%%
+
+set_pos = 'QB'
+version = 'beta'
+current_or_next_year = 'current'
+from sklearn.metrics import mean_squared_error, r2_score
+
+rp = dm.read(f'''
+                SELECT player, season, SUM(rp_pred) rp_pred, SUM(rp_y_act) rp_y_act
+             FROM (
+                SELECT player, 
+                        season, 
+                        rush_pass,
+                        AVG(pred_fp_per_game) rp_pred, 
+                        AVG(y_act) rp_y_act
+                FROM Model_Validations
+                WHERE rush_pass != 'both'
+                      AND pos = '{set_pos}'
+                      AND year_exp=0
+                      AND filter_data = 'greater_equal'
+                      AND current_or_next_year = '{current_or_next_year}'
+                      AND year = '{set_year}'
+                      AND version = '{vers}'
+                GROUP BY player, season, rush_pass
+                )
+                GROUP BY player, season
+             ''', 'Validations')
+
+both = dm.read(f'''SELECT player, 
+                         season, 
+                         AVG(pred_fp_per_game) both_pred, 
+                         AVG(y_act) both_y_act
+                FROM Model_Validations
+                WHERE rush_pass = 'both'
+                      AND pos = '{set_pos}'
+                      AND year_exp=0
+                      AND filter_data ='greater_equal'
+                      AND current_or_next_year = '{current_or_next_year}'
+                      AND year = '{set_year}'
+                    AND version = '{vers}'
+                GROUP BY player, season
+                ''', 'Validations')
+
+rp = rp[~((rp.player=='Daniel Jones') & (rp.season==2023))].reset_index(drop=True)
+
+# rp = rp[rp.rp_pred < 22].reset_index(drop=True)
+rp = pd.merge(rp, both, on=['player', 'season'])
+rp['avg'] = (rp.rp_pred*4 + rp.both_pred) / 5
+rp.plot.scatter(x='rp_pred', y='rp_y_act')
+both.plot.scatter(x='both_pred', y='both_y_act')
+rp.plot.scatter(x='avg', y='rp_y_act')
+
+print('MSE Both:', mean_squared_error(rp.both_y_act, rp.both_pred))
+print('R2 Both:', r2_score(rp.both_y_act, rp.both_pred))
+print('MSE Rush/Pass:', mean_squared_error(rp.rp_y_act, rp.rp_pred))
+print('R2 Rush/Pass:', r2_score(rp.rp_y_act, rp.rp_pred))
+print('MSE Avg:', mean_squared_error(rp.rp_y_act, rp.avg))
+print('R2 Avg:', r2_score(rp.rp_y_act, rp.avg))
 # %%

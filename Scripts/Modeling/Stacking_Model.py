@@ -44,7 +44,7 @@ db_path = f'{root_path}/Data/Databases/'
 dm = DataManage(db_path)
 
 # set to position to analyze: 'RB', 'WR', 'QB', or 'TE'
-set_pos = 'WR'
+set_pos = 'QB'
 
 # set year to analyze
 set_year = 2024
@@ -62,7 +62,7 @@ brier_wt = 1
 matt_wt = 0
 
 # determine whether to do run/pass/rec separate or together
-pos['QB']['rush_pass'] = 'both'
+pos['QB']['rush_pass'] = 'pass'
 pos['RB']['rush_pass'] = ''
 pos['WR']['rush_pass'] = ''
 pos['TE']['rush_pass'] = ''
@@ -172,7 +172,7 @@ def pull_data(set_pos, set_year, dataset):
     df['game_date'] = df.year
 
     df = df.sort_values(by='year', ascending=True).reset_index(drop=True)
-    try:df = df.drop(['season', 'games', 'games_next'], axis=1)
+    try: df = df.drop(['season', 'games', 'games_next'], axis=1)
     except: df = df.drop(['games', 'games_next'], axis=1)
 
     return df
@@ -197,20 +197,27 @@ def filter_df(df, pos, set_pos, set_year):
 # Create Datasets
 #==============
 
-def get_train_predict(df, set_year):
+def get_train_predict(df, set_year, rush_pass):
 
-    df_train = df.loc[df.year < set_year, :].reset_index(drop=True).drop(['y_act_class_top','y_act_class_upside'], axis=1)
-    df_predict = df.loc[df.year == set_year, :].reset_index(drop=True).drop(['y_act_class_top','y_act_class_upside'], axis=1)
+    if rush_pass == 'rush': df = df.drop('y_act', axis=1).rename(columns={'y_act_rush': 'y_act'})
+    elif rush_pass == 'pass': df = df.drop('y_act', axis=1).rename(columns={'y_act_pass': 'y_act'})
+
+    df_train = df.loc[df.year < set_year, :].reset_index(drop=True).drop([y for y in df.columns if 'y_act_' in y], axis=1)
+    df_predict = df.loc[df.year == set_year, :].reset_index(drop=True).drop([y for y in df.columns if 'y_act_' in y], axis=1)
 
     df_train_upside = df.loc[df.year < set_year, :].copy()
-    df_train_upside = df_train_upside.drop(['y_act_class_top','y_act'], axis=1).rename(columns={'y_act_class_upside': 'y_act'})
+    df_train_upside = df_train_upside.drop(['y_act'], axis=1).rename(columns={'y_act_class_upside': 'y_act'})
+    df_train_upside = df_train_upside.drop([y for y in df_train_upside.columns if 'y_act_' in y], axis=1)
     df_predict_upside = df.loc[df.year == set_year, :].copy()
-    df_predict_upside = df_predict_upside.drop(['y_act_class_top','y_act'], axis=1).rename(columns={'y_act_class_upside': 'y_act'})
+    df_predict_upside = df_predict_upside.drop(['y_act'], axis=1).rename(columns={'y_act_class_upside': 'y_act'})
+    df_predict_upside = df_predict_upside.drop([y for y in df_train_upside.columns if 'y_act_' in y], axis=1)
 
     df_train_top = df.loc[df.year < set_year, :].copy()
-    df_train_top = df_train_top.drop(['y_act_class_upside','y_act'], axis=1).rename(columns={'y_act_class_top': 'y_act'})
+    df_train_top = df_train_top.drop(['y_act'], axis=1).rename(columns={'y_act_class_top': 'y_act'})
+    df_train_top = df_train_top.drop([y for y in df_train_top.columns if 'y_act_' in y], axis=1)
     df_predict_top = df.loc[df.year == set_year, :].copy()
-    df_predict_top = df_predict_top.drop(['y_act_class_upside','y_act'], axis=1).rename(columns={'y_act_class_top': 'y_act'})
+    df_predict_top = df_predict_top.drop(['y_act'], axis=1).rename(columns={'y_act_class_top': 'y_act'})
+    df_predict_top = df_predict_top.drop([y for y in df_train_top.columns if 'y_act_' in y], axis=1)
 
     print('Shape of Train Set', df_train.shape)
 
@@ -786,7 +793,7 @@ def save_out_results(df, db_name, table_name, pos, set_year, set_pos, dataset, c
 # df= df.drop(obj_cols, axis=1)
 
 # df, output_start = filter_df(df, pos, set_pos, set_year)
-# df_train, df_predict, df_train_upside, df_predict_upside, df_train_top, df_predict_top = get_train_predict(df, set_year)
+# df_train, df_predict, df_train_upside, df_predict_upside, df_train_top, df_predict_top = get_train_predict(df, set_year, pos[set_pos]['rush_pass'])
 
 #%%
 #------------

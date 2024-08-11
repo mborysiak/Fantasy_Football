@@ -32,69 +32,65 @@ dm = DataManage(db_path)
 
 # set core path
 PATH = f'{root_path}/Data/'
-YEAR = 2024
+YEAR = 2023
 LEAGUE = 'beta'
 
-# ty_keepers = {
-#     'Jaylen Waddle': [35],
-#     'Kenneth Walker': [12],
-
-#     'Garrett Wilson': [16],
-#     'Nick Chubb': [54],
-
-#     'Justin Jefferson': [81],
-#     'Tyreek Hill': [64],
-
-#     'Calvin Ridley': [10],
-#     'Christian Mccaffrey': [65],
-
-#     'Saquon Barkley': [69],
-#     'Cooper Kupp': [67],
-
-#     'Aj Brown': [52],
-#     'Jamarr Chase': [31],
-
-#     'Jalen Hurts': [26],
-#     'Josh Jacobs': [63],
-
-#     'Deandre Hopkins': [19],
-#     'Trevor Lawrence': [19]
-# }
-
 ty_keepers = {
-    'Jahmyr Gibbs': [68],
-    'Drake London': [34],
-    'Trey Mcbride': [11],
+    'Justin Jefferson': [42],
+    # 'Kenneth Walker': [12],
 
-    'Dj Moore': [38],
-    # 'Tony Pollard': [37],
+    # 'Garrett Wilson': [16],
+    # 'Rhamondre Stevenson': [35],
 
-    'Kyren Williams': [11],
-    'Isiah Pacheco': [27],
+    # 'Justin Jefferson': [81],
+    # 'Tyreek Hill': [64],
 
-    'Raheem Mostert': [13],
-    'Nico Collins': [12],
+    # 'Saquon Barkley': [69],
+    # 'Cooper Kupp': [45],
 
-    'Amon Ra St Brown': [46],
-    'Aj Brown': [70],
+    # 'Aj Brown': [52],
+    # 'Jamarr Chase': [31],
 
-    # 'James Cook': [40],
-    # 'Jonathan Taylor': [88],
+    # 'Jalen Hurts': [26],
+    # 'Ceedee Lamb': [45],
 
-    'Garrett Wilson': [31],
 
-    'Brandon Aiyuk': [24],
-    # 'Jalen Hurts': [37],
-
-    # 'Travis Etienne': [79],
-    'Kenneth Walker': [42],
-    
-    'Sam Laporta': [11],
-    'Michael Pittman': [20],
-
-    'Breece Hall': [44],
-    'Zay Flowers': [24],
 }
+
+# ty_keepers = {
+#     'Jahmyr Gibbs': [68],
+#     # 'Drake London': [34],
+#     # 'Trey Mcbride': [11],
+
+#     'Dj Moore': [38],
+#     # 'Tony Pollard': [37],
+
+#     'Kyren Williams': [11],
+#     'Isiah Pacheco': [27],
+
+#     'Raheem Mostert': [13],
+#     'Nico Collins': [12],
+
+#     'Amon Ra St Brown': [46],
+#     'Aj Brown': [70],
+
+#     # 'James Cook': [40],
+#     # 'Jonathan Taylor': [88],
+
+#     'Garrett Wilson': [31],
+
+#     'Brandon Aiyuk': [24],
+#     # 'Jalen Hurts': [37],
+
+#     # 'Travis Etienne': [79],
+#     'Kenneth Walker': [42],
+    
+#     'Sam Laporta': [11],
+#     'Michael Pittman': [20],
+
+#     'Breece Hall': [44],
+#     'Zay Flowers': [24],
+# }
 
 ty_keepers = pd.DataFrame(ty_keepers)
 ty_keepers = ty_keepers.T.reset_index()
@@ -222,10 +218,12 @@ def fill_ty_keepers(salaries, ty_keepers):
 def get_salaries():
     actual_sal = dm.read(f'''SELECT *
                             FROM Actual_Salaries 
-                            WHERE League='{LEAGUE}' ''', 'Simulation')
+                            WHERE League='{LEAGUE}'
+                                  AND year <= {YEAR} ''', 'Simulation')
     base_sal = dm.read(f'''SELECT player, salary, year
                                 FROM Salaries 
-                                WHERE League='{LEAGUE}' ''', 'Simulation')
+                                WHERE League='{LEAGUE}'
+                                 AND year <= {YEAR} ''', 'Simulation')
     salaries = pd.merge(actual_sal, base_sal, on=['player', 'year'], how='right')
     return salaries
 

@@ -289,15 +289,14 @@ def format_ffa(df, table_name, set_year):
 
 #%%
 
-fp_adp = get_adp(year, 'all', 'fantasypros')
-dm.write_to_db(fp_adp, DB_NAME, 'ADP_Ranks', 'append')
-
 for pos in ['QB', 'RB', 'WR', 'TE']:
     print(year, pos)
     mfl_adp = get_adp(year, pos, 'mfl')
     dm.delete_from_db(DB_NAME, 'ADP_Ranks', f"year={year} and pos='{pos}'", create_backup=False)
     dm.write_to_db(mfl_adp, DB_NAME, 'ADP_Ranks', 'append')
 
+fp_adp = get_adp(year, 'all', 'fantasypros')
+dm.write_to_db(fp_adp, DB_NAME, 'ADP_Ranks', 'append')
 
 
 #%%
@@ -312,6 +311,8 @@ output = output.fillna(0)
 output = convert_to_float(output)
 output['player'] = output.player.apply(dc.name_clean)
 output = predict_fft_sacks(output).round(1)
+output.loc[output.pos.isin(['RB', 'WR', 'TE']), 'fft_sacks'] = 0
+
 output['fft_proj_pts'] = (0.04 * output.fft_pass_yds + 5 * output.fft_pass_td - 2*output.fft_pass_int - 1*output.fft_sacks
                           + 0.1*output.fft_rush_yds + 7*output.fft_rush_td
                           + 0.1*output.fft_rec_yds + 7*output.fft_rec_td + 0.5*output.fft_rec)
