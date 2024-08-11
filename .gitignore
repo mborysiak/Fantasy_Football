@@ -145,3 +145,5 @@ Website/logs/microblog.log.9
 Data/Databases/Model_Inputs.sqlite3
 Data/Databases/Model_Inputs.sqlite3
 Scripts/Modeling/optuna/weekly_train.sqlite3
+Data/Databases/Model_Inputs.sqlite3
+Scripts/Modeling/optuna/weekly_train.sqlite3
