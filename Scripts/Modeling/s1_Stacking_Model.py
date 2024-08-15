@@ -10,7 +10,7 @@ from joblib import Parallel, delayed
 from ff.db_operations import DataManage
 from ff import general
 from skmodel import SciKitModel
-from Fix_Standard_Dev import *
+from zFix_Standard_Dev import *
 import zModel_Functions as mf
 from sklearn.metrics import brier_score_loss
 import matplotlib.pyplot as plt

@@ -1,5 +1,4 @@
 
-
 #%%
 
 # # Reading in Old Salary Data
@@ -32,65 +31,44 @@ dm = DataManage(db_path)
 
 # set core path
 PATH = f'{root_path}/Data/'
-YEAR = 2023
+YEAR = 2024
 LEAGUE = 'beta'
 
+
 ty_keepers = {
-    'Justin Jefferson': [42],
-    # 'Kenneth Walker': [12],
+    'Jahmyr Gibbs': [68],
+    'Drake London': [34],
+    # 'Trey Mcbride': [11],
 
-    # 'Garrett Wilson': [16],
-    # 'Rhamondre Stevenson': [35],
+    'Dj Moore': [38],
+    # 'Tony Pollard': [37],
 
-    # 'Justin Jefferson': [81],
-    # 'Tyreek Hill': [64],
+    'Kyren Williams': [11],
+    'Isiah Pacheco': [27],
 
-    # 'Saquon Barkley': [69],
-    # 'Cooper Kupp': [45],
+    'Mike Evans': [32],
+    'Nico Collins': [12],
 
-    # 'Aj Brown': [52],
-    # 'Jamarr Chase': [31],
+    'Amon Ra St Brown': [46],
+    'Aj Brown': [70],
 
-    # 'Jalen Hurts': [26],
-    # 'Ceedee Lamb': [45],
+    'James Cook': [40],
+    'Jonathan Taylor': [88],
 
+    'Garrett Wilson': [31],
 
-}
+    'Brandon Aiyuk': [24],
+    'Jalen Hurts': [37],
 
-# ty_keepers = {
-#     'Jahmyr Gibbs': [68],
-#     # 'Drake London': [34],
-#     # 'Trey Mcbride': [11],
-
-#     'Dj Moore': [38],
-#     # 'Tony Pollard': [37],
-
-#     'Kyren Williams': [11],
-#     'Isiah Pacheco': [27],
-
-#     'Raheem Mostert': [13],
-#     'Nico Collins': [12],
-
-#     'Amon Ra St Brown': [46],
-#     'Aj Brown': [70],
-
-#     # 'James Cook': [40],
-#     # 'Jonathan Taylor': [88],
-
-#     'Garrett Wilson': [31],
-
-#     'Brandon Aiyuk': [24],
-#     # 'Jalen Hurts': [37],
-
-#     # 'Travis Etienne': [79],
-#     'Kenneth Walker': [42],
+    # 'Travis Etienne': [79],
+    'Kenneth Walker': [42],
     
-#     'Sam Laporta': [11],
-#     'Michael Pittman': [20],
+    'Sam Laporta': [11],
+    'Michael Pittman': [20],
 
-#     'Breece Hall': [44],
-#     'Zay Flowers': [24],
-# }
+    'Breece Hall': [44],
+    'Zay Flowers': [24],
+}
 
 ty_keepers = pd.DataFrame(ty_keepers)
 ty_keepers = ty_keepers.T.reset_index()
@@ -289,9 +267,14 @@ def remove_outliers(salaries):
 
 
 salaries = get_salaries()
+
+total_spent = salaries.groupby('year').agg({'actual_salary': 'sum'}).reset_index().rename(columns={'actual_salary': 'total_spent'})
+salaries = pd.merge(salaries, total_spent, on=['year'], how='left')
+salaries.loc[salaries.year==YEAR, 'total_spent'] = 3576
+salaries['fraction_spent'] = salaries.total_spent / 3576
+
 salaries = add_osu(salaries)
 salaries = add_rookie(salaries)
-
 adp_stats = get_adp()
 salaries = pd.merge(salaries, adp_stats, on=['player', 'year'])
 salaries = fill_ty_keepers(salaries, ty_keepers)
@@ -302,6 +285,7 @@ salaries = add_salary_pos_rank(salaries)
 
 salaries = remove_outliers(salaries)
 salaries = salaries.sample(frac=1, random_state=1234).reset_index(drop=True)
+
 #%%
 
 skm = SciKitModel(salaries)
@@ -334,8 +318,9 @@ print('Baseline',  round(baseline, 3), round(baseline_r2, 3))
 best_models = {}
 model_list = ['lgbm', 'ridge', 'svr', 'lasso', 'enet', 'xgb', 'knn', 'gbm', 'rf', 'gbmh', 'huber', 'cb', 'mlp']
 all_pred = pd.DataFrame()
+i = 0
 for m in model_list:
-
+    i += 1
     print('\n============\n')
     print(m)
 
@@ -348,7 +333,7 @@ for m in model_list:
     params = skm.default_params(pipe, 'rand')
     params['k_best__k'] = range(1,X_train.shape[1])
 
-    search = RandomizedSearchCV(pipe, params, n_iter=50, scoring='neg_mean_squared_error',refit=True, n_jobs=-1)
+    search = RandomizedSearchCV(pipe, params, n_iter=150, scoring='neg_mean_squared_error', random_state=i*17+i*3, refit=True, n_jobs=-1)
     search.fit(X_train, y_train)
     best_model = search.best_estimator_
 
@@ -364,7 +349,7 @@ for m in model_list:
 #%%
 
 from sklearn.preprocessing import StandardScaler
-from Fix_Standard_Dev import *
+from zFix_Standard_Dev import *
 
 drop_models = ()#('lgbm', 'svr', 'gbm', 'knn', 'rf', 'gbm', 'gbmh')
 val_data = pd.concat([salaries.loc[salaries.year!=YEAR, ['player', 'pos', 'year']].reset_index(drop=True),
@@ -406,7 +391,7 @@ pred_results['pred_diff'] = pred_results.pred_salary - pred_results.salary
 total_diff = pred_results.pred_diff.sum()
 print('Total Diff:', total_diff)
 
-total_from_available = pred_results.iloc[:156].pred_salary.sum() - 3600
+total_from_available = pred_results.iloc[:156].pred_salary.sum() - 3576
 print('Total from available:', total_from_available)
 
 # total_off = np.max([0,-(total_diff + total_from_available)/2])
@@ -430,8 +415,8 @@ for p in ['QB', 'RB', 'WR', 'TE']:
     sd_max_met = StandardScaler().fit(val_data_tmp[['pred_salary']]).transform(pred_results.loc[pred_results.pos==p, ['pred_salary']])
 
     sd_m, max_m, min_m = get_std_splines(val_data_tmp, {'pred_salary': 1}, show_plot=True, k=2, 
-                                        min_grps_den=int(val_data_tmp.shape[0]*0.1), 
-                                        max_grps_den=int(val_data_tmp.shape[0]*0.05),
+                                        min_grps_den=int(val_data_tmp.shape[0]*0.08), 
+                                        max_grps_den=int(val_data_tmp.shape[0]*0.04),
                                         iso_spline='spline')
 
     pred_results.loc[pred_results.pos==p, 'std_dev'] = sd_m(sd_max_met)
