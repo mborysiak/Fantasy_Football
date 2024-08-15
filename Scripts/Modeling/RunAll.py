@@ -12,33 +12,46 @@ vers = 'beta'
 predict_only = False
 
 runs = [
-        # ['RB', 'current', 'greater_equal', 0, '', 'Rookie'],
-        # ['WR', 'current', 'greater_equal', 0, '', 'Rookie'],
+        ['RB', 'current', 'greater_equal', 0, '', 'Rookie'],
+        ['WR', 'current', 'greater_equal', 0, '', 'Rookie'],
     
-        # ['WR', 'current', 'greater_equal', 0, '', 'ProjOnly'],
-        # ['WR', 'current', 'less_equal', 3, '', 'ProjOnly'],
-        # ['WR', 'current', 'greater_equal', 4, '', 'ProjOnly'],
+        ['WR', 'current', 'greater_equal', 0, '', 'ProjOnly'],
+        ['WR', 'current', 'less_equal', 3, '', 'ProjOnly'],
+        ['WR', 'current', 'greater_equal', 4, '', 'ProjOnly'],
 
-        # ['WR', 'current', 'greater_equal', 0, '', 'Stats'],
-        # ['WR', 'current', 'less_equal', 3, '', 'Stats'],
-        # ['WR', 'current', 'greater_equal', 4, '', 'Stats'],
+        ['WR', 'current', 'greater_equal', 0, '', 'Stats'],
+        ['WR', 'current', 'less_equal', 3, '', 'Stats'],
+        ['WR', 'current', 'greater_equal', 4, '', 'Stats'],
 
-        # ['RB', 'current', 'greater_equal', 0, '', 'ProjOnly'],
-        # ['RB', 'current', 'less_equal', 3, '', 'ProjOnly'],
-        # ['RB', 'current', 'greater_equal', 4, '', 'ProjOnly'],
+        ['RB', 'current', 'greater_equal', 0, '', 'ProjOnly'],
+        ['RB', 'current', 'less_equal', 3, '', 'ProjOnly'],
+        ['RB', 'current', 'greater_equal', 4, '', 'ProjOnly'],
+        ['RB', 'current', 'greater_equal', 0, 'rush', 'ProjOnly'],
+        ['RB', 'current', 'greater_equal', 0, 'rec', 'ProjOnly'],
+        ['RB', 'current', 'less_equal', 3, 'rush', 'ProjOnly'],
+        ['RB', 'current', 'less_equal', 3, 'rec', 'ProjOnly'],
+        ['RB', 'current', 'greater_equal', 4, 'rush', 'ProjOnly'],
+        ['RB', 'current', 'greater_equal', 4, 'rec', 'ProjOnly'],
 
-        # ['RB', 'current', 'greater_equal', 0, '', 'Stats'],
-        # ['RB', 'current', 'less_equal', 3, '', 'Stats'],
-        # ['RB', 'current', 'greater_equal', 4, '', 'Stats'],
 
-        # ['TE', 'current', 'greater_equal', 0, '', 'ProjOnly'],
-        # ['TE', 'current', 'greater_equal', 0, '', 'Stats'],
+        ['RB', 'current', 'greater_equal', 0, '', 'Stats'],
+        ['RB', 'current', 'less_equal', 3, '', 'Stats'],
+        ['RB', 'current', 'greater_equal', 4, '', 'Stats'],
+        ['RB', 'current', 'greater_equal', 0, 'rush', 'Stats'],
+        ['RB', 'current', 'greater_equal', 0, 'rec', 'Stats'],
+        ['RB', 'current', 'less_equal', 3, 'rush', 'Stats'],
+        ['RB', 'current', 'less_equal', 3, 'rec', 'Stats'],
+        ['RB', 'current', 'greater_equal', 4, 'rush', 'Stats'],
+        ['RB', 'current', 'greater_equal', 4, 'rec', 'Stats'],
 
-        # ['QB', 'current', 'greater_equal', 0, 'both', 'ProjOnly'],
+        ['TE', 'current', 'greater_equal', 0, '', 'ProjOnly'],
+        ['TE', 'current', 'greater_equal', 0, '', 'Stats'],
+
+        ['QB', 'current', 'greater_equal', 0, '', 'ProjOnly'],
         ['QB', 'current', 'greater_equal', 0, 'rush', 'ProjOnly'],
         ['QB', 'current', 'greater_equal', 0, 'pass', 'ProjOnly'],
 
-        # ['QB', 'current', 'greater_equal', 0, 'both', 'Stats'],
+        ['QB', 'current', 'greater_equal', 0, '', 'Stats'],
         ['QB', 'current', 'greater_equal', 0, 'rush', 'Stats'],
         ['QB', 'current', 'greater_equal', 0, 'pass', 'Stats'],
 
@@ -55,6 +68,9 @@ for sp, cn, fd, ye, rp, dset in runs:
     pos[set_pos]['filter_data'] = fd
     pos[set_pos]['year_exp'] = ye
     pos[set_pos]['rush_pass'] = rp
+
+    if dset=='Rookie': pos[set_pos]['n_splits'] = 4
+    else: pos[set_pos]['n_splits'] = 5
 
     #------------
     # Pull in the data and create train and predict sets
@@ -301,7 +317,7 @@ rp = rp.groupby(['player', 'pos'], as_index=False).agg({'pred_fp_per_game': 'sum
 rp = rp.assign(std_dev=np.sqrt(rp.std_dev), max_score=np.sqrt(rp.max_score))
 rp = rp.sort_values(by='pred_fp_per_game', ascending=False).reset_index(drop=True)
 
-rookies = dm.read(f'''SELECT player, 
+both = dm.read(f'''SELECT player, 
                              pos,
                              rush_pass,
                              AVG(pred_fp_per_game) pred_fp_per_game,
@@ -319,7 +335,7 @@ rookies = dm.read(f'''SELECT player,
                 GROUP BY player, pos, rush_pass, date_modified
              ''', 'Simulation')
 
-both = dm.read(f'''SELECT player, 
+rookies = dm.read(f'''SELECT player, 
                           pos,
                           rush_pass,
                           pred_fp_per_game pred_fp_per_game,
@@ -339,7 +355,7 @@ both = pd.concat([rookies, both], axis=0)
 both.date_modified = pd.to_datetime(both.date_modified).apply(lambda x: x.date())
 both = both[both.date_modified >= date_mod].reset_index(drop=True)
 preds = both.copy()
-preds = pd.concat([rp, rp, rp, preds], axis=0).reset_index(drop=True)
+preds = pd.concat([rp, preds], axis=0).reset_index(drop=True)
 
 preds.loc[preds.std_dev < 0, 'std_dev'] = 1
 
@@ -370,8 +386,14 @@ preds = preds[~((preds.pos=='QB') & (preds.pos_rank > 32))].reset_index(drop=Tru
 display(preds[((preds.pos=='QB'))].iloc[:15])
 display(preds[((preds.pos!='QB'))].iloc[:50])
 
-preds.loc[preds.player=='Nick Chubb', 'pred_fp_per_game'] = preds.loc[preds.player=='Nick Chubb', 'pred_fp_per_game'] * 0.75
-preds.loc[preds.player=='Devin Singletary', 'pred_fp_per_game'] = preds.loc[preds.player=='Devin Singletary', 'pred_fp_per_game'] * 0.75
+downgrades = {
+    'Nick Chubb': 0.75,
+    'Justin Herbert': 0.9
+}
+
+for p, d in downgrades.items():
+    preds.loc[preds.player==p, ['pred_prob_upside', 'pred_prob_top', 'pred_fp_per_game']] = \
+        preds.loc[preds.player==p, ['pred_prob_upside', 'pred_prob_top', 'pred_fp_per_game']] * d
 
 # %%
 import shutil
@@ -389,6 +411,7 @@ shutil.copyfile(src, dst)
 set_pos = 'QB'
 version = 'beta'
 current_or_next_year = 'current'
+dataset = 'Stats'
 from sklearn.metrics import mean_squared_error, r2_score
 
 rp = dm.read(f'''
@@ -400,13 +423,14 @@ rp = dm.read(f'''
                         AVG(pred_fp_per_game) rp_pred, 
                         AVG(y_act) rp_y_act
                 FROM Model_Validations
-                WHERE rush_pass != 'both'
+                WHERE rush_pass in ('rush', 'pass', 'rec')
                       AND pos = '{set_pos}'
                       AND year_exp=0
                       AND filter_data = 'greater_equal'
                       AND current_or_next_year = '{current_or_next_year}'
                       AND year = '{set_year}'
                       AND version = '{vers}'
+                  --   AND dataset = '{dataset}'
                 GROUP BY player, season, rush_pass
                 )
                 GROUP BY player, season
@@ -417,21 +441,21 @@ both = dm.read(f'''SELECT player,
                          AVG(pred_fp_per_game) both_pred, 
                          AVG(y_act) both_y_act
                 FROM Model_Validations
-                WHERE rush_pass = 'both'
+                WHERE rush_pass NOT IN ('rush', 'pass', 'rec')
                       AND pos = '{set_pos}'
                       AND year_exp=0
                       AND filter_data ='greater_equal'
                       AND current_or_next_year = '{current_or_next_year}'
                       AND year = '{set_year}'
-                    AND version = '{vers}'
+                      AND version = '{vers}'
+                  --    AND dataset = '{dataset}'
                 GROUP BY player, season
                 ''', 'Validations')
 
 rp = rp[~((rp.player=='Daniel Jones') & (rp.season==2023))].reset_index(drop=True)
 
-# rp = rp[rp.rp_pred < 22].reset_index(drop=True)
 rp = pd.merge(rp, both, on=['player', 'season'])
-rp['avg'] = (rp.rp_pred*4 + rp.both_pred) / 5
+rp['avg'] = (rp.rp_pred + rp.both_pred) / 2
 rp.plot.scatter(x='rp_pred', y='rp_y_act')
 both.plot.scatter(x='both_pred', y='both_y_act')
 rp.plot.scatter(x='avg', y='rp_y_act')
@@ -442,4 +466,7 @@ print('MSE Rush/Pass:', mean_squared_error(rp.rp_y_act, rp.rp_pred))
 print('R2 Rush/Pass:', r2_score(rp.rp_y_act, rp.rp_pred))
 print('MSE Avg:', mean_squared_error(rp.rp_y_act, rp.avg))
 print('R2 Avg:', r2_score(rp.rp_y_act, rp.avg))
+# %%
+rp[(rp.rp_pred <17.5) & (rp.rp_y_act > 20)].reset_index(drop=True)
+
 # %%

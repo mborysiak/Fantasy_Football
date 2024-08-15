@@ -63,7 +63,7 @@ matt_wt = 0
 
 # determine whether to do run/pass/rec separate or together
 pos['QB']['rush_pass'] = 'pass'
-pos['RB']['rush_pass'] = ''
+pos['RB']['rush_pass'] = 'rec'
 pos['WR']['rush_pass'] = ''
 pos['TE']['rush_pass'] = ''
 pos['Rookie_RB']['rush_pass'] = ''
@@ -199,24 +199,28 @@ def filter_df(df, pos, set_pos, set_year):
 
 def get_train_predict(df, set_year, rush_pass):
 
-    if rush_pass == 'rush': df = df.drop('y_act', axis=1).rename(columns={'y_act_rush': 'y_act'})
-    elif rush_pass == 'pass': df = df.drop('y_act', axis=1).rename(columns={'y_act_pass': 'y_act'})
+    if rush_pass in ('rush', 'pass', 'rec'):
+        rush_pass = f'_{rush_pass}'
+        df = df.drop('y_act', axis=1).rename(columns={f'y_act{rush_pass}': 'y_act'})
 
     df_train = df.loc[df.year < set_year, :].reset_index(drop=True).drop([y for y in df.columns if 'y_act_' in y], axis=1)
     df_predict = df.loc[df.year == set_year, :].reset_index(drop=True).drop([y for y in df.columns if 'y_act_' in y], axis=1)
 
     df_train_upside = df.loc[df.year < set_year, :].copy()
-    df_train_upside = df_train_upside.drop(['y_act'], axis=1).rename(columns={'y_act_class_upside': 'y_act'})
+    df_train_upside = df_train_upside.drop(['y_act'], axis=1).rename(columns={f'y_act_class_upside{rush_pass}': 'y_act'})
     df_train_upside = df_train_upside.drop([y for y in df_train_upside.columns if 'y_act_' in y], axis=1)
+    
     df_predict_upside = df.loc[df.year == set_year, :].copy()
-    df_predict_upside = df_predict_upside.drop(['y_act'], axis=1).rename(columns={'y_act_class_upside': 'y_act'})
+    df_predict_upside = df_predict_upside.drop(['y_act'], axis=1).rename(columns={f'y_act_class_upside{rush_pass}': 'y_act'})
     df_predict_upside = df_predict_upside.drop([y for y in df_train_upside.columns if 'y_act_' in y], axis=1)
 
+
     df_train_top = df.loc[df.year < set_year, :].copy()
-    df_train_top = df_train_top.drop(['y_act'], axis=1).rename(columns={'y_act_class_top': 'y_act'})
+    df_train_top = df_train_top.drop(['y_act'], axis=1).rename(columns={f'y_act_class_top{rush_pass}': 'y_act'})
     df_train_top = df_train_top.drop([y for y in df_train_top.columns if 'y_act_' in y], axis=1)
+    
     df_predict_top = df.loc[df.year == set_year, :].copy()
-    df_predict_top = df_predict_top.drop(['y_act'], axis=1).rename(columns={'y_act_class_top': 'y_act'})
+    df_predict_top = df_predict_top.drop(['y_act'], axis=1).rename(columns={f'y_act_class_top{rush_pass}': 'y_act'})
     df_predict_top = df_predict_top.drop([y for y in df_train_top.columns if 'y_act_' in y], axis=1)
 
     print('Shape of Train Set', df_train.shape)
@@ -306,8 +310,12 @@ def get_full_pipe(skm, m, bayes_rand, alpha=None, stack_model=False, min_samples
 
 def get_full_pipe_stack(skm, m, bayes_rand,  alpha=None, stack_model=False, min_samples=10):
 
-    if skm.model_obj=='class': kb = 'k_best_c'
-    else: kb = 'k_best'
+    if skm.model_obj=='class': 
+        kb = 'k_best_c'
+        sp = 'select_perc_c'
+    else: 
+        kb = 'k_best'
+        sp = 'select_perc'
 
     stack_models = {
 
@@ -325,9 +333,10 @@ def get_full_pipe_stack(skm, m, bayes_rand,  alpha=None, stack_model=False, min_
         'random_full_stack': skm.model_pipe([
                                       skm.piece('random_sample'),
                                       skm.piece('std_scale'), 
+                                    #   skm.piece('select_perc'),
                                       skm.feature_union([
                                                     skm.piece('agglomeration'), 
-                                                    skm.piece(kb),
+                                                    skm.piece(f'{kb}_fu'),
                                                     skm.piece('pca')
                                                     ]),
                                       skm.piece(kb),
@@ -362,6 +371,14 @@ def get_full_pipe_stack(skm, m, bayes_rand,  alpha=None, stack_model=False, min_
         elif m in ('rf_q', 'knn_q'): pipe.set_params(**{f'{m}__q': alpha})
         elif m == 'cb_q': pipe.set_params(**{f'{m}__loss_function': f'Quantile:alpha={alpha}'})
         else: pipe.set_params(**{f'{m}__alpha': alpha})
+
+    if stack_model=='random_full_stack' and bayes_rand=='optuna':
+        params['random_sample__frac'] = ['real', 0.2, 1]
+        # params[f'{sp}__percentile'] = ['real', 20, 100]
+        params['feature_union__agglomeration__n_clusters'] = ['int', 3, 15]
+        params['feature_union__pca__n_components'] = ['int', 3, 15]
+        params[f'feature_union__{kb}_fu__k'] = ['int', 3, 50]
+        params[f'{kb}__k'] = ['int', 5, 50]
 
     return pipe, params
 
@@ -858,7 +875,8 @@ def save_out_results(df, db_name, table_name, pos, set_year, set_pos, dataset, c
 # out_dict_quant = extract_par_results(results, out_dict_quant)
 # save_output_dict(out_dict_quant, model_output_path, 'quantile')
 
-# #%%
+#%%
+
 # #------------
 # # Run the Stacking Models and Generate Output
 # #------------
@@ -868,19 +886,19 @@ def save_out_results(df, db_name, table_name, pos, set_year, set_pos, dataset, c
 #     'opt_type': 'optuna',
 #     'hp_algo': 'tpe',
 #     'num_k_folds': 3,
-#     'n_iter': 5,
+#     'n_iter': 50,
+#     'optuna_timeout': 60,
 
 #     'sd_metrics': {'pred_fp_per_game': 1, 'pred_fp_per_game_class': 1, 'pred_fp_per_game_quantile': 0.5}
 # }
 
-# #%%
 # # get the training data for stacking and prediction data after stacking
 # X_stack_player, X_stack, y_stack, y_stack_upside, y_stack_top, \
 #  models_reg, models_upside, models_top, models_quant = load_all_stack_pred(model_output_path)
 
 # _, X_predict = get_stack_predict_data(df_train, df_predict, df_train_upside, df_predict_upside, df_train_top, df_predict_top,
 #                                       models_reg, models_upside, models_top, models_quant)
-# #%%
+
 # #---------------
 # # Regression
 # #---------------

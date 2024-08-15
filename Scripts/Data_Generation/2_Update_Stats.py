@@ -13,7 +13,6 @@ root_path = ffgeneral.get_main_path('Daily_Fantasy')
 db_path = f'{root_path}/Data/Databases/'
 dm_daily = DataManage(db_path)
 
-
 root_path = ffgeneral.get_main_path('Fantasy_Football')
 db_path = f'{root_path}/Data/Databases/'
 dm_ff = DataManage(db_path)
@@ -23,12 +22,12 @@ pd.set_option('display.max_columns', 999)
 
 #%%
 
-for pos in ['WR']:# ['QB', 'RB', 'WR', 'TE']:
+for pos in ['QB', 'RB', 'WR', 'TE']:
 
     df = dm_daily.read(f'''SELECT * 
                            FROM {pos}_Stats
-                         --  WHERE (season >= 2021 AND week <= 17)
-                         --         OR (season < 2021 AND week <= 16)
+                           WHERE (season >= 2021 AND week <= 17)
+                                  OR (season < 2021 AND week <= 16)
                         ''', 'FastR_Beta')
 
     df = df[~((df.player == 'Adrian Peterson') & (df.team=='CHI'))].reset_index(drop=True)
@@ -66,7 +65,16 @@ for pos in ['WR']:# ['QB', 'RB', 'WR', 'TE']:
 
         df_all['y_act_rush'] = df_all.groupby('player')['fantasy_pts_rush_per_game'].shift(-1)
         df_all['y_act_pass'] = df_all.groupby('player')['fantasy_pts_pass_per_game'].shift(-1)
-        
+
+    if pos == 'RB':
+        df_all['sum_fantasy_pts_rush'] = df_all.sum_rush_yards_gained_sum*0.1 + df_all.sum_rush_rush_touchdown_sum*7
+        df_all['sum_fantasy_pts_rec'] = df_all.sum_rec_yards_gained_sum*0.1 + df_all.sum_rec_touchdown_sum*7 + df_all.sum_rec_complete_pass_sum*0.5
+        df_all['fantasy_pts_rush_per_game'] = (df_all['sum_fantasy_pts_rush']/df_all['games'])
+        df_all['fantasy_pts_rec_per_game'] = (df_all['sum_fantasy_pts_rec']/df_all['games'])
+
+        df_all['y_act_rush'] = df_all.groupby('player')['fantasy_pts_rush_per_game'].shift(-1)
+        df_all['y_act_rec'] = df_all.groupby('player')['fantasy_pts_rec_per_game'].shift(-1)
+
     # df_all['y_act_plusone'] = df_all.groupby('player')['fantasy_pts_per_game'].shift(-2)
     # df_all['games_next_plusone'] = df_all.groupby('player')['games'].shift(-2)
 

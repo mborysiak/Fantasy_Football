@@ -335,8 +335,7 @@ try:
 except: 
     print('No new Fantasy Data file found')
 
-fdta_file = 'fantasy-football-weekly-projections.csv'
-df = pull_fantasy_data(fdta_file, year)
+df = pull_fantasy_data(new_fname, year)
 
 sacks = dm.read("SELECT player, year, pos, fft_sacks FROM FFToday_Projections", DB_NAME)
 df = pd.merge(df, sacks, on=['player', 'year', 'pos'], how='left').fillna(0)
@@ -490,6 +489,27 @@ dm.delete_from_db(DB_NAME, 'PFF_Projections', f"year={year}", create_backup=Fals
 dm.write_to_db(df, DB_NAME, 'PFF_Projections', 'append')
 
 #%%
+
+df = move_download_to_folder(root_path, 'ETR', f'Half-PPR Rankings and ADP.csv', year)
+df = df.rename(columns={'Player': 'player', 'Team': 'team', 'Position': 'pos',
+                        'ADP': 'etr_adp', 'ETR Rank': 'etr_rank', 'ETR Pos Rank': 'etr_pos_rank',
+                        'ADP Differential': 'etr_adp_diff', 'ADP Pos Rank': 'etr_adp_pos_rank'})
+df = df[~df.pos.isin(['K', 'DST'])].reset_index(drop=True)
+df = df[df.etr_adp!= 'Unranked'].reset_index(drop=True)
+df.player = df.player.apply(dc.name_clean)
+df.etr_pos_rank = df.etr_pos_rank.apply(lambda x: int(x[2:]))
+df.etr_adp_pos_rank = df.etr_adp_pos_rank.apply(lambda x: int(x[2:]))
+df.etr_adp = df.etr_adp.astype('float')
+df = df.drop('Notes', axis=1).assign(year=year)
+
+dm.delete_from_db(DB_NAME, 'ETR_Ranks', f"year={year}", create_backup=False)
+dm.write_to_db(df, DB_NAME, 'ETR_Ranks', 'append')
+
+#%%
+
+
+
+
 
 
 
