@@ -44,7 +44,7 @@ db_path = f'{root_path}/Data/Databases/'
 dm = DataManage(db_path)
 
 # set to position to analyze: 'RB', 'WR', 'QB', or 'TE'
-set_pos = 'QB'
+set_pos = 'WR'
 
 # set year to analyze
 set_year = 2024
@@ -53,7 +53,7 @@ set_year = 2024
 vers = 'beta'
 
 # set with this year or next
-current_or_next_year = 'current'
+current_or_next_year = 'next'
 
 mse_wt = 1
 sera_wt = 0
@@ -161,10 +161,13 @@ def save_output_dict(out_dict, model_output_path, label):
 # Pull and clean compiled data
 #==========
 
-def pull_data(set_pos, set_year, dataset):
+def pull_data(set_pos, set_year, dataset, current_or_next_year):
+
+    if current_or_next_year=='next': lbl = '_next'
+    else: lbl = ''
 
     # load data and filter down
-    df = dm.read(f'''SELECT * FROM {set_pos}_{set_year}_{dataset}''', 'Model_Inputs')
+    df = dm.read(f'''SELECT * FROM {set_pos}_{set_year}_{dataset}''', f'Model_Inputs{lbl}')
     if dataset=='Rookie': df = df.assign(year_exp=0, team='team', pos=set_pos)
 
     # add in data to match up with Daily code
@@ -374,7 +377,6 @@ def get_full_pipe_stack(skm, m, bayes_rand,  alpha=None, stack_model=False, min_
 
     if stack_model=='random_full_stack' and bayes_rand=='optuna':
         params['random_sample__frac'] = ['real', 0.2, 1]
-        # params[f'{sp}__percentile'] = ['real', 20, 100]
         params['feature_union__agglomeration__n_clusters'] = ['int', 3, 15]
         params['feature_union__pca__n_components'] = ['int', 3, 15]
         params[f'feature_union__{kb}_fu__k'] = ['int', 3, 50]
@@ -803,7 +805,7 @@ def save_out_results(df, db_name, table_name, pos, set_year, set_pos, dataset, c
 # optuna_timeout = 30
 
 # model_output_path, pkey = create_pkey(pos, dataset, set_pos,current_or_next_year, bayes_rand, hp_algo)
-# df = pull_data(set_pos, set_year, dataset)
+# df = pull_data(set_pos, set_year, dataset, current_or_next_year)
 
 # obj_cols = list(df.dtypes[df.dtypes=='object'].index)
 # obj_cols = [c for c in obj_cols if c not in ['player', 'team', 'pos']]

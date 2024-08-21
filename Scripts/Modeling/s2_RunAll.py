@@ -12,48 +12,55 @@ vers = 'beta'
 predict_only = False
 
 runs = [
-        ['RB', 'current', 'greater_equal', 0, '', 'Rookie'],
-        ['WR', 'current', 'greater_equal', 0, '', 'Rookie'],
+        # ['RB', 'current', 'greater_equal', 0, '', 'Rookie'],
+        # ['WR', 'current', 'greater_equal', 0, '', 'Rookie'],
     
-        ['WR', 'current', 'greater_equal', 0, '', 'ProjOnly'],
-        ['WR', 'current', 'less_equal', 3, '', 'ProjOnly'],
-        ['WR', 'current', 'greater_equal', 4, '', 'ProjOnly'],
+        # ['WR', 'current', 'greater_equal', 0, '', 'ProjOnly'],
+        # ['WR', 'current', 'less_equal', 3, '', 'ProjOnly'],
+        # ['WR', 'current', 'greater_equal', 4, '', 'ProjOnly'],
 
-        ['WR', 'current', 'greater_equal', 0, '', 'Stats'],
-        ['WR', 'current', 'less_equal', 3, '', 'Stats'],
-        ['WR', 'current', 'greater_equal', 4, '', 'Stats'],
+        ['WR', 'next', 'greater_equal', 0, '', 'ProjOnly'],
+        ['WR', 'next', 'less_equal', 3, '', 'ProjOnly'],
+        ['WR', 'next', 'greater_equal', 4, '', 'ProjOnly'],
 
-        ['RB', 'current', 'greater_equal', 0, '', 'ProjOnly'],
-        ['RB', 'current', 'less_equal', 3, '', 'ProjOnly'],
-        ['RB', 'current', 'greater_equal', 4, '', 'ProjOnly'],
-        ['RB', 'current', 'greater_equal', 0, 'rush', 'ProjOnly'],
-        ['RB', 'current', 'greater_equal', 0, 'rec', 'ProjOnly'],
-        ['RB', 'current', 'less_equal', 3, 'rush', 'ProjOnly'],
-        ['RB', 'current', 'less_equal', 3, 'rec', 'ProjOnly'],
-        ['RB', 'current', 'greater_equal', 4, 'rush', 'ProjOnly'],
-        ['RB', 'current', 'greater_equal', 4, 'rec', 'ProjOnly'],
+        # ['WR', 'current', 'greater_equal', 0, '', 'Stats'],
+        # ['WR', 'current', 'less_equal', 3, '', 'Stats'],
+        # ['WR', 'current', 'greater_equal', 4, '', 'Stats'],
 
+        # ['RB', 'current', 'greater_equal', 0, '', 'ProjOnly'],
+        # ['RB', 'current', 'less_equal', 3, '', 'ProjOnly'],
+        # ['RB', 'current', 'greater_equal', 4, '', 'ProjOnly'],
+        # ['RB', 'current', 'greater_equal', 0, 'rush', 'ProjOnly'],
+        # ['RB', 'current', 'greater_equal', 0, 'rec', 'ProjOnly'],
+        # ['RB', 'current', 'less_equal', 3, 'rush', 'ProjOnly'],
+        # ['RB', 'current', 'less_equal', 3, 'rec', 'ProjOnly'],
+        # ['RB', 'current', 'greater_equal', 4, 'rush', 'ProjOnly'],
+        # ['RB', 'current', 'greater_equal', 4, 'rec', 'ProjOnly'],
 
-        ['RB', 'current', 'greater_equal', 0, '', 'Stats'],
-        ['RB', 'current', 'less_equal', 3, '', 'Stats'],
-        ['RB', 'current', 'greater_equal', 4, '', 'Stats'],
-        ['RB', 'current', 'greater_equal', 0, 'rush', 'Stats'],
-        ['RB', 'current', 'greater_equal', 0, 'rec', 'Stats'],
-        ['RB', 'current', 'less_equal', 3, 'rush', 'Stats'],
-        ['RB', 'current', 'less_equal', 3, 'rec', 'Stats'],
-        ['RB', 'current', 'greater_equal', 4, 'rush', 'Stats'],
-        ['RB', 'current', 'greater_equal', 4, 'rec', 'Stats'],
+        ['RB', 'next', 'greater_equal', 0, '', 'ProjOnly'],
+        ['RB', 'next', 'less_equal', 3, '', 'ProjOnly'],
+        ['RB', 'next', 'greater_equal', 4, '', 'ProjOnly'],
 
-        ['TE', 'current', 'greater_equal', 0, '', 'ProjOnly'],
-        ['TE', 'current', 'greater_equal', 0, '', 'Stats'],
+        # ['RB', 'current', 'greater_equal', 0, '', 'Stats'],
+        # ['RB', 'current', 'less_equal', 3, '', 'Stats'],
+        # ['RB', 'current', 'greater_equal', 4, '', 'Stats'],
+        # ['RB', 'current', 'greater_equal', 0, 'rush', 'Stats'],
+        # ['RB', 'current', 'greater_equal', 0, 'rec', 'Stats'],
+        # ['RB', 'current', 'less_equal', 3, 'rush', 'Stats'],
+        # ['RB', 'current', 'less_equal', 3, 'rec', 'Stats'],
+        # ['RB', 'current', 'greater_equal', 4, 'rush', 'Stats'],
+        # ['RB', 'current', 'greater_equal', 4, 'rec', 'Stats'],
 
-        ['QB', 'current', 'greater_equal', 0, '', 'ProjOnly'],
-        ['QB', 'current', 'greater_equal', 0, 'rush', 'ProjOnly'],
-        ['QB', 'current', 'greater_equal', 0, 'pass', 'ProjOnly'],
+        # ['TE', 'current', 'greater_equal', 0, '', 'ProjOnly'],
+        # ['TE', 'current', 'greater_equal', 0, '', 'Stats'],
 
-        ['QB', 'current', 'greater_equal', 0, '', 'Stats'],
-        ['QB', 'current', 'greater_equal', 0, 'rush', 'Stats'],
-        ['QB', 'current', 'greater_equal', 0, 'pass', 'Stats'],
+        # ['QB', 'current', 'greater_equal', 0, '', 'ProjOnly'],
+        # ['QB', 'current', 'greater_equal', 0, 'rush', 'ProjOnly'],
+        # ['QB', 'current', 'greater_equal', 0, 'pass', 'ProjOnly'],
+
+        # ['QB', 'current', 'greater_equal', 0, '', 'Stats'],
+        # ['QB', 'current', 'greater_equal', 0, 'rush', 'Stats'],
+        # ['QB', 'current', 'greater_equal', 0, 'pass', 'Stats'],
 
 ]
 
@@ -69,6 +76,8 @@ for sp, cn, fd, ye, rp, dset in runs:
     pos[set_pos]['year_exp'] = ye
     pos[set_pos]['rush_pass'] = rp
 
+    print(f'{set_pos} - {current_or_next_year} - {pos[set_pos]["filter_data"]} - {pos[set_pos]["year_exp"]} - {pos[set_pos]["rush_pass"]} - {dset}')
+
     if dset=='Rookie': pos[set_pos]['n_splits'] = 4
     else: pos[set_pos]['n_splits'] = 5
 
@@ -82,7 +91,7 @@ for sp, cn, fd, ye, rp, dset in runs:
     optuna_timeout = 60
 
     model_output_path, pkey = create_pkey(pos, dataset, set_pos,current_or_next_year, bayes_rand, hp_algo)
-    df = pull_data(set_pos, set_year, dataset)
+    df = pull_data(set_pos, set_year, dataset, current_or_next_year)
 
     obj_cols = list(df.dtypes[df.dtypes=='object'].index)
     obj_cols = [c for c in obj_cols if c not in ['player', 'team', 'pos']]
@@ -279,3 +288,5 @@ for sp, cn, fd, ye, rp, dset in runs:
         save_out_results(val_compare, 'Validations', 'Model_Validations', pos, set_year, set_pos, dataset_out, current_or_next_year)
         save_out_results(output, 'Simulation', 'Model_Predictions', pos, set_year, set_pos, dataset_out, current_or_next_year)
 
+
+# %%

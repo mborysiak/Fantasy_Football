@@ -177,12 +177,14 @@ def clean_results(path, fname, year, league, team_split=True):
 def get_adp():
     all_stats = pd.DataFrame()
     for pos in ['QB', 'RB', 'WR', 'TE']:
-        stats = dm.read(f'''SELECT player, year, avg_pick, avg_proj_points, year_exp
+        stats = dm.read(f'''SELECT player, year, avg_pick, avg_proj_points, avg_proj_rank, year_exp
                             FROM {pos}_{YEAR}_ProjOnly
                             
                          ''', 'Model_Inputs')
         stats['pos'] = pos
         all_stats = pd.concat([all_stats, stats], axis=0)
+
+    all_stats['log_avg_points'] = np.log(all_stats.avg_proj_points)
     return all_stats
 
 def fill_ty_keepers(salaries, ty_keepers):
@@ -286,13 +288,21 @@ salaries = add_salary_pos_rank(salaries)
 salaries = remove_outliers(salaries)
 salaries = salaries.sample(frac=1, random_state=1234).reset_index(drop=True)
 
+salaries = pd.concat([salaries, pd.get_dummies(salaries.year, prefix='year')], axis=1)
+salaries['young_player'] = (salaries.year_exp < 2).astype('int')
+salaries['young_osu'] = salaries.young_player * salaries.is_OSU
+salaries['rookie_osu'] = salaries.is_rookie * salaries.is_OSU
+salaries['old_player'] = (salaries.year_exp > 2).astype('int')
+
 #%%
 
 skm = SciKitModel(salaries)
-X, y = skm.Xy_split_list('actual_salary', ['year', 'sal_rank', 'inflation', 'salary', 'pos', 'avg_proj_points', 
-                                            'is_rookie', 'is_OSU', 'avg_pick', 'year_exp', 'pos_rank'])
-X = pd.concat([X, pd.get_dummies(X.pos, drop_first=True)], axis=1).drop('pos', axis=1)
-X['rookie_rb'] = X.RB * X.is_rookie
+X, y = skm.Xy_split('actual_salary', to_drop=['player', 'league'])
+X = pd.concat([X, pd.get_dummies(X.pos)], axis=1).drop('pos', axis=1)
+X['qb_proj'] = X.QB * X.avg_proj_points
+X['rb_proj'] = X.RB * X.avg_proj_points
+X['wr_proj'] = X.WR * X.avg_proj_points
+X['te_proj'] = X.TE * X.avg_proj_points
 
 X_train = X[X.year != YEAR]
 y_train = y[X_train.index].reset_index(drop=True); X_train.reset_index(drop=True, inplace=True)   
@@ -314,67 +324,138 @@ baseline_r2 = r2_score(baseline_data.actual_salary, baseline_data.salary)
 print('Inflation Baseline',  round(inf_baseline, 3), round(inf_baseline_r2, 3))
 print('Baseline',  round(baseline, 3), round(baseline_r2, 3))
 
+import optuna
+from sklearn.model_selection import cross_val_predict, KFold, RepeatedKFold
+def objective(trial):
+
+
+    if m in ('lgbm', 'xgb', 'cb', 'gbm', 'rf', 'gbmh'):
+        pipe = skm.model_pipe([ skm.piece('random_sample'),
+                                skm.piece(m)
+                                ])
+        params = skm.default_params(pipe, 'optuna')
+        params['random_sample__frac'] = ['real', 0.2, 1]
+    else:
+        pipe = skm.model_pipe([ skm.piece('random_sample'),
+                                skm.piece('std_scale'), 
+                                skm.piece('k_best'),
+                                skm.piece(m)
+                                ])
+    
+        params = skm.default_params(pipe, 'optuna')
+        params['random_sample__frac'] = ['real', 0.2, 1]
+        params['k_best__k'] = ['int', 1, X_train.shape[1]]
+    
+    params_opt = {}
+    for k, v in params.items():
+        if v[0] == 'real': params_opt[k] = trial.suggest_float(k, v[1], v[2], log=False)
+        elif v[0] == 'log': params_opt[k] = trial.suggest_float(k, np.exp(v[1]), np.exp(v[2]), log=True)
+        elif v[0] == 'int': params_opt[k] = trial.suggest_int(k, v[1], v[2])
+        elif v[0] == 'categorical': params_opt[k] = trial.suggest_categorical(k, v[1])
+    
+    pipe.set_params(**params_opt)
+
+    avg_score = 0
+    for i in range(2):
+        kf = KFold(n_splits=5, shuffle=True)
+        vals = cross_val_predict(pipe, X_train, y_train, cv=kf)
+        score = mean_squared_error(vals, y_train)
+        avg_score += score
+
+    return avg_score/2
+
+
 # loop through each potential model
+optuna.logging.set_verbosity(optuna.logging.WARNING)
 best_models = {}
+scores = {}
 model_list = ['lgbm', 'ridge', 'svr', 'lasso', 'enet', 'xgb', 'knn', 'gbm', 'rf', 'gbmh', 'huber', 'cb', 'mlp']
 all_pred = pd.DataFrame()
 i = 0
+
 for m in model_list:
     i += 1
     print('\n============\n')
     print(m)
-
-    # set up the model pipe and get the default search parameters
-    pipe = skm.model_pipe([
-                            skm.piece('std_scale'), 
-                            skm.piece('k_best'),
-                            skm.piece(m)
-                            ])
-    params = skm.default_params(pipe, 'rand')
-    params['k_best__k'] = range(1,X_train.shape[1])
-
-    search = RandomizedSearchCV(pipe, params, n_iter=150, scoring='neg_mean_squared_error', random_state=i*17+i*3, refit=True, n_jobs=-1)
-    search.fit(X_train, y_train)
-    best_model = search.best_estimator_
-
-    cv_pred = cross_val_predict(best_model, X_train, y_train)
-    mse = np.round(mean_squared_error(cv_pred, y_train), 3)
-    r2 = np.round(r2_score(cv_pred, y_train), 3)
-
-    all_pred = pd.concat([all_pred, pd.Series(cv_pred, name=m)], axis=1)
     
-    print(mse, r2)
+    # Create the study and optimize
+    study = optuna.create_study(direction='minimize')
+    study.optimize(objective, n_trials=50)
+
+    if m in ('lgbm', 'xgb', 'cb', 'gbm', 'rf', 'gbmh'):
+        best_model = skm.model_pipe([ skm.piece('random_sample'),
+                                     skm.piece(m)
+                                    ])
+
+    else:
+        best_model = skm.model_pipe([ skm.piece('random_sample'),
+                                skm.piece('std_scale'), 
+                                skm.piece('k_best'),
+                                skm.piece(m)
+                                ])
+
+    best_model.set_params(**study.best_params)
+
+    best_model.fit(X_train, y_train)
+    vals = cross_val_predict(best_model, X_train, y_train, cv=KFold(n_splits=5, shuffle=True))
+    r2_val = r2_score(vals, y_train)
+    mse_val = mean_squared_error(vals, y_train)
+
+    all_pred[m] = vals
+    scores[m] = np.mean([study.best_value, mse_val])
     best_models[m] = best_model
+    print(f'Best Value {m}:', study.best_value, 'R2 Val:',  r2_val, 'MSE Val:', mse_val)
+
 
 #%%
 
 from sklearn.preprocessing import StandardScaler
 from zFix_Standard_Dev import *
 
-drop_models = ()#('lgbm', 'svr', 'gbm', 'knn', 'rf', 'gbm', 'gbmh')
-val_data = pd.concat([salaries.loc[salaries.year!=YEAR, ['player', 'pos', 'year']].reset_index(drop=True),
-                      pd.Series(y_train, name='y_act'), all_pred[[c for c in all_pred.columns if c not in drop_models]].mean(axis=1)], axis=1)
-val_data.columns = ['player', 'pos', 'year', 'y_act', 'pred_salary']
-mf.show_scatter_plot(val_data.y_act, val_data.pred_salary)
-print('MSE:', np.round(mean_squared_error(val_data.y_act, val_data.pred_salary), 3))
+scores_df = pd.DataFrame(scores, index=[0]).T.rename(columns={0: 'mse'})
+scores_df = scores_df.sort_values(by='mse', ascending=True)
+
+all_models = []
+all_scores = []
+for m in scores_df.index:
+    all_models.append(m)
+    val_data = pd.concat([salaries.loc[salaries.year!=YEAR, ['player', 'pos', 'year']].reset_index(drop=True),
+                        pd.Series(y_train, name='y_act'), all_pred[[c for c in all_pred.columns if c in all_models]].mean(axis=1)], axis=1)
+    val_data.columns = ['player', 'pos', 'year', 'y_act', 'pred_salary']
+    mf.show_scatter_plot(val_data.y_act, val_data.pred_salary)
+    ens_mse = np.round(mean_squared_error(val_data.y_act, val_data.pred_salary), 3)
+    ens_r2 = np.round(r2_score(val_data.y_act, val_data.pred_salary), 4)
+    all_scores.append(ens_mse)
+    print('MSE:', ens_mse)
+
+best_score = np.argmin(all_scores)
+best_models_names = scores_df.iloc[:best_score+1].index
+print(best_models_names)
+print(all_scores[best_score])
 
 #%%
 
-pred_sal = np.mean([
-                   best_models['lgbm'].predict(X_test),
-                   best_models['ridge'].predict(X_test),
-                   best_models['svr'].predict(X_test),
-                   best_models['lasso'].predict(X_test),
-                   best_models['enet'].predict(X_test),
-                   best_models['xgb'].predict(X_test),
-                   best_models['knn'].predict(X_test),
-                   best_models['gbm'].predict(X_test),
-                   best_models['rf'].predict(X_test),
-                   best_models['gbmh'].predict(X_test),
-                    best_models['huber'].predict(X_test),
-                    best_models['cb'].predict(X_test),
-                    best_models['mlp'].predict(X_test)
-                    ], axis=0)
+from sklearn.ensemble import VotingRegressor
+import time
+
+best_models = {k: v for k, v in best_models.items() if k in best_models_names}
+voter = VotingRegressor([(k, v) for k, v in best_models.items()])
+
+start = time.time()
+voter.fit(X_train, y_train)
+pred_sal = voter.predict(X_test)
+time.time()-start
+
+
+
+
+# import pickle
+
+# with open('C:/Users/borys/OneDrive/Documents/GitHub/Fantasy_Football_App/app/{LEAGUE}_salaries_model.pkl', 'wb') as f:
+#     pickle.dump(voter, f)
+
+
+#%%
 
 pred_results = pd.concat([salaries.loc[salaries.year==YEAR,['player', 'pos', 'year', 'salary', 'is_keeper', 'actual_salary']].reset_index(drop=True), 
                           pd.Series(pred_sal, name='pred_salary')], axis=1)
@@ -391,7 +472,8 @@ pred_results['pred_diff'] = pred_results.pred_salary - pred_results.salary
 total_diff = pred_results.pred_diff.sum()
 print('Total Diff:', total_diff)
 
-total_from_available = pred_results.iloc[:156].pred_salary.sum() - 3576
+avg_spent = salaries.groupby('year').total_spent.mean().mean()
+total_from_available = pred_results.iloc[:156].pred_salary.sum() - avg_spent
 print('Total from available:', total_from_available)
 
 # total_off = np.max([0,-(total_diff + total_from_available)/2])
@@ -411,17 +493,24 @@ pred_results.iloc[:50]
 
 for p in ['QB', 'RB', 'WR', 'TE']:
     print(f"\n{p}")
-    val_data_tmp = val_data[val_data.pos==p].reset_index(drop=True).copy()
+    val_data_tmp = val_data.copy()[val_data.pos==p].reset_index(drop=True).copy()
     sd_max_met = StandardScaler().fit(val_data_tmp[['pred_salary']]).transform(pred_results.loc[pred_results.pos==p, ['pred_salary']])
 
     sd_m, max_m, min_m = get_std_splines(val_data_tmp, {'pred_salary': 1}, show_plot=True, k=2, 
-                                        min_grps_den=int(val_data_tmp.shape[0]*0.08), 
-                                        max_grps_den=int(val_data_tmp.shape[0]*0.04),
+                                        min_grps_den=int(val_data_tmp.shape[0]*0.06), 
+                                        max_grps_den=int(val_data_tmp.shape[0]*0.03),
                                         iso_spline='spline')
 
     pred_results.loc[pred_results.pos==p, 'std_dev'] = sd_m(sd_max_met)
     pred_results.loc[pred_results.pos==p, 'max_score'] = max_m(sd_max_met)
     pred_results.loc[pred_results.pos==p,'min_score'] = min_m(sd_max_met)
+
+
+pred_results.sort_values(by='std_dev', ascending=False).iloc[:25]
+
+#%%
+
+pred_results.loc[pred_results.player.isin(['Josh Allen', 'Jalen Hurts']), 'std_dev'] = 8
 
 pred_results.loc[pred_results.std_dev <= 0, 'std_dev'] = pred_results.loc[pred_results.std_dev <= 0, 'pred_salary'] / 10
 
@@ -432,6 +521,10 @@ pred_results.loc[pred_results.max_score < pred_results.pred_salary, 'max_score']
 pred_results.loc[pred_results.min_score > pred_results.pred_salary, 'min_score'] = \
     pred_results.loc[pred_results.min_score > pred_results.pred_salary, 'pred_salary'] - \
         2 * pred_results.loc[pred_results.min_score > pred_results.pred_salary, 'std_dev']
+
+pred_results.loc[pred_results.min_score < (pred_results.pred_salary - pred_results.std_dev), 'min_score'] = \
+        pred_results.loc[pred_results.min_score < (pred_results.pred_salary - pred_results.std_dev), 'pred_salary'] - \
+            pred_results.loc[pred_results.min_score < (pred_results.pred_salary - pred_results.std_dev), 'std_dev']
 
 pred_results.iloc[:50]
 
