@@ -6,6 +6,7 @@ year = 2024
 from ff.db_operations import DataManage
 from ff import general
 
+from skmodel import SciKitModel
 import pandas as pd
 from zData_Functions import *
 pd.options.mode.chained_assignment = None
@@ -546,6 +547,10 @@ def add_draft_year_exp(df, pos):
     df = df.fillna({'draft_year': df.min_year, 'draft_round': 7, 'draft_pick': 300}).drop('min_year', axis=1)
     df['year_exp'] = df.year - df.draft_year
 
+    df.loc[df.year_exp < 0, 'year_exp'] = 0
+    high_yr = np.percentile(df.year_exp.dropna(), 95)
+    df.loc[df.year_exp > high_yr, 'year_exp'] = high_yr
+
     return df
 
 def drop_duplicate_players(df, order_col, rookie=False):
@@ -557,26 +562,57 @@ def drop_duplicate_players(df, order_col, rookie=False):
     return df
 
 
-def remove_low_corrs(df, corr_cut=0.015):
-    obj_cols = df.dtypes[df.dtypes=='object'].index
-    corrs = pd.DataFrame(np.corrcoef(df.drop(obj_cols, axis=1).values, rowvar=False), 
-                         columns=[c for c in df.columns if c not in obj_cols],
-                         index=[c for c in df.columns if c not in obj_cols])
-    corrs = corrs['y_act']
-    low_corrs = list(corrs[abs(corrs) < corr_cut].index)
-    low_corrs = [c for c in low_corrs if c not in ('week', 'year', 'pos', 'games', 'season', 'games_next')]
-    df = df.drop(low_corrs, axis=1)
-    print(f'Removed {len(low_corrs)}/{len(corrs)} columns')
+# def remove_low_corrs(df, corr_cut=0.015):
+#     obj_cols = df.dtypes[df.dtypes=='object'].index
+#     corrs = pd.DataFrame(np.corrcoef(df.drop(obj_cols, axis=1).values, rowvar=False), 
+#                          columns=[c for c in df.columns if c not in obj_cols],
+#                          index=[c for c in df.columns if c not in obj_cols])
+#     corrs = corrs['y_act']
+#     low_corrs = list(corrs[abs(corrs) < corr_cut].index)
+#     low_corrs = [c for c in low_corrs if c not in ('week', 'year', 'pos', 'games', 'season', 'games_next', 'year_exp')]
+#     df = df.drop(low_corrs, axis=1)
+#     print(f'Removed {len(low_corrs)}/{len(corrs)} columns')
     
+#     corrs = corrs.dropna().sort_values()
+#     display(corrs.iloc[:20])
+#     display(corrs.iloc[-20:])
+#     display(corrs[~corrs.index.str.contains('ffa|proj|expert|rank|Proj|fc|salary|Points|Rank|fdta|fft|proj') | \
+#                    corrs.index.str.contains('team') | \
+#                    corrs.index.str.contains('qb')].iloc[:20])
+#     display(corrs[~corrs.index.str.contains('ffa|proj|expert|rank|Proj|fc|salary|Points|Rank|fdta|fft|proj') | \
+#                    corrs.index.str.contains('team') | \
+#                    corrs.index.str.contains('qb')].iloc[-20:])
+#     return df
+
+def remove_low_corrs(df, corr_cut = 3, collinear_cut = 0.995):
+    obj_cols = list(df.dtypes[df.dtypes=='object'].index)
+    obj_cols.extend(['year', 'pos', 'games', 'season', 'games_next', 'year_exp', 'avg_pick',
+                     'avg_proj_points', 'avg_proj_rush_pts', 'avg_proj_pass_pts', 'avg_proj_rec_pts',
+                     'avg_proj_points_exp', 'avg_proj_points_exp_diff', 'avg_pick_exp', 'avg_pick_exp_diff',
+                     'avg_proj_rank'])
+    obj_cols.extend([c for c in df.columns if 'y_act_' in c])
+    obj_cols = [c for c in obj_cols if c in df.columns]
+
+    orig_shape = df.shape[1]
+    skm = SciKitModel(df, model_obj='reg')
+    X, y = skm.Xy_split('y_act', to_drop = obj_cols)
+    corr_collin = skm.piece('corr_collinear')[-1]
+    corr_collin.set_params(**{'corr_percentile': corr_cut, 'collinear_threshold': collinear_cut})
+    X = corr_collin.fit_transform(X, y)
+    new_shape = X.shape[1]
+
+    print(f'Removed {orig_shape - new_shape} / {orig_shape} columns')
+    df = pd.concat([df[obj_cols], X], axis=1)
+
+    corrs = pd.DataFrame(np.corrcoef(pd.concat([X,y],axis=1).values, rowvar=False), 
+                         columns=pd.concat([X,y],axis=1).columns,
+                         index=pd.concat([X,y],axis=1).columns)
+    
+    corrs = corrs['y_act']
     corrs = corrs.dropna().sort_values()
     display(corrs.iloc[:20])
     display(corrs.iloc[-20:])
-    display(corrs[~corrs.index.str.contains('ffa|proj|expert|rank|Proj|fc|salary|Points|Rank|fdta|fft|proj') | \
-                   corrs.index.str.contains('team') | \
-                   corrs.index.str.contains('qb')].iloc[:20])
-    display(corrs[~corrs.index.str.contains('ffa|proj|expert|rank|Proj|fc|salary|Points|Rank|fdta|fft|proj') | \
-                   corrs.index.str.contains('team') | \
-                   corrs.index.str.contains('qb')].iloc[-20:])
+    
     return df
 
 def drop_y_act_except_current(df, year):
@@ -672,9 +708,81 @@ def show_calibration_curve(y_true, y_pred, n_bins=10):
 
     print('Brier Score:', brier_score_loss(y_true, y_pred))
 
+
+def add_year_exp_compare(df):
+    all_year_exp_df = pd.DataFrame()
+    for i, yr in enumerate(df.year.sort_values().unique()):
+
+        year_exp_cols = ['pff_rec_td', 'fpros_rush_yds', 'pff_rush_td', 'pff_proj_pts_calc', 'pff_rec_yds', 'avg_proj_points', 
+                        'fpros_proj_pts_calc', 'log_minproj_rank', 'log_fft_rank', 'avg_pick', 'max_avg_pick', 
+                        'team_proj_share_avg_proj_points', 'fpros_avg_pick', 'team_proj_share_fpros_proj_pts_calc',
+                        'avg_proj_rec_yds', 'fpros_rec_yds', 'fpros_rec_td', 'team_proj_share_ffa_rec_yds',
+                        'avg_proj_rec_pts', 'pos_proj_share_avg_proj_rec_yds', 'fantasy_pts_per_game', 'mean_fantasy_pts',
+                        'mean_rec_first_down_sum', 'pff_pass_td', 'fft_pass_yds_per_cmp', 'fft_proj_pts', 'avg_proj_pass_td',
+                        'pff_pass_yds', 'fpros_pass_yds', 'pff_pass_td_per_att', 'sum_pass_epa_sum', 'sum_pass_epa_mean']
+        
+        year_exp_cols = [c for c in year_exp_cols if c in df.columns]
+        if i <= 1: year_exp = df[df.year<=yr+1].groupby('year_exp').agg({ye: 'mean' for ye in year_exp_cols}).reset_index()
+        else: year_exp = df[df.year<=yr].groupby('year_exp').agg({ye: 'mean' for ye in year_exp_cols}).reset_index()
+        year_exp.columns = [c+'_exp' if c != 'year_exp' else c for c in year_exp.columns]
+        year_exp['year'] = yr
+        all_year_exp_df = pd.concat([all_year_exp_df, year_exp], axis=0)
+    
+    df = pd.merge(df, all_year_exp_df, on=['year_exp', 'year'], how='left')
+
+    # oldest players have no year_exp equivalent so forward fill
+    col_order = df.columns
+    year_exp_cols_fill = ['player', 'year']
+    year_exp_cols_fill.extend([c for c in df.columns if '_exp' in c])
+    df = forward_fill(df, df.columns)
+    df = df[col_order]
+
+    for c in year_exp_cols:
+        c = c.replace('_exp', '')
+        df[f'{c}_exp_diff'] = df[c] - df[f'{c}_exp']
+        df[f'{c}_exp_frac'] = df[c] / (df[f'{c}_exp'] + 0.001)
+
+    df = add_rolling_stats(df, ['player'], [c for c in df.columns if '_exp' in c])
+
+    return df
+
+
+def get_next_year_stats(df, stats_proj, ty_mean=False):
+
+    # create next year's stats
+    df_proj_next = df.copy()
+
+    if pos == 'QB': 
+        stats_proj = stats_proj[['player', 'year', 'y_act', 'y_act_rush', 'y_act_pass']]
+        df_proj_next = df_proj_next.drop(['y_act_rush', 'y_act_pass'], axis=1)
+    elif pos == 'RB':
+        stats_proj = stats_proj[['player', 'year', 'y_act', 'y_act_rush', 'y_act_rec']]
+        df_proj_next = df_proj_next.drop(['y_act_rush', 'y_act_rec'], axis=1)
+    else:
+        stats_proj = stats_proj[['player', 'year', 'y_act']]
+
+    stats_proj.year = stats_proj.year - 1
+    stats_proj = stats_proj.rename(columns={'y_act': 'y_act_next'})
+    df_proj_next = pd.merge(stats_proj, df_proj_next, on=['player', 'year'], how='right')
+
+    
+    if ty_mean:
+        df_proj_next['y_act'] = df_proj_next[['y_act', 'y_act_next']].mean(axis=1)
+        games = 4
+        games_next = 4
+    else:
+        df_proj_next['y_act'] = df_proj_next['y_act_next']
+        games = 0
+        games_next = 4
+    
+    df_proj_next = df_proj_next.drop('y_act_next', axis=1)
+
+    return df_proj_next, games, games_next
+
+
 #%%
 
-pos='QB'
+pos='TE'
 
 class_cuts = {
     'WR': {
@@ -781,20 +889,7 @@ df_proj = pd.merge(stats_proj, df, on=['player', 'year'], how='right')
 df_proj.loc[(df_proj.year==year) & (df_proj.games.isnull()), ['season', 'games']] = [year-1, 16]
 
 
-# create next year's stats
-df_proj_next = df_proj.copy()
-if pos == 'QB': 
-    stats_proj = stats_proj[['player', 'year', 'y_act', 'y_act_rush', 'y_act_pass']]
-    df_proj_next = df_proj_next.drop(['y_act', 'y_act_rush', 'y_act_pass'], axis=1)
-elif pos == 'RB':
-    stats_proj = stats_proj[['player', 'year', 'y_act', 'y_act_rush', 'y_act_rec']]
-    df_proj_next = df_proj_next.drop(['y_act', 'y_act_rush', 'y_act_rec'], axis=1)
-else:
-    stats_proj = stats_proj[['player', 'year', 'y_act']]
-    df_proj_next = df_proj_next.drop(['y_act'], axis=1)
-
-stats_proj.year = stats_proj.year - 1
-df_proj_next = pd.merge(stats_proj, df_proj_next, on=['player', 'year'], how='right')
+df_proj_next, games, games_next = get_next_year_stats(df_proj, stats_proj, ty_mean=False)
 
 # fill in next years games that don't matter for this year after creating copy for next year
 df_proj.loc[df_proj.games_next.isnull(), 'games_next'] = 16
@@ -803,15 +898,18 @@ df_proj.loc[df_proj.games_next.isnull(), 'games_next'] = 16
 df_proj_next['games'] = 16
 df_proj_next.loc[(df_proj_next.year==year) & (df_proj_next.games_next.isnull()), 'games_next'] = 16
 
-#%%
+df_proj = add_draft_year_exp(df_proj, pos)
+df_proj = add_year_exp_compare(df_proj)
 
-for df_cur, lbl, gms, gms_next in ([df_proj, '', 4, 0], [df_proj_next, '_next', 0, 4]):
+df_proj_next = add_draft_year_exp(df_proj_next, pos)
+df_proj_next = add_year_exp_compare(df_proj_next)
+
+for df_cur, lbl, gms, gms_next in ([df_proj, '', 4, 0], [df_proj_next, '_next', games, games_next]):
     # only drop games and not games_next, since the "season" was shifted to year
     # meaning that games will be for the games played in the projection year
     df_cur = drop_y_act_except_current(df_cur, year)
     df_cur = drop_games(df_cur, year, games=gms, games_next=gms_next)
-    df_cur = remove_low_corrs(df_cur.dropna(subset=['y_act']), corr_cut=0.04)
-    df_cur = add_draft_year_exp(df_cur, pos)
+    df_cur = remove_low_corrs(df_cur, corr_cut=3, collinear_cut=0.998)
 
     df_cur = y_act_class(df_cur, df_cur.copy(), 'both', 'games', class_cuts[pos]['upside']['proj_var'], class_cuts[pos]['upside']['y_act'], 'upside')
     df_cur = y_act_class(df_cur, df_cur.copy(), 'both', 'games', class_cuts[pos]['top']['proj_var'], class_cuts[pos]['top']['y_act'], 'top')
@@ -827,9 +925,9 @@ for df_cur, lbl, gms, gms_next in ([df_proj, '', 4, 0], [df_proj_next, '_next', 
         df_cur = y_act_class(df_cur, df_cur.copy(), 'rec', 'games', class_cuts[pos]['upside']['proj_var'], class_cuts[pos]['upside']['y_act'], 'upside')
         df_cur = y_act_class(df_cur, df_cur.copy(), 'rec', 'games', class_cuts[pos]['top']['proj_var'], class_cuts[pos]['top']['y_act'], 'top')
 
+    df_cur = df_cur.loc[:,~df_cur.columns.duplicated()].copy()
     dm.write_to_db(df_cur, f'Model_Inputs{lbl}', f'{pos}_{year}_ProjOnly', if_exist='replace')
 
-#%%
 #------------
 # Save out Full Data
 #------------
@@ -854,12 +952,14 @@ elif pos == 'QB':
 
 df_stats = drop_duplicate_players(df_stats, 'sum_fantasy_pts')
 
+df_stats = add_draft_year_exp(df_stats, pos)
+df_stats = add_year_exp_compare(df_stats)
+
 # drop both last year's and next year's game limits
 # since you need y_act to be relevant and last year's stats to be relvant
 df_stats = drop_y_act_except_current(df_stats, year)
 df_stats = drop_games(df_stats, year, games=4, games_next=4)
-df_stats = remove_low_corrs(df_stats.dropna(subset=['y_act']), corr_cut=0.05)
-df_stats = add_draft_year_exp(df_stats, pos)
+df_stats = remove_low_corrs(df_stats, corr_cut=4, collinear_cut=0.99)
 df_stats = y_act_class(df_stats, df_stats.copy(), 'both', 'games_next', class_cuts[pos]['upside']['proj_var'], class_cuts[pos]['upside']['y_act'], 'upside')
 df_stats = y_act_class(df_stats, df_stats.copy(), 'both', 'games_next', class_cuts[pos]['top']['proj_var'], class_cuts[pos]['top']['y_act'], 'top')
 
@@ -875,7 +975,12 @@ if pos == 'RB':
     df_stats = y_act_class(df_stats, df_stats.copy(), 'rec', 'games', class_cuts[pos]['upside']['proj_var'], class_cuts[pos]['upside']['y_act'], 'upside')
     df_stats = y_act_class(df_stats, df_stats.copy(), 'rec', 'games', class_cuts[pos]['top']['proj_var'], class_cuts[pos]['top']['y_act'], 'top')
 
-dm.write_to_db(df_stats, 'Model_Inputs', f'{pos}_{year}_Stats', if_exist='replace')
+df_stats = df_stats.loc[:,~df_stats.columns.duplicated()].copy()
+if df_stats.shape[1] > 2000:
+    dm.write_to_db(df_stats.iloc[:,:2000], 'Model_Inputs', f'{pos}_{year}_Stats', if_exist='replace')
+    dm.write_to_db(df_stats.iloc[:,2000:], 'Model_Inputs', f'{pos}_{year}_Stats_V2', if_exist='replace')
+else:
+    dm.write_to_db(df_stats, 'Model_Inputs', f'{pos}_{year}_Stats', if_exist='replace')
 
 #------------
 # Save out Rookie Data
@@ -894,19 +999,25 @@ if pos in ('RB', 'WR'):
 
     df_rookie = pd.merge(stats, df_rookie, on=['player', 'year'], how='right')
     df_rookie = pd.merge(df_rookie, df, on=['player', 'year'])
+
+    df_rookie['year_exp'] = 0
+    df_rookie = add_year_exp_compare(df_rookie)
     df_rookie = df_rookie.drop([c for c in df_rookie.columns if 'rmean' in c or 'rmax' in c or 'std' in c], axis=1)
+
     df_rookie = drop_y_act_except_current(df_rookie, year)
     df_rookie.games_next = df_rookie.games_next.fillna(16)
     df_rookie.loc[df_rookie.games.isnull(), 'games'] = 16
     df_rookie = drop_games(df_rookie, year, games=4, games_next=0)
 
-    df_rookie = remove_low_corrs(df_rookie, corr_cut=0.04)
+    df_rookie = remove_low_corrs(df_rookie, corr_cut=2, collinear_cut=0.998)
     df_rookie = y_act_class(df_rookie.fillna({'games_next': 16}), df_proj.copy(), 'both', 'games',
                             class_cuts[f'Rookie_{pos}']['upside']['proj_var'], class_cuts[f'Rookie_{pos}']['upside']['y_act'], 'upside')
     df_rookie = y_act_class(df_rookie.fillna({'games_next': 16}), df_proj.copy(), 'both', 'games',
                             class_cuts[f'Rookie_{pos}']['top']['proj_var'], class_cuts[f'Rookie_{pos}']['top']['y_act'], 'top')
 
     df_rookie = drop_duplicate_players(df_rookie, 'y_act', rookie=True)
+    df_rookie = df_rookie.loc[:,~df_rookie.columns.duplicated()].copy()
+
     dm.write_to_db(df_rookie, 'Model_Inputs', f'{pos}_{year}_Rookie', if_exist='replace')
 
 
@@ -920,7 +1031,7 @@ if pos in ('RB', 'WR'):
 
 #%%
 
-pos = 'WR'
+pos = 'TE'
 
 from skmodel import SciKitModel
 from hyperopt import Trials
@@ -928,18 +1039,20 @@ from sklearn.metrics import r2_score
 alpha = 0.8
 
 model_obj = 'reg'
-y_act_next = True
+y_act_next = False
 
 if y_act_next: lbl = '_next'
 else: lbl = ''
 
-class_metric = '_upside_rec'
+class_metric = '_top'
 
 if model_obj =='class': proba = True
 else: proba = False
 
 Xy = dm.read(f"SELECT * FROM {pos}_{year}_ProjOnly WHERE pos='{pos}' ", f'Model_Inputs{lbl}')
 # Xy = dm.read(f"SELECT * FROM {pos}_{year}_Stats WHERE pos='{pos}' ", 'Model_Inputs')
+# if Xy.shape[1]==2000:
+#     Xy = pd.concat([Xy, dm.read(f"SELECT * FROM {pos}_{year}_Stats_V2 ", 'Model_Inputs')], axis=1)
 # Xy = dm.read(f"SELECT * FROM {pos}_{year}_Rookie ", 'Model_Inputs')
 if proba: Xy = Xy.drop('y_act', axis=1).rename(columns={f'y_act_class{class_metric}': 'y_act'})
 
@@ -950,12 +1063,11 @@ Xy['game_date'] = Xy.year
 
 Xy = Xy.drop([c for c in Xy.columns if 'y_act_' in c], axis=1)
 
-Xy = Xy[(Xy.year_exp >3) ].reset_index(drop=True)
+# Xy = Xy[(Xy.year_exp >3) ].reset_index(drop=True)
 # Xy = Xy[Xy.year_exp > 3].reset_index(drop=True)
 # Xy = Xy[(Xy.year_exp >= 2) & (Xy.year_exp <= 3)].reset_index(drop=True)
 # display(Xy.loc[Xy.y_act==1, ['player', 'year', 'y_act', 'avg_proj_points_per_game']].iloc[-50:])
 
-#%%
 pred = Xy[Xy.year==2024].copy().reset_index(drop=True)
 train = Xy[Xy.year<2024].copy().reset_index(drop=True)
 print(Xy.shape)
@@ -977,14 +1089,14 @@ else:
     kb = 'k_best'
     m = 'enet'
 
-pipe = skm.model_pipe([#skm.piece('random_sample'),
+pipe = skm.model_pipe([skm.piece('random_sample'),
                         skm.piece('std_scale'), 
-                        # skm.piece(p),
-                        # skm.feature_union([
-                        #                skm.piece('agglomeration'), 
-                        #                 skm.piece(f'{kb}_fu'),
-                        #                 skm.piece('pca')
-                        #                 ]),
+                        skm.piece(p),
+                        skm.feature_union([
+                                       skm.piece('agglomeration'), 
+                                        skm.piece(f'{kb}_fu'),
+                                        skm.piece('pca')
+                                        ]),
                         skm.piece(kb),
                         skm.piece(m)
                     ])
@@ -993,7 +1105,7 @@ params = skm.default_params(pipe, 'bayes')
 
 # pipe.steps[-1][-1].set_params(**{'loss_function': f'Quantile:alpha={alpha}'})
 best_models, oof_data, param_scores, _ = skm.time_series_cv(pipe, X, y, params, n_iter=10,
-                                                                col_split='year',n_splits=4,
+                                                                col_split='year',n_splits=5,
                                                                 time_split=2017, alpha=alpha,
                                                                 bayes_rand='bayes', proba=proba,
                                                                 sample_weight=False, trials=Trials(),
@@ -1035,5 +1147,3 @@ selected_features = pipeline.named_steps[kb].get_support(indices=True)
 coef = pd.Series(coefficients, index=X.columns[selected_features])
 coef[np.abs(coef) > 0.01].sort_values().plot(kind = 'barh', figsize=(10, 10))
 # %%
-
-

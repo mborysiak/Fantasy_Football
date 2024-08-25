@@ -12,55 +12,59 @@ vers = 'beta'
 predict_only = False
 
 runs = [
-        # ['RB', 'current', 'greater_equal', 0, '', 'Rookie'],
         # ['WR', 'current', 'greater_equal', 0, '', 'Rookie'],
-    
+        # ['RB', 'current', 'greater_equal', 0, '', 'Rookie'],
+
         # ['WR', 'current', 'greater_equal', 0, '', 'ProjOnly'],
         # ['WR', 'current', 'less_equal', 3, '', 'ProjOnly'],
         # ['WR', 'current', 'greater_equal', 4, '', 'ProjOnly'],
 
-        ['WR', 'next', 'greater_equal', 0, '', 'ProjOnly'],
-        ['WR', 'next', 'less_equal', 3, '', 'ProjOnly'],
-        ['WR', 'next', 'greater_equal', 4, '', 'ProjOnly'],
+        # ['WR', 'next', 'greater_equal', 0, '', 'ProjOnly'],
+        # ['WR', 'next', 'less_equal', 3, '', 'ProjOnly'],
+        # ['WR', 'next', 'greater_equal', 4, '', 'ProjOnly'],
 
         # ['WR', 'current', 'greater_equal', 0, '', 'Stats'],
         # ['WR', 'current', 'less_equal', 3, '', 'Stats'],
         # ['WR', 'current', 'greater_equal', 4, '', 'Stats'],
 
-        # ['RB', 'current', 'greater_equal', 0, '', 'ProjOnly'],
-        # ['RB', 'current', 'less_equal', 3, '', 'ProjOnly'],
-        # ['RB', 'current', 'greater_equal', 4, '', 'ProjOnly'],
-        # ['RB', 'current', 'greater_equal', 0, 'rush', 'ProjOnly'],
-        # ['RB', 'current', 'greater_equal', 0, 'rec', 'ProjOnly'],
-        # ['RB', 'current', 'less_equal', 3, 'rush', 'ProjOnly'],
-        # ['RB', 'current', 'less_equal', 3, 'rec', 'ProjOnly'],
-        # ['RB', 'current', 'greater_equal', 4, 'rush', 'ProjOnly'],
-        # ['RB', 'current', 'greater_equal', 4, 'rec', 'ProjOnly'],
+        # ['TE', 'current', 'greater_equal', 0, '', 'ProjOnly'],
+        # ['TE', 'current', 'greater_equal', 0, '', 'Stats'],
+        # ['TE', 'next', 'greater_equal', 0, '', 'ProjOnly'],
+
+        # ['QB', 'current', 'greater_equal', 0, '', 'ProjOnly'],
+        # ['QB', 'current', 'greater_equal', 0, 'rush', 'ProjOnly'],
+        # ['QB', 'current', 'greater_equal', 0, 'pass', 'ProjOnly'],
+        # ['QB', 'next', 'greater_equal', 0, '', 'ProjOnly'],
+
+        # ['QB', 'current', 'greater_equal', 0, '', 'Stats'],
+        # ['QB', 'current', 'greater_equal', 0, 'rush', 'Stats'],
+        # ['QB', 'current', 'greater_equal', 0, 'pass', 'Stats'],
+
+        ['RB', 'current', 'greater_equal', 0, '', 'ProjOnly'],
+        ['RB', 'current', 'less_equal', 3, '', 'ProjOnly'],
+        ['RB', 'current', 'greater_equal', 4, '', 'ProjOnly'],
+        ['RB', 'current', 'greater_equal', 0, 'rush', 'ProjOnly'],
+        ['RB', 'current', 'greater_equal', 0, 'rec', 'ProjOnly'],
+        ['RB', 'current', 'less_equal', 3, 'rush', 'ProjOnly'],
+        ['RB', 'current', 'less_equal', 3, 'rec', 'ProjOnly'],
+        ['RB', 'current', 'greater_equal', 4, 'rush', 'ProjOnly'],
+        ['RB', 'current', 'greater_equal', 4, 'rec', 'ProjOnly'],
 
         ['RB', 'next', 'greater_equal', 0, '', 'ProjOnly'],
         ['RB', 'next', 'less_equal', 3, '', 'ProjOnly'],
         ['RB', 'next', 'greater_equal', 4, '', 'ProjOnly'],
 
-        # ['RB', 'current', 'greater_equal', 0, '', 'Stats'],
-        # ['RB', 'current', 'less_equal', 3, '', 'Stats'],
-        # ['RB', 'current', 'greater_equal', 4, '', 'Stats'],
-        # ['RB', 'current', 'greater_equal', 0, 'rush', 'Stats'],
-        # ['RB', 'current', 'greater_equal', 0, 'rec', 'Stats'],
-        # ['RB', 'current', 'less_equal', 3, 'rush', 'Stats'],
-        # ['RB', 'current', 'less_equal', 3, 'rec', 'Stats'],
-        # ['RB', 'current', 'greater_equal', 4, 'rush', 'Stats'],
-        # ['RB', 'current', 'greater_equal', 4, 'rec', 'Stats'],
+        ['RB', 'current', 'greater_equal', 0, '', 'Stats'],
+        ['RB', 'current', 'less_equal', 3, '', 'Stats'],
+        ['RB', 'current', 'greater_equal', 4, '', 'Stats'],
+        ['RB', 'current', 'greater_equal', 0, 'rush', 'Stats'],
+        ['RB', 'current', 'greater_equal', 0, 'rec', 'Stats'],
+        ['RB', 'current', 'less_equal', 3, 'rush', 'Stats'],
+        ['RB', 'current', 'less_equal', 3, 'rec', 'Stats'],
+        ['RB', 'current', 'greater_equal', 4, 'rush', 'Stats'],
+        ['RB', 'current', 'greater_equal', 4, 'rec', 'Stats'],
 
-        # ['TE', 'current', 'greater_equal', 0, '', 'ProjOnly'],
-        # ['TE', 'current', 'greater_equal', 0, '', 'Stats'],
-
-        # ['QB', 'current', 'greater_equal', 0, '', 'ProjOnly'],
-        # ['QB', 'current', 'greater_equal', 0, 'rush', 'ProjOnly'],
-        # ['QB', 'current', 'greater_equal', 0, 'pass', 'ProjOnly'],
-
-        # ['QB', 'current', 'greater_equal', 0, '', 'Stats'],
-        # ['QB', 'current', 'greater_equal', 0, 'rush', 'Stats'],
-        # ['QB', 'current', 'greater_equal', 0, 'pass', 'Stats'],
+     
 
 ]
 

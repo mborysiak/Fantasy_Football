@@ -168,6 +168,8 @@ def pull_data(set_pos, set_year, dataset, current_or_next_year):
 
     # load data and filter down
     df = dm.read(f'''SELECT * FROM {set_pos}_{set_year}_{dataset}''', f'Model_Inputs{lbl}')
+    if df.shape[1]==2000:
+        df = pd.concat([df, dm.read(f"SELECT * FROM {set_pos}_{set_year}_{dataset}_V2 ", f'Model_Inputs{lbl}')], axis=1)
     if dataset=='Rookie': df = df.assign(year_exp=0, team='team', pos=set_pos)
 
     # add in data to match up with Daily code
@@ -437,10 +439,10 @@ def get_full_pipe_stack(skm, m, bayes_rand,  alpha=None, stack_model=False, min_
 #     next_study = get_new_study(run_params['study_db'], old_name, new_name, run_params['num_recent_trials'])
 #     return next_study
 
-def get_new_study():
+def get_new_study(model_name, model_obj, pos):
 
     storage = optuna.storages.RDBStorage(
-                                url="sqlite:///optuna/weekly_train.sqlite3",
+                                url=f"sqlite:///optuna/weekly_train_{pos}_{model_name}_{model_obj}_{int(10000*random())}.sqlite3",
                                 engine_kwargs={"pool_size": 64, 
                                             "connect_args": {"timeout": 10},
                                             },
@@ -465,7 +467,7 @@ def get_model_output(model_name, cur_df, model_obj, out_dict, pos, set_pos, hp_a
 
     if bayes_rand == 'bayes': trials = Trials()
     elif bayes_rand == 'optuna': 
-        trials = get_new_study()
+        trials = get_new_study(model_name, model_obj, set_pos)
 
     # fit and append the ADP model
     best_models, oof_data, _, _ = skm.time_series_cv(pipe, X, y, params, n_iter=pos[set_pos]['iters'], 
@@ -542,7 +544,7 @@ def run_stack_models(final_m, X_stack, y_stack, i, model_obj, alpha, run_params)
     
     if run_params['opt_type'] == 'bayes': trials = Trials()
     elif run_params['opt_type'] == 'optuna': 
-        trials = get_new_study()
+        trials = get_new_study(final_m, model_obj, '')
     
     best_model, stack_scores, stack_pred, _ = skm.best_stack(pipe, params, X_stack, y_stack, 
                                                                 n_iter=run_params['n_iter'], alpha=alpha,

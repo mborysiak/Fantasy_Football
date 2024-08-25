@@ -24,9 +24,9 @@ date_mod = dt.date(2024, 8, 13)
 #==========
 # Check Rush Pass vs All Weighting
 #==========
-set_pos = 'QB'
+set_pos = 'RB'
 current_or_next_year = 'current'
-dataset = 'Stats'
+dataset = 'ProjOnly'
 year_exp = 0
 filter_data = 'greater_equal'
 
@@ -75,8 +75,8 @@ rp = rp[~((rp.player=='Josh Rosen') & (rp.season==2019))].reset_index(drop=True)
 rp = rp[~((rp.player=='Colt Mccoy') & (rp.season==2022))].reset_index(drop=True)
 
 rp = pd.merge(rp, both, on=['player', 'season'])
-rp['avg_pred'] = (rp.rp_pred*3 + rp.both_pred) / 4
-rp['y_act_avg'] = (rp.rp_y_act*3 + rp.both_y_act) / 4
+rp['avg_pred'] = (rp.rp_pred + rp.both_pred) / 2
+rp['y_act_avg'] = (rp.rp_y_act + rp.both_y_act) / 2
 rp.plot.scatter(x='rp_pred', y='rp_y_act')
 rp.plot.scatter(x='both_pred', y='both_y_act')
 rp.plot.scatter(x='avg_pred', y='y_act_avg')
@@ -108,6 +108,7 @@ def get_val_ratio(vers, set_year, pos, dataset):
                 AND dataset {dataset}
                 AND rush_pass NOT IN ('rush', 'pass', 'rec')
                 AND pos = '{pos}'
+                AND current_or_next_year = 'current'
             GROUP BY player, season
         ''', 'Validations')
     
@@ -117,7 +118,7 @@ def get_val_ratio(vers, set_year, pos, dataset):
     return y_act_max/pred_max
 
 rookie_wr_ratio = []
-for pos in ['WR']:
+for pos in ['WR', 'RB']:
     pos_val = get_val_ratio(vers, set_year, pos, 'NOT LIKE "%Rookie%"')
     rookie_val = get_val_ratio(vers, set_year, 'WR', 'LIKE "%Rookie%"')
     rookie_ratio_cur = rookie_val - pos_val + 1
@@ -136,6 +137,8 @@ for pos in ['RB']:
 
 rookie_rb_ratio = np.mean(rookie_rb_ratio)
 print('Rookie RB Ratio:', rookie_rb_ratio)
+
+
 
 #%%
 
@@ -159,10 +162,10 @@ rookies = dm.read(f'''SELECT player,
 rookies.date_modified = pd.to_datetime(rookies.date_modified).apply(lambda x: x.date())
 rookies = rookies[rookies.date_modified >= date_mod].reset_index(drop=True)
 rookies.loc[rookies.pos=='WR', ['pred_fp_per_game', 'max_score', 'pred_prob_upside', 'pred_prob_top']] = \
-    rookies.loc[rookies.pos=='WR', ['pred_fp_per_game', 'max_score', 'pred_prob_upside', 'pred_prob_top']] * rookie_wr_ratio
+    rookies.loc[rookies.pos=='WR', ['pred_fp_per_game', 'max_score', 'pred_prob_upside', 'pred_prob_top']] #* rookie_wr_ratio
 
 rookies.loc[rookies.pos=='RB', ['pred_fp_per_game', 'max_score', 'pred_prob_upside', 'pred_prob_top']] = \
-    rookies.loc[rookies.pos=='RB', ['pred_fp_per_game', 'max_score', 'pred_prob_upside', 'pred_prob_top']] * rookie_rb_ratio
+    rookies.loc[rookies.pos=='RB', ['pred_fp_per_game', 'max_score', 'pred_prob_upside', 'pred_prob_top']] #* rookie_rb_ratio
 
 display(rookies.iloc[:50])
 
@@ -205,7 +208,7 @@ display(rp[((rp.pos!='QB'))].iloc[:50])
 #%%
 
 
-preds = dm.read(f'''SELECT player, 
+preds_ty = dm.read(f'''SELECT player, 
                         pos,
                         rush_pass,
                         AVG(pred_fp_per_game) pred_fp_per_game,
@@ -220,17 +223,45 @@ preds = dm.read(f'''SELECT player,
                        AND version='{vers}'
                        AND year = {set_year}
                        AND dataset NOT LIKE '%Rookie%'
+                       AND current_or_next_year = 'current'
                 GROUP BY player, pos, rush_pass
              ''', 'Simulation').sort_values(by='pred_fp_per_game', ascending=False).reset_index(drop=True)
 
-preds.date_modified = pd.to_datetime(preds.date_modified).apply(lambda x: x.date())
-preds = preds[preds.date_modified >= date_mod].reset_index(drop=True)
-display(preds[((preds.pos=='QB'))].iloc[:15])
-display(preds[((preds.pos!='QB'))].iloc[:50])
+preds_ty.date_modified = pd.to_datetime(preds_ty.date_modified).apply(lambda x: x.date())
+preds_ty = preds_ty[preds_ty.date_modified >= date_mod].reset_index(drop=True)
+display(preds_ty[((preds_ty.pos=='QB'))].iloc[:15])
+display(preds_ty[((preds_ty.pos!='QB'))].iloc[:50])
 
 #%%
 
-preds = pd.concat([rp, rp, rp, rookies, preds], axis=0).reset_index(drop=True)
+preds_ny = dm.read(f'''SELECT player, 
+                        pos,
+                        rush_pass,
+                        AVG(pred_fp_per_game) pred_fp_per_game,
+                        AVG(pred_fp_per_game_upside) pred_prob_upside,
+                        AVG(pred_fp_per_game_top) pred_prob_top,
+                        AVG(std_dev) std_dev,
+                        AVG(min_score) min_score,   
+                        AVG(max_score) max_score, 
+                        MAX(date_modified) date_modified
+                FROM Model_Predictions
+                WHERE rush_pass NOT IN ('rush', 'pass', 'rec')
+                       AND version='{vers}'
+                       AND year = {set_year}
+                       AND dataset NOT LIKE '%Rookie%'
+                       AND current_or_next_year = 'next'
+                GROUP BY player, pos, rush_pass
+             ''', 'Simulation').sort_values(by='pred_fp_per_game', ascending=False).reset_index(drop=True)
+
+preds_ny.date_modified = pd.to_datetime(preds_ny.date_modified).apply(lambda x: x.date())
+preds_ny = preds_ny[preds_ny.date_modified >= date_mod].reset_index(drop=True)
+display(preds_ny[((preds_ny.pos=='QB'))].iloc[:15])
+display(preds_ny[((preds_ny.pos!='QB'))].iloc[:50])
+
+#%%
+
+preds = pd.concat([rp, rookies, preds_ty, preds_ny
+                   ], axis=0).reset_index(drop=True)
 
 preds.loc[preds.std_dev < 0, 'std_dev'] = 1
 
@@ -257,16 +288,19 @@ preds['version'] = vers
 preds['year'] = set_year
 preds = preds.sort_values(by='pred_fp_per_game', ascending=False).reset_index(drop=True)
 preds['pos_rank'] = preds.groupby('pos')['pred_fp_per_game'].rank(ascending=False, method='first')
-preds = preds[~((preds.pos=='QB') & (preds.pos_rank > 32))].reset_index(drop=True).drop('pos_rank', axis=1)
+preds = preds[~((preds.pos=='QB') & (preds.pos_rank > 24))].reset_index(drop=True)
+preds = preds[~((preds.pos=='TE') & (preds.pos_rank > 24))].reset_index(drop=True)
+preds = preds[~((preds.pos=='RB') & (preds.pos_rank > 60))].reset_index(drop=True)
+preds = preds[~((preds.pos=='RB') & (preds.pos_rank > 72))].reset_index(drop=True).drop('pos_rank', axis=1)
 
 display(preds[((preds.pos=='QB'))].iloc[:15])
 display(preds[((preds.pos!='QB'))].iloc[:50])
 
 #%%
 downgrades = {
-    'Nick Chubb': 0.8,
-    'Justin Herbert': 0.9, 
-    'Jonathon Brooks': 0.85
+    # 'Nick Chubb': 0.8,
+    # 'Justin Herbert': 0.9, 
+    # 'Jonathon Brooks': 0.85
 }
 
 for p, d in downgrades.items():

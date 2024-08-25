@@ -7,7 +7,7 @@ import pandas as pd
 import numpy as np
 import sqlite3
 import zModel_Functions as mf
-
+import joblib
 from ff.db_operations import DataManage
 from ff import general
 import ff.data_clean as dc
@@ -37,37 +37,31 @@ LEAGUE = 'beta'
 
 ty_keepers = {
     'Jahmyr Gibbs': [68],
-    'Drake London': [34],
-    # 'Trey Mcbride': [11],
-
-    'Dj Moore': [38],
-    # 'Tony Pollard': [37],
+    'Trey Mcbride': [11],
 
     'Kyren Williams': [11],
-    'Isiah Pacheco': [27],
+    "Ja'Marr Chase": [62],
 
-    'Mike Evans': [32],
+    'Raheem Mostert': [13],
     'Nico Collins': [12],
 
     'Amon Ra St Brown': [46],
-    'Aj Brown': [70],
+    'Rhamondre Stevenson': [11],
 
-    'James Cook': [40],
-    'Jonathan Taylor': [88],
-
-    'Garrett Wilson': [31],
+    'Garrett Wilson': [34],
+    'James Conner': [48],
 
     'Brandon Aiyuk': [24],
-    'Jalen Hurts': [37],
+    'George Pickens': [12],
 
-    # 'Travis Etienne': [79],
+    'Travis Etienne': [79],
     'Kenneth Walker': [42],
     
     'Sam Laporta': [11],
     'Michael Pittman': [20],
 
     'Breece Hall': [44],
-    'Zay Flowers': [24],
+    'Dalton Kincaid': [15],
 }
 
 ty_keepers = pd.DataFrame(ty_keepers)
@@ -177,10 +171,12 @@ def clean_results(path, fname, year, league, team_split=True):
 def get_adp():
     all_stats = pd.DataFrame()
     for pos in ['QB', 'RB', 'WR', 'TE']:
-        stats = dm.read(f'''SELECT player, year, avg_pick, avg_proj_points, avg_proj_rank, year_exp
+        print(pos)
+        stats = dm.read(f'''SELECT player, year, avg_pick, avg_proj_points, avg_proj_rank, year_exp,
+                                   avg_proj_points_exp_diff, avg_pick_exp_diff
                             FROM {pos}_{YEAR}_ProjOnly
-                            
                          ''', 'Model_Inputs')
+        
         stats['pos'] = pos
         all_stats = pd.concat([all_stats, stats], axis=0)
 
@@ -288,21 +284,45 @@ salaries = add_salary_pos_rank(salaries)
 salaries = remove_outliers(salaries)
 salaries = salaries.sample(frac=1, random_state=1234).reset_index(drop=True)
 
-salaries = pd.concat([salaries, pd.get_dummies(salaries.year, prefix='year')], axis=1)
+# salaries = pd.concat([salaries, pd.get_dummies(salaries.year, prefix='year')], axis=1)
 salaries['young_player'] = (salaries.year_exp < 2).astype('int')
 salaries['young_osu'] = salaries.young_player * salaries.is_OSU
 salaries['rookie_osu'] = salaries.is_rookie * salaries.is_OSU
-salaries['old_player'] = (salaries.year_exp > 2).astype('int')
+salaries['rookie_rank'] = salaries.is_rookie * salaries.avg_pick
+salaries['old_player'] = (salaries.year_exp > 5).astype('int')
+
+salaries['next_guy_sal'] = salaries.groupby(['pos', 'year']).salary.shift(-1)
+salaries['next_guy_sal_diff'] = salaries.salary - salaries.next_guy_sal
+
+salaries['guy_above_sal'] = salaries.groupby(['pos', 'year']).salary.shift(1)
+salaries['guy_above_sal_diff'] = salaries.salary - salaries.guy_above_sal
+salaries = salaries.drop(['next_guy_sal', 'guy_above_sal'], axis=1)
+
+salaries.loc[salaries.next_guy_sal_diff.isnull(), ['next_guy_sal_diff']] = 0
+salaries.loc[salaries.guy_above_sal_diff.isnull(), [ 'guy_above_sal_diff']] = 0
+
+salaries['pts_per_dollar'] = salaries.avg_proj_points / (salaries.salary+1)
 
 #%%
-
+salaries = salaries.rename(columns={'actual_salary': 'y_act'})
+salaries = salaries.sort_values(by='year').reset_index(drop=True)
+salaries['team'] = 'placeholder'
+salaries['week'] = 1
+salaries['game_date'] = salaries.year
 skm = SciKitModel(salaries)
-X, y = skm.Xy_split('actual_salary', to_drop=['player', 'league'])
+
+X, y = skm.Xy_split('y_act', to_drop=['player', 'team', 'week', 'league'])
 X = pd.concat([X, pd.get_dummies(X.pos)], axis=1).drop('pos', axis=1)
 X['qb_proj'] = X.QB * X.avg_proj_points
 X['rb_proj'] = X.RB * X.avg_proj_points
 X['wr_proj'] = X.WR * X.avg_proj_points
 X['te_proj'] = X.TE * X.avg_proj_points
+
+X['qb_rank'] = X.QB * X.avg_pick
+X['rb_rank'] = X.RB * X.avg_pick
+X['wr_rank'] = X.WR * X.avg_pick
+X['te_rank'] = X.TE * X.avg_pick
+
 
 X_train = X[X.year != YEAR]
 y_train = y[X_train.index].reset_index(drop=True); X_train.reset_index(drop=True, inplace=True)   
@@ -310,67 +330,29 @@ y_train = y[X_train.index].reset_index(drop=True); X_train.reset_index(drop=True
 X_test = X[X.year == YEAR].reset_index(drop=True)
 y_test = y[X_test.index].reset_index(drop=True); X_test.reset_index(drop=True, inplace=True)    
 
+pd.concat([X,y], axis=1).corr()['y_act'].sort_values()
+
 
 #%%
-
+from sklearn.ensemble import VotingRegressor
 
 baseline_data = salaries[salaries.year!=YEAR]
 
-inf_baseline = mean_squared_error(baseline_data.actual_salary*baseline_data.inflation, baseline_data.salary)
-inf_baseline_r2 = r2_score(baseline_data.actual_salary*baseline_data.inflation, baseline_data.salary)
-baseline = mean_squared_error(baseline_data.actual_salary, baseline_data.salary)
-baseline_r2 = r2_score(baseline_data.actual_salary, baseline_data.salary)
+inf_baseline = mean_squared_error(baseline_data.y_act*baseline_data.inflation, baseline_data.salary)
+inf_baseline_r2 = r2_score(baseline_data.y_act*baseline_data.inflation, baseline_data.salary)
+baseline = mean_squared_error(baseline_data.y_act, baseline_data.salary)
+baseline_r2 = r2_score(baseline_data.y_act, baseline_data.salary)
 
 print('Inflation Baseline',  round(inf_baseline, 3), round(inf_baseline_r2, 3))
 print('Baseline',  round(baseline, 3), round(baseline_r2, 3))
 
 import optuna
-from sklearn.model_selection import cross_val_predict, KFold, RepeatedKFold
-def objective(trial):
-
-
-    if m in ('lgbm', 'xgb', 'cb', 'gbm', 'rf', 'gbmh'):
-        pipe = skm.model_pipe([ skm.piece('random_sample'),
-                                skm.piece(m)
-                                ])
-        params = skm.default_params(pipe, 'optuna')
-        params['random_sample__frac'] = ['real', 0.2, 1]
-    else:
-        pipe = skm.model_pipe([ skm.piece('random_sample'),
-                                skm.piece('std_scale'), 
-                                skm.piece('k_best'),
-                                skm.piece(m)
-                                ])
-    
-        params = skm.default_params(pipe, 'optuna')
-        params['random_sample__frac'] = ['real', 0.2, 1]
-        params['k_best__k'] = ['int', 1, X_train.shape[1]]
-    
-    params_opt = {}
-    for k, v in params.items():
-        if v[0] == 'real': params_opt[k] = trial.suggest_float(k, v[1], v[2], log=False)
-        elif v[0] == 'log': params_opt[k] = trial.suggest_float(k, np.exp(v[1]), np.exp(v[2]), log=True)
-        elif v[0] == 'int': params_opt[k] = trial.suggest_int(k, v[1], v[2])
-        elif v[0] == 'categorical': params_opt[k] = trial.suggest_categorical(k, v[1])
-    
-    pipe.set_params(**params_opt)
-
-    avg_score = 0
-    for i in range(2):
-        kf = KFold(n_splits=5, shuffle=True)
-        vals = cross_val_predict(pipe, X_train, y_train, cv=kf)
-        score = mean_squared_error(vals, y_train)
-        avg_score += score
-
-    return avg_score/2
-
 
 # loop through each potential model
 optuna.logging.set_verbosity(optuna.logging.WARNING)
 best_models = {}
 scores = {}
 model_list = ['lgbm', 'ridge', 'svr', 'lasso', 'enet', 'xgb', 'knn', 'gbm', 'rf', 'gbmh', 'huber', 'cb', 'mlp']
-all_pred = pd.DataFrame()
 i = 0
 
 for m in model_list:
@@ -378,33 +360,33 @@ for m in model_list:
     print('\n============\n')
     print(m)
     
-    # Create the study and optimize
+
+    pipe = skm.model_pipe([ skm.piece('random_sample'),
+                            skm.piece('std_scale'), 
+                            skm.piece('k_best'),
+                            skm.piece(m)
+                            ])
+
+    params = skm.default_params(pipe, 'optuna')
+    params['random_sample__frac'] = ['real', 0.2, 1]
+    params['k_best__k'] = ['int', 1, X_train.shape[1]]
+
     study = optuna.create_study(direction='minimize')
-    study.optimize(objective, n_trials=50)
+    best_models_cur, oof_data, _, _ = skm.time_series_cv(pipe, X_train, y_train, params, n_iter=25, 
+                                                        n_splits=5, alpha='',
+                                                        col_split='game_date', time_split=2020,
+                                                        bayes_rand='optuna', proba=False, trials=study,
+                                                        random_seed=(i+7)*19+(i*12)+6, optuna_timeout=60)
 
-    if m in ('lgbm', 'xgb', 'cb', 'gbm', 'rf', 'gbmh'):
-        best_model = skm.model_pipe([ skm.piece('random_sample'),
-                                     skm.piece(m)
-                                    ])
-
+    if i == 1:
+        all_pred = oof_data['full_hold'][['player', 'year', 'pred', 'y_act']]
+        all_pred = all_pred.rename(columns={'pred': m})
     else:
-        best_model = skm.model_pipe([ skm.piece('random_sample'),
-                                skm.piece('std_scale'), 
-                                skm.piece('k_best'),
-                                skm.piece(m)
-                                ])
+        all_pred = pd.merge(all_pred, oof_data['full_hold'][['player', 'year', 'pred']], on=['player', 'year'])
+        all_pred = all_pred.rename(columns={'pred': m})
 
-    best_model.set_params(**study.best_params)
-
-    best_model.fit(X_train, y_train)
-    vals = cross_val_predict(best_model, X_train, y_train, cv=KFold(n_splits=5, shuffle=True))
-    r2_val = r2_score(vals, y_train)
-    mse_val = mean_squared_error(vals, y_train)
-
-    all_pred[m] = vals
-    scores[m] = np.mean([study.best_value, mse_val])
-    best_models[m] = best_model
-    print(f'Best Value {m}:', study.best_value, 'R2 Val:',  r2_val, 'MSE Val:', mse_val)
+    scores[m] = oof_data['scores'][-1]
+    best_models[m] = best_models_cur
 
 
 #%%
@@ -419,46 +401,45 @@ all_models = []
 all_scores = []
 for m in scores_df.index:
     all_models.append(m)
-    val_data = pd.concat([salaries.loc[salaries.year!=YEAR, ['player', 'pos', 'year']].reset_index(drop=True),
-                        pd.Series(y_train, name='y_act'), all_pred[[c for c in all_pred.columns if c in all_models]].mean(axis=1)], axis=1)
-    val_data.columns = ['player', 'pos', 'year', 'y_act', 'pred_salary']
+    
+    preds = all_pred[[c for c in all_pred.columns if c in all_models]].mean(axis=1)
+    preds = pd.Series(preds, name='pred_salary')
+    val_data = pd.concat([all_pred[['player', 'year', 'y_act']], preds], axis=1)
+ 
     mf.show_scatter_plot(val_data.y_act, val_data.pred_salary)
     ens_mse = np.round(mean_squared_error(val_data.y_act, val_data.pred_salary), 3)
     ens_r2 = np.round(r2_score(val_data.y_act, val_data.pred_salary), 4)
     all_scores.append(ens_mse)
     print('MSE:', ens_mse)
 
-best_score = np.argmin(all_scores)
-best_models_names = scores_df.iloc[:best_score+1].index
+best_score = np.argmin(all_scores[1:])
+best_models_names = scores_df.iloc[:best_score+2].index
 print(best_models_names)
-print(all_scores[best_score])
+print(all_scores[best_score+2])
+
+preds = all_pred[[c for c in all_pred.columns if c in best_models_names]].mean(axis=1)
+preds = pd.Series(preds, name='pred_salary')
+val_data = pd.concat([all_pred[['player', 'year', 'y_act']], preds], axis=1)
+val_data = pd.merge(salaries[['player', 'year', 'pos']], val_data, on=['player', 'year'])
 
 #%%
 
-from sklearn.ensemble import VotingRegressor
-import time
+final_pred = pd.DataFrame()
+for m in best_models_names:
+    for m_sub in best_models[m]:
+        m_sub.fit(X_train, y_train)
+        cur_pred =  m_sub.predict(X_test)
+        final_pred = pd.concat([final_pred, pd.Series(cur_pred, name=m)], axis=1)
+        final_pred = pd.concat([final_pred,], axis=1)
 
-best_models = {k: v for k, v in best_models.items() if k in best_models_names}
-voter = VotingRegressor([(k, v) for k, v in best_models.items()])
-
-start = time.time()
-voter.fit(X_train, y_train)
-pred_sal = voter.predict(X_test)
-time.time()-start
-
-
-
-
-# import pickle
-
-# with open('C:/Users/borys/OneDrive/Documents/GitHub/Fantasy_Football_App/app/{LEAGUE}_salaries_model.pkl', 'wb') as f:
-#     pickle.dump(voter, f)
+pred_sal = final_pred.mean(axis=1)
 
 
 #%%
 
-pred_results = pd.concat([salaries.loc[salaries.year==YEAR,['player', 'pos', 'year', 'salary', 'is_keeper', 'actual_salary']].reset_index(drop=True), 
+pred_results = pd.concat([salaries.loc[salaries.year==YEAR,['player', 'pos', 'year', 'salary', 'is_keeper', 'y_act']].reset_index(drop=True), 
                           pd.Series(pred_sal, name='pred_salary')], axis=1)
+pred_results = pred_results.rename(columns={'y_act': 'actual_salary'})
 
 pred_results = pred_results.sort_values(by='salary', ascending=False)
 pred_results.loc[pred_results.pred_salary<1, 'pred_salary'] = 1
@@ -511,6 +492,9 @@ pred_results.sort_values(by='std_dev', ascending=False).iloc[:25]
 #%%
 
 pred_results.loc[pred_results.player.isin(['Josh Allen', 'Jalen Hurts']), 'std_dev'] = 8
+pred_results.loc[pred_results.player.isin(['Josh Allen', 'Jalen Hurts']), 'pred_salary'] = 38
+pred_results.loc[pred_results.player.isin(['Marvin Harrison', 'Malik Nabers']), 'pred_salary'] = \
+    pred_results.loc[pred_results.player.isin(['Marvin Harrison', 'Malik Nabers']), 'pred_salary'] + 8
 
 pred_results.loc[pred_results.std_dev <= 0, 'std_dev'] = pred_results.loc[pred_results.std_dev <= 0, 'pred_salary'] / 10
 
