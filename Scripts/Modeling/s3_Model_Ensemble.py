@@ -16,7 +16,7 @@ db_path = f'{root_path}/Data/Databases/'
 dm = DataManage(db_path)
 
 set_year=2024
-vers='beta'
+vers='nv'
 date_mod = dt.date(2024, 8, 13)
 
 #%%
@@ -162,10 +162,10 @@ rookies = dm.read(f'''SELECT player,
 rookies.date_modified = pd.to_datetime(rookies.date_modified).apply(lambda x: x.date())
 rookies = rookies[rookies.date_modified >= date_mod].reset_index(drop=True)
 rookies.loc[rookies.pos=='WR', ['pred_fp_per_game', 'max_score', 'pred_prob_upside', 'pred_prob_top']] = \
-    rookies.loc[rookies.pos=='WR', ['pred_fp_per_game', 'max_score', 'pred_prob_upside', 'pred_prob_top']] #* rookie_wr_ratio
+    rookies.loc[rookies.pos=='WR', ['pred_fp_per_game', 'max_score', 'pred_prob_upside', 'pred_prob_top']] * 1.05#* rookie_wr_ratio
 
 rookies.loc[rookies.pos=='RB', ['pred_fp_per_game', 'max_score', 'pred_prob_upside', 'pred_prob_top']] = \
-    rookies.loc[rookies.pos=='RB', ['pred_fp_per_game', 'max_score', 'pred_prob_upside', 'pred_prob_top']] #* rookie_rb_ratio
+    rookies.loc[rookies.pos=='RB', ['pred_fp_per_game', 'max_score', 'pred_prob_upside', 'pred_prob_top']] * 1.05#* rookie_rb_ratio
 
 display(rookies.iloc[:50])
 
@@ -250,6 +250,7 @@ preds_ny = dm.read(f'''SELECT player,
                        AND year = {set_year}
                        AND dataset NOT LIKE '%Rookie%'
                        AND current_or_next_year = 'next'
+                       AND pos != 'QB'
                 GROUP BY player, pos, rush_pass
              ''', 'Simulation').sort_values(by='pred_fp_per_game', ascending=False).reset_index(drop=True)
 
@@ -283,15 +284,40 @@ preds = preds.groupby(['player', 'pos'], as_index=False).agg({'pred_fp_per_game'
                                                               'max_score': 'mean'})
 
 preds = preds[preds.pred_fp_per_game > 0].reset_index(drop=True)
+
+preds_ny_cpy = preds_ny[['player', 'pred_fp_per_game', 'std_dev', 'min_score', 'max_score']].copy()
+preds_ny_cpy.columns = ['player', 'pred_fp_per_game_ny', 'std_dev_ny', 'min_score_ny', 'max_score_ny']
+preds = pd.merge(preds, preds_ny_cpy, on='player', how='left')
+
+preds.loc[preds.std_dev_ny < 0, 'std_dev_ny'] = 1
+
+preds.loc[preds.max_score_ny < preds.pred_fp_per_game_ny, 'max_score_ny'] = (
+    preds.loc[preds.max_score_ny < preds.pred_fp_per_game_ny, 'pred_fp_per_game_ny'] +
+    preds.loc[preds.max_score_ny < preds.pred_fp_per_game_ny, 'std_dev_ny'] * 1.5
+)
+
+preds.loc[preds.min_score_ny > preds.pred_fp_per_game_ny, 'min_score_ny'] = (
+    preds.loc[preds.min_score_ny > preds.pred_fp_per_game_ny, 'pred_fp_per_game_ny'] -
+    preds.loc[preds.min_score_ny > preds.pred_fp_per_game_ny, 'std_dev_ny'] * 1.5
+)
+
 preds['dataset'] = 'final_ensemble'
 preds['version'] = vers
 preds['year'] = set_year
 preds = preds.sort_values(by='pred_fp_per_game', ascending=False).reset_index(drop=True)
+
 preds['pos_rank'] = preds.groupby('pos')['pred_fp_per_game'].rank(ascending=False, method='first')
-preds = preds[~((preds.pos=='QB') & (preds.pos_rank > 24))].reset_index(drop=True)
+
+if vers == 'nv': num_qb = 33
+elif vers == 'beta': num_qb = 24
+
+preds = preds[~((preds.pos=='QB') & (preds.pos_rank > num_qb))].reset_index(drop=True)
 preds = preds[~((preds.pos=='TE') & (preds.pos_rank > 24))].reset_index(drop=True)
 preds = preds[~((preds.pos=='RB') & (preds.pos_rank > 60))].reset_index(drop=True)
 preds = preds[~((preds.pos=='RB') & (preds.pos_rank > 72))].reset_index(drop=True).drop('pos_rank', axis=1)
+
+preds.loc[preds.pred_fp_per_game_ny.isnull(), ['pred_fp_per_game_ny', 'std_dev_ny', 'min_score_ny', 'max_score_ny']] = \
+    preds.loc[preds.pred_fp_per_game_ny.isnull(), ['pred_fp_per_game', 'std_dev', 'min_score', 'max_score']].values
 
 display(preds[((preds.pos=='QB'))].iloc[:15])
 display(preds[((preds.pos!='QB'))].iloc[:50])
@@ -300,7 +326,7 @@ display(preds[((preds.pos!='QB'))].iloc[:50])
 downgrades = {
     # 'Nick Chubb': 0.8,
     # 'Justin Herbert': 0.9, 
-    # 'Jonathon Brooks': 0.85
+    'Jonathon Brooks': 0.95
 }
 
 for p, d in downgrades.items():

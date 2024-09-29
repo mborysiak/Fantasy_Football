@@ -767,7 +767,7 @@ def validation_compare_df(model_output_path, best_val):
     
     return val_compare
 
-def save_out_results(df, db_name, table_name, pos, set_year, set_pos, dataset, current_or_next_year):
+def save_out_results(df, db_name, table_name, vers, pos, set_year, set_pos, dataset, current_or_next_year):
 
     import datetime as dt
 

@@ -8,8 +8,8 @@ warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
 
 set_year = 2024
 show_plot = True
-vers = 'beta'
-predict_only = False
+vers = 'nv'
+predict_only = True
 
 runs = [
         # ['WR', 'current', 'greater_equal', 0, '', 'Rookie'],
@@ -289,8 +289,8 @@ for sp, cn, fd, ye, rp, dset in runs:
         if i > 0: dataset_out = f'{dataset}_{i}'
         else: dataset_out = dataset
 
-        save_out_results(val_compare, 'Validations', 'Model_Validations', pos, set_year, set_pos, dataset_out, current_or_next_year)
-        save_out_results(output, 'Simulation', 'Model_Predictions', pos, set_year, set_pos, dataset_out, current_or_next_year)
+        save_out_results(val_compare, 'Validations', 'Model_Validations', vers, pos, set_year, set_pos, dataset_out, current_or_next_year)
+        save_out_results(output, 'Simulation', 'Model_Predictions', vers, pos, set_year, set_pos, dataset_out, current_or_next_year)
 
 
 # %%

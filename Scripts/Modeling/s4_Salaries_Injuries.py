@@ -32,36 +32,69 @@ dm = DataManage(db_path)
 # set core path
 PATH = f'{root_path}/Data/'
 YEAR = 2024
-LEAGUE = 'beta'
+LEAGUE = 'nv'
 
+
+# ty_keepers = {
+#     'Jahmyr Gibbs': [68],
+#     'Trey Mcbride': [11],
+
+#     'Kyren Williams': [11],
+#     "Ja'Marr Chase": [62],
+
+#     'Raheem Mostert': [13],
+#     'Nico Collins': [12],
+
+#     'Amon Ra St Brown': [46],
+#     'Rhamondre Stevenson': [11],
+
+#     'Garrett Wilson': [34],
+#     'James Conner': [48],
+
+#     'Brandon Aiyuk': [24],
+#     'George Pickens': [12],
+
+#     'Travis Etienne': [79],
+#     'Kenneth Walker': [42],
+    
+#     'Sam Laporta': [11],
+#     'Michael Pittman': [20],
+
+#     'Breece Hall': [44],
+#     'Dalton Kincaid': [15],
+# }
 
 ty_keepers = {
-    'Jahmyr Gibbs': [68],
-    'Trey Mcbride': [11],
+    'Breece Hall': [35],
+    'Devon Achane': [12],
 
-    'Kyren Williams': [11],
-    "Ja'Marr Chase": [62],
+    'Garrett Wilson': [31],
+    'Kyler Murray': [12],
 
-    'Raheem Mostert': [13],
-    'Nico Collins': [12],
+    'Tyreek Hill': [79],
+    "D'Andre Swift": [14],
 
-    'Amon Ra St Brown': [46],
-    'Rhamondre Stevenson': [11],
+    'Josh Allen': [76],
+    'Jordan Love': [20],
 
-    'Garrett Wilson': [34],
-    'James Conner': [48],
+    'Ceedee Lamb': [79],
+    'Anthony Richardson': [40],
 
-    'Brandon Aiyuk': [24],
-    'George Pickens': [12],
+    'Kyren Williams': [28],
+    'Joe Burrow': [14],
 
-    'Travis Etienne': [79],
-    'Kenneth Walker': [42],
-    
-    'Sam Laporta': [11],
-    'Michael Pittman': [20],
+    'Patrick Mahomes': [83],
+    'Christian Mccaffrey': [80],
 
-    'Breece Hall': [44],
-    'Dalton Kincaid': [15],
+    'Aj Brown': [67],
+    "Ja'Marr Chase": [51],
+
+    'Isiah Pacheco': [31],
+    'Jonathan Taylor': [38],
+
+    'Terry Mclaurin': [19],
+    'Trevor Lawrence': [34],
+
 }
 
 ty_keepers = pd.DataFrame(ty_keepers)
@@ -150,21 +183,21 @@ def clean_results(path, fname, year, league, team_split=True):
     
     return results
 
-# FNAME = f'{LEAGUE}_{YEAR}_results'
-# results = clean_results(PATH, FNAME, YEAR, LEAGUE)
-# dm.delete_from_db('Simulation', 'Actual_Salaries', f"year='{YEAR}' AND league='{LEAGUE}'")
-# dm.write_to_db(results, 'Simulation', 'Actual_Salaries', 'append')
+FNAME = f'{LEAGUE}_{YEAR}_results'
+results = clean_results(PATH, FNAME, YEAR, LEAGUE)
+dm.delete_from_db('Simulation', 'Actual_Salaries', f"year='{YEAR}' AND league='{LEAGUE}'")
+dm.write_to_db(results, 'Simulation', 'Actual_Salaries', 'append')
 
-# # push the actuals to salary database to re-run simulation
-# to_actual = dm.read(f"SELECT * FROM Actual_Salaries WHERE year={YEAR}", 'Simulation')
-# to_actual = to_actual[['player', 'actual_salary', 'year', 'league']].rename(columns={'actual_salary': 'salary'})
-# to_actual['league'] = to_actual.league.apply(lambda x: f'{x}_actual')
-# to_actual['std_dev'] = 0.1
-# to_actual['min_score'] = to_actual.salary - 1
-# to_actual['max_score'] = to_actual.salary + 1
+# push the actuals to salary database to re-run simulation
+to_actual = dm.read(f"SELECT * FROM Actual_Salaries WHERE year={YEAR} AND league='{LEAGUE}'", 'Simulation')
+to_actual = to_actual[['player', 'actual_salary', 'year', 'league']].rename(columns={'actual_salary': 'salary'})
+to_actual['league'] = to_actual.league.apply(lambda x: f'{x}_actual')
+to_actual['std_dev'] = 0.1
+to_actual['min_score'] = to_actual.salary - 1
+to_actual['max_score'] = to_actual.salary + 1
 
-# dm.delete_from_db('Simulation', 'Salaries', f"year={YEAR} AND league='{LEAGUE}_actual'")
-# dm.write_to_db(to_actual, 'Simulation', 'Salaries', 'append')
+dm.delete_from_db('Simulation', 'Salaries_Pred', f"year={YEAR} AND league='{LEAGUE}_actual'")
+dm.write_to_db(to_actual, 'Simulation', 'Salaries_Pred', 'append')
 
 #%%
 
@@ -231,8 +264,22 @@ def calc_inflation(salaries):
 
     salaries = pd.merge(salaries, inflation, on='year', how='left')
     salaries.loc[salaries.inflation.isnull(), 'inflation'] = 1
+    salaries.loc[salaries.value.isnull(), 'value'] = 0
     salaries.is_keeper = salaries.is_keeper.fillna(0)
 
+    return salaries
+
+def add_pos_keeper_val(salaries):
+    keeper_val = salaries.loc[salaries.is_keeper==1].groupby(['year', 'pos']).agg({'salary': 'sum',
+                                                                                 'actual_salary': 'sum'})
+    keeper_val.columns = ['keeper_salary', 'pos_keeper_actual_salary']
+    keeper_val['pos_keeper_value'] = keeper_val.keeper_salary - keeper_val.pos_keeper_actual_salary
+    keeper_val['pos_keeper_inflation'] = keeper_val.pos_keeper_value / (keeper_val.keeper_salary+1)
+    keeper_cols = keeper_val.columns
+    keeper_val = keeper_val.reset_index()
+   
+    salaries = pd.merge(salaries, keeper_val, on=['year', 'pos'], how='left')
+    salaries.loc[salaries.pos_keeper_value.isnull(), keeper_cols] = 0
     return salaries
 
 def drop_keepers(salaries):
@@ -278,6 +325,8 @@ salaries = pd.merge(salaries, adp_stats, on=['player', 'year'])
 salaries = fill_ty_keepers(salaries, ty_keepers)
 salaries = calc_inflation(salaries)
 
+salaries = add_pos_keeper_val(salaries)
+
 salaries = drop_keepers(salaries)
 salaries = add_salary_pos_rank(salaries)
 
@@ -303,25 +352,34 @@ salaries.loc[salaries.guy_above_sal_diff.isnull(), [ 'guy_above_sal_diff']] = 0
 
 salaries['pts_per_dollar'] = salaries.avg_proj_points / (salaries.salary+1)
 
+
+
 #%%
 salaries = salaries.rename(columns={'actual_salary': 'y_act'})
 salaries = salaries.sort_values(by='year').reset_index(drop=True)
 salaries['team'] = 'placeholder'
 salaries['week'] = 1
 salaries['game_date'] = salaries.year
-skm = SciKitModel(salaries)
+skm = SciKitModel(salaries, r2_wt=0, mse_wt=1)
 
 X, y = skm.Xy_split('y_act', to_drop=['player', 'team', 'week', 'league'])
 X = pd.concat([X, pd.get_dummies(X.pos)], axis=1).drop('pos', axis=1)
+
 X['qb_proj'] = X.QB * X.avg_proj_points
 X['rb_proj'] = X.RB * X.avg_proj_points
 X['wr_proj'] = X.WR * X.avg_proj_points
 X['te_proj'] = X.TE * X.avg_proj_points
 
-X['qb_rank'] = X.QB * X.avg_pick
-X['rb_rank'] = X.RB * X.avg_pick
-X['wr_rank'] = X.WR * X.avg_pick
-X['te_rank'] = X.TE * X.avg_pick
+X['qb_pick'] = X.QB * X.avg_pick
+X['rb_pick'] = X.RB * X.avg_pick
+X['wr_pick'] = X.WR * X.avg_pick
+X['te_pick'] = X.TE * X.avg_pick
+
+
+X['qb_rank'] = X.QB * X.pos_rank
+X['rb_rank'] = X.RB * X.pos_rank
+X['wr_rank'] = X.WR * X.pos_rank
+X['te_rank'] = X.TE * X.pos_rank
 
 
 X_train = X[X.year != YEAR]
@@ -374,7 +432,7 @@ for m in model_list:
     study = optuna.create_study(direction='minimize')
     best_models_cur, oof_data, _, _ = skm.time_series_cv(pipe, X_train, y_train, params, n_iter=25, 
                                                         n_splits=5, alpha='',
-                                                        col_split='game_date', time_split=2020,
+                                                        col_split='game_date', time_split=2021,
                                                         bayes_rand='optuna', proba=False, trials=study,
                                                         random_seed=(i+7)*19+(i*12)+6, optuna_timeout=60)
 
@@ -385,7 +443,7 @@ for m in model_list:
         all_pred = pd.merge(all_pred, oof_data['full_hold'][['player', 'year', 'pred']], on=['player', 'year'])
         all_pred = all_pred.rename(columns={'pred': m})
 
-    scores[m] = oof_data['scores'][-1]
+    scores[m] = (2*oof_data['scores'][-1]+oof_data['scores'][0])/3
     best_models[m] = best_models_cur
 
 
@@ -398,7 +456,8 @@ scores_df = pd.DataFrame(scores, index=[0]).T.rename(columns={0: 'mse'})
 scores_df = scores_df.sort_values(by='mse', ascending=True)
 
 all_models = []
-all_scores = []
+all_scores_mse = []
+all_scores_r2 = []
 for m in scores_df.index:
     all_models.append(m)
     
@@ -409,15 +468,22 @@ for m in scores_df.index:
     mf.show_scatter_plot(val_data.y_act, val_data.pred_salary)
     ens_mse = np.round(mean_squared_error(val_data.y_act, val_data.pred_salary), 3)
     ens_r2 = np.round(r2_score(val_data.y_act, val_data.pred_salary), 4)
-    all_scores.append(ens_mse)
-    print('MSE:', ens_mse)
+    all_scores_mse.append(ens_mse)
+    all_scores_r2.append(ens_r2)
+    print('MSE:', ens_mse, 'R2:', ens_r2)
 
-best_score = np.argmin(all_scores[1:])
-best_models_names = scores_df.iloc[:best_score+2].index
-print(best_models_names)
-print(all_scores[best_score+2])
+best_score_mse = np.argmin(all_scores_mse)
+best_score_r2 = np.argmax(all_scores_r2)
 
-preds = all_pred[[c for c in all_pred.columns if c in best_models_names]].mean(axis=1)
+best_models_names_r2 = scores_df.iloc[:best_score_r2+1].index
+print(best_models_names_r2)
+print(all_scores_r2[best_score_r2])
+
+best_models_names_mse = scores_df.iloc[:best_score_mse+1].index
+print(best_models_names_mse)
+print(all_scores_mse[best_score_mse])
+
+preds = all_pred[[c for c in all_pred.columns if c in best_models_names_mse]].mean(axis=1)
 preds = pd.Series(preds, name='pred_salary')
 val_data = pd.concat([all_pred[['player', 'year', 'y_act']], preds], axis=1)
 val_data = pd.merge(salaries[['player', 'year', 'pos']], val_data, on=['player', 'year'])
@@ -425,7 +491,7 @@ val_data = pd.merge(salaries[['player', 'year', 'pos']], val_data, on=['player',
 #%%
 
 final_pred = pd.DataFrame()
-for m in best_models_names:
+for m in best_models_names_mse:
     for m_sub in best_models[m]:
         m_sub.fit(X_train, y_train)
         cur_pred =  m_sub.predict(X_test)
@@ -491,10 +557,10 @@ pred_results.sort_values(by='std_dev', ascending=False).iloc[:25]
 
 #%%
 
-pred_results.loc[pred_results.player.isin(['Josh Allen', 'Jalen Hurts']), 'std_dev'] = 8
-pred_results.loc[pred_results.player.isin(['Josh Allen', 'Jalen Hurts']), 'pred_salary'] = 38
-pred_results.loc[pred_results.player.isin(['Marvin Harrison', 'Malik Nabers']), 'pred_salary'] = \
-    pred_results.loc[pred_results.player.isin(['Marvin Harrison', 'Malik Nabers']), 'pred_salary'] + 8
+# pred_results.loc[pred_results.player.isin(['Josh Allen', 'Jalen Hurts']), 'std_dev'] = 8
+# pred_results.loc[pred_results.player.isin(['Josh Allen', 'Jalen Hurts']), 'pred_salary'] = 38
+# pred_results.loc[pred_results.player.isin(['Marvin Harrison', 'Malik Nabers']), 'pred_salary'] = \
+#     pred_results.loc[pred_results.player.isin(['Marvin Harrison', 'Malik Nabers']), 'pred_salary'] + 5
 
 pred_results.loc[pred_results.std_dev <= 0, 'std_dev'] = pred_results.loc[pred_results.std_dev <= 0, 'pred_salary'] / 10
 
@@ -517,7 +583,7 @@ pred_results['league'] = LEAGUE + 'pred'
 output = pred_results[['player', 'pred_salary', 'year', 'league', 'std_dev', 'min_score', 'max_score']]
 output = output.rename(columns={'pred_salary': 'salary'})
 
-dm.delete_from_db('Simulation', 'Salaries_Pred', f"year={YEAR} AND league='{LEAGUE}pred'")
+dm.delete_from_db('Simulation', 'Salaries_Pred', f"year={YEAR} AND league='{LEAGUE}pred'", create_backup=True)
 dm.write_to_db(output, 'Simulation', 'Salaries_Pred', 'append')
 
 #%%
@@ -530,8 +596,8 @@ shutil.copyfile(src, dst)
 
 # %%
 
-pred = dm.read("SELECT * FROM Salaries WHERE year=2023 AND league='nvpred'", 'Simulation')
-actual = dm.read("SELECT * FROM Actual_Salaries WHERE year=2023 AND league='nv' AND is_keeper=0", 'Simulation')
+pred = dm.read("SELECT * FROM Salaries_Pred WHERE year=2024 AND league='nvpred'", 'Simulation')
+actual = dm.read("SELECT * FROM Actual_Salaries WHERE year=2024 AND league='nv' AND is_keeper=0", 'Simulation')
 combined = pd.merge(pred[['player', 'salary']], actual[['player', 'actual_salary']], on='player')
 print(r2_score(combined.actual_salary, combined.salary))
 combined.plot.scatter(x='salary', y='actual_salary')

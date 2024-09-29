@@ -782,7 +782,7 @@ def get_next_year_stats(df, stats_proj, ty_mean=False):
 
 #%%
 
-pos='TE'
+pos='WR'
 
 class_cuts = {
     'WR': {
@@ -997,6 +997,7 @@ if pos in ('RB', 'WR'):
                         FROM {pos}_Stats''', DB_NAME)
     stats = drop_duplicate_players(stats, 'y_act', rookie=True)
 
+    
     df_rookie = pd.merge(stats, df_rookie, on=['player', 'year'], how='right')
     df_rookie = pd.merge(df_rookie, df, on=['player', 'year'])
 
@@ -1004,21 +1005,35 @@ if pos in ('RB', 'WR'):
     df_rookie = add_year_exp_compare(df_rookie)
     df_rookie = df_rookie.drop([c for c in df_rookie.columns if 'rmean' in c or 'rmax' in c or 'std' in c], axis=1)
 
-    df_rookie = drop_y_act_except_current(df_rookie, year)
+    stats_next = dm.read(f'''SELECT player, 
+                                season year, 
+                                games, 
+                                games_next, 
+                                fantasy_pts_per_game y_act 
+                        FROM {pos}_Stats''', DB_NAME)
+    stats_next = drop_duplicate_players(stats_next, 'y_act', rookie=False)
+    df_rookie_next, games, games_next = get_next_year_stats(df_rookie, stats_next, ty_mean=False)
+    df_rookie_next = drop_duplicate_players(df_rookie_next, 'y_act', rookie=True)
+    df_rookie_next.loc[df_rookie_next.year==year, ['games','games_next']] = 16
+    
     df_rookie.games_next = df_rookie.games_next.fillna(16)
-    df_rookie.loc[df_rookie.games.isnull(), 'games'] = 16
-    df_rookie = drop_games(df_rookie, year, games=4, games_next=0)
 
-    df_rookie = remove_low_corrs(df_rookie, corr_cut=2, collinear_cut=0.998)
-    df_rookie = y_act_class(df_rookie.fillna({'games_next': 16}), df_proj.copy(), 'both', 'games',
-                            class_cuts[f'Rookie_{pos}']['upside']['proj_var'], class_cuts[f'Rookie_{pos}']['upside']['y_act'], 'upside')
-    df_rookie = y_act_class(df_rookie.fillna({'games_next': 16}), df_proj.copy(), 'both', 'games',
-                            class_cuts[f'Rookie_{pos}']['top']['proj_var'], class_cuts[f'Rookie_{pos}']['top']['y_act'], 'top')
+    for df_cur, lbl, gms, gms_next in ([df_rookie, '', 4, 0], [df_rookie_next, '_next', games, games_next]):
 
-    df_rookie = drop_duplicate_players(df_rookie, 'y_act', rookie=True)
-    df_rookie = df_rookie.loc[:,~df_rookie.columns.duplicated()].copy()
+        df_cur = drop_y_act_except_current(df_cur, year)
+        df_cur = drop_games(df_cur, year, games=games, games_next=games_next)
 
-    dm.write_to_db(df_rookie, 'Model_Inputs', f'{pos}_{year}_Rookie', if_exist='replace')
+        df_cur = remove_low_corrs(df_cur, corr_cut=2, collinear_cut=0.998)
+        df_cur = y_act_class(df_cur.fillna({'games_next': 16}), df_proj.copy(), 'both', 'games',
+                                class_cuts[f'Rookie_{pos}']['upside']['proj_var'], class_cuts[f'Rookie_{pos}']['upside']['y_act'], 'upside')
+        df_cur = y_act_class(df_cur.fillna({'games_next': 16}), df_proj.copy(), 'both', 'games',
+                                class_cuts[f'Rookie_{pos}']['top']['proj_var'], class_cuts[f'Rookie_{pos}']['top']['y_act'], 'top')
+
+        df_cur = drop_duplicate_players(df_cur, 'y_act', rookie=True)
+        df_cur = df_cur.loc[:,~df_cur.columns.duplicated()].copy()
+
+        dm.write_to_db(df_cur, 'Model_Inputs', f'{pos}_{year}_Rookie', if_exist='replace')
+        dm.write_to_db(df_cur, f'Model_Inputs{lbl}', f'{pos}_{year}_Rookie', if_exist='replace')
 
 
 
@@ -1031,7 +1046,7 @@ if pos in ('RB', 'WR'):
 
 #%%
 
-pos = 'TE'
+pos = 'WR'
 
 from skmodel import SciKitModel
 from hyperopt import Trials
@@ -1039,7 +1054,7 @@ from sklearn.metrics import r2_score
 alpha = 0.8
 
 model_obj = 'reg'
-y_act_next = False
+y_act_next = True
 
 if y_act_next: lbl = '_next'
 else: lbl = ''
@@ -1049,11 +1064,11 @@ class_metric = '_top'
 if model_obj =='class': proba = True
 else: proba = False
 
-Xy = dm.read(f"SELECT * FROM {pos}_{year}_ProjOnly WHERE pos='{pos}' ", f'Model_Inputs{lbl}')
+# Xy = dm.read(f"SELECT * FROM {pos}_{year}_ProjOnly WHERE pos='{pos}' ", f'Model_Inputs{lbl}')
 # Xy = dm.read(f"SELECT * FROM {pos}_{year}_Stats WHERE pos='{pos}' ", 'Model_Inputs')
 # if Xy.shape[1]==2000:
 #     Xy = pd.concat([Xy, dm.read(f"SELECT * FROM {pos}_{year}_Stats_V2 ", 'Model_Inputs')], axis=1)
-# Xy = dm.read(f"SELECT * FROM {pos}_{year}_Rookie ", 'Model_Inputs')
+Xy = dm.read(f"SELECT * FROM {pos}_{year}_Rookie ", f'Model_Inputs{lbl}')
 if proba: Xy = Xy.drop('y_act', axis=1).rename(columns={f'y_act_class{class_metric}': 'y_act'})
 
 Xy = Xy.sort_values(by='year').reset_index(drop=True)
