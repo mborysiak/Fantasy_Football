@@ -5,8 +5,8 @@ from ff.db_operations import DataManage
 from ff import general
 import ff.data_clean as dc
 
-# last year's statistics and adp to pull and append to database
-year = 2024
+# set to this year
+year = 2025
 
 # set the root path and database management object
 root_path = general.get_main_path('Fantasy_Football')
@@ -490,29 +490,81 @@ dm.write_to_db(df, DB_NAME, 'PFF_Projections', 'append')
 
 #%%
 
-df = move_download_to_folder(root_path, 'ETR', f'Half-PPR Rankings and ADP.csv', year)
-df = df.rename(columns={'Player': 'player', 'Team': 'team', 'Position': 'pos',
-                        'ADP': 'etr_adp', 'ETR Rank': 'etr_rank', 'ETR Pos Rank': 'etr_pos_rank',
-                        'ADP Differential': 'etr_adp_diff', 'ADP Pos Rank': 'etr_adp_pos_rank'})
+df = move_download_to_folder(root_path, 'ETR', f'{year} Redraft Half PPR Rankings.csv', year)
+df = df.rename(columns={'Name': 'player', 
+                        'Team': 'team', 
+                        'Pos': 'pos',
+                        #'ADP': 'etr_adp', 
+                        'ETR_Rank': 'etr_rank', 
+                        'Pos_Rank': 'etr_pos_rank',
+                        #'ADP Differential': 'etr_adp_diff', 
+                        #'ADP Pos Rank': 'etr_adp_pos_rank'
+                        })
 df = df[~df.pos.isin(['K', 'DST'])].reset_index(drop=True)
-df = df[df.etr_adp!= 'Unranked'].reset_index(drop=True)
+# df = df[df.etr_adp!= 'Unranked'].reset_index(drop=True)
 df.player = df.player.apply(dc.name_clean)
 df.etr_pos_rank = df.etr_pos_rank.apply(lambda x: int(x[2:]))
-df.etr_adp_pos_rank = df.etr_adp_pos_rank.apply(lambda x: int(x[2:]))
-df.etr_adp = df.etr_adp.astype('float')
-df = df.drop('Notes', axis=1).assign(year=year)
+# df.etr_adp_pos_rank = df.etr_adp_pos_rank.apply(lambda x: int(x[2:]))
+# df.etr_adp = df.etr_adp.astype('float')
+# df = df.drop('Notes', axis=1).assign(year=year)
 
 dm.delete_from_db(DB_NAME, 'ETR_Ranks', f"year={year}", create_backup=False)
 dm.write_to_db(df, DB_NAME, 'ETR_Ranks', 'append')
 
 #%%
 
+df = move_download_to_folder(root_path, 'FantasyPoints', f'{year} NFL Fantasy Football Season Rankings  Projections  Fantasy Points.csv', year)
+df = df.drop(['POS.1', 'UP', 'DOWN','MOVE', 'TARGET', 'WIN'], axis=1)
 
+df = df.rename(columns={
+    'RK': 'fpts_overall_rank', 
+    'Name': 'player', 
+    'POS': 'pos', 
+    'Team': 'team',
+    'Bye': 'bye', 
+    'ADP': 'fpts_adp',
+    'FPTS': 'fpts_proj_points', 
+    'G': 'fpts_games',
+    'TIER': 'fpts_tier',
+    'FPTS/G': 'fpts_proj_points_per_game',
+    'ATT': 'fpts_pass_att', 
+    'CMP': 'fpts_pass_cmp', 
+    'YDS': 'fpts_pass_yds', 
+    'TD': 'fpts_pass_td',
+    'INT': 'fpts_pass_int', 
+    'ATT.1': 'fpts_rush_att', 
+    'YDS.1': 'fpts_rush_yds', 
+    'TD.1': 'fpts_rush_td', 
+    'REC': 'fpts_rec', 
+    'YDS.2': 'fpts_rec_yds', 
+    'TD.2': 'fpts_rec_td', 
+})
 
+for c in df.columns:
+    try: df[c] = df[c].apply(lambda x: x.replace('-', '0')).astype('float')
+    except: pass
 
+df['fpts_pass_yds_per_att'] = df.fpts_pass_yds / df.fpts_pass_att
+df['fpts_pass_yds_per_cmp'] = df.fpts_pass_yds / df.fpts_pass_cmp
+df['fpts_rush_yds_per_att'] = df.fpts_rush_yds / df.fpts_rush_att
+df['fpts_rec_yds_per_rec'] = df.fpts_rec_yds / df.fpts_rec
+df = df.assign(year=year)
 
+sacks = dm.read("SELECT player, year, pos, fft_sacks FROM FFToday_Projections", DB_NAME)
+df = pd.merge(df, sacks, on=['player', 'year', 'pos'], how='left').fillna(0)
 
+df['fpts_proj_points_calc'] = (0.04 * df.fpts_pass_yds + 5 * df.fpts_pass_td - 2*df.fpts_pass_int
+                               + 0.1*df.fpts_rush_yds + 7*df.fpts_rush_td
+                               + 0.1*df.fpts_rec_yds + 7*df.fpts_rec_td + 0.5*df.fpts_rec)
 
+df = df.drop('fft_sacks', axis=1)
+df.player = df.player.apply(dc.name_clean)
+
+cols = ['player', 'pos', 'team', 'year']
+cols.extend([c for c in df.columns if 'fpts' in c])
+df = df[cols]
+dm.delete_from_db(DB_NAME, 'FantasyPoints_Projections', f"year={year}", create_backup=False)
+dm.write_to_db(df, DB_NAME, 'FantasyPoints_Projections', 'append')
 
 #%%
 # create full positional list to loop through
