@@ -155,3 +155,4 @@ Scripts/Modeling/optuna/weekly_train.sqlite3
 Data/Databases/Validations.sqlite3
 Data/Databases/Model_Inputs_next.sqlite3
 Data/Databases/Model_Inputs.sqlite3
+Data/Databases/Model_Inputs.sqlite3
