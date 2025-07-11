@@ -15,16 +15,16 @@ root_path = general.get_main_path('Fantasy_Football')
 db_path = f'{root_path}/Data/Databases/'
 dm = DataManage(db_path)
 
-set_year=2024
-vers='nv'
-date_mod = dt.date(2024, 8, 13)
+set_year=2025
+vers='beta'
+date_mod = dt.date(2025, 7, 4)
 
 #%%
 
 #==========
 # Check Rush Pass vs All Weighting
 #==========
-set_pos = 'RB'
+set_pos = 'QB'
 current_or_next_year = 'current'
 dataset = 'ProjOnly'
 year_exp = 0
@@ -69,10 +69,6 @@ both = dm.read(f'''SELECT player,
                       AND dataset = '{dataset}'
                 GROUP BY player, season
                 ''', 'Validations')
-
-rp = rp[~((rp.player=='Daniel Jones') & (rp.season==2023))].reset_index(drop=True)
-rp = rp[~((rp.player=='Josh Rosen') & (rp.season==2019))].reset_index(drop=True)
-rp = rp[~((rp.player=='Colt Mccoy') & (rp.season==2022))].reset_index(drop=True)
 
 rp = pd.merge(rp, both, on=['player', 'season'])
 rp['avg_pred'] = (rp.rp_pred + rp.both_pred) / 2
@@ -324,9 +320,8 @@ display(preds[((preds.pos!='QB'))].iloc[:50])
 
 #%%
 downgrades = {
-    # 'Nick Chubb': 0.8,
-    # 'Justin Herbert': 0.9, 
-    'Jonathon Brooks': 0.95
+    'Anthony Richardson': 0.75,
+    'Jalen Milroe': 0.5
 }
 
 for p, d in downgrades.items():

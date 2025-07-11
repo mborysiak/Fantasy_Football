@@ -3,13 +3,14 @@
 from s1_Stacking_Model import *
 
 import warnings
+import gc
 warnings.simplefilter(action='ignore', category=FutureWarning)
 warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
 
-set_year = 2024
+set_year = 2025
 show_plot = True
-vers = 'nv'
-predict_only = True
+vers = 'beta'
+predict_only = False
 
 runs = [
         # ['WR', 'current', 'greater_equal', 0, '', 'Rookie'],
@@ -40,15 +41,15 @@ runs = [
         # ['QB', 'current', 'greater_equal', 0, 'rush', 'Stats'],
         # ['QB', 'current', 'greater_equal', 0, 'pass', 'Stats'],
 
-        ['RB', 'current', 'greater_equal', 0, '', 'ProjOnly'],
-        ['RB', 'current', 'less_equal', 3, '', 'ProjOnly'],
-        ['RB', 'current', 'greater_equal', 4, '', 'ProjOnly'],
-        ['RB', 'current', 'greater_equal', 0, 'rush', 'ProjOnly'],
-        ['RB', 'current', 'greater_equal', 0, 'rec', 'ProjOnly'],
-        ['RB', 'current', 'less_equal', 3, 'rush', 'ProjOnly'],
-        ['RB', 'current', 'less_equal', 3, 'rec', 'ProjOnly'],
-        ['RB', 'current', 'greater_equal', 4, 'rush', 'ProjOnly'],
-        ['RB', 'current', 'greater_equal', 4, 'rec', 'ProjOnly'],
+        # ['RB', 'current', 'greater_equal', 0, '', 'ProjOnly'],
+        # ['RB', 'current', 'less_equal', 3, '', 'ProjOnly'],
+        # ['RB', 'current', 'greater_equal', 4, '', 'ProjOnly'],
+        # ['RB', 'current', 'greater_equal', 0, 'rush', 'ProjOnly'],
+        # ['RB', 'current', 'greater_equal', 0, 'rec', 'ProjOnly'],
+        # ['RB', 'current', 'less_equal', 3, 'rush', 'ProjOnly'],
+        # ['RB', 'current', 'less_equal', 3, 'rec', 'ProjOnly'],
+        # ['RB', 'current', 'greater_equal', 4, 'rush', 'ProjOnly'],
+        # ['RB', 'current', 'greater_equal', 4, 'rec', 'ProjOnly'],
 
         ['RB', 'next', 'greater_equal', 0, '', 'ProjOnly'],
         ['RB', 'next', 'less_equal', 3, '', 'ProjOnly'],
@@ -114,7 +115,7 @@ for sp, cn, fd, ye, rp, dset in runs:
         out_dict_reg, out_dict_top, out_dict_upside, out_dict_quant = output_dict(), output_dict(), output_dict(), output_dict()
 
         model_list = ['adp', 'lasso', 'lgbm', 'rf', 'gbm', 'gbmh', 'mlp', 'cb', 'huber', 'xgb', 'knn', 'ridge', 'bridge', 'enet']
-        results = Parallel(n_jobs=-1, verbose=1)(
+        results = Parallel(n_jobs=8, verbose=1)(
                         delayed(get_model_output)
                         (m, df_train, 'reg', out_dict_reg, pos, set_pos, hp_algo, bayes_rand, i, optuna_timeout=optuna_timeout) \
                         for i, m in enumerate(model_list) 
@@ -123,9 +124,11 @@ for sp, cn, fd, ye, rp, dset in runs:
         out_dict_reg = extract_par_results(results, out_dict_reg)
         save_output_dict(out_dict_reg, model_output_path, 'reg')
 
+        del results, out_dict_reg;gc.collect()
+
         # run all other models
         model_list = ['lgbm_c', 'knn_c', 'lr_c', 'rf_c', 'gbm_c', 'gbmh_c', 'mlp_c', 'cb_c', 'xgb_c']
-        results = Parallel(n_jobs=-1, verbose=1)(
+        results = Parallel(n_jobs=8, verbose=1)(
                         delayed(get_model_output)
                         (m, df_train_top, 'class', out_dict_top, pos, set_pos, hp_algo, bayes_rand, i, '_top', optuna_timeout=optuna_timeout) \
                         for i, m in enumerate(model_list) 
@@ -133,9 +136,11 @@ for sp, cn, fd, ye, rp, dset in runs:
         out_dict_top = extract_par_results(results, out_dict_top)
         save_output_dict(out_dict_top, model_output_path, 'class_top')
 
+        del results, out_dict_top; gc.collect()
+
         # run all other models
         model_list = ['lgbm_c', 'knn_c', 'lr_c', 'rf_c', 'gbm_c', 'gbmh_c', 'mlp_c', 'cb_c', 'xgb_c']
-        results = Parallel(n_jobs=-1, verbose=1)(
+        results = Parallel(n_jobs=8, verbose=1)(
                         delayed(get_model_output)
                         (m, df_train_upside, 'class', out_dict_upside, pos, set_pos, hp_algo, bayes_rand, i, '_upside', optuna_timeout=optuna_timeout) \
                         for i, m in enumerate(model_list) 
@@ -143,10 +148,12 @@ for sp, cn, fd, ye, rp, dset in runs:
         out_dict_upside = extract_par_results(results, out_dict_upside)
         save_output_dict(out_dict_upside, model_output_path, 'class_upside')
 
+        del results, out_dict_upside; gc.collect()
+
         # run all other models
         model_list = ['qr_q','lgbm_q', 'gbm_q', 'gbmh_q', 'cb_q']
         models_q = [[alph, m] for alph in [0.65, 0.85] for m in model_list]
-        results = Parallel(n_jobs=-1, verbose=1)(
+        results = Parallel(n_jobs=8, verbose=1)(
                         delayed(get_model_output)
                         (m[1], df_train, 'quantile', out_dict_quant, pos, set_pos, hp_algo, bayes_rand, i, alpha=m[0], optuna_timeout=optuna_timeout) \
                         for i, m in enumerate(models_q) 
@@ -154,6 +161,8 @@ for sp, cn, fd, ye, rp, dset in runs:
 
         out_dict_quant = extract_par_results(results, out_dict_quant)
         save_output_dict(out_dict_quant, model_output_path, 'quantile')
+
+        del results, out_dict_quant; gc.collect()
 
     #------------
     # Run the Stacking Models and Generate Output
@@ -187,10 +196,10 @@ for sp, cn, fd, ye, rp, dset in runs:
         # Regression
         #---------------
 
-        final_models = ['bridge', 'enet', 'rf', 'gbm', 'gbmh', 'mlp', 'cb', 'huber', 'lgbm', 'knn', 'ridge', 'lasso', 'xgb']
+        final_models = ['bridge', 'enet', 'rf', 'gbm', 'gbmh', 'mlp', 'cb', 'huber', 'lgbm', 'knn', 'ridge', 'lasso', 'xgb', 'et']
         stack_val_pred = pd.DataFrame(); scores = []; best_models = []
 
-        results = Parallel(n_jobs=-1, verbose=1)(
+        results = Parallel(n_jobs=8, verbose=1)(
                         delayed(run_stack_models)
                         (fm, X_stack, y_stack, i, 'reg', None, run_params) \
                         for i, fm in enumerate(final_models) 
@@ -206,9 +215,9 @@ for sp, cn, fd, ye, rp, dset in runs:
         #---------------
         # Classification Top
         #---------------
-        final_models_top = [ 'lgbm_c', 'lr_c', 'rf_c', 'gbm_c', 'gbmh_c', 'mlp_c', 'cb_c', 'xgb_c', ]
+        final_models_top = [ 'lgbm_c', 'lr_c', 'rf_c', 'gbm_c', 'gbmh_c', 'mlp_c', 'cb_c', 'xgb_c', 'et_c']
         stack_val_top = pd.DataFrame(); scores_top = []; best_models_top = []
-        results = Parallel(n_jobs=-1, verbose=1)(
+        results = Parallel(n_jobs=8, verbose=1)(
                         delayed(run_stack_models)
                         (fm, X_stack, y_stack_top, i, 'class', None, run_params) \
                         for i, fm in enumerate(final_models_top) 
@@ -224,9 +233,9 @@ for sp, cn, fd, ye, rp, dset in runs:
         #---------------
         # Classification Upside
         #---------------
-        final_models_upside = [ 'lgbm_c', 'lr_c', 'rf_c', 'gbm_c', 'gbmh_c', 'mlp_c', 'cb_c', 'xgb_c', ]
+        final_models_upside = [ 'lgbm_c', 'lr_c', 'rf_c', 'gbm_c', 'gbmh_c', 'mlp_c', 'cb_c', 'xgb_c', 'et_c']
         stack_val_upside = pd.DataFrame(); scores_upside = []; best_models_upside = []
-        results = Parallel(n_jobs=-1, verbose=1)(
+        results = Parallel(n_jobs=8, verbose=1)(
                         delayed(run_stack_models)
                         (fm, X_stack, y_stack_upside, i, 'class', None, run_params) \
                         for i, fm in enumerate(final_models_upside) 
@@ -247,7 +256,7 @@ for sp, cn, fd, ye, rp, dset in runs:
         final_models_quant = ['qr_q', 'gbm_q', 'gbmh_q', 'rf_q', 'lgbm_q', 'cb_q']
         stack_val_quant = pd.DataFrame(); scores_quant = []; best_models_quant = []
 
-        results = Parallel(n_jobs=-1, verbose=1)(
+        results = Parallel(n_jobs=8, verbose=1)(
                         delayed(run_stack_models)
                         (fm, X_stack, y_stack, i, 'quantile', 0.85, run_params) \
                         for i, fm in enumerate(final_models_quant) 
@@ -291,6 +300,10 @@ for sp, cn, fd, ye, rp, dset in runs:
 
         save_out_results(val_compare, 'Validations', 'Model_Validations', vers, pos, set_year, set_pos, dataset_out, current_or_next_year)
         save_out_results(output, 'Simulation', 'Model_Predictions', vers, pos, set_year, set_pos, dataset_out, current_or_next_year)
+
+        del X_stack_player, X_stack, y_stack, y_stack_upside, y_stack_top, \
+            models_reg, models_upside, models_top, models_quant
+        gc.collect()
 
 
 # %%

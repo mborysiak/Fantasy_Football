@@ -31,71 +31,40 @@ dm = DataManage(db_path)
 
 # set core path
 PATH = f'{root_path}/Data/'
-YEAR = 2024
-LEAGUE = 'nv'
+YEAR = 2025
+LEAGUE = 'beta'
 
-
-# ty_keepers = {
-#     'Jahmyr Gibbs': [68],
-#     'Trey Mcbride': [11],
-
-#     'Kyren Williams': [11],
-#     "Ja'Marr Chase": [62],
-
-#     'Raheem Mostert': [13],
-#     'Nico Collins': [12],
-
-#     'Amon Ra St Brown': [46],
-#     'Rhamondre Stevenson': [11],
-
-#     'Garrett Wilson': [34],
-#     'James Conner': [48],
-
-#     'Brandon Aiyuk': [24],
-#     'George Pickens': [12],
-
-#     'Travis Etienne': [79],
-#     'Kenneth Walker': [42],
-    
-#     'Sam Laporta': [11],
-#     'Michael Pittman': [20],
-
-#     'Breece Hall': [44],
-#     'Dalton Kincaid': [15],
-# }
 
 ty_keepers = {
-    'Breece Hall': [35],
-    'Devon Achane': [12],
+    'Bucky Irving': [12],
+    # 'Malik Nabers': [50],
 
-    'Garrett Wilson': [31],
-    'Kyler Murray': [12],
+    'Brock Bowers': [19],
+    'Kyren Williams': [26],
 
-    'Tyreek Hill': [79],
-    "D'Andre Swift": [14],
+    # 'James Cook': [54],
+    # 'Jayden Daniels': [13],
 
-    'Josh Allen': [76],
-    'Jordan Love': [20],
+    'Nico Collins': [27],
+    'Puka Nacua': [67],
 
-    'Ceedee Lamb': [79],
-    'Anthony Richardson': [40],
+    'Ladd Mcconkey': [19],
 
-    'Kyren Williams': [28],
-    'Joe Burrow': [14],
+    'Josh Jacobs': [57],
 
-    'Patrick Mahomes': [83],
-    'Christian Mccaffrey': [80],
+    'Jalen Hurts': [37],
 
-    'Aj Brown': [67],
-    "Ja'Marr Chase": [51],
+    'Jaxon Smith-Njigba': [27],
+    'Rashee Rice': [11],
 
-    'Isiah Pacheco': [31],
-    'Jonathan Taylor': [38],
+    'Brian Thomas': [13],
 
-    'Terry Mclaurin': [19],
-    'Trevor Lawrence': [34],
-
+    'Jerry Jeudy': [11],   
 }
+
+# ty_keepers = {
+
+# }
 
 ty_keepers = pd.DataFrame(ty_keepers)
 ty_keepers = ty_keepers.T.reset_index()
@@ -147,6 +116,7 @@ def scrape_values(df):
 salaries = scrape_values(df)
 salaries['year'] = YEAR
 salaries['league'] = LEAGUE
+salaries = salaries.dropna().reset_index(drop=True)
 salaries.player = salaries.player.apply(dc.name_clean)
 
 dm.delete_from_db('Simulation', 'Salaries', f"year='{YEAR}' AND league='{LEAGUE}'")
@@ -205,11 +175,11 @@ def get_adp():
     all_stats = pd.DataFrame()
     for pos in ['QB', 'RB', 'WR', 'TE']:
         print(pos)
-        stats = dm.read(f'''SELECT player, year, avg_pick, avg_proj_points, avg_proj_rank, year_exp,
-                                   avg_proj_points_exp_diff, avg_pick_exp_diff
+
+        stats = dm.read(f'''SELECT player, year, avg_pick, avg_proj_points,
+                                fpros_pos_rank, year_exp, avg_proj_points_exp_diff
                             FROM {pos}_{YEAR}_ProjOnly
                          ''', 'Model_Inputs')
-        
         stats['pos'] = pos
         all_stats = pd.concat([all_stats, stats], axis=0)
 
@@ -383,12 +353,12 @@ X['te_rank'] = X.TE * X.pos_rank
 
 
 X_train = X[X.year != YEAR]
-y_train = y[X_train.index].reset_index(drop=True); X_train.reset_index(drop=True, inplace=True)   
+y_train = y.iloc[X_train.index].reset_index(drop=True); X_train.reset_index(drop=True, inplace=True)   
 
 X_test = X[X.year == YEAR].reset_index(drop=True)
-y_test = y[X_test.index].reset_index(drop=True); X_test.reset_index(drop=True, inplace=True)    
+y_test = y.iloc[X_test.index].reset_index(drop=True); X_test.reset_index(drop=True, inplace=True)
 
-pd.concat([X,y], axis=1).corr()['y_act'].sort_values()
+pd.concat([X,y], axis=1).corr()['y_act'].sort_values().head(20)
 
 
 #%%
@@ -596,8 +566,8 @@ shutil.copyfile(src, dst)
 
 # %%
 
-pred = dm.read("SELECT * FROM Salaries_Pred WHERE year=2024 AND league='nvpred'", 'Simulation')
-actual = dm.read("SELECT * FROM Actual_Salaries WHERE year=2024 AND league='nv' AND is_keeper=0", 'Simulation')
+pred = dm.read("SELECT * FROM Salaries_Pred WHERE year=2024 AND league='betapred'", 'Simulation')
+actual = dm.read("SELECT * FROM Actual_Salaries WHERE year=2024 AND league='beta' AND is_keeper=0", 'Simulation')
 combined = pd.merge(pred[['player', 'salary']], actual[['player', 'actual_salary']], on='player')
 print(r2_score(combined.actual_salary, combined.salary))
 combined.plot.scatter(x='salary', y='actual_salary')

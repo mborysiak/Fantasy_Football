@@ -9,8 +9,8 @@ import warnings
 from zData_Functions import *
 warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
 
-root_path = ffgeneral.get_main_path('Daily_Fantasy')
-db_path = f'{root_path}/Data/Databases/'
+root_path = ffgeneral.get_main_path('Daily_Fantasy_Data')
+db_path = f'{root_path}/Databases/'
 dm_daily = DataManage(db_path)
 
 root_path = ffgeneral.get_main_path('Fantasy_Football')
@@ -19,6 +19,30 @@ dm_ff = DataManage(db_path)
 
 pd.set_option('display.max_columns', 999)
 
+rush_fp_cols = {
+                'rush_yards_gained_sum': 0.1,  
+                'rush_rush_touchdown_sum': 7,
+                'fumble_lost': -2,
+            }
+
+rec_fp_cols = {
+            'rec_complete_pass_sum': 0.5, 
+            'rec_yards_gained_sum': 0.1,
+            'rec_pass_touchdown_sum': 7, 
+            }
+
+pass_fp_cols = {
+            'pass_yards_gained_sum': 0.04, 
+            'pass_pass_touchdown_sum': 5, 
+            'pass_interception_sum': -2,
+            'sack_sum': -1
+            }
+
+def calc_fp(df, pts_dict, colname):
+    cols = list(pts_dict.keys())
+    pts = list(pts_dict.values())
+    df[colname] = (df[cols] * pts).sum(axis=1)
+    return df
 
 #%%
 
@@ -35,7 +59,6 @@ for pos in ['QB', 'RB', 'WR', 'TE']:
     df = df[~((df.player == 'Mike Williams') & (df.season < 2017))].reset_index(drop=True)
 
     df = df[~((df.player=='Trey Mcbride') & (df.season==2023) & (df.week < 8))].reset_index(drop=True)
-    df = df[~((df.player=='Devon Achane') & (df.season==2023) & (df.week.isin([2,11])))].reset_index(drop=True)
 
     if pos == 'QB':
         df['total_plays'] = df.pass_qb_dropback_sum + df.rush_rush_attempt_sum

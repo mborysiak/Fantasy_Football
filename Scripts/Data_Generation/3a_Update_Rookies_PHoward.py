@@ -20,11 +20,11 @@ db_name = 'Season_Stats_New'
 conn = sqlite3.connect(f'{root_path}/Data/Databases/{db_name}.sqlite3')
 
 # set the year for current database download
-set_year = 2024
+set_year = 2025
 rb_path = "Pahowdy's College Database - RB.csv"
 wr_path = "Pahowdy's College Database - WR.csv"
 
-# link to Peter Howard: https://www.patreon.com/pahoward
+# link to Peter Howard: https://www.patreon.com/posts/pahowdy-prospect-63253587
 
 #%%
 
@@ -225,9 +225,11 @@ rb = rb.drop(drop_cols, axis=1)
 
 rb = rb.dropna(subset=['team']).reset_index(drop=True)
 for c in rb.isnull().sum()[rb.isnull().sum()>0].index:
+    print(c)
     if 'game' in c:
         rb[c] = rb[c].fillna(0)
     else:
+        rb[c] = rb[c].replace('UNK', np.nan).replace('-', np.nan)
         rb[c] = rb[c].fillna(rb[c].median())
 rb=rb.assign(pos='RB')
 dm.write_to_db(rb, 'Season_Stats_New', 'Rookie_RB_Stats', 'replace', create_backup=True)
@@ -266,6 +268,7 @@ for c in wr.isnull().sum()[wr.isnull().sum()>0].index:
     if 'game' in c:
         wr[c] = wr[c].fillna(0)
     else:
+        wr[c] = wr[c].replace('UNK', np.nan).replace('-', np.nan)
         wr[c] = wr[c].fillna(wr[c].median())
 
 wr = wr.assign(pos='WR')
@@ -273,5 +276,5 @@ dm.write_to_db(wr, 'Season_Stats_New', 'Rookie_WR_Stats', 'replace', create_back
 
 # %%
 
-wr[wr.player=="Garrett Wilson"]
+wr[wr.player.str.contains('Tet')]
 # %%

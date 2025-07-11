@@ -5,7 +5,7 @@ from ff.db_operations import DataManage
 from ff import general
 import ff.data_clean as dc
 
-# last year's statistics and adp to pull and append to database
+# set to last year
 year = 2024
 
 # set the root path and database management object
@@ -22,8 +22,6 @@ import os
 DB_NAME = 'Season_Stats_New'
 
 #%%
-
-
 
 def save_pff_stats(stat_type, set_year):
     if stat_type=='QB': fname = 'passing_summary'
@@ -46,10 +44,9 @@ def save_pff_stats(stat_type, set_year):
 
     return df
 
-year=2023
-
 for stat_type in ['QB', 'Rec', 'Rush', 'Oline']:
     df = save_pff_stats(stat_type, year)
+
 # %%
 
 df = dm.read(f'''SELECT *
@@ -58,5 +55,5 @@ df = dm.read(f'''SELECT *
                 ''', 
                 DB_NAME).drop(['player_id', 'position', 'team_name'], axis=1)
 
-df.columns
+df
 # %%

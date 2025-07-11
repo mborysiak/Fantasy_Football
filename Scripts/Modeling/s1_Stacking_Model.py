@@ -302,7 +302,7 @@ def get_full_pipe(skm, m, bayes_rand, alpha=None, stack_model=False, min_samples
     # get the params for the current pipe and adjust if needed
     params = skm.default_params(pipe, bayes_rand, min_samples=min_samples)
 
-    if m=='adp': params['feature_select__cols'] = hp.choice('cols', [['avg_pick'], ['avg_pick', 'year']]) 
+    if m=='adp': params['feature_select__cols'] = hp.choice('cols', [['avg_pick'], ['avg_pick', 'year'], ['avg_pick', 'year', 'avg_proj_points', 'avg_proj_points_exp_diff']]) 
     
     if skm.model_obj == 'quantile':
         if m in ('qr_q', 'gbmh_q'): pipe.set_params(**{f'{m}__quantile': alpha})
