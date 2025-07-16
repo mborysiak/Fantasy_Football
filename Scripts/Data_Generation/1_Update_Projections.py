@@ -59,7 +59,7 @@ def clean_adp(data_adp, year):
         'Player': 'player',
         'Tm': 'team',
         'year': 'year',
-        'Avg Pick': 'avg_pick'
+        'Avg Pick': 'pick'
     }
 
     df_adp = df_adp.rename(columns=colnames_adp)
@@ -74,41 +74,45 @@ def get_adp(year, pos, source):
         data = pd.read_html(URL)[1]
 
         # clean the dataset and print out check dataset
-        df = clean_adp(data, year)[['player', 'avg_pick']]
+        df = clean_adp(data, year)[['player', 'pick']]
         print(df.head(10))
 
         df = df[df.player!='Player Hint:'].reset_index(drop=True)
 
         # log the avg_pick to match existing
-        df['avg_pick'] = df.avg_pick.astype('float')
+        df['pick'] = df.pick.astype('float')
         df = df.assign(pos=pos, year=year, source='mfl')
     
     elif source == 'fantasypros':
         df = pd.read_html("https://www.fantasypros.com/nfl/adp/half-point-ppr-overall.php")[0]
-        df = df.rename(columns={'Player Team (Bye)': 'player', 'AVG': 'avg_pick', 'POS': 'pos'})
+        df = df.rename(columns={'Player Team (Bye)': 'player', 'AVG': 'pick', 'POS': 'pos'})
         
         df.player = df.player.apply(lambda x: x.split('(')[0].rstrip())
         df.player = df.player.apply(lambda x: x.split(' ')[:-1])
         df.player = df.player.apply(lambda x: ' '.join(x))
         df['player'] = df.player.apply(dc.name_clean)
         df['pos'] = df.pos.apply(lambda x: x[:2])
-        df['avg_pick'] = df.avg_pick.astype('float')
+        df['pick'] = df.pick.astype('float')
         df = df.assign(year=year, source='fpros')
-        df = df[['player', 'avg_pick', 'pos', 'year', 'source']]
+        df = df[['player', 'pick', 'pos', 'year', 'source']]
         
     
 
     return df
 
-def move_download_to_folder(root_path, folder, fname, set_year):
+def move_download_to_folder(root_path, folder, fname, set_year, sep=','):
+
+    if not os.path.exists(f'{root_path}/Data/OtherData/{folder}'):
+        os.makedirs(f'{root_path}/Data/OtherData/{folder}')
+
     try:
         os.replace(f"/Users/borys/Downloads/{fname}", 
                     f'{root_path}/Data/OtherData/{folder}/{set_year}{fname}')
     except:
         pass
 
-    df = pd.read_csv(f'{root_path}/Data/OtherData/{folder}/{set_year}{fname}')
-    
+    df = pd.read_csv(f'{root_path}/Data/OtherData/{folder}/{set_year}{fname}', sep=sep, on_bad_lines='skip')
+
     return df
 
 
@@ -243,6 +247,7 @@ def pull_fantasy_data(fname, set_year):
     col_arr = ['player', 'pos', 'team', 'year']
     col_arr.extend([c for c in df.columns if 'fdta' in c])
     df = df[col_arr]
+    df = df.drop(['fdta_fantasy_points_per_game', 'fdta_fantasy_points_total'], axis=1, errors='ignore')
     
     return df
 
@@ -275,6 +280,44 @@ for pos in ['QB', 'RB', 'WR', 'TE']:
 fp_adp = get_adp(year, 'all', 'fantasypros')
 dm.write_to_db(fp_adp, DB_NAME, 'ADP_Ranks', 'append')
 
+#%%
+
+def pull_nffc(filename, label):
+
+    df = move_download_to_folder(root_path, 'NFFC', filename, year, sep='\t')
+    df.Player = df.Player.apply(lambda x: x.split(',')[1] + ' ' + x.split(',')[0])
+    df = df[['Player', 'Team', 'Position(s)', 'ADP', 'Min Pick', 'Max Pick']]
+    df.columns = ['player', 'team', 'pos', 'pick_nffc', 'min_pick', 'max_pick']
+    df['source'] = label
+    df['year'] = year
+    df.player = df.player.apply(dc.name_clean)
+    return df
+
+
+df = pull_nffc('ADP.tsv', 'nffc_rotowire_online')
+dm.delete_from_db(DB_NAME, 'NFFC_ADP', f"year={year}", create_backup=False)
+dm.write_to_db(df, DB_NAME, 'NFFC_ADP', 'append')
+
+df = pull_nffc('ADP (1).tsv', 'nffc_best_ball_overall')
+dm.write_to_db(df, DB_NAME, 'NFFC_ADP', 'append')
+
+df = pull_nffc('ADP (2).tsv', 'nffc_best_ball_25s50s')
+dm.write_to_db(df, DB_NAME, 'NFFC_ADP', 'append')
+
+df = pull_nffc('ADP (3).tsv', 'nffc_cutline')
+dm.write_to_db(df, DB_NAME, 'NFFC_ADP', 'append')
+
+#%%
+
+df = move_download_to_folder(root_path, 'FantasyPros_Best_Ball', f'FantasyPros_{year}_Overall_ADP_Rankings.csv', year)
+df = df.dropna(subset=['Player']).reset_index(drop=True)
+df = df[['Player', 'Team', 'BB10', 'RTSports', 'Underdog', 'Drafters', 'AVG']]
+df.columns = ['player', 'team', 'pick_bb10', 'pick_rtsports', 'pick_underdog', 'pick_drafters', 'pick_best_ball']
+df.player = df.player.apply(dc.name_clean)
+df['year'] = year
+
+dm.delete_from_db(DB_NAME, 'FantasyPros_Best_Ball_ADP', f"year={year}", create_backup=False)
+dm.write_to_db(df, DB_NAME, 'FantasyPros_Best_Ball_ADP', 'append')
 
 #%%
 

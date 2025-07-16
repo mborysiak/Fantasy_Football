@@ -558,11 +558,20 @@ def run_stack_models(final_m, X_stack, y_stack, i, model_obj, alpha, run_params)
     
 
 def fit_and_predict(m, df_predict, X, y, proba):
-    # try:
-    m.fit(X,y)
+    from sklearn.pipeline import Pipeline
+    try:
+        cols = m.steps[0][-1].columns
+        cols = [c for c in cols if c in X.columns]
+        X = X[cols]
+        X_predict = df_predict[cols]
+        m = Pipeline(m.steps[1:])
+        m.fit(X,y)
+    except:
+        m.fit(X, y)
+        X_predict = df_predict[X.columns]
 
-    if proba: cur_predict = m.predict_proba(df_predict[X.columns])[:,1]
-    else: cur_predict = m.predict(df_predict[X.columns])
+    if proba: cur_predict = m.predict_proba(X_predict)[:,1]
+    else: cur_predict = m.predict(X_predict)
     # except:
         # cur_predict = []
 

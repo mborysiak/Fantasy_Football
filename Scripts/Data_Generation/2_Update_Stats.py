@@ -19,34 +19,100 @@ dm_ff = DataManage(db_path)
 
 pd.set_option('display.max_columns', 999)
 
+LEAGUE = 'nffc'  # 'beta' or 'dk'
+
 rush_fp_cols = {
+    'beta': {
                 'rush_yards_gained_sum': 0.1,  
                 'rush_rush_touchdown_sum': 7,
                 'fumble_lost': -2,
+                'rush_yd_100_bonus': 1,
+                'rush_yd_200_bonus': 2,
+            },
+    'dk': {
+                'rush_yards_gained_sum': 0.1,
+                'rush_rush_touchdown_sum': 6,
+                'fumble_lost': -1,
+                'rush_yd_100_bonus': 3,
+                'rush_yd_200_bonus': 0,
+            },
+    'nffc': {
+                'rush_yards_gained_sum': 0.1,
+                'rush_rush_touchdown_sum': 6,
+                'fumble_lost': -1,
+                'rush_yd_100_bonus': 0,
+                'rush_yd_200_bonus': 0,
             }
+}
 
 rec_fp_cols = {
+    'beta': {
             'rec_complete_pass_sum': 0.5, 
             'rec_yards_gained_sum': 0.1,
             'rec_pass_touchdown_sum': 7, 
+            'rec_yd_100_bonus': 1,
+            'rec_yd_200_bonus': 2,
+            },
+    'dk': {
+            'rec_complete_pass_sum': 1, 
+            'rec_yards_gained_sum': 0.1,
+            'rec_pass_touchdown_sum': 6, 
+            'rec_yd_100_bonus': 3,
+            'rec_yd_200_bonus': 0,
+            },
+    'nffc': {
+            'rec_complete_pass_sum': 1,
+            'rec_yards_gained_sum': 0.1,
+            'rec_pass_touchdown_sum': 6,
+            'rec_yd_100_bonus': 0,
+            'rec_yd_200_bonus': 0,
             }
+}
 
 pass_fp_cols = {
+    'beta': {
             'pass_yards_gained_sum': 0.04, 
             'pass_pass_touchdown_sum': 5, 
             'pass_interception_sum': -2,
-            'sack_sum': -1
-            }
+            'sack_sum': -1,
+            'pass_yd_300_bonus': 1,
+            'pass_yd_400_bonus': 2,
+            },
+    'dk': {
+            'pass_yards_gained_sum': 0.04, 
+            'pass_pass_touchdown_sum': 4, 
+            'pass_interception_sum': -1,
+            'sack_sum': 0,
+            'pass_yd_300_bonus': 3,
+            'pass_yd_400_bonus': 0,
+            },
+    'nffc': {
+            'pass_yards_gained_sum': 0.05, 
+            'pass_pass_touchdown_sum': 6, 
+            'pass_interception_sum': -2,
+            'sack_sum': 0,
+            'pass_yd_300_bonus': 0,
+            'pass_yd_400_bonus': 0,
+        }
+}
 
-def calc_fp(df, pts_dict, colname):
+if LEAGUE == 'nv':
+    rush_fp_cols['nv'] = rush_fp_cols['beta']
+    rec_fp_cols['nv'] = rec_fp_cols['beta']
+    pass_fp_cols['nv'] = pass_fp_cols['beta']
+    pass_fp_cols['nv']['pass_pass_touchdown_sum'] = 4
+
+def calc_fp(df, pts_dict, rush_pass):
     cols = list(pts_dict.keys())
     pts = list(pts_dict.values())
-    df[colname] = (df[cols] * pts).sum(axis=1)
+    df[f'fantasy_pts_{rush_pass}'] = (df[cols] * pts).sum(axis=1)
     return df
 
 #%%
 
 for pos in ['QB', 'RB', 'WR', 'TE']:
+
+    print(f'Processing {pos} stats...')
 
     df = dm_daily.read(f'''SELECT * 
                            FROM {pos}_Stats
@@ -57,8 +123,19 @@ for pos in ['QB', 'RB', 'WR', 'TE']:
     df = df[~((df.player == 'Adrian Peterson') & (df.team=='CHI'))].reset_index(drop=True)
     df = df[~((df.player == 'Steve Smith') & (df.team.isin(['NYG', 'PHI', 'LAR'])))].reset_index(drop=True)
     df = df[~((df.player == 'Mike Williams') & (df.season < 2017))].reset_index(drop=True)
-
     df = df[~((df.player=='Trey Mcbride') & (df.season==2023) & (df.week < 8))].reset_index(drop=True)
+
+    df['rush_yd_200_bonus'] = np.where(df.rush_yards_gained_sum >= 200, 1, 0)
+    df = calc_fp(df, rush_fp_cols[LEAGUE], 'rush')
+
+    if pos == 'QB':
+        df['pass_yd_400_bonus'] = np.where(df.pass_yards_gained_sum >= 400, 1, 0)
+        df = calc_fp(df, pass_fp_cols[LEAGUE], 'pass')
+        df['fantasy_pts'] = df['fantasy_pts_rush'] + df['fantasy_pts_pass']
+    else:
+        df['rec_yd_200_bonus'] = np.where(df.rec_yards_gained_sum >= 200, 1, 0)
+        df = calc_fp(df, rec_fp_cols[LEAGUE], 'rec')
+        df['fantasy_pts'] = df['fantasy_pts_rush'] + df['fantasy_pts_rec']
 
     if pos == 'QB':
         df['total_plays'] = df.pass_qb_dropback_sum + df.rush_rush_attempt_sum
@@ -90,8 +167,6 @@ for pos in ['QB', 'RB', 'WR', 'TE']:
         df_all['y_act_pass'] = df_all.groupby('player')['fantasy_pts_pass_per_game'].shift(-1)
 
     if pos == 'RB':
-        df_all['sum_fantasy_pts_rush'] = df_all.sum_rush_yards_gained_sum*0.1 + df_all.sum_rush_rush_touchdown_sum*7
-        df_all['sum_fantasy_pts_rec'] = df_all.sum_rec_yards_gained_sum*0.1 + df_all.sum_rec_touchdown_sum*7 + df_all.sum_rec_complete_pass_sum*0.5
         df_all['fantasy_pts_rush_per_game'] = (df_all['sum_fantasy_pts_rush']/df_all['games'])
         df_all['fantasy_pts_rec_per_game'] = (df_all['sum_fantasy_pts_rec']/df_all['games'])
 
@@ -108,7 +183,7 @@ for pos in ['QB', 'RB', 'WR', 'TE']:
     cols.extend([c for c in df_all.columns if c not in cols])
     df_all = df_all[cols]
 
-    df_all = df_all.sort_values(by=['year', 'fantasy_pts_per_game'], ascending=[True, False]).reset_index(drop=True)
+    df_all = df_all.sort_values(by=['year', 'fantasy_pts_per_game'], ascending=[False, False]).reset_index(drop=True)
     df_all.player = df_all.player.apply(dc.name_clean)
     dm_ff.write_to_db(df_all, 'Season_Stats_New', f'{pos}_Stats', if_exist='replace')
 

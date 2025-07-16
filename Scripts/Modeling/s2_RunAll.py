@@ -9,47 +9,47 @@ warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
 
 set_year = 2025
 show_plot = True
-vers = 'beta'
-predict_only = False
+vers = 'nffc'
+predict_only = True
 
 runs = [
-        # ['WR', 'current', 'greater_equal', 0, '', 'Rookie'],
-        # ['RB', 'current', 'greater_equal', 0, '', 'Rookie'],
+        ['WR', 'current', 'greater_equal', 0, '', 'Rookie'],
+        ['RB', 'current', 'greater_equal', 0, '', 'Rookie'],
 
-        # ['WR', 'current', 'greater_equal', 0, '', 'ProjOnly'],
-        # ['WR', 'current', 'less_equal', 3, '', 'ProjOnly'],
-        # ['WR', 'current', 'greater_equal', 4, '', 'ProjOnly'],
+        ['WR', 'current', 'greater_equal', 0, '', 'ProjOnly'],
+        ['WR', 'current', 'less_equal', 3, '', 'ProjOnly'],
+        ['WR', 'current', 'greater_equal', 4, '', 'ProjOnly'],
 
-        # ['WR', 'next', 'greater_equal', 0, '', 'ProjOnly'],
-        # ['WR', 'next', 'less_equal', 3, '', 'ProjOnly'],
-        # ['WR', 'next', 'greater_equal', 4, '', 'ProjOnly'],
+        ['WR', 'next', 'greater_equal', 0, '', 'ProjOnly'],
+        ['WR', 'next', 'less_equal', 3, '', 'ProjOnly'],
+        ['WR', 'next', 'greater_equal', 4, '', 'ProjOnly'],
 
-        # ['WR', 'current', 'greater_equal', 0, '', 'Stats'],
-        # ['WR', 'current', 'less_equal', 3, '', 'Stats'],
-        # ['WR', 'current', 'greater_equal', 4, '', 'Stats'],
+        ['WR', 'current', 'greater_equal', 0, '', 'Stats'],
+        ['WR', 'current', 'less_equal', 3, '', 'Stats'],
+        ['WR', 'current', 'greater_equal', 4, '', 'Stats'],
 
-        # ['TE', 'current', 'greater_equal', 0, '', 'ProjOnly'],
-        # ['TE', 'current', 'greater_equal', 0, '', 'Stats'],
-        # ['TE', 'next', 'greater_equal', 0, '', 'ProjOnly'],
+        ['TE', 'current', 'greater_equal', 0, '', 'ProjOnly'],
+        ['TE', 'current', 'greater_equal', 0, '', 'Stats'],
+        ['TE', 'next', 'greater_equal', 0, '', 'ProjOnly'],
 
-        # ['QB', 'current', 'greater_equal', 0, '', 'ProjOnly'],
-        # ['QB', 'current', 'greater_equal', 0, 'rush', 'ProjOnly'],
-        # ['QB', 'current', 'greater_equal', 0, 'pass', 'ProjOnly'],
-        # ['QB', 'next', 'greater_equal', 0, '', 'ProjOnly'],
+        ['QB', 'current', 'greater_equal', 0, '', 'ProjOnly'],
+        ['QB', 'current', 'greater_equal', 0, 'rush', 'ProjOnly'],
+        ['QB', 'current', 'greater_equal', 0, 'pass', 'ProjOnly'],
+        ['QB', 'next', 'greater_equal', 0, '', 'ProjOnly'],
 
-        # ['QB', 'current', 'greater_equal', 0, '', 'Stats'],
-        # ['QB', 'current', 'greater_equal', 0, 'rush', 'Stats'],
-        # ['QB', 'current', 'greater_equal', 0, 'pass', 'Stats'],
+        ['QB', 'current', 'greater_equal', 0, '', 'Stats'],
+        ['QB', 'current', 'greater_equal', 0, 'rush', 'Stats'],
+        ['QB', 'current', 'greater_equal', 0, 'pass', 'Stats'],
 
-        # ['RB', 'current', 'greater_equal', 0, '', 'ProjOnly'],
-        # ['RB', 'current', 'less_equal', 3, '', 'ProjOnly'],
-        # ['RB', 'current', 'greater_equal', 4, '', 'ProjOnly'],
-        # ['RB', 'current', 'greater_equal', 0, 'rush', 'ProjOnly'],
-        # ['RB', 'current', 'greater_equal', 0, 'rec', 'ProjOnly'],
-        # ['RB', 'current', 'less_equal', 3, 'rush', 'ProjOnly'],
-        # ['RB', 'current', 'less_equal', 3, 'rec', 'ProjOnly'],
-        # ['RB', 'current', 'greater_equal', 4, 'rush', 'ProjOnly'],
-        # ['RB', 'current', 'greater_equal', 4, 'rec', 'ProjOnly'],
+        ['RB', 'current', 'greater_equal', 0, '', 'ProjOnly'],
+        ['RB', 'current', 'less_equal', 3, '', 'ProjOnly'],
+        ['RB', 'current', 'greater_equal', 4, '', 'ProjOnly'],
+        ['RB', 'current', 'greater_equal', 0, 'rush', 'ProjOnly'],
+        ['RB', 'current', 'greater_equal', 0, 'rec', 'ProjOnly'],
+        ['RB', 'current', 'less_equal', 3, 'rush', 'ProjOnly'],
+        ['RB', 'current', 'less_equal', 3, 'rec', 'ProjOnly'],
+        ['RB', 'current', 'greater_equal', 4, 'rush', 'ProjOnly'],
+        ['RB', 'current', 'greater_equal', 4, 'rec', 'ProjOnly'],
 
         ['RB', 'next', 'greater_equal', 0, '', 'ProjOnly'],
         ['RB', 'next', 'less_equal', 3, '', 'ProjOnly'],
@@ -93,7 +93,7 @@ for sp, cn, fd, ye, rp, dset in runs:
     dataset = dset
     hp_algo = 'tpe'
     bayes_rand = 'optuna'
-    optuna_timeout = 60
+    optuna_timeout = 45
 
     model_output_path, pkey = create_pkey(pos, dataset, set_pos,current_or_next_year, bayes_rand, hp_algo)
     df = pull_data(set_pos, set_year, dataset, current_or_next_year)
@@ -307,3 +307,24 @@ for sp, cn, fd, ye, rp, dset in runs:
 
 
 # %%
+
+
+# df = dm.read('''SELECT * 
+#                 FROM Model_Predictions
+#                 WHERE year=2025
+#                       AND version='dk' 
+#                       AND pos!='QB'
+#                       ''', 
+#                       'Simulation')
+# df.version = 'nffc'
+# dm.write_to_db(df, 'Simulation', 'Model_Predictions', if_exist='append')
+
+# df = dm.read('''SELECT * 
+#                 FROM Model_Validations 
+#                 WHERE year=2025
+#                       AND version='dk' 
+#                       AND pos!='QB'
+#              ''', 
+#                       'Validations')
+# df.version = 'nffc'
+# dm.write_to_db(df, 'Validations', 'Model_Validations', if_exist='append')

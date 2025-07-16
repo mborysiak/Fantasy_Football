@@ -207,22 +207,47 @@ def fantasy_points_proj(df, pos):
 
 
 def add_adp(df, pos, source, bad_ty_adp=False):
-    adp = dm.read(f'''SELECT player, year, avg_pick
+    adp = dm.read(f'''SELECT player, year, pick
                       FROM ADP_Ranks
                       WHERE pos='{pos}'
                             AND source = '{source}'
                       ''', DB_NAME)
     
-    if source == 'fpros':
-        adp = adp.rename(columns={'avg_pick': 'fpros_avg_pick'})
+    adp = adp.rename(columns={'pick': f'pick_{source}'})
     
     # early in the year, the QB ADP is not accurate, so we remove it
     if source == 'mfl' and bad_ty_adp:
-        adp.loc[adp.year==year, 'avg_pick'] = np.nan
+        adp.loc[adp.year==year, f'pick_{source}'] = np.nan
     
     df = pd.merge(df, adp, on=['player', 'year'], how='left')
 
     return df
+
+def add_nffc_adp(df, pos):
+    """
+    Pull NFFC ADP data for a given position.
+    """
+    nffc = dm.read(f'''SELECT player,
+                             year,
+                             avg(pick_nffc) AS pick_nffc
+                      FROM NFFC_ADP
+                      WHERE pos = '{pos}'
+                      GROUP BY player, year
+                      ''', DB_NAME)
+    df = pd.merge(df, nffc, on=['player', 'year'], how='left')
+    return df
+
+def add_fpros_bestball_adp(df):
+    """
+    Pull FantasyPros BestBall ADP data for a given position.
+    """
+    fpros = dm.read(f'''SELECT *
+                        FROM FantasyPros_Best_Ball_ADP
+                      ''', DB_NAME).drop('team', axis=1, errors='ignore')
+    df = pd.merge(df, fpros, on=['player', 'year'], how='left')
+    return df
+
+
 
 def add_etr_rank(df, pos):
     etr = dm.read(f'''SELECT player, year, etr_pos_rank
@@ -271,7 +296,8 @@ def consensus_fill(df, pos):
         'proj_points': get_cols_to_fill('proj_points', sources),
         'pos_rank': get_cols_to_fill('pos_rank', sources) + ['etr_pos_rank'],
 
-        'proj_avg_pick': ['avg_pick', 'fpros_avg_pick']
+        'pick': ['pick_mfl', 'pick_fpros', 'pick_nffc', 'pick_bb10', 'pick_rtsports',
+                 'pick_underdog', 'pick_drafters', 'pick_best_ball']
     }
 
     for k, tf in to_fill.items():
@@ -398,12 +424,12 @@ def get_team_projections():
         df = fantasy_points_proj(df, pos)
         df = add_etr_rank(df, pos)
 
-        df = consensus_fill(df, pos)
+        df = add_adp(df, pos, 'mfl', bad_adps); print(df.shape[0])
+        df = add_adp(df, pos, 'fpros', bad_adps); print(df.shape[0])
+        df = add_nffc_adp(df, pos); print(df.shape[0])
+        df = add_fpros_bestball_adp(df); print(df.shape[0])
 
-        df = add_adp(df, pos, 'mfl', bad_adps)
-        df = add_adp(df, pos, 'fpros', bad_adps)
-        df = fill_avg_pick(df, 'avg_pick')
-        df = fill_avg_pick(df, 'fpros_avg_pick')
+        df = consensus_fill(df, pos)
 
         if pos != 'QB': df = fill_pff_targets(df)
         df = df.dropna(axis=1)
@@ -487,7 +513,7 @@ def proj_market_share(df, proj_col_name):
     return df
 
 def get_pick_vs_team_stats(df):
-    pick_rank_cols = ['avg_pick_log', 'avg_pos_rank', 'fpros_avg_pick_log']
+    pick_rank_cols = ['avg_pick_log', 'avg_pos_rank', 'pick_fpros_log', 'pick_best_ball_log', 'avg_proj_points']
     team_adp = df.groupby(['team', 'pos', 'year']).agg({r: ['sum', 'mean', 'min', 'max'] for r in pick_rank_cols}).reset_index()
     team_adp.columns = ['team_' + c[0] + '_' + c[1] if c[1]!='' else c[0] for c in team_adp.columns]
     df = pd.merge(df, team_adp, on=['team', 'pos', 'year'])
@@ -513,12 +539,15 @@ def get_max_qb():
     df = fantasy_points_proj(df, pos)
     df = add_etr_rank(df, pos)
 
-    df = consensus_fill(df, pos)
+    df = add_adp(df, pos, 'mfl', bad_adps); print(df.shape[0])
+    df = add_adp(df, pos, 'fpros', bad_adps); print(df.shape[0])
+    df = add_nffc_adp(df, pos); print(df.shape[0])
+    df = add_fpros_bestball_adp(df); print(df.shape[0])
 
-    df = add_adp(df, pos, 'mfl', bad_adps)
-    df = add_adp(df, pos, 'fpros', bad_adps)
-    df = fill_avg_pick(df, 'avg_pick')
-    df = fill_avg_pick(df, 'fpros_avg_pick')
+    df = consensus_fill(df, pos); print(df.shape[0])
+    for c in [c for c in df.columns if 'pick' in c and 'std' not in c]:
+        df = fill_avg_pick(df, c); print(df.shape[0])
+
     df = df.dropna(axis=1)
 
     sources = ['avg_proj']
@@ -652,7 +681,10 @@ def drop_duplicate_players(df, order_col, rookie=False):
 
 def remove_low_corrs(df, corr_cut = 3, collinear_cut = 0.995):
     obj_cols = list(df.dtypes[df.dtypes=='object'].index)
-    obj_cols.extend(['year', 'pos', 'games', 'season', 'games_next', 'year_exp', 'avg_pick',
+    obj_cols.extend(['year', 'pos', 'games', 'season', 'games_next', 'year_exp', 
+                     'avg_pick', 'avg_pick_log', 'pick_fpros', 'pick_fpros_log', 'pick_nffc', 'pick_best_ball',
+                     'avg_pos_rank', 'fpros_avg_pos_rank',
+                     'avg_proj_pass_yds', 'avg_proj_pass_td', 'avg_proj_rush_yds', 'avg_proj_rush_td', 'avg_proj_rec_yds', 'avg_proj_rec_td', 'avg_proj_rec',
                      'avg_proj_points', 'avg_proj_rush_points', 'avg_proj_pass_points', 'avg_proj_rec_points',
                      'avg_proj_points_exp', 'avg_proj_points_exp_diff', 'avg_proj_points_exp_diff', 'avg_pick_exp', 'avg_pick_exp_diff',
                      'avg_proj_rank'])
@@ -781,7 +813,7 @@ def add_year_exp_compare(df):
 
         year_exp_cols = [
             'fpros_proj_points', 'pff_proj_points', 'avg_proj_points', 'fft_proj_points', 'fpts_proj_points', 'ffa_proj_points',
-            'avg_pick_log', 'pff_pos_rank_log', 'ffa_pos_rank_log', 'fpros_avg_pick_log', 'etr_pos_rank_log', 'fdta_pos_rank_log', 
+            'avg_pick_log', 'pff_pos_rank_log', 'ffa_pos_rank_log', 'pick_fpros_log', 'etr_pos_rank_log', 'fdta_pos_rank_log', 
             'mean_diff_avg_pick_log', 'sum_frac_avg_pos_rank', 'min_diff_avg_pick_log',
             
             'fdta_rush_yds', 'pff_rush_yds', 
@@ -865,8 +897,7 @@ def get_next_year_stats(df, stats_proj, ty_mean=False, is_rookie=False):
 
 
 #%%
-
-pos='WR'
+pos='TE'
 
 bad_adps = True
 
@@ -923,12 +954,14 @@ df = add_etr_rank(df, pos); print(df.shape[0])
 
 df = add_adp(df, pos, 'mfl', bad_adps); print(df.shape[0])
 df = add_adp(df, pos, 'fpros', bad_adps); print(df.shape[0])
+df = add_nffc_adp(df, pos); print(df.shape[0])
+df = add_fpros_bestball_adp(df); print(df.shape[0])
 
 df = consensus_fill(df, pos); print(df.shape[0])
-df = calc_detailed_stats(df, pos)
+for c in [c for c in df.columns if 'pick' in c and 'std' not in c]:
+    df = fill_avg_pick(df, c); print(df.shape[0])
 
-df = fill_avg_pick(df, 'avg_pick'); print(df.shape[0])
-df = fill_avg_pick(df, 'fpros_avg_pick'); print(df.shape[0])
+df = calc_detailed_stats(df, pos)
 
 if pos != 'QB': df = fill_pff_targets(df); print(df.shape[0])
 else: df = df.drop('pff_rec_targets', axis=1, errors='ignore')
@@ -1066,7 +1099,7 @@ df_stats = add_year_exp_compare(df_stats)
 # since you need y_act to be relevant and last year's stats to be relvant
 df_stats = drop_y_act_except_current(df_stats, year)
 df_stats = drop_games(df_stats, year, games=4, games_next=4)
-df_stats = remove_low_corrs(df_stats, corr_cut=4, collinear_cut=0.99)
+df_stats = remove_low_corrs(df_stats, corr_cut=5, collinear_cut=0.98)
 df_stats = y_act_class(df_stats, df_stats.copy(), 'both', 'games_next', class_cuts[pos]['upside']['proj_var'], class_cuts[pos]['upside']['y_act'], 'upside')
 df_stats = y_act_class(df_stats, df_stats.copy(), 'both', 'games_next', class_cuts[pos]['top']['proj_var'], class_cuts[pos]['top']['y_act'], 'top')
 
@@ -1260,7 +1293,7 @@ pred[['player', 'year', 'pred']].sort_values(by='pred', ascending=False).iloc[:3
 
 import matplotlib.pyplot as plt
 
-pipeline = best_models[2]
+pipeline = best_models[1]
 pipeline.fit(X,y)
 # Extract the coefficients
 log_reg = pipeline.named_steps[m]
@@ -1274,4 +1307,5 @@ selected_features = pipeline.named_steps[kb].get_support(indices=True)
 
 coef = pd.Series(coefficients, index=X.columns[selected_features])
 coef[np.abs(coef) > 0.01].sort_values().plot(kind = 'barh', figsize=(10, 10))
-# %%
+
+#%%

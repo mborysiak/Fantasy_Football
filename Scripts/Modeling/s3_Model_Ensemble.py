@@ -16,7 +16,7 @@ db_path = f'{root_path}/Data/Databases/'
 dm = DataManage(db_path)
 
 set_year=2025
-vers='beta'
+vers='nffc'
 date_mod = dt.date(2025, 7, 4)
 
 #%%
@@ -304,8 +304,26 @@ preds = preds.sort_values(by='pred_fp_per_game', ascending=False).reset_index(dr
 
 preds['pos_rank'] = preds.groupby('pos')['pred_fp_per_game'].rank(ascending=False, method='first')
 
-if vers == 'nv': num_qb = 33
-elif vers == 'beta': num_qb = 24
+if vers == 'nv': 
+    num_qb = 33
+    num_te = 24
+    num_rb = 60
+    num_wr = 72
+elif vers == 'beta': 
+    num_qb = 24
+    num_te = 24
+    num_rb = 60
+    num_wr = 72
+elif vers == 'dk': 
+    num_qb = 33
+    num_te = 33
+    num_rb = 84
+    num_wr = 108
+elif vers == 'nffc': 
+    num_qb = 33
+    num_te = 33
+    num_rb = 96
+    num_wr = 120
 
 preds = preds[~((preds.pos=='QB') & (preds.pos_rank > num_qb))].reset_index(drop=True)
 preds = preds[~((preds.pos=='TE') & (preds.pos_rank > 24))].reset_index(drop=True)
@@ -321,12 +339,13 @@ display(preds[((preds.pos!='QB'))].iloc[:50])
 #%%
 downgrades = {
     'Anthony Richardson': 0.75,
-    'Jalen Milroe': 0.5
+    'Jalen Milroe': 0.5,
+    'Quinshon Judkins': 0.5,
 }
 
 for p, d in downgrades.items():
-    preds.loc[preds.player==p, ['pred_prob_upside', 'pred_prob_top', 'pred_fp_per_game']] = \
-        preds.loc[preds.player==p, ['pred_prob_upside', 'pred_prob_top', 'pred_fp_per_game']] * d
+    preds.loc[preds.player==p, ['pred_prob_upside', 'pred_prob_top', 'pred_fp_per_game', 'pred_fp_per_game_ny']] = \
+        preds.loc[preds.player==p, ['pred_prob_upside', 'pred_prob_top', 'pred_fp_per_game', 'pred_fp_per_game_ny']] * d
 
 # %%
 import shutil
@@ -338,5 +357,9 @@ src = f'{root_path}/Data/Databases/Simulation.sqlite3'
 dst = f'/Users/borys/OneDrive/Documents/Github/Fantasy_Football_App/app/Simulation.sqlite3'
 shutil.copyfile(src, dst)
 
+
+src = f'{root_path}/Data/Databases/Simulation.sqlite3'
+dst = f'/Users/borys/OneDrive/Documents/Github/Fantasy_Football_Snake/app/Simulation.sqlite3'
+shutil.copyfile(src, dst)
 
 #%%

@@ -16,6 +16,9 @@ from sklearn.model_selection import RandomizedSearchCV
 from sklearn.model_selection import cross_val_predict
 from sklearn.metrics import r2_score, mean_squared_error
 
+from sklearn.preprocessing import StandardScaler
+from zFix_Standard_Dev import *
+
 import warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning) 
 warnings.filterwarnings("ignore", category=UserWarning) 
@@ -419,8 +422,6 @@ for m in model_list:
 
 #%%
 
-from sklearn.preprocessing import StandardScaler
-from zFix_Standard_Dev import *
 
 scores_df = pd.DataFrame(scores, index=[0]).T.rename(columns={0: 'mse'})
 scores_df = scores_df.sort_values(by='mse', ascending=True)
@@ -574,4 +575,4 @@ combined.plot.scatter(x='salary', y='actual_salary')
 combined['error'] = combined.actual_salary - combined.salary
 display(combined.sort_values(by='error').iloc[:40])
 display(combined.sort_values(by='error').iloc[-40:])
-# %%
+
