@@ -156,21 +156,21 @@ def clean_results(path, fname, year, league, team_split=True):
     
     return results
 
-FNAME = f'{LEAGUE}_{YEAR}_results'
-results = clean_results(PATH, FNAME, YEAR, LEAGUE)
-dm.delete_from_db('Simulation', 'Actual_Salaries', f"year='{YEAR}' AND league='{LEAGUE}'")
-dm.write_to_db(results, 'Simulation', 'Actual_Salaries', 'append')
+# FNAME = f'{LEAGUE}_{YEAR}_results'
+# results = clean_results(PATH, FNAME, YEAR, LEAGUE)
+# dm.delete_from_db('Simulation', 'Actual_Salaries', f"year='{YEAR}' AND league='{LEAGUE}'")
+# dm.write_to_db(results, 'Simulation', 'Actual_Salaries', 'append')
 
-# push the actuals to salary database to re-run simulation
-to_actual = dm.read(f"SELECT * FROM Actual_Salaries WHERE year={YEAR} AND league='{LEAGUE}'", 'Simulation')
-to_actual = to_actual[['player', 'actual_salary', 'year', 'league']].rename(columns={'actual_salary': 'salary'})
-to_actual['league'] = to_actual.league.apply(lambda x: f'{x}_actual')
-to_actual['std_dev'] = 0.1
-to_actual['min_score'] = to_actual.salary - 1
-to_actual['max_score'] = to_actual.salary + 1
+# # push the actuals to salary database to re-run simulation
+# to_actual = dm.read(f"SELECT * FROM Actual_Salaries WHERE year={YEAR} AND league='{LEAGUE}'", 'Simulation')
+# to_actual = to_actual[['player', 'actual_salary', 'year', 'league']].rename(columns={'actual_salary': 'salary'})
+# to_actual['league'] = to_actual.league.apply(lambda x: f'{x}_actual')
+# to_actual['std_dev'] = 0.1
+# to_actual['min_score'] = to_actual.salary - 1
+# to_actual['max_score'] = to_actual.salary + 1
 
-dm.delete_from_db('Simulation', 'Salaries_Pred', f"year={YEAR} AND league='{LEAGUE}_actual'")
-dm.write_to_db(to_actual, 'Simulation', 'Salaries_Pred', 'append')
+# dm.delete_from_db('Simulation', 'Salaries_Pred', f"year={YEAR} AND league='{LEAGUE}_actual'")
+# dm.write_to_db(to_actual, 'Simulation', 'Salaries_Pred', 'append')
 
 #%%
 
@@ -304,7 +304,6 @@ salaries = drop_keepers(salaries)
 salaries = add_salary_pos_rank(salaries)
 
 salaries = remove_outliers(salaries)
-salaries = salaries.sample(frac=1, random_state=1234).reset_index(drop=True)
 
 # salaries = pd.concat([salaries, pd.get_dummies(salaries.year, prefix='year')], axis=1)
 salaries['young_player'] = (salaries.year_exp < 2).astype('int')
@@ -313,6 +312,7 @@ salaries['rookie_osu'] = salaries.is_rookie * salaries.is_OSU
 salaries['rookie_rank'] = salaries.is_rookie * salaries.avg_pick
 salaries['old_player'] = (salaries.year_exp > 5).astype('int')
 
+salaries = salaries.sort_values(by=['year', 'pos', 'salary'], ascending=[True, True, False]).reset_index(drop=True)
 salaries['next_guy_sal'] = salaries.groupby(['pos', 'year']).salary.shift(-1)
 salaries['next_guy_sal_diff'] = salaries.salary - salaries.next_guy_sal
 
@@ -324,7 +324,6 @@ salaries.loc[salaries.next_guy_sal_diff.isnull(), ['next_guy_sal_diff']] = 0
 salaries.loc[salaries.guy_above_sal_diff.isnull(), [ 'guy_above_sal_diff']] = 0
 
 salaries['pts_per_dollar'] = salaries.avg_proj_points / (salaries.salary+1)
-
 
 
 #%%

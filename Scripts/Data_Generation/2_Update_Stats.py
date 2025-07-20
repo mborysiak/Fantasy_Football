@@ -2,6 +2,13 @@
 
 import pandas as pd 
 import numpy as np
+import sys
+import os
+
+# Add Scripts directory to path to import config
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config import LEAGUE, RUSH_SCORING, RECEIVING_SCORING, PASSING_SCORING, get_scoring_dict
+
 from ff.db_operations import DataManage
 from ff import general as ffgeneral
 import ff.data_clean as dc
@@ -19,94 +26,18 @@ dm_ff = DataManage(db_path)
 
 pd.set_option('display.max_columns', 999)
 
-LEAGUE = 'nffc'  # 'beta' or 'dk'
-
-rush_fp_cols = {
-    'beta': {
-                'rush_yards_gained_sum': 0.1,  
-                'rush_rush_touchdown_sum': 7,
-                'fumble_lost': -2,
-                'rush_yd_100_bonus': 1,
-                'rush_yd_200_bonus': 2,
-            },
-    'dk': {
-                'rush_yards_gained_sum': 0.1,
-                'rush_rush_touchdown_sum': 6,
-                'fumble_lost': -1,
-                'rush_yd_100_bonus': 3,
-                'rush_yd_200_bonus': 0,
-            },
-    'nffc': {
-                'rush_yards_gained_sum': 0.1,
-                'rush_rush_touchdown_sum': 6,
-                'fumble_lost': -1,
-                'rush_yd_100_bonus': 0,
-                'rush_yd_200_bonus': 0,
-            }
-}
-
-rec_fp_cols = {
-    'beta': {
-            'rec_complete_pass_sum': 0.5, 
-            'rec_yards_gained_sum': 0.1,
-            'rec_pass_touchdown_sum': 7, 
-            'rec_yd_100_bonus': 1,
-            'rec_yd_200_bonus': 2,
-            },
-    'dk': {
-            'rec_complete_pass_sum': 1, 
-            'rec_yards_gained_sum': 0.1,
-            'rec_pass_touchdown_sum': 6, 
-            'rec_yd_100_bonus': 3,
-            'rec_yd_200_bonus': 0,
-            },
-    'nffc': {
-            'rec_complete_pass_sum': 1,
-            'rec_yards_gained_sum': 0.1,
-            'rec_pass_touchdown_sum': 6,
-            'rec_yd_100_bonus': 0,
-            'rec_yd_200_bonus': 0,
-            }
-}
-
-pass_fp_cols = {
-    'beta': {
-            'pass_yards_gained_sum': 0.04, 
-            'pass_pass_touchdown_sum': 5, 
-            'pass_interception_sum': -2,
-            'sack_sum': -1,
-            'pass_yd_300_bonus': 1,
-            'pass_yd_400_bonus': 2,
-            },
-    'dk': {
-            'pass_yards_gained_sum': 0.04, 
-            'pass_pass_touchdown_sum': 4, 
-            'pass_interception_sum': -1,
-            'sack_sum': 0,
-            'pass_yd_300_bonus': 3,
-            'pass_yd_400_bonus': 0,
-            },
-    'nffc': {
-            'pass_yards_gained_sum': 0.05, 
-            'pass_pass_touchdown_sum': 6, 
-            'pass_interception_sum': -2,
-            'sack_sum': 0,
-            'pass_yd_300_bonus': 0,
-            'pass_yd_400_bonus': 0,
-        }
-}
-
-if LEAGUE == 'nv':
-    rush_fp_cols['nv'] = rush_fp_cols['beta']
-    rec_fp_cols['nv'] = rec_fp_cols['beta']
-    pass_fp_cols['nv'] = pass_fp_cols['beta']
-    pass_fp_cols['nv']['pass_pass_touchdown_sum'] = 4
+# Get scoring settings from config
+rush_fp_cols = get_scoring_dict('rush')
+rec_fp_cols = get_scoring_dict('receiving') 
+pass_fp_cols = get_scoring_dict('passing')
 
 def calc_fp(df, pts_dict, rush_pass):
     cols = list(pts_dict.keys())
     pts = list(pts_dict.values())
     df[f'fantasy_pts_{rush_pass}'] = (df[cols] * pts).sum(axis=1)
     return df
+
+print(f"Calculating fantasy points for {LEAGUE}...")
 
 #%%
 
@@ -126,15 +57,15 @@ for pos in ['QB', 'RB', 'WR', 'TE']:
     df = df[~((df.player=='Trey Mcbride') & (df.season==2023) & (df.week < 8))].reset_index(drop=True)
 
     df['rush_yd_200_bonus'] = np.where(df.rush_yards_gained_sum >= 200, 1, 0)
-    df = calc_fp(df, rush_fp_cols[LEAGUE], 'rush')
+    df = calc_fp(df, rush_fp_cols, 'rush')
 
     if pos == 'QB':
         df['pass_yd_400_bonus'] = np.where(df.pass_yards_gained_sum >= 400, 1, 0)
-        df = calc_fp(df, pass_fp_cols[LEAGUE], 'pass')
+        df = calc_fp(df, pass_fp_cols, 'pass')
         df['fantasy_pts'] = df['fantasy_pts_rush'] + df['fantasy_pts_pass']
     else:
         df['rec_yd_200_bonus'] = np.where(df.rec_yards_gained_sum >= 200, 1, 0)
-        df = calc_fp(df, rec_fp_cols[LEAGUE], 'rec')
+        df = calc_fp(df, rec_fp_cols, 'rec')
         df['fantasy_pts'] = df['fantasy_pts_rush'] + df['fantasy_pts_rec']
 
     if pos == 'QB':

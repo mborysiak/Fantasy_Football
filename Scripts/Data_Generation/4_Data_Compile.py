@@ -1,7 +1,12 @@
 #%%
 
-# set to this year for the projections
-year = 2025
+# Import configuration
+import sys
+import os
+
+# Add Scripts directory to path to import config
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config import YEAR, LEAGUE, DB_NAME, CLASS_CUTS, POSITIONS, get_scoring_dict
 
 from ff.db_operations import DataManage
 from ff import general
@@ -11,17 +16,14 @@ import pandas as pd
 from zData_Functions import *
 pd.options.mode.chained_assignment = None
 import numpy as np
-import os
 import warnings
 warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
 pd.set_option('display.max_columns', 999)
-
 
 # set the root path and database management object
 root_path = general.get_main_path('Fantasy_Football')
 db_path = f'{root_path}/Data/Databases/'
 dm = DataManage(db_path)
-DB_NAME = 'Season_Stats_New'
 
 def name_cleanup(df):
     df.player = df.player.apply(name_clean)
@@ -74,26 +76,21 @@ def calc_total_tds(df, prefix):
     return df
 
 def calc_proj_pts(df, pos, prefix):
-
-    pt_values = {
-        'pass_yds': 0.04,
-        'pass_td': 5,
-        'pass_int': -2,
-        'pass_sacks': -1,
-        'rush_yds': 0.1,
-        'rush_td': 7,
-        'rec_yds': 0.1,
-        'rec_td': 7,
-        'rec': 0.5
-    }
+    # Get scoring settings from config
+    pt_values = get_scoring_dict('projection')
 
     df[f'{prefix}_proj_points'] = 0
 
-    if pos == 'QB': cols = ['pass_yds', 'pass_td', 'pass_int', 'pass_sacks', 'rush_yds', 'rush_td']
-    else: cols = ['rush_yds', 'rush_td', 'rec_yds', 'rec_td', 'rec']
+    if pos == 'QB': 
+        cols = ['pass_yds', 'pass_td', 'pass_int', 'pass_sacks', 'rush_yds', 'rush_td']
+    else: 
+        cols = ['rush_yds', 'rush_td', 'rec_yds', 'rec_td', 'rec']
+    
     for c in cols:
-        try: df[f'{prefix}_proj_points'] += df[f'{prefix}_{c}'] * pt_values[c]
-        except: df[f'{prefix}_proj_points'] += df[f'avg_proj_{c}'] * pt_values[c]
+        try: 
+            df[f'{prefix}_proj_points'] += df[f'{prefix}_{c}'] * pt_values[c]
+        except: 
+            df[f'{prefix}_proj_points'] += df[f'avg_proj_{c}'] * pt_values[c]
 
     return df
 
@@ -215,9 +212,9 @@ def add_adp(df, pos, source, bad_ty_adp=False):
     
     adp = adp.rename(columns={'pick': f'pick_{source}'})
     
-    # early in the year, the QB ADP is not accurate, so we remove it
+    # early in the YEAR, the QB ADP is not accurate, so we remove it
     if source == 'mfl' and bad_ty_adp:
-        adp.loc[adp.year==year, f'pick_{source}'] = np.nan
+        adp.loc[adp.year==YEAR, f'pick_{source}'] = np.nan
     
     df = pd.merge(df, adp, on=['player', 'year'], how='left')
 
@@ -252,6 +249,15 @@ def add_fpros_bestball_adp(df):
 def add_etr_rank(df, pos):
     etr = dm.read(f'''SELECT player, year, etr_pos_rank
                       FROM ETR_Ranks
+                      WHERE pos='{pos}'
+                      ''', DB_NAME)
+    
+    df = pd.merge(df, etr, on=['player', 'year'], how='left')
+    return df
+
+def add_evan_silva_rank(df, pos):
+    etr = dm.read(f'''SELECT player, year, evan_silva_pos_rank
+                      FROM Evan_Silva_Ranks
                       WHERE pos='{pos}'
                       ''', DB_NAME)
     
@@ -294,7 +300,7 @@ def consensus_fill(df, pos):
         # # touchdowns and proj
         'proj_total_tds': get_cols_to_fill('total_tds', sources),
         'proj_points': get_cols_to_fill('proj_points', sources),
-        'pos_rank': get_cols_to_fill('pos_rank', sources) + ['etr_pos_rank'],
+        'pos_rank': get_cols_to_fill('pos_rank', sources) + ['etr_pos_rank', 'evan_silva_pos_rank'],
 
         'pick': ['pick_mfl', 'pick_fpros', 'pick_nffc', 'pick_bb10', 'pick_rtsports',
                  'pick_underdog', 'pick_drafters', 'pick_best_ball']
@@ -897,298 +903,257 @@ def get_next_year_stats(df, stats_proj, ty_mean=False, is_rookie=False):
 
 
 #%%
-pos='TE'
 
-bad_adps = True
+for pos in POSITIONS:
 
-class_cuts = {
-    'WR': {
-           'upside': {'y_act': 24, 'proj_var': 0.7},
-           'top':  {'y_act': 12, 'proj_var': 0.45}
-        },
-    
-    'RB': {
-           'upside': {'y_act': 24, 'proj_var': 0.7},
-           'top':  {'y_act': 12, 'proj_var': 0.45}
-        },
-    
-    'QB': {
-           'upside': {'y_act': 12, 'proj_var': 0.7},
-           'top':  {'y_act': 6, 'proj_var': 0.45}
-        },
+    bad_adps = True
 
-    'TE': {
-           'upside': {'y_act': 12, 'proj_var': 0.7},
-           'top':  {'y_act': 6, 'proj_var': 0.45}
-        },
+    # Use class cuts from config
+    class_cuts = CLASS_CUTS
 
-    'Rookie_WR': {
-           'upside': {'y_act': 24, 'proj_var': 0.7},
-           'top':  {'y_act': 12, 'proj_var': 0.45}
-        },
+    #==============
+    # Get Projections and Stats
+    #==============
 
-    'Rookie_RB': {
-           'upside': {'y_act': 24, 'proj_var': 0.7},
-           'top':  {'y_act': 12, 'proj_var': 0.45}
-        },
-}
+    # pull all projections and ranks
+    df = fftoday_proj(pos); print(df.shape[0])
+    df = drop_duplicate_players(df, 'fft_proj_points')
+    df = fantasy_pros_new(df, pos); print(df.shape[0])
+    df = get_pff_proj(df, pos); print(df.shape[0])
+    df = ffa_compile_stats(df, pos); print(df.shape[0])
+    df = fantasy_data_proj(df, pos); print(df.shape[0])
+    df = fantasy_points_proj(df, pos); print(df.shape[0])
+    df = add_etr_rank(df, pos); print(df.shape[0])
+    df = add_evan_silva_rank(df, pos); print(df.shape[0])
 
+    #==============
+    # Add ADP and fill in consensus
+    #==============
 
-#==============
-# Get Projections and Stats
-#==============
+    df = add_adp(df, pos, 'mfl', bad_adps); print(df.shape[0])
+    df = add_adp(df, pos, 'fpros', bad_adps); print(df.shape[0])
+    df = add_nffc_adp(df, pos); print(df.shape[0])
+    df = add_fpros_bestball_adp(df); print(df.shape[0])
 
-# pull all projections and ranks
-df = fftoday_proj(pos); print(df.shape[0])
-df = drop_duplicate_players(df, 'fft_proj_points')
-df = fantasy_pros_new(df, pos); print(df.shape[0])
-df = get_pff_proj(df, pos); print(df.shape[0])
-df = ffa_compile_stats(df, pos); print(df.shape[0])
-df = fantasy_data_proj(df, pos); print(df.shape[0])
-df = fantasy_points_proj(df, pos); print(df.shape[0])
-df = add_etr_rank(df, pos); print(df.shape[0])
+    df = consensus_fill(df, pos); print(df.shape[0])
+    for c in [c for c in df.columns if 'pick' in c and 'std' not in c]:
+        df = fill_avg_pick(df, c); print(df.shape[0])
 
-#==============
-# Add ADP and fill in consensus
-#==============
+    df = calc_detailed_stats(df, pos)
 
-df = add_adp(df, pos, 'mfl', bad_adps); print(df.shape[0])
-df = add_adp(df, pos, 'fpros', bad_adps); print(df.shape[0])
-df = add_nffc_adp(df, pos); print(df.shape[0])
-df = add_fpros_bestball_adp(df); print(df.shape[0])
+    if pos != 'QB': df = fill_pff_targets(df); print(df.shape[0])
+    else: df = df.drop('pff_rec_targets', axis=1, errors='ignore')
 
-df = consensus_fill(df, pos); print(df.shape[0])
-for c in [c for c in df.columns if 'pick' in c and 'std' not in c]:
-    df = fill_avg_pick(df, c); print(df.shape[0])
+    #==============
+    # Clean Up Data and Add Rolling
+    #==============
 
-df = calc_detailed_stats(df, pos)
-
-if pos != 'QB': df = fill_pff_targets(df); print(df.shape[0])
-else: df = df.drop('pff_rec_targets', axis=1, errors='ignore')
-
-#==============
-# Clean Up Data and Add Rolling
-#==============
-
-df = df.dropna(axis=1)
-df = remove_non_uniques(df); print(df.shape[0])
-df = drop_duplicate_players(df, 'avg_proj_points')
-df = rolling_proj_stats(df); print(df.shape[0])
-
-#==============
-# Get Team Projections and Market Share
-#==============
-team_proj, team_proj_pos = get_team_projections()
-df = pd.merge(df, team_proj, on=['team',  'year']); print( df.shape[0])
-
-if pos != 'QB':
-    df = pd.merge(df, team_proj_pos, on=['pos', 'team', 'year']); print( df.shape[0])
-    df = proj_market_share(df, 'team_proj_'); print(df.shape[0])
-    df = proj_market_share(df, 'pos_proj_'); print(df.shape[0])
+    df = df.dropna(axis=1)
     df = remove_non_uniques(df); print(df.shape[0])
+    df = drop_duplicate_players(df, 'avg_proj_points')
+    df = rolling_proj_stats(df); print(df.shape[0])
 
-    df = get_pick_vs_team_stats(df)
-    max_qb = get_max_qb()
-    df = pd.merge(df, max_qb, on=['team', 'year']); print(df.shape[0])
+    #==============
+    # Get Team Projections and Market Share
+    #==============
+    team_proj, team_proj_pos = get_team_projections()
+    df = pd.merge(df, team_proj, on=['team',  'year']); print( df.shape[0])
 
-    df = add_qb_yoy_stats(df)
+    if pos != 'QB':
+        df = pd.merge(df, team_proj_pos, on=['pos', 'team', 'year']); print( df.shape[0])
+        df = proj_market_share(df, 'team_proj_'); print(df.shape[0])
+        df = proj_market_share(df, 'pos_proj_'); print(df.shape[0])
+        df = remove_non_uniques(df); print(df.shape[0])
 
-df = drop_duplicate_players(df, 'avg_proj_points')
-df.sort_values(by=['year', 'avg_proj_points'],
-                    ascending=[False, False]).reset_index(drop=True)
+        df = get_pick_vs_team_stats(df)
+        max_qb = get_max_qb()
+        df = pd.merge(df, max_qb, on=['team', 'year']); print(df.shape[0])
 
-#%%
+        df = add_qb_yoy_stats(df)
 
-#-----------
-# Save out Projection data
-#-----------
-stats_proj = dm.read(f'SELECT * FROM {pos}_Stats', DB_NAME)
-stats_proj = drop_duplicate_players(stats_proj, 'sum_fantasy_pts')
+    df = drop_duplicate_players(df, 'avg_proj_points')
 
-if pos =='QB':
-    stat_cols = ['player', 'season', 'year', 'games', 'games_next', 'fantasy_pts_per_game',
-                  'fantasy_pts_rush_per_game', 'fantasy_pts_pass_per_game']
-    stats_proj = stats_proj[stat_cols].rename(columns={'fantasy_pts_per_game': 'y_act', 
-                                                       'fantasy_pts_rush_per_game': 'y_act_rush',
-                                                       'fantasy_pts_pass_per_game': 'y_act_pass',
-                                                       })
-elif pos == 'RB':
-    stat_cols = ['player', 'season', 'year', 'games', 'games_next', 'fantasy_pts_per_game',
-                  'fantasy_pts_rush_per_game', 'fantasy_pts_rec_per_game']
-    stats_proj = stats_proj[stat_cols].rename(columns={'fantasy_pts_per_game': 'y_act', 
-                                                       'fantasy_pts_rush_per_game': 'y_act_rush',
-                                                       'fantasy_pts_rec_per_game': 'y_act_rec',
-                                                       })
-else:
-    stat_cols = ['player', 'season', 'year', 'games', 'games_next', 'fantasy_pts_per_game']
-    stats_proj = stats_proj[stat_cols].rename(columns={'fantasy_pts_per_game': 'y_act'})
+    #-----------
+    # Save out Projection data
+    #-----------
+    stats_proj = dm.read(f'SELECT * FROM {pos}_Stats', DB_NAME)
+    stats_proj = drop_duplicate_players(stats_proj, 'sum_fantasy_pts')
 
-stats_proj[['season', 'year']] = stats_proj[['season', 'year']] - 1
+    if pos =='QB':
+        stat_cols = ['player', 'season', 'year', 'games', 'games_next', 'fantasy_pts_per_game',
+                    'fantasy_pts_rush_per_game', 'fantasy_pts_pass_per_game']
+        stats_proj = stats_proj[stat_cols].rename(columns={'fantasy_pts_per_game': 'y_act', 
+                                                        'fantasy_pts_rush_per_game': 'y_act_rush',
+                                                        'fantasy_pts_pass_per_game': 'y_act_pass',
+                                                        })
+    elif pos == 'RB':
+        stat_cols = ['player', 'season', 'year', 'games', 'games_next', 'fantasy_pts_per_game',
+                    'fantasy_pts_rush_per_game', 'fantasy_pts_rec_per_game']
+        stats_proj = stats_proj[stat_cols].rename(columns={'fantasy_pts_per_game': 'y_act', 
+                                                        'fantasy_pts_rush_per_game': 'y_act_rush',
+                                                        'fantasy_pts_rec_per_game': 'y_act_rec',
+                                                        })
+    else:
+        stat_cols = ['player', 'season', 'year', 'games', 'games_next', 'fantasy_pts_per_game']
+        stats_proj = stats_proj[stat_cols].rename(columns={'fantasy_pts_per_game': 'y_act'})
 
-df_proj = pd.merge(stats_proj, df, on=['player', 'year'], how='right')
-df_proj.loc[(df_proj.year==year) & (df_proj.games.isnull()), ['season', 'games']] = [year-1, 16]
+    stats_proj[['season', 'year']] = stats_proj[['season', 'year']] - 1
+
+    df_proj = pd.merge(stats_proj, df, on=['player', 'year'], how='right')
+    df_proj.loc[(df_proj.year==YEAR) & (df_proj.games.isnull()), ['season', 'games']] = [YEAR-1, 16]
 
 
-df_proj_next, games, games_next = get_next_year_stats(df_proj, stats_proj, ty_mean=False)
+    df_proj_next, games, games_next = get_next_year_stats(df_proj, stats_proj, ty_mean=False)
 
-# fill in next years games that don't matter for this year after creating copy for next year
-df_proj.loc[df_proj.games_next.isnull(), 'games_next'] = 16
+    # fill in next years games that don't matter for this year after creating copy for next year
+    df_proj.loc[df_proj.games_next.isnull(), 'games_next'] = 16
 
-# fill in last year's games for next year stats that don't matter
-df_proj_next['games'] = 16
-df_proj_next.loc[(df_proj_next.year==year) & (df_proj_next.games_next.isnull()), 'games_next'] = 16
+    # fill in last year's games for next year stats that don't matter
+    df_proj_next['games'] = 16
+    df_proj_next.loc[(df_proj_next.year==YEAR) & (df_proj_next.games_next.isnull()), 'games_next'] = 16
 
-df_proj = add_draft_year_exp(df_proj, pos)
-df_proj = add_year_exp_compare(df_proj)
+    df_proj = add_draft_year_exp(df_proj, pos)
+    df_proj = add_year_exp_compare(df_proj)
 
-df_proj_next = add_draft_year_exp(df_proj_next, pos)
-df_proj_next = add_year_exp_compare(df_proj_next)
+    df_proj_next = add_draft_year_exp(df_proj_next, pos)
+    df_proj_next = add_year_exp_compare(df_proj_next)
 
-for df_cur, lbl, gms, gms_next in ([df_proj, '', 4, 0], [df_proj_next, '_next', games, games_next]):
-    # only drop games and not games_next, since the "season" was shifted to year
-    # meaning that games will be for the games played in the projection year
-    df_cur = drop_y_act_except_current(df_cur, year)
-    df_cur = drop_games(df_cur, year, games=gms, games_next=gms_next)
-    df_cur = remove_low_corrs(df_cur, corr_cut=3, collinear_cut=0.995)
+    for df_cur, lbl, gms, gms_next in ([df_proj, '', 4, 0], [df_proj_next, '_next', games, games_next]):
+        # only drop games and not games_next, since the "season" was shifted to year
+        # meaning that games will be for the games played in the projection year
+        df_cur = drop_y_act_except_current(df_cur, YEAR)
+        df_cur = drop_games(df_cur, YEAR, games=gms, games_next=gms_next)
+        df_cur = remove_low_corrs(df_cur, corr_cut=3, collinear_cut=0.995)
 
-    df_cur = y_act_class(df_cur, df_cur.copy(), 'both', 'games', class_cuts[pos]['upside']['proj_var'], class_cuts[pos]['upside']['y_act'], 'upside')
-    df_cur = y_act_class(df_cur, df_cur.copy(), 'both', 'games', class_cuts[pos]['top']['proj_var'], class_cuts[pos]['top']['y_act'], 'top')
-    if pos == 'QB':
-        df_cur = y_act_class(df_cur, df_cur.copy(), 'rush', 'games', class_cuts[pos]['upside']['proj_var'], class_cuts[pos]['upside']['y_act'], 'upside')
-        df_cur = y_act_class(df_cur, df_cur.copy(), 'rush', 'games', class_cuts[pos]['top']['proj_var'], class_cuts[pos]['top']['y_act'], 'top')
-        df_cur = y_act_class(df_cur, df_cur.copy(), 'pass', 'games', class_cuts[pos]['upside']['proj_var'], class_cuts[pos]['upside']['y_act'], 'upside')
-        df_cur = y_act_class(df_cur, df_cur.copy(), 'pass', 'games', class_cuts[pos]['top']['proj_var'], class_cuts[pos]['top']['y_act'], 'top')
+        df_cur = y_act_class(df_cur, df_cur.copy(), 'both', 'games', class_cuts[pos]['upside']['proj_var'], class_cuts[pos]['upside']['y_act'], 'upside')
+        df_cur = y_act_class(df_cur, df_cur.copy(), 'both', 'games', class_cuts[pos]['top']['proj_var'], class_cuts[pos]['top']['y_act'], 'top')
+        if pos == 'QB':
+            df_cur = y_act_class(df_cur, df_cur.copy(), 'rush', 'games', class_cuts[pos]['upside']['proj_var'], class_cuts[pos]['upside']['y_act'], 'upside')
+            df_cur = y_act_class(df_cur, df_cur.copy(), 'rush', 'games', class_cuts[pos]['top']['proj_var'], class_cuts[pos]['top']['y_act'], 'top')
+            df_cur = y_act_class(df_cur, df_cur.copy(), 'pass', 'games', class_cuts[pos]['upside']['proj_var'], class_cuts[pos]['upside']['y_act'], 'upside')
+            df_cur = y_act_class(df_cur, df_cur.copy(), 'pass', 'games', class_cuts[pos]['top']['proj_var'], class_cuts[pos]['top']['y_act'], 'top')
+
+        if pos == 'RB':
+            df_cur = y_act_class(df_cur, df_cur.copy(), 'rush', 'games', class_cuts[pos]['upside']['proj_var'], class_cuts[pos]['upside']['y_act'], 'upside')
+            df_cur = y_act_class(df_cur, df_cur.copy(), 'rush', 'games', class_cuts[pos]['top']['proj_var'], class_cuts[pos]['top']['y_act'], 'top')
+            df_cur = y_act_class(df_cur, df_cur.copy(), 'rec', 'games', class_cuts[pos]['upside']['proj_var'], class_cuts[pos]['upside']['y_act'], 'upside')
+            df_cur = y_act_class(df_cur, df_cur.copy(), 'rec', 'games', class_cuts[pos]['top']['proj_var'], class_cuts[pos]['top']['y_act'], 'top')
+
+        df_cur = df_cur.loc[:,~df_cur.columns.duplicated()].copy()
+        dm.write_to_db(df_cur, f'Model_Inputs{lbl}', f'{pos}_{YEAR}_ProjOnly', if_exist='replace')
+
+    #------------
+    # Save out Full Data
+    #------------
+
+    stats = dm.read(f'SELECT * FROM {pos}_Stats', DB_NAME)
+    stats = drop_duplicate_players(stats, 'sum_fantasy_pts')
+
+    stat_roll_cols = [c for c in stats.columns if ('pass' in c or 'rush' in c or 'rec' in c) and 'y_act' not in c]
+    stats = add_rolling_stats(stats, ['player'], stat_roll_cols)
+    stats = remove_non_uniques(stats)
+    df_stats = pd.merge(stats, df, on=['player', 'year']); print(df.shape[0])
+    df_stats = add_team_stat_share(df_stats)
 
     if pos == 'RB':
-        df_cur = y_act_class(df_cur, df_cur.copy(), 'rush', 'games', class_cuts[pos]['upside']['proj_var'], class_cuts[pos]['upside']['y_act'], 'upside')
-        df_cur = y_act_class(df_cur, df_cur.copy(), 'rush', 'games', class_cuts[pos]['top']['proj_var'], class_cuts[pos]['top']['y_act'], 'top')
-        df_cur = y_act_class(df_cur, df_cur.copy(), 'rec', 'games', class_cuts[pos]['upside']['proj_var'], class_cuts[pos]['upside']['y_act'], 'upside')
-        df_cur = y_act_class(df_cur, df_cur.copy(), 'rec', 'games', class_cuts[pos]['top']['proj_var'], class_cuts[pos]['top']['y_act'], 'top')
+        df_stats = add_pff_stats(df_stats, pos, 'Rec')
+        df_stats = add_pff_stats(df_stats, pos, 'Rush')
+    elif pos in ('WR', 'RB'):
+        df_stats = add_pff_stats(df_stats, pos, 'Rec')
+    elif pos == 'QB':
+        df_stats = add_pff_stats(df_stats, pos, 'QB')
+        df_stats = add_pff_stats(df_stats, pos, 'Rush')
 
-    df_cur = df_cur.loc[:,~df_cur.columns.duplicated()].copy()
-    dm.write_to_db(df_cur, f'Model_Inputs{lbl}', f'{pos}_{year}_ProjOnly', if_exist='replace')
+    df_stats = drop_duplicate_players(df_stats, 'sum_fantasy_pts')
 
-#------------
-# Save out Full Data
-#------------
+    df_stats = add_draft_year_exp(df_stats, pos)
+    df_stats = add_year_exp_compare(df_stats)
 
-stats = dm.read(f'SELECT * FROM {pos}_Stats', DB_NAME)
-stats = drop_duplicate_players(stats, 'sum_fantasy_pts')
+    # drop both last year's and next year's game limits
+    # since you need y_act to be relevant and last year's stats to be relvant
+    df_stats = drop_y_act_except_current(df_stats, YEAR)
+    df_stats = drop_games(df_stats, YEAR, games=4, games_next=4)
+    df_stats = remove_low_corrs(df_stats, corr_cut=5, collinear_cut=0.98)
+    df_stats = y_act_class(df_stats, df_stats.copy(), 'both', 'games_next', class_cuts[pos]['upside']['proj_var'], class_cuts[pos]['upside']['y_act'], 'upside')
+    df_stats = y_act_class(df_stats, df_stats.copy(), 'both', 'games_next', class_cuts[pos]['top']['proj_var'], class_cuts[pos]['top']['y_act'], 'top')
 
-stat_roll_cols = [c for c in stats.columns if ('pass' in c or 'rush' in c or 'rec' in c) and 'y_act' not in c]
-stats = add_rolling_stats(stats, ['player'], stat_roll_cols)
-stats = remove_non_uniques(stats)
-df_stats = pd.merge(stats, df, on=['player', 'year']); print(df.shape[0])
-df_stats = add_team_stat_share(df_stats)
+    if pos == 'QB':
+        df_stats = y_act_class(df_stats, df_stats.copy(), 'rush', 'games', class_cuts[pos]['upside']['proj_var'], class_cuts[pos]['upside']['y_act'], 'upside')
+        df_stats = y_act_class(df_stats, df_stats.copy(), 'rush', 'games', class_cuts[pos]['top']['proj_var'], class_cuts[pos]['top']['y_act'], 'top')
+        df_stats = y_act_class(df_stats, df_stats.copy(), 'pass', 'games', class_cuts[pos]['upside']['proj_var'], class_cuts[pos]['upside']['y_act'], 'upside')
+        df_stats = y_act_class(df_stats, df_stats.copy(), 'pass', 'games', class_cuts[pos]['top']['proj_var'], class_cuts[pos]['top']['y_act'], 'top')
 
-if pos == 'RB':
-    df_stats = add_pff_stats(df_stats, pos, 'Rec')
-    df_stats = add_pff_stats(df_stats, pos, 'Rush')
-elif pos in ('WR', 'RB'):
-    df_stats = add_pff_stats(df_stats, pos, 'Rec')
-elif pos == 'QB':
-    df_stats = add_pff_stats(df_stats, pos, 'QB')
-    df_stats = add_pff_stats(df_stats, pos, 'Rush')
+    if pos == 'RB':
+        df_stats = y_act_class(df_stats, df_stats.copy(), 'rush', 'games', class_cuts[pos]['upside']['proj_var'], class_cuts[pos]['upside']['y_act'], 'upside')
+        df_stats = y_act_class(df_stats, df_stats.copy(), 'rush', 'games', class_cuts[pos]['top']['proj_var'], class_cuts[pos]['top']['y_act'], 'top')
+        df_stats = y_act_class(df_stats, df_stats.copy(), 'rec', 'games', class_cuts[pos]['upside']['proj_var'], class_cuts[pos]['upside']['y_act'], 'upside')
+        df_stats = y_act_class(df_stats, df_stats.copy(), 'rec', 'games', class_cuts[pos]['top']['proj_var'], class_cuts[pos]['top']['y_act'], 'top')
 
-df_stats = drop_duplicate_players(df_stats, 'sum_fantasy_pts')
+    df_stats = df_stats.loc[:,~df_stats.columns.duplicated()].copy()
+    if df_stats.shape[1] > 2000:
+        dm.write_to_db(df_stats.iloc[:,:2000], 'Model_Inputs', f'{pos}_{YEAR}_Stats', if_exist='replace')
+        dm.write_to_db(df_stats.iloc[:,2000:], 'Model_Inputs', f'{pos}_{YEAR}_Stats_V2', if_exist='replace')
+    else:
+        dm.write_to_db(df_stats, 'Model_Inputs', f'{pos}_{YEAR}_Stats', if_exist='replace')
 
-df_stats = add_draft_year_exp(df_stats, pos)
-df_stats = add_year_exp_compare(df_stats)
+    #------------
+    # Save out Rookie Data
+    #------------
+    if pos in ('RB', 'WR'):
 
-# drop both last year's and next year's game limits
-# since you need y_act to be relevant and last year's stats to be relvant
-df_stats = drop_y_act_except_current(df_stats, year)
-df_stats = drop_games(df_stats, year, games=4, games_next=4)
-df_stats = remove_low_corrs(df_stats, corr_cut=5, collinear_cut=0.98)
-df_stats = y_act_class(df_stats, df_stats.copy(), 'both', 'games_next', class_cuts[pos]['upside']['proj_var'], class_cuts[pos]['upside']['y_act'], 'upside')
-df_stats = y_act_class(df_stats, df_stats.copy(), 'both', 'games_next', class_cuts[pos]['top']['proj_var'], class_cuts[pos]['top']['y_act'], 'top')
+        df_rookie = dm.read(f'''SELECT * 
+                                FROM Rookie_{pos}_Stats
+                                ''', DB_NAME).rename(columns={'draft_year': 'year'})
 
-if pos == 'QB':
-    df_stats = y_act_class(df_stats, df_stats.copy(), 'rush', 'games', class_cuts[pos]['upside']['proj_var'], class_cuts[pos]['upside']['y_act'], 'upside')
-    df_stats = y_act_class(df_stats, df_stats.copy(), 'rush', 'games', class_cuts[pos]['top']['proj_var'], class_cuts[pos]['top']['y_act'], 'top')
-    df_stats = y_act_class(df_stats, df_stats.copy(), 'pass', 'games', class_cuts[pos]['upside']['proj_var'], class_cuts[pos]['upside']['y_act'], 'upside')
-    df_stats = y_act_class(df_stats, df_stats.copy(), 'pass', 'games', class_cuts[pos]['top']['proj_var'], class_cuts[pos]['top']['y_act'], 'top')
+        stats = dm.read(f'''SELECT player, 
+                                    season year, 
+                                    games, 
+                                    games_next, 
+                                    fantasy_pts_per_game y_act 
+                            FROM {pos}_Stats
+                            ''', DB_NAME)
+        
+        # remove Marving Harrison Sr stats
+        stats = stats[~((stats.player=='Marvin Harrison') & (stats.year < 2024))].reset_index(drop=True)
+        stats = drop_duplicate_players(stats, 'y_act', rookie=True)
 
-if pos == 'RB':
-    df_stats = y_act_class(df_stats, df_stats.copy(), 'rush', 'games', class_cuts[pos]['upside']['proj_var'], class_cuts[pos]['upside']['y_act'], 'upside')
-    df_stats = y_act_class(df_stats, df_stats.copy(), 'rush', 'games', class_cuts[pos]['top']['proj_var'], class_cuts[pos]['top']['y_act'], 'top')
-    df_stats = y_act_class(df_stats, df_stats.copy(), 'rec', 'games', class_cuts[pos]['upside']['proj_var'], class_cuts[pos]['upside']['y_act'], 'upside')
-    df_stats = y_act_class(df_stats, df_stats.copy(), 'rec', 'games', class_cuts[pos]['top']['proj_var'], class_cuts[pos]['top']['y_act'], 'top')
+        
+        df_rookie = pd.merge(stats, df_rookie, on=['player', 'year'], how='right')
+        df_rookie = pd.merge(df_rookie, df, on=['player', 'year'])
 
-df_stats = df_stats.loc[:,~df_stats.columns.duplicated()].copy()
-if df_stats.shape[1] > 2000:
-    dm.write_to_db(df_stats.iloc[:,:2000], 'Model_Inputs', f'{pos}_{year}_Stats', if_exist='replace')
-    dm.write_to_db(df_stats.iloc[:,2000:], 'Model_Inputs', f'{pos}_{year}_Stats_V2', if_exist='replace')
-else:
-    dm.write_to_db(df_stats, 'Model_Inputs', f'{pos}_{year}_Stats', if_exist='replace')
+        df_rookie['year_exp'] = 0
+        df_rookie = add_year_exp_compare(df_rookie)
+        df_rookie = df_rookie.drop([c for c in df_rookie.columns if 'rmean' in c or 'rmax' in c or 'std' in c], axis=1)
+        df_rookie.loc[df_rookie.year==YEAR, ['games','games_next']] = 16
+        
+        stats_next = dm.read(f'''SELECT player, 
+                                    season year, 
+                                    games, 
+                                    games_next, 
+                                    fantasy_pts_per_game y_act 
+                            FROM {pos}_Stats''', DB_NAME)
+        stats_next = drop_duplicate_players(stats_next, 'y_act', rookie=False)
+        df_rookie_next, games, games_next = get_next_year_stats(df_rookie, stats_next, ty_mean=False, is_rookie=True)
+        df_rookie_next = drop_duplicate_players(df_rookie_next, 'y_act', rookie=True)
+        df_rookie_next.loc[df_rookie_next.year==YEAR, ['games','games_next']] = 16
+        
+        df_rookie.games_next = df_rookie.games_next.fillna(16)
 
-#------------
-# Save out Rookie Data
-#------------
-if pos in ('RB', 'WR'):
+        for df_cur, lbl, gms, gms_next in ([df_rookie, '', 4, 0], [df_rookie_next, '_next', games, games_next]):
 
-    df_rookie = dm.read(f'''SELECT * 
-                            FROM Rookie_{pos}_Stats
-                            ''', DB_NAME).rename(columns={'draft_year': 'year'})
+            df_cur = drop_y_act_except_current(df_cur, YEAR)
+            df_cur = drop_games(df_cur, YEAR, games=games, games_next=games_next)
 
-    stats = dm.read(f'''SELECT player, 
-                                season year, 
-                                games, 
-                                games_next, 
-                                fantasy_pts_per_game y_act 
-                        FROM {pos}_Stats
-                        ''', DB_NAME)
-    
-    # remove Marving Harrison Sr stats
-    stats = stats[~((stats.player=='Marvin Harrison') & (stats.year < 2024))].reset_index(drop=True)
-    stats = drop_duplicate_players(stats, 'y_act', rookie=True)
+            df_cur = remove_low_corrs(df_cur, corr_cut=2, collinear_cut=0.998)
+            df_cur = y_act_class(df_cur.fillna({'games_next': 16}), df_proj.copy(), 'both', 'games',
+                                    class_cuts[f'Rookie_{pos}']['upside']['proj_var'], class_cuts[f'Rookie_{pos}']['upside']['y_act'], 'upside')
+            df_cur = y_act_class(df_cur.fillna({'games_next': 16}), df_proj.copy(), 'both', 'games',
+                                    class_cuts[f'Rookie_{pos}']['top']['proj_var'], class_cuts[f'Rookie_{pos}']['top']['y_act'], 'top')
 
-    
-    df_rookie = pd.merge(stats, df_rookie, on=['player', 'year'], how='right')
-    df_rookie = pd.merge(df_rookie, df, on=['player', 'year'])
+            df_cur = drop_duplicate_players(df_cur, 'y_act', rookie=True)
+            df_cur = df_cur.loc[:,~df_cur.columns.duplicated()].copy()
 
-    df_rookie['year_exp'] = 0
-    df_rookie = add_year_exp_compare(df_rookie)
-    df_rookie = df_rookie.drop([c for c in df_rookie.columns if 'rmean' in c or 'rmax' in c or 'std' in c], axis=1)
-    df_rookie.loc[df_rookie.year==year, ['games','games_next']] = 16
-    
-    stats_next = dm.read(f'''SELECT player, 
-                                season year, 
-                                games, 
-                                games_next, 
-                                fantasy_pts_per_game y_act 
-                        FROM {pos}_Stats''', DB_NAME)
-    stats_next = drop_duplicate_players(stats_next, 'y_act', rookie=False)
-    df_rookie_next, games, games_next = get_next_year_stats(df_rookie, stats_next, ty_mean=False, is_rookie=True)
-    df_rookie_next = drop_duplicate_players(df_rookie_next, 'y_act', rookie=True)
-    df_rookie_next.loc[df_rookie_next.year==year, ['games','games_next']] = 16
-    
-    df_rookie.games_next = df_rookie.games_next.fillna(16)
-
-    for df_cur, lbl, gms, gms_next in ([df_rookie, '', 4, 0], [df_rookie_next, '_next', games, games_next]):
-
-        df_cur = drop_y_act_except_current(df_cur, year)
-        df_cur = drop_games(df_cur, year, games=games, games_next=games_next)
-
-        df_cur = remove_low_corrs(df_cur, corr_cut=2, collinear_cut=0.998)
-        df_cur = y_act_class(df_cur.fillna({'games_next': 16}), df_proj.copy(), 'both', 'games',
-                                class_cuts[f'Rookie_{pos}']['upside']['proj_var'], class_cuts[f'Rookie_{pos}']['upside']['y_act'], 'upside')
-        df_cur = y_act_class(df_cur.fillna({'games_next': 16}), df_proj.copy(), 'both', 'games',
-                                class_cuts[f'Rookie_{pos}']['top']['proj_var'], class_cuts[f'Rookie_{pos}']['top']['y_act'], 'top')
-
-        df_cur = drop_duplicate_players(df_cur, 'y_act', rookie=True)
-        df_cur = df_cur.loc[:,~df_cur.columns.duplicated()].copy()
-
-        dm.write_to_db(df_cur, f'Model_Inputs{lbl}', f'{pos}_{year}_Rookie', if_exist='replace')
-
-
-
-# xx = pd.merge(stats.loc[stats.year>2007,['player', 'year', 'games', 'games_next', 'y_act']], 
-#               df[['player', 'year', 'avg_proj_points']], on=['player', 'year'], how='outer'); print(df.shape[0])
-
-# # xx[xx.avg_proj_points.isnull()].dropna(subset=['y_act']).sort_values(by='y_act').iloc[-50:]
-# xx[xx.y_act.isnull()].dropna(subset=['avg_proj_points']).sort_values(by='avg_proj_points').iloc[-50:]
-
+            dm.write_to_db(df_cur, f'Model_Inputs{lbl}', f'{pos}_{YEAR}_Rookie', if_exist='replace')
 
 #%%
 
@@ -1200,7 +1165,7 @@ from sklearn.metrics import r2_score
 alpha = 0.8
 
 model_obj = 'reg'
-y_act_next = True
+y_act_next = False
 
 if y_act_next: lbl = '_next'
 else: lbl = ''
@@ -1210,7 +1175,7 @@ class_metric = '_upside'
 if model_obj =='class': proba = True
 else: proba = False
 
-Xy = dm.read(f"SELECT * FROM {pos}_{year}_ProjOnly WHERE pos='{pos}' ", f'Model_Inputs{lbl}')
+Xy = dm.read(f"SELECT * FROM {pos}_{YEAR}_ProjOnly WHERE pos='{pos}' ", f'Model_Inputs{lbl}')
 # Xy = dm.read(f"SELECT * FROM {pos}_{year}_Stats WHERE pos='{pos}' ", 'Model_Inputs')
 # if Xy.shape[1]==2000:
 #     Xy = pd.concat([Xy, dm.read(f"SELECT * FROM {pos}_{year}_Stats_V2 ", 'Model_Inputs')], axis=1)
@@ -1229,8 +1194,8 @@ Xy = Xy.drop([c for c in Xy.columns if 'y_act_' in c], axis=1)
 # Xy = Xy[(Xy.year_exp >= 2) & (Xy.year_exp <= 3)].reset_index(drop=True)
 # display(Xy.loc[Xy.y_act==1, ['player', 'year', 'y_act', 'avg_proj_points_per_game']].iloc[-50:])
 
-pred = Xy[Xy.year==year].copy().reset_index(drop=True)
-train = Xy[Xy.year<year].copy().reset_index(drop=True)
+pred = Xy[Xy.year==YEAR].copy().reset_index(drop=True)
+train = Xy[Xy.year<YEAR].copy().reset_index(drop=True)
 print(Xy.shape)
 
 preds = []

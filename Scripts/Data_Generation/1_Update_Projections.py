@@ -1,12 +1,16 @@
 
 # %%
 
+import sys
+import os
+
+# Add Scripts directory to path to import config
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config import YEAR, DB_NAME, POSITIONS
+
 from ff.db_operations import DataManage
 from ff import general
 import ff.data_clean as dc
-
-# set to this year
-year = 2025
 
 # set the root path and database management object
 root_path = general.get_main_path('Fantasy_Football')
@@ -17,19 +21,16 @@ import pandas as pd
 from zData_Functions import *
 pd.options.mode.chained_assignment = None
 import numpy as np
-import os
-
-DB_NAME = 'Season_Stats_New'
 
 #%%
 
-def clean_adp(data_adp, year):
+def clean_adp(data_adp, year_val):
 
     #--------
     # Select relevant columns and clean special figures
     #--------
 
-    data_adp['year'] = year
+    data_adp['year'] = year_val
 
     # set column names to what they are after pulling
     df_adp = data_adp.iloc[:, 1:].rename(columns={
@@ -66,22 +67,22 @@ def clean_adp(data_adp, year):
     
     return df_adp
 
-def get_adp(year, pos, source):
+def get_adp(year_val, pos, source):
     
     if source == 'mfl':
         # get the dataset based on year + position
-        URL = f'https://www45.myfantasyleague.com/{year}/reports?R=ADP&POS={pos}&PERIOD=RECENT&CUTOFF=5&FCOUNT=0&ROOKIES=0&INJURED=1&IS_PPR=3&IS_KEEPER=N&IS_MOCK=1&PAGE=ALL'
+        URL = f'https://www45.myfantasyleague.com/{year_val}/reports?R=ADP&POS={pos}&PERIOD=RECENT&CUTOFF=5&FCOUNT=0&ROOKIES=0&INJURED=1&IS_PPR=3&IS_KEEPER=N&IS_MOCK=1&PAGE=ALL'
         data = pd.read_html(URL)[1]
 
         # clean the dataset and print out check dataset
-        df = clean_adp(data, year)[['player', 'pick']]
+        df = clean_adp(data, year_val)[['player', 'pick']]
         print(df.head(10))
 
         df = df[df.player!='Player Hint:'].reset_index(drop=True)
 
         # log the avg_pick to match existing
         df['pick'] = df.pick.astype('float')
-        df = df.assign(pos=pos, year=year, source='mfl')
+        df = df.assign(pos=pos, year=year_val, source='mfl')
     
     elif source == 'fantasypros':
         df = pd.read_html("https://www.fantasypros.com/nfl/adp/half-point-ppr-overall.php")[0]
@@ -93,7 +94,7 @@ def get_adp(year, pos, source):
         df['player'] = df.player.apply(dc.name_clean)
         df['pos'] = df.pos.apply(lambda x: x[:2])
         df['pick'] = df.pick.astype('float')
-        df = df.assign(year=year, source='fpros')
+        df = df.assign(year=year_val, source='fpros')
         df = df[['player', 'pick', 'pos', 'year', 'source']]
         
     
@@ -124,7 +125,7 @@ def convert_to_float(df):
             pass
     return df
 
-def pull_fftoday(pos, year):
+def pull_fftoday(pos, year_val):
 
     pos_ids = {
         'QB': 10,
@@ -152,13 +153,13 @@ def pull_fftoday(pos, year):
     df = pd.DataFrame()
     for page_num in num_pages[pos]:
         try:
-            fft_url = f"https://fftoday.com/rankings/playerproj.php?Season={year}&PosID={pos_ids[pos]}&LeagueID=193033&order_by=FFPts&sort_order=DESC&cur_page={page_num}"
+            fft_url = f"https://fftoday.com/rankings/playerproj.php?Season={year_val}&PosID={pos_ids[pos]}&LeagueID=193033&order_by=FFPts&sort_order=DESC&cur_page={page_num}"
 
             df_cur = pd.read_html(fft_url)[7]
             df_cur = df_cur.iloc[2:, 1:]
             df_cur.columns = cols[pos]
 
-            df_cur = df_cur.assign(pos=pos, year=year)
+            df_cur = df_cur.assign(pos=pos, year=year_val)
 
             col_arr = ['player', 'pos', 'team', 'year']
             col_arr.extend([c for c in df_cur.columns if 'fft' in c])
@@ -167,7 +168,7 @@ def pull_fftoday(pos, year):
             df = pd.concat([df, df_cur], axis=0)
             
         except:
-            print(pos,year, 'failed')
+            print(pos,year_val, 'failed')
 
     return df
 
@@ -214,7 +215,7 @@ def predict_fft_sacks(df_ty):
 def pull_fantasy_data(fname, set_year):
 
     # move fantasydata projections
-    df = move_download_to_folder(root_path, 'FantasyData', fname, year)
+    df = move_download_to_folder(root_path, 'FantasyData', fname, set_year)
     
     cols = {
             'rank': 'fdta_rank',
@@ -271,31 +272,31 @@ def format_ffa(df, table_name, set_year):
 
 #%%
 
-for pos in ['QB', 'RB', 'WR', 'TE']:
-    print(year, pos)
-    mfl_adp = get_adp(year, pos, 'mfl')
-    dm.delete_from_db(DB_NAME, 'ADP_Ranks', f"year={year} and pos='{pos}'", create_backup=False)
+for pos in POSITIONS:
+    print(YEAR, pos)
+    mfl_adp = get_adp(YEAR, pos, 'mfl')
+    dm.delete_from_db(DB_NAME, 'ADP_Ranks', f"year={YEAR} and pos='{pos}'", create_backup=False)
     dm.write_to_db(mfl_adp, DB_NAME, 'ADP_Ranks', 'append')
 
-fp_adp = get_adp(year, 'all', 'fantasypros')
+fp_adp = get_adp(YEAR, 'all', 'fantasypros')
 dm.write_to_db(fp_adp, DB_NAME, 'ADP_Ranks', 'append')
 
 #%%
 
 def pull_nffc(filename, label):
 
-    df = move_download_to_folder(root_path, 'NFFC', filename, year, sep='\t')
+    df = move_download_to_folder(root_path, 'NFFC', filename, YEAR, sep='\t')
     df.Player = df.Player.apply(lambda x: x.split(',')[1] + ' ' + x.split(',')[0])
     df = df[['Player', 'Team', 'Position(s)', 'ADP', 'Min Pick', 'Max Pick']]
     df.columns = ['player', 'team', 'pos', 'pick_nffc', 'min_pick', 'max_pick']
     df['source'] = label
-    df['year'] = year
+    df['year'] = YEAR
     df.player = df.player.apply(dc.name_clean)
     return df
 
 
 df = pull_nffc('ADP.tsv', 'nffc_rotowire_online')
-dm.delete_from_db(DB_NAME, 'NFFC_ADP', f"year={year}", create_backup=False)
+dm.delete_from_db(DB_NAME, 'NFFC_ADP', f"year={YEAR}", create_backup=False)
 dm.write_to_db(df, DB_NAME, 'NFFC_ADP', 'append')
 
 df = pull_nffc('ADP (1).tsv', 'nffc_best_ball_overall')
@@ -307,24 +308,69 @@ dm.write_to_db(df, DB_NAME, 'NFFC_ADP', 'append')
 df = pull_nffc('ADP (3).tsv', 'nffc_cutline')
 dm.write_to_db(df, DB_NAME, 'NFFC_ADP', 'append')
 
+nffc_avg = dm.read(f'''SELECT player,
+                                pos,
+                                year,
+                                avg(pick_nffc) avg_pick,
+                                avg(min_pick) min_pick,
+                                avg(max_pick) max_pick
+                        FROM NFFC_ADP
+                        WHERE year = {YEAR}
+                        GROUP BY player, pos, year
+                        ''', f'Season_Stats_New')
+nffc_avg['std_dev'] = (nffc_avg['max_pick'] - nffc_avg['min_pick']) / 5
+nffc_avg['league'] = 'nffc'
+nffc_avg = nffc_avg.sort_values(by='avg_pick', ascending=True).reset_index(drop=True)
+
+dm.delete_from_db(DB_NAME, 'ADP_Averages', f"year={YEAR} AND league='nffc'", create_backup=False)
+dm.write_to_db(nffc_avg, DB_NAME, 'ADP_Averages', 'append')
+
+
+nffc = dm.read(f'''SELECT *
+                   FROM ADP_Averages
+                   WHERE year = {YEAR}
+                         AND league = 'nffc'
+                ''', f'Season_Stats_New')
+
+dk = move_download_to_folder(root_path, 'DK_ADP', 'Draftkings ADP.csv', YEAR)
+dk = dk[['Player', 'ADP']]
+dk.columns = ['player', 'pick_dk']
+dk.player = dk.player.apply(dc.name_clean)
+dk = dk.assign(year=YEAR)
+
+dk = pd.merge(nffc, dk, on=['player', 'year'], how='inner')
+
+dk['min_ratio'] = dk.min_pick / dk.avg_pick
+dk['max_ratio'] = dk.max_pick / dk.avg_pick
+dk['min_pick_dk'] = dk.min_ratio * dk.pick_dk
+dk['max_pick_dk'] = dk.max_ratio * dk.pick_dk
+
+dk = dk.drop(['avg_pick', 'min_pick', 'max_pick', 'min_ratio', 'max_ratio'], axis=1)
+dk = dk.rename(columns={'pick_dk': 'avg_pick', 'min_pick_dk': 'min_pick', 'max_pick_dk': 'max_pick'})
+dk = dk[nffc.columns]
+dk['league'] = 'dk'
+dk = dk.sort_values(by='avg_pick', ascending=True)
+dm.delete_from_db(DB_NAME, 'ADP_Averages', f"year={YEAR} AND league='dk'", create_backup=False)
+dm.write_to_db(dk, DB_NAME, 'ADP_Averages', 'append')
+
 #%%
 
-df = move_download_to_folder(root_path, 'FantasyPros_Best_Ball', f'FantasyPros_{year}_Overall_ADP_Rankings.csv', year)
+df = move_download_to_folder(root_path, 'FantasyPros_Best_Ball', f'FantasyPros_{YEAR}_Overall_ADP_Rankings.csv', YEAR)
 df = df.dropna(subset=['Player']).reset_index(drop=True)
 df = df[['Player', 'Team', 'BB10', 'RTSports', 'Underdog', 'Drafters', 'AVG']]
 df.columns = ['player', 'team', 'pick_bb10', 'pick_rtsports', 'pick_underdog', 'pick_drafters', 'pick_best_ball']
 df.player = df.player.apply(dc.name_clean)
-df['year'] = year
+df['year'] = YEAR
 
-dm.delete_from_db(DB_NAME, 'FantasyPros_Best_Ball_ADP', f"year={year}", create_backup=False)
+dm.delete_from_db(DB_NAME, 'FantasyPros_Best_Ball_ADP', f"year={YEAR}", create_backup=False)
 dm.write_to_db(df, DB_NAME, 'FantasyPros_Best_Ball_ADP', 'append')
 
 #%%
 
 # pull fftoday rankings
 output = pd.DataFrame()
-for pos in ['QB', 'RB', 'WR', 'TE']:
-    df = pull_fftoday(pos, year)
+for pos in POSITIONS:
+    df = pull_fftoday(pos, YEAR)
     output = pd.concat([output, df], axis=0, sort=False)
 
 output = output.fillna(0)
@@ -333,7 +379,7 @@ output['player'] = output.player.apply(dc.name_clean)
 output = predict_fft_sacks(output).round(1)
 output.loc[output.pos.isin(['RB', 'WR', 'TE']), 'fft_sacks'] = 0
 
-dm.delete_from_db(DB_NAME, 'FFToday_Projections', f"year={year}", create_backup=False)
+dm.delete_from_db(DB_NAME, 'FFToday_Projections', f"year={YEAR}", create_backup=False)
 dm.write_to_db(output, DB_NAME, 'FFToday_Projections', 'append')
 
 #%%
@@ -346,29 +392,29 @@ try:
 except: 
     print('No new Fantasy Data file found')
 
-df = pull_fantasy_data(new_fname, year)
+df = pull_fantasy_data(new_fname, YEAR)
 
-dm.delete_from_db(DB_NAME, 'FantasyData', f"year={year}", create_backup=False)
+dm.delete_from_db(DB_NAME, 'FantasyData', f"year={YEAR}", create_backup=False)
 dm.write_to_db(df, DB_NAME, 'FantasyData', 'append')
 
 
 
 #%%
-df = move_download_to_folder(root_path, 'FFA', f'projections_{year}_wk0.csv', year)
-df = format_ffa(df, 'Projections', year)
+df = move_download_to_folder(root_path, 'FFA', f'projections_{YEAR}_wk0.csv', YEAR)
+df = format_ffa(df, 'Projections', YEAR)
 df = df[~df.team.isnull()].reset_index(drop=True)
 
-dm.delete_from_db(DB_NAME, 'FFA_Projections', f"year={year}", create_backup=False)
+dm.delete_from_db(DB_NAME, 'FFA_Projections', f"year={YEAR}", create_backup=False)
 dm.write_to_db(df, DB_NAME, 'FFA_Projections', 'append')
 
 
-df = move_download_to_folder(root_path, 'FFA', f'raw_stats_{year}_wk0.csv', year)
-df = format_ffa(df, 'RawStats', year)
+df = move_download_to_folder(root_path, 'FFA', f'raw_stats_{YEAR}_wk0.csv', YEAR)
+df = format_ffa(df, 'RawStats', YEAR)
 df = df[~df.team.isnull()].reset_index(drop=True)
 df = df.drop([c for c in df.columns if '_idp_' in c], axis=1)
 df = df.drop(['ffa_birthdate', 'ffa_draft_year'], axis=1)
 
-dm.delete_from_db(DB_NAME, 'FFA_RawStats', f"year={year}", create_backup=False)
+dm.delete_from_db(DB_NAME, 'FFA_RawStats', f"year={YEAR}", create_backup=False)
 dm.write_to_db(df, DB_NAME, 'FFA_RawStats', 'append')
 
 
@@ -397,13 +443,13 @@ rename_cols = {
 
 df = pd.DataFrame()
 for pos in ['qb', 'rb', 'wr', 'te']:
-    print(pos, year)
+    print(pos, YEAR)
     
     df_cur = pd.read_html(f'https://www.fantasypros.com/nfl/projections/{pos}.php?week=draft')[0]
     cols = [f'{c[0]}_{c[1]}' if 'Unnamed' not in c[0] else c[1] for c in df_cur.columns]
 
     df_cur.columns = cols
-    df_cur = df_cur.rename(columns=rename_cols).assign(pos=pos.upper(), year=year)
+    df_cur = df_cur.rename(columns=rename_cols).assign(pos=pos.upper(), year=YEAR)
     df_cur.player = df_cur.player.apply(lambda x: x.split(' ')[0] + ' ' + x.split(' ')[1])
     df_cur.player = df_cur.player.apply(dc.name_clean)
     col_order = ['player', 'pos', 'year']
@@ -414,13 +460,13 @@ for pos in ['qb', 'rb', 'wr', 'te']:
 df = df.fillna(0)
 df = df.round(2)
 
-dm.delete_from_db(DB_NAME, 'FantasyPros_Projections', f"year={year}", create_backup=False)
+dm.delete_from_db(DB_NAME, 'FantasyPros_Projections', f"year={YEAR}", create_backup=False)
 dm.write_to_db(df, DB_NAME, 'FantasyPros_Projections', 'append')
 
 
 #%%
 
-df = move_download_to_folder(root_path, 'PFF_Projections', f'projections.csv', year)
+df = move_download_to_folder(root_path, 'PFF_Projections', f'projections.csv', YEAR)
 
 rename_cols = {
     'fantasyPointsRank': 'pff_rank', 
@@ -448,7 +494,7 @@ rename_cols = {
 }
 
 df = df.rename(columns=rename_cols)
-df = df.assign(year=year)
+df = df.assign(year=YEAR)
 
 df.player = df.player.apply(dc.name_clean)
 df.pos = df.pos.apply(lambda x: x.upper())
@@ -457,12 +503,12 @@ col_order.extend([c for c in df.columns if 'pff' in c])
 df = df[col_order]
 df = df.round(2)
 
-dm.delete_from_db(DB_NAME, 'PFF_Projections', f"year={year}", create_backup=False)
+dm.delete_from_db(DB_NAME, 'PFF_Projections', f"year={YEAR}", create_backup=False)
 dm.write_to_db(df, DB_NAME, 'PFF_Projections', 'append')
 
 #%%
 
-df = move_download_to_folder(root_path, 'ETR', f'{year} Redraft Half PPR Rankings.csv', year)
+df = move_download_to_folder(root_path, 'ETR', f'{YEAR} Redraft Half PPR Rankings.csv', YEAR)
 df = df.rename(columns={'Name': 'player', 
                         'Team': 'team', 
                         'Pos': 'pos',
@@ -478,14 +524,32 @@ df.player = df.player.apply(dc.name_clean)
 df.etr_pos_rank = df.etr_pos_rank.apply(lambda x: int(x[2:]))
 # df.etr_adp_pos_rank = df.etr_adp_pos_rank.apply(lambda x: int(x[2:]))
 # df.etr_adp = df.etr_adp.astype('float')
-df = df.assign(year=year)
+df = df.assign(year=YEAR)
 
-dm.delete_from_db(DB_NAME, 'ETR_Ranks', f"year={year}", create_backup=False)
+dm.delete_from_db(DB_NAME, 'ETR_Ranks', f"year={YEAR}", create_backup=False)
 dm.write_to_db(df, DB_NAME, 'ETR_Ranks', 'append')
 
 #%%
 
-df = move_download_to_folder(root_path, 'FantasyPoints', f'{year} NFL Fantasy Football Season Rankings  Projections  Fantasy Points.csv', year)
+df = move_download_to_folder(root_path, 'ETR', f"Evan Silva's Top 150 Rankings.csv", YEAR)
+df = df.rename(columns={'Player': 'player', 
+                        'Tm': 'team', 
+                        'Pos': 'pos',
+                        'Rank': 'evan_silva_rank', 
+                        'Pos Rank': 'evan_silva_pos_rank',
+                        })
+
+df.player = df.player.apply(dc.name_clean)
+df.evan_silva_pos_rank = df.evan_silva_pos_rank.apply(lambda x: int(x[2:]))
+df = df.assign(year=YEAR)
+df = df[['player', 'pos', 'team', 'year', 'evan_silva_rank', 'evan_silva_pos_rank']]
+
+dm.delete_from_db(DB_NAME, 'Evan_Silva_Ranks', f"year={YEAR}", create_backup=False)
+dm.write_to_db(df, DB_NAME, 'Evan_Silva_Ranks', 'append')
+
+#%%
+
+df = move_download_to_folder(root_path, 'FantasyPoints', f'{YEAR} NFL Fantasy Football Season Rankings  Projections  Fantasy Points.csv', YEAR)
 df = df.drop(['POS.1', 'UP', 'DOWN','MOVE', 'TARGET', 'WIN'], axis=1)
 
 df = df.rename(columns={
@@ -516,14 +580,15 @@ for c in df.columns:
     try: df[c] = df[c].apply(lambda x: x.replace('-', '0')).astype('float')
     except: pass
 
-df = df.assign(year=year)
+df = df.assign(year=YEAR)
 df.player = df.player.apply(dc.name_clean)
 
 cols = ['player', 'pos', 'team', 'year']
 cols.extend([c for c in df.columns if 'fpts' in c])
 df = df[cols]
-dm.delete_from_db(DB_NAME, 'FantasyPoints_Projections', f"year={year}", create_backup=False)
+dm.delete_from_db(DB_NAME, 'FantasyPoints_Projections', f"year={YEAR}", create_backup=False)
 dm.write_to_db(df, DB_NAME, 'FantasyPoints_Projections', 'append')
+
 
 #%%
 # create full positional list to loop through
@@ -626,83 +691,6 @@ dm.write_to_db(team_values, DB_NAME, table_name='Team_Drafts', if_exist='replace
 
 #%%
 
-# rename_cols = {
-#     'Player': 'player',
-#     'PASSING_ATT': 'fpros_pass_att',
-#     'PASSING_CMP': 'fpros_pass_cmp',
-#     'PASSING_YDS': 'fpros_pass_yds',
-#     'PASSING_TD': 'fpros_pass_td',
-#     'PASSING_TDS': 'fpros_pass_td',
-#     'PASSING_INT': 'fpros_pass_int',
-#     'PASSING_INTS': 'fpros_pass_int',
-#     'RUSHING_ATT': 'fpros_rush_att',
-#     'RUSHING_YDS': 'fpros_rush_yds',
-#     'RUSHING_TD': 'fpros_rush_td',
-#     'RUSHING_TDS': 'fpros_rush_td',
-#     'RECEIVING_REC': 'fpros_rec',
-#     'RECEIVING_YDS': 'fpros_rec_yds',
-#     'RECEIVING_TD': 'fpros_rec_td',
-#     'RECEIVING_TDS': 'fpros_rec_td',
-#     'MISC_FL': 'fpros_fum_lost',
-#     'FPTS': 'fpros_proj_pts',
-#     'MISC_FPTS': 'fpros_proj_pts',
-# }
 
 
-# qb = {'2014': 'https://web.archive.org/web/20140825162622/https://www.fantasypros.com/nfl/projections/qb.php?week=draft',
-#       '2015': 'https://web.archive.org/web/20150820231912/https://www.fantasypros.com/nfl/projections/qb.php?week=draft',
-#       '2016': 'https://web.archive.org/web/20160708123639/https://www.fantasypros.com/nfl/projections/qb.php?week=draft',
-#       '2017': 'https://web.archive.org/web/20170815053138/https://www.fantasypros.com/nfl/projections/qb.php?week=draft',
-#       '2018': 'https://web.archive.org/web/20180825080053/https://www.fantasypros.com/nfl/projections/qb.php?week=draft',
-#       '2019': 'https://web.archive.org/web/20190826043354/https://www.fantasypros.com/nfl/projections/qb.php?week=draft',
-#       '2020': 'https://web.archive.org/web/20200818160645/https://www.fantasypros.com/nfl/projections/qb.php?week=draft',
-#       '2021': 'https://web.archive.org/web/20210817132727/https://www.fantasypros.com/nfl/projections/qb.php?week=draft',
-#       '2022': 'https://web.archive.org/web/20220902170213/https://www.fantasypros.com/nfl/projections/qb.php?week=draft',
-#       '2023': 'https://web.archive.org/web/20230906183344/https://www.fantasypros.com/nfl/projections/qb.php?week=draft',
-#       }
-
-# rb = {
-# # '2015': 'https://web.archive.org/web/20150909144856/https://www.fantasypros.com/nfl/projections/rb.php?week=draft',
-#       '2020': 'https://web.archive.org/web/20200811013535/https://www.fantasypros.com/nfl/projections/rb.php?week=draft',
-#       '2022': 'https://web.archive.org/web/20220526044551/https://www.fantasypros.com/nfl/projections/rb.php?week=draft',
-#       '2023': 'https://web.archive.org/web/20230811031041/https://www.fantasypros.com/nfl/projections/rb.php?week=draft',
-#       }
-
-# wr = {'2015': 'https://web.archive.org/web/20150908002158/https://www.fantasypros.com/nfl/projections/wr.php?week=draft',
-#       '2016': 'https://web.archive.org/web/20180808115212/https://www.fantasypros.com/nfl/projections/wr.php?week=draft',
-#       '2020': 'https://web.archive.org/web/20210728120136/https://www.fantasypros.com/nfl/projections/wr.php?week=draft',
-#       '2022': 'https://web.archive.org/web/20220825210324/https://www.fantasypros.com/nfl/projections/wr.php?week=draft',
-#       '2023': 'https://web.archive.org/web/20230811031238/https://www.fantasypros.com/nfl/projections/wr.php?week=draft',
-#       }
-
-# te = {
-#     '2015': 'https://web.archive.org/web/20150908002135/https://www.fantasypros.com/nfl/projections/te.php?week=draft',
-#     '2020': 'https://web.archive.org/web/20200811022718/https://www.fantasypros.com/nfl/projections/te.php?week=draft',
-#     '2023': 'https://web.archive.org/web/20230811031159/https://www.fantasypros.com/nfl/projections/te.php?week=draft',
-# }
-# import time
-# df_out = pd.DataFrame()
-# for pos in ['QB', 'RB', 'WR', 'TE']:
-#     if pos=='QB': pos_dict = qb
-#     elif pos=='RB': pos_dict = rb
-#     elif pos=='WR': pos_dict = wr
-#     elif pos=='TE': pos_dict = te
-#     time.sleep(5)
-#     for year, url in pos_dict.items():
-#         print(year)
-        
-#         df = pd.read_html(url)[1]
-#         if len(df) < 10: df = pd.read_html(url)[2]
-#         cols = [f'{c[0]}_{c[1]}' if 'Unnamed' not in c[0] else c[1] for c in df.columns]
-
-#         df.columns = cols
-#         df = df.rename(columns=rename_cols).assign(pos=pos.upper(), year=year)
-#         df.player = df.player.apply(lambda x: x.split(' ')[0] + ' ' + x.split(' ')[1])
-#         df.player = df.player.apply(name_clean)
-#         col_order = ['player', 'pos', 'year']
-#         col_order.extend([c for c in df.columns if 'fpros' in c])
-#         df = df[col_order]
-#         df_out = pd.concat([df_out, df], axis=0, sort=False)    
-
-# # dm.delete_from_db('Season_Stats', 'FantasyPros_Projections', f"year={year} and pos='{pos}'", create_backup=False)
-# dm.write_to_db(df_out, 'Season_Stats', 'FantasyPros_Projections', 'replace')
+# %%

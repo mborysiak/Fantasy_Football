@@ -2,6 +2,13 @@
 import datetime as dt
 import pandas as pd
 import numpy as np
+import sys
+import os
+
+# Add Scripts directory to path to import config
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config import YEAR, LEAGUE, DATE_MOD, PRED_VERSION
+
 from ff.db_operations import DataManage
 from ff import general
 
@@ -15,9 +22,9 @@ root_path = general.get_main_path('Fantasy_Football')
 db_path = f'{root_path}/Data/Databases/'
 dm = DataManage(db_path)
 
-set_year=2025
-vers='nffc'
-date_mod = dt.date(2025, 7, 4)
+set_year = YEAR
+vers = LEAGUE
+date_mod = DATE_MOD
 
 #%%
 
@@ -315,20 +322,20 @@ elif vers == 'beta':
     num_rb = 60
     num_wr = 72
 elif vers == 'dk': 
-    num_qb = 33
-    num_te = 33
+    num_qb = 36
+    num_te = 36
     num_rb = 84
     num_wr = 108
 elif vers == 'nffc': 
-    num_qb = 33
-    num_te = 33
+    num_qb = 36
+    num_te = 36
     num_rb = 96
     num_wr = 120
 
 preds = preds[~((preds.pos=='QB') & (preds.pos_rank > num_qb))].reset_index(drop=True)
-preds = preds[~((preds.pos=='TE') & (preds.pos_rank > 24))].reset_index(drop=True)
-preds = preds[~((preds.pos=='RB') & (preds.pos_rank > 60))].reset_index(drop=True)
-preds = preds[~((preds.pos=='RB') & (preds.pos_rank > 72))].reset_index(drop=True).drop('pos_rank', axis=1)
+preds = preds[~((preds.pos=='TE') & (preds.pos_rank > num_te))].reset_index(drop=True)
+preds = preds[~((preds.pos=='RB') & (preds.pos_rank > num_rb))].reset_index(drop=True)
+preds = preds[~((preds.pos=='WR') & (preds.pos_rank > num_wr))].reset_index(drop=True).drop('pos_rank', axis=1)
 
 preds.loc[preds.pred_fp_per_game_ny.isnull(), ['pred_fp_per_game_ny', 'std_dev_ny', 'min_score_ny', 'max_score_ny']] = \
     preds.loc[preds.pred_fp_per_game_ny.isnull(), ['pred_fp_per_game', 'std_dev', 'min_score', 'max_score']].values
@@ -339,8 +346,14 @@ display(preds[((preds.pos!='QB'))].iloc[:50])
 #%%
 downgrades = {
     'Anthony Richardson': 0.75,
-    'Jalen Milroe': 0.5,
+    'Jalen Milroe': 0.2,
     'Quinshon Judkins': 0.5,
+    'Rashee Rice': 0.75,
+    'Daniel Jones': 0.75,
+    'Zach Wilson': 0.2,
+    'Mac Jones': 0.2,
+    'Jameis Winston': 0.2,
+    'Tyler Shough': 0.5
 }
 
 for p, d in downgrades.items():

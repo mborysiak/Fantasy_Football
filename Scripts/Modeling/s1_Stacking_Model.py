@@ -582,7 +582,7 @@ def create_stack_predict(df_predict, models, X, y, proba=False):
     # create the full stack pipe with meta estimators followed by stacked model
     X_predict = pd.DataFrame()
     for k, ind_models in models.items():
-        predictions = Parallel(n_jobs=-1, verbose=0)(delayed(fit_and_predict)(m, df_predict, X, y, proba) for m in ind_models)
+        predictions = Parallel(n_jobs=8, verbose=0)(delayed(fit_and_predict)(m, df_predict, X, y, proba) for m in ind_models)
         predictions = [p for p in predictions if len(p) > 0]
         predictions = pd.Series(pd.DataFrame(predictions).T.mean(axis=1), name=k)
         X_predict = pd.concat([X_predict, predictions], axis=1)

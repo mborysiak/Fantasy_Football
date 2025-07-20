@@ -4,13 +4,21 @@ from s1_Stacking_Model import *
 
 import warnings
 import gc
+import sys
+import os
+
+# Add Scripts directory to path to import config
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from config import YEAR, LEAGUE
+
 warnings.simplefilter(action='ignore', category=FutureWarning)
 warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
 
-set_year = 2025
-show_plot = True
-vers = 'nffc'
-predict_only = True
+# Use config settings
+set_year = YEAR
+show_plot = False
+vers = LEAGUE
+predict_only = False
 
 runs = [
         ['WR', 'current', 'greater_equal', 0, '', 'Rookie'],
@@ -32,41 +40,38 @@ runs = [
         ['TE', 'current', 'greater_equal', 0, '', 'Stats'],
         ['TE', 'next', 'greater_equal', 0, '', 'ProjOnly'],
 
-        ['QB', 'current', 'greater_equal', 0, '', 'ProjOnly'],
-        ['QB', 'current', 'greater_equal', 0, 'rush', 'ProjOnly'],
-        ['QB', 'current', 'greater_equal', 0, 'pass', 'ProjOnly'],
-        ['QB', 'next', 'greater_equal', 0, '', 'ProjOnly'],
+        # ['QB', 'current', 'greater_equal', 0, '', 'ProjOnly'],
+        # ['QB', 'current', 'greater_equal', 0, 'rush', 'ProjOnly'],
+        # ['QB', 'current', 'greater_equal', 0, 'pass', 'ProjOnly'],
+        # ['QB', 'next', 'greater_equal', 0, '', 'ProjOnly'],
 
-        ['QB', 'current', 'greater_equal', 0, '', 'Stats'],
-        ['QB', 'current', 'greater_equal', 0, 'rush', 'Stats'],
-        ['QB', 'current', 'greater_equal', 0, 'pass', 'Stats'],
+        # ['QB', 'current', 'greater_equal', 0, '', 'Stats'],
+        # ['QB', 'current', 'greater_equal', 0, 'rush', 'Stats'],
+        # ['QB', 'current', 'greater_equal', 0, 'pass', 'Stats'],
 
-        ['RB', 'current', 'greater_equal', 0, '', 'ProjOnly'],
-        ['RB', 'current', 'less_equal', 3, '', 'ProjOnly'],
-        ['RB', 'current', 'greater_equal', 4, '', 'ProjOnly'],
-        ['RB', 'current', 'greater_equal', 0, 'rush', 'ProjOnly'],
-        ['RB', 'current', 'greater_equal', 0, 'rec', 'ProjOnly'],
-        ['RB', 'current', 'less_equal', 3, 'rush', 'ProjOnly'],
-        ['RB', 'current', 'less_equal', 3, 'rec', 'ProjOnly'],
-        ['RB', 'current', 'greater_equal', 4, 'rush', 'ProjOnly'],
-        ['RB', 'current', 'greater_equal', 4, 'rec', 'ProjOnly'],
+        # ['RB', 'current', 'greater_equal', 0, '', 'ProjOnly'],
+        # ['RB', 'current', 'less_equal', 3, '', 'ProjOnly'],
+        # ['RB', 'current', 'greater_equal', 4, '', 'ProjOnly'],
+        # ['RB', 'current', 'greater_equal', 0, 'rush', 'ProjOnly'],
+        # ['RB', 'current', 'greater_equal', 0, 'rec', 'ProjOnly'],
+        # ['RB', 'current', 'less_equal', 3, 'rush', 'ProjOnly'],
+        # ['RB', 'current', 'less_equal', 3, 'rec', 'ProjOnly'],
+        # ['RB', 'current', 'greater_equal', 4, 'rush', 'ProjOnly'],
+        # ['RB', 'current', 'greater_equal', 4, 'rec', 'ProjOnly'],
 
-        ['RB', 'next', 'greater_equal', 0, '', 'ProjOnly'],
-        ['RB', 'next', 'less_equal', 3, '', 'ProjOnly'],
-        ['RB', 'next', 'greater_equal', 4, '', 'ProjOnly'],
+        # ['RB', 'next', 'greater_equal', 0, '', 'ProjOnly'],
+        # ['RB', 'next', 'less_equal', 3, '', 'ProjOnly'],
+        # ['RB', 'next', 'greater_equal', 4, '', 'ProjOnly'],
 
-        ['RB', 'current', 'greater_equal', 0, '', 'Stats'],
-        ['RB', 'current', 'less_equal', 3, '', 'Stats'],
-        ['RB', 'current', 'greater_equal', 4, '', 'Stats'],
-        ['RB', 'current', 'greater_equal', 0, 'rush', 'Stats'],
-        ['RB', 'current', 'greater_equal', 0, 'rec', 'Stats'],
-        ['RB', 'current', 'less_equal', 3, 'rush', 'Stats'],
-        ['RB', 'current', 'less_equal', 3, 'rec', 'Stats'],
-        ['RB', 'current', 'greater_equal', 4, 'rush', 'Stats'],
-        ['RB', 'current', 'greater_equal', 4, 'rec', 'Stats'],
-
-     
-
+        # ['RB', 'current', 'greater_equal', 0, '', 'Stats'],
+        # ['RB', 'current', 'less_equal', 3, '', 'Stats'],
+        # ['RB', 'current', 'greater_equal', 4, '', 'Stats'],
+        # ['RB', 'current', 'greater_equal', 0, 'rush', 'Stats'],
+        # ['RB', 'current', 'greater_equal', 0, 'rec', 'Stats'],
+        # ['RB', 'current', 'less_equal', 3, 'rush', 'Stats'],
+        # ['RB', 'current', 'less_equal', 3, 'rec', 'Stats'],
+        # ['RB', 'current', 'greater_equal', 4, 'rush', 'Stats'],
+        # ['RB', 'current', 'greater_equal', 4, 'rec', 'Stats'],
 ]
 
 print(vers)
@@ -93,7 +98,7 @@ for sp, cn, fd, ye, rp, dset in runs:
     dataset = dset
     hp_algo = 'tpe'
     bayes_rand = 'optuna'
-    optuna_timeout = 45
+    optuna_timeout = 60
 
     model_output_path, pkey = create_pkey(pos, dataset, set_pos,current_or_next_year, bayes_rand, hp_algo)
     df = pull_data(set_pos, set_year, dataset, current_or_next_year)
@@ -115,7 +120,7 @@ for sp, cn, fd, ye, rp, dset in runs:
         out_dict_reg, out_dict_top, out_dict_upside, out_dict_quant = output_dict(), output_dict(), output_dict(), output_dict()
 
         model_list = ['adp', 'lasso', 'lgbm', 'rf', 'gbm', 'gbmh', 'mlp', 'cb', 'huber', 'xgb', 'knn', 'ridge', 'bridge', 'enet']
-        results = Parallel(n_jobs=8, verbose=1)(
+        results = Parallel(n_jobs=16, verbose=1)(
                         delayed(get_model_output)
                         (m, df_train, 'reg', out_dict_reg, pos, set_pos, hp_algo, bayes_rand, i, optuna_timeout=optuna_timeout) \
                         for i, m in enumerate(model_list) 
@@ -128,7 +133,7 @@ for sp, cn, fd, ye, rp, dset in runs:
 
         # run all other models
         model_list = ['lgbm_c', 'knn_c', 'lr_c', 'rf_c', 'gbm_c', 'gbmh_c', 'mlp_c', 'cb_c', 'xgb_c']
-        results = Parallel(n_jobs=8, verbose=1)(
+        results = Parallel(n_jobs=12, verbose=1)(
                         delayed(get_model_output)
                         (m, df_train_top, 'class', out_dict_top, pos, set_pos, hp_algo, bayes_rand, i, '_top', optuna_timeout=optuna_timeout) \
                         for i, m in enumerate(model_list) 
@@ -140,7 +145,7 @@ for sp, cn, fd, ye, rp, dset in runs:
 
         # run all other models
         model_list = ['lgbm_c', 'knn_c', 'lr_c', 'rf_c', 'gbm_c', 'gbmh_c', 'mlp_c', 'cb_c', 'xgb_c']
-        results = Parallel(n_jobs=8, verbose=1)(
+        results = Parallel(n_jobs=12, verbose=1)(
                         delayed(get_model_output)
                         (m, df_train_upside, 'class', out_dict_upside, pos, set_pos, hp_algo, bayes_rand, i, '_upside', optuna_timeout=optuna_timeout) \
                         for i, m in enumerate(model_list) 
@@ -152,7 +157,7 @@ for sp, cn, fd, ye, rp, dset in runs:
 
         # run all other models
         model_list = ['qr_q','lgbm_q', 'gbm_q', 'gbmh_q', 'cb_q']
-        models_q = [[alph, m] for alph in [0.65, 0.85] for m in model_list]
+        models_q = [[alph, m] for alph in [0.65, 0.8] for m in model_list]
         results = Parallel(n_jobs=8, verbose=1)(
                         delayed(get_model_output)
                         (m[1], df_train, 'quantile', out_dict_quant, pos, set_pos, hp_algo, bayes_rand, i, alpha=m[0], optuna_timeout=optuna_timeout) \
@@ -172,12 +177,12 @@ for sp, cn, fd, ye, rp, dset in runs:
         'print_coef': False,
         'opt_type': 'optuna',
         'hp_algo': 'tpe',
-        'optuna_timeout': 60*2,
+        'optuna_timeout': 45,
         'num_k_folds': 3,
         'n_iter': 50,
 
 
-        'sd_metrics': {'pred_fp_per_game': 1, 'pred_fp_per_game_upside': 1, 'pred_fp_per_game_top': 1, 'pred_fp_per_game_quantile': 1}
+        'sd_metrics': {'pred_fp_per_game': 1, 'pred_fp_per_game_upside': 0.5, 'pred_fp_per_game_top': 1, 'pred_fp_per_game_quantile': 1}
     }
 
     if 'Rookie' in dataset: repeats = 3
@@ -199,7 +204,7 @@ for sp, cn, fd, ye, rp, dset in runs:
         final_models = ['bridge', 'enet', 'rf', 'gbm', 'gbmh', 'mlp', 'cb', 'huber', 'lgbm', 'knn', 'ridge', 'lasso', 'xgb', 'et']
         stack_val_pred = pd.DataFrame(); scores = []; best_models = []
 
-        results = Parallel(n_jobs=8, verbose=1)(
+        results = Parallel(n_jobs=16, verbose=1)(
                         delayed(run_stack_models)
                         (fm, X_stack, y_stack, i, 'reg', None, run_params) \
                         for i, fm in enumerate(final_models) 
@@ -217,7 +222,7 @@ for sp, cn, fd, ye, rp, dset in runs:
         #---------------
         final_models_top = [ 'lgbm_c', 'lr_c', 'rf_c', 'gbm_c', 'gbmh_c', 'mlp_c', 'cb_c', 'xgb_c', 'et_c']
         stack_val_top = pd.DataFrame(); scores_top = []; best_models_top = []
-        results = Parallel(n_jobs=8, verbose=1)(
+        results = Parallel(n_jobs=12, verbose=1)(
                         delayed(run_stack_models)
                         (fm, X_stack, y_stack_top, i, 'class', None, run_params) \
                         for i, fm in enumerate(final_models_top) 
@@ -235,7 +240,7 @@ for sp, cn, fd, ye, rp, dset in runs:
         #---------------
         final_models_upside = [ 'lgbm_c', 'lr_c', 'rf_c', 'gbm_c', 'gbmh_c', 'mlp_c', 'cb_c', 'xgb_c', 'et_c']
         stack_val_upside = pd.DataFrame(); scores_upside = []; best_models_upside = []
-        results = Parallel(n_jobs=8, verbose=1)(
+        results = Parallel(n_jobs=12, verbose=1)(
                         delayed(run_stack_models)
                         (fm, X_stack, y_stack_upside, i, 'class', None, run_params) \
                         for i, fm in enumerate(final_models_upside) 
@@ -258,7 +263,7 @@ for sp, cn, fd, ye, rp, dset in runs:
 
         results = Parallel(n_jobs=8, verbose=1)(
                         delayed(run_stack_models)
-                        (fm, X_stack, y_stack, i, 'quantile', 0.85, run_params) \
+                        (fm, X_stack, y_stack, i, 'quantile', 0.80, run_params) \
                         for i, fm in enumerate(final_models_quant) 
         )
 
