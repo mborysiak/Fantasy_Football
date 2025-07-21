@@ -7,7 +7,7 @@ import os
 
 # Add Scripts directory to path to import config
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config import YEAR, LEAGUE, DATE_MOD, PRED_VERSION
+from config import YEAR, LEAGUE, PRED_VERSION
 
 from ff.db_operations import DataManage
 from ff import general
@@ -24,7 +24,6 @@ dm = DataManage(db_path)
 
 set_year = YEAR
 vers = LEAGUE
-date_mod = DATE_MOD
 
 #%%
 
@@ -116,8 +115,14 @@ def get_val_ratio(vers, set_year, pos, dataset):
         ''', 'Validations')
     
 
-    y_act_max = np.percentile(val.y_act, 96)
-    pred_max = np.percentile(val.pred, 96)
+    y_act_max = np.mean([np.percentile(val.y_act, 94), 
+                         np.percentile(val.y_act, 95), 
+                         np.percentile(val.y_act, 96), 
+                         np.percentile(val.y_act, 97)])
+    pred_max = np.mean([np.percentile(val.pred, 94), 
+                        np.percentile(val.pred, 95), 
+                        np.percentile(val.pred, 96), 
+                        np.percentile(val.pred, 97)])
     return y_act_max/pred_max
 
 rookie_wr_ratio = []
@@ -153,8 +158,7 @@ rookies = dm.read(f'''SELECT player,
                              AVG(pred_fp_per_game_top) pred_prob_top,
                              AVG(std_dev) std_dev,
                              AVG(min_score) min_score,   
-                             AVG(max_score) max_score,
-                             MAX(date_modified) date_modified
+                             AVG(max_score) max_score
                 FROM Model_Predictions
                 WHERE version='{vers}'
                        AND year = {set_year}
@@ -162,8 +166,6 @@ rookies = dm.read(f'''SELECT player,
                 GROUP BY player, pos, rush_pass
              ''', 'Simulation').sort_values(by='pred_fp_per_game', ascending=False).reset_index(drop=True)
 
-rookies.date_modified = pd.to_datetime(rookies.date_modified).apply(lambda x: x.date())
-rookies = rookies[rookies.date_modified >= date_mod].reset_index(drop=True)
 rookies.loc[rookies.pos=='WR', ['pred_fp_per_game', 'max_score', 'pred_prob_upside', 'pred_prob_top']] = \
     rookies.loc[rookies.pos=='WR', ['pred_fp_per_game', 'max_score', 'pred_prob_upside', 'pred_prob_top']] * 1.05#* rookie_wr_ratio
 
@@ -183,17 +185,13 @@ rp = dm.read(f'''SELECT player,
                         AVG(pred_fp_per_game_top) pred_prob_top,
                         AVG(std_dev) std_dev,
                         AVG(min_score) min_score,   
-                        AVG(max_score) max_score, 
-                        MAX(date_modified) date_modified
+                        AVG(max_score) max_score
                 FROM Model_Predictions
                 WHERE rush_pass IN ('rush', 'pass', 'rec')
                       AND version='{vers}'
                       AND year = {set_year}
                 GROUP BY player, pos, rush_pass
              ''', 'Simulation')
-
-rp.date_modified = pd.to_datetime(rp.date_modified).apply(lambda x: x.date())
-rp = rp[rp.date_modified >= date_mod].reset_index(drop=True)
 
 wm = lambda x: np.average(x, weights=rp.loc[x.index, "pred_fp_per_game"])
 rp = rp.assign(std_dev=rp.std_dev**2, max_score=rp.max_score**2)
@@ -219,8 +217,7 @@ preds_ty = dm.read(f'''SELECT player,
                         AVG(pred_fp_per_game_top) pred_prob_top,
                         AVG(std_dev) std_dev,
                         AVG(min_score) min_score,   
-                        AVG(max_score) max_score, 
-                        MAX(date_modified) date_modified
+                        AVG(max_score) max_score
                 FROM Model_Predictions
                 WHERE rush_pass NOT IN ('rush', 'pass', 'rec')
                        AND version='{vers}'
@@ -230,8 +227,6 @@ preds_ty = dm.read(f'''SELECT player,
                 GROUP BY player, pos, rush_pass
              ''', 'Simulation').sort_values(by='pred_fp_per_game', ascending=False).reset_index(drop=True)
 
-preds_ty.date_modified = pd.to_datetime(preds_ty.date_modified).apply(lambda x: x.date())
-preds_ty = preds_ty[preds_ty.date_modified >= date_mod].reset_index(drop=True)
 display(preds_ty[((preds_ty.pos=='QB'))].iloc[:15])
 display(preds_ty[((preds_ty.pos!='QB'))].iloc[:50])
 
@@ -245,8 +240,7 @@ preds_ny = dm.read(f'''SELECT player,
                         AVG(pred_fp_per_game_top) pred_prob_top,
                         AVG(std_dev) std_dev,
                         AVG(min_score) min_score,   
-                        AVG(max_score) max_score, 
-                        MAX(date_modified) date_modified
+                        AVG(max_score) max_score
                 FROM Model_Predictions
                 WHERE rush_pass NOT IN ('rush', 'pass', 'rec')
                        AND version='{vers}'
@@ -257,15 +251,16 @@ preds_ny = dm.read(f'''SELECT player,
                 GROUP BY player, pos, rush_pass
              ''', 'Simulation').sort_values(by='pred_fp_per_game', ascending=False).reset_index(drop=True)
 
-preds_ny.date_modified = pd.to_datetime(preds_ny.date_modified).apply(lambda x: x.date())
-preds_ny = preds_ny[preds_ny.date_modified >= date_mod].reset_index(drop=True)
 display(preds_ny[((preds_ny.pos=='QB'))].iloc[:15])
 display(preds_ny[((preds_ny.pos!='QB'))].iloc[:50])
 
 #%%
 
-preds = pd.concat([rp, rookies, preds_ty, preds_ny
-                   ], axis=0).reset_index(drop=True)
+if LEAGUE in ['dk', 'nffc']:
+    preds = pd.concat([rp, rookies, preds_ty], axis=0).reset_index(drop=True)
+else:
+    preds = pd.concat([rp, rookies, preds_ty, preds_ny], axis=0).reset_index(drop=True)
+
 
 preds.loc[preds.std_dev < 0, 'std_dev'] = 1
 

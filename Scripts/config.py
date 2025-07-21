@@ -21,9 +21,6 @@ LEAGUE = 'beta'  # Options: 'nffc', 'beta', 'dk', 'nv'
 # Model version/prediction version
 PRED_VERSION = 'final_ensemble'
 
-# Date modified threshold for filtering recent predictions
-DATE_MOD = dt.date(2025, 7, 19)
-
 # Database name for season stats
 DB_NAME = 'Season_Stats_New'
 

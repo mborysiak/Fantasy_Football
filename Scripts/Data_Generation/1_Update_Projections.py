@@ -508,7 +508,7 @@ dm.write_to_db(df, DB_NAME, 'PFF_Projections', 'append')
 
 #%%
 
-df = move_download_to_folder(root_path, 'ETR', f'{YEAR} Redraft Half PPR Rankings.csv', YEAR)
+df = move_download_to_folder(root_path, 'ETR', f'{YEAR} Re-Draft Half PPR Rankings.csv', YEAR)
 df = df.rename(columns={'Name': 'player', 
                         'Team': 'team', 
                         'Pos': 'pos',

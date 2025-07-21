@@ -21,24 +21,24 @@ vers = LEAGUE
 predict_only = False
 
 runs = [
-        ['WR', 'current', 'greater_equal', 0, '', 'Rookie'],
-        ['RB', 'current', 'greater_equal', 0, '', 'Rookie'],
+        # ['WR', 'current', 'greater_equal', 0, '', 'Rookie'],
+        # ['RB', 'current', 'greater_equal', 0, '', 'Rookie'],
 
-        ['WR', 'current', 'greater_equal', 0, '', 'ProjOnly'],
-        ['WR', 'current', 'less_equal', 3, '', 'ProjOnly'],
-        ['WR', 'current', 'greater_equal', 4, '', 'ProjOnly'],
+        # ['WR', 'current', 'greater_equal', 0, '', 'ProjOnly'],
+        # ['WR', 'current', 'less_equal', 3, '', 'ProjOnly'],
+        # ['WR', 'current', 'greater_equal', 4, '', 'ProjOnly'],
 
-        ['WR', 'next', 'greater_equal', 0, '', 'ProjOnly'],
-        ['WR', 'next', 'less_equal', 3, '', 'ProjOnly'],
-        ['WR', 'next', 'greater_equal', 4, '', 'ProjOnly'],
+        # ['WR', 'next', 'greater_equal', 0, '', 'ProjOnly'],
+        # ['WR', 'next', 'less_equal', 3, '', 'ProjOnly'],
+        # ['WR', 'next', 'greater_equal', 4, '', 'ProjOnly'],
 
-        ['WR', 'current', 'greater_equal', 0, '', 'Stats'],
-        ['WR', 'current', 'less_equal', 3, '', 'Stats'],
-        ['WR', 'current', 'greater_equal', 4, '', 'Stats'],
+        # ['WR', 'current', 'greater_equal', 0, '', 'Stats'],
+        # ['WR', 'current', 'less_equal', 3, '', 'Stats'],
+        # ['WR', 'current', 'greater_equal', 4, '', 'Stats'],
 
-        ['TE', 'current', 'greater_equal', 0, '', 'ProjOnly'],
-        ['TE', 'current', 'greater_equal', 0, '', 'Stats'],
-        ['TE', 'next', 'greater_equal', 0, '', 'ProjOnly'],
+        # ['TE', 'current', 'greater_equal', 0, '', 'ProjOnly'],
+        # ['TE', 'current', 'greater_equal', 0, '', 'Stats'],
+        # ['TE', 'next', 'greater_equal', 0, '', 'ProjOnly'],
 
         # ['QB', 'current', 'greater_equal', 0, '', 'ProjOnly'],
         # ['QB', 'current', 'greater_equal', 0, 'rush', 'ProjOnly'],
@@ -54,24 +54,24 @@ runs = [
         # ['RB', 'current', 'greater_equal', 4, '', 'ProjOnly'],
         # ['RB', 'current', 'greater_equal', 0, 'rush', 'ProjOnly'],
         # ['RB', 'current', 'greater_equal', 0, 'rec', 'ProjOnly'],
-        # ['RB', 'current', 'less_equal', 3, 'rush', 'ProjOnly'],
-        # ['RB', 'current', 'less_equal', 3, 'rec', 'ProjOnly'],
-        # ['RB', 'current', 'greater_equal', 4, 'rush', 'ProjOnly'],
-        # ['RB', 'current', 'greater_equal', 4, 'rec', 'ProjOnly'],
+        ['RB', 'current', 'less_equal', 3, 'rush', 'ProjOnly'],
+        ['RB', 'current', 'less_equal', 3, 'rec', 'ProjOnly'],
+        ['RB', 'current', 'greater_equal', 4, 'rush', 'ProjOnly'],
+        ['RB', 'current', 'greater_equal', 4, 'rec', 'ProjOnly'],
 
-        # ['RB', 'next', 'greater_equal', 0, '', 'ProjOnly'],
-        # ['RB', 'next', 'less_equal', 3, '', 'ProjOnly'],
-        # ['RB', 'next', 'greater_equal', 4, '', 'ProjOnly'],
+        ['RB', 'next', 'greater_equal', 0, '', 'ProjOnly'],
+        ['RB', 'next', 'less_equal', 3, '', 'ProjOnly'],
+        ['RB', 'next', 'greater_equal', 4, '', 'ProjOnly'],
 
-        # ['RB', 'current', 'greater_equal', 0, '', 'Stats'],
-        # ['RB', 'current', 'less_equal', 3, '', 'Stats'],
-        # ['RB', 'current', 'greater_equal', 4, '', 'Stats'],
-        # ['RB', 'current', 'greater_equal', 0, 'rush', 'Stats'],
-        # ['RB', 'current', 'greater_equal', 0, 'rec', 'Stats'],
-        # ['RB', 'current', 'less_equal', 3, 'rush', 'Stats'],
-        # ['RB', 'current', 'less_equal', 3, 'rec', 'Stats'],
-        # ['RB', 'current', 'greater_equal', 4, 'rush', 'Stats'],
-        # ['RB', 'current', 'greater_equal', 4, 'rec', 'Stats'],
+        ['RB', 'current', 'greater_equal', 0, '', 'Stats'],
+        ['RB', 'current', 'less_equal', 3, '', 'Stats'],
+        ['RB', 'current', 'greater_equal', 4, '', 'Stats'],
+        ['RB', 'current', 'greater_equal', 0, 'rush', 'Stats'],
+        ['RB', 'current', 'greater_equal', 0, 'rec', 'Stats'],
+        ['RB', 'current', 'less_equal', 3, 'rush', 'Stats'],
+        ['RB', 'current', 'less_equal', 3, 'rec', 'Stats'],
+        ['RB', 'current', 'greater_equal', 4, 'rush', 'Stats'],
+        ['RB', 'current', 'greater_equal', 4, 'rec', 'Stats'],
 ]
 
 print(vers)
@@ -86,6 +86,9 @@ for sp, cn, fd, ye, rp, dset in runs:
     pos[set_pos]['year_exp'] = ye
     pos[set_pos]['rush_pass'] = rp
 
+    if LEAGUE in ['dk', 'nffc'] and current_or_next_year == 'next':
+        continue
+
     print(f'{set_pos} - {current_or_next_year} - {pos[set_pos]["filter_data"]} - {pos[set_pos]["year_exp"]} - {pos[set_pos]["rush_pass"]} - {dset}')
 
     if dset=='Rookie': pos[set_pos]['n_splits'] = 4
@@ -98,7 +101,7 @@ for sp, cn, fd, ye, rp, dset in runs:
     dataset = dset
     hp_algo = 'tpe'
     bayes_rand = 'optuna'
-    optuna_timeout = 60
+    optuna_timeout = 45
 
     model_output_path, pkey = create_pkey(pos, dataset, set_pos,current_or_next_year, bayes_rand, hp_algo)
     df = pull_data(set_pos, set_year, dataset, current_or_next_year)

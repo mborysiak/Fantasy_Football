@@ -1242,7 +1242,6 @@ oof_data['full_hold'].plot.scatter(x='pred', y='y_act')
 try: show_calibration_curve(oof_data['full_hold'].y_act, oof_data['full_hold'].pred, n_bins=6)
 except: pass
 
-#%%
 
 oof_data['full_hold'].sort_values(by='pred', ascending=False).iloc[:50]
 # oof_data['full_hold'][(oof_data['full_hold'].pred >15) & (oof_data['full_hold'].y_act < 7)]
