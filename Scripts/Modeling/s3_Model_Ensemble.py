@@ -256,12 +256,8 @@ display(preds_ny[((preds_ny.pos!='QB'))].iloc[:50])
 
 #%%
 
-if LEAGUE in ['dk', 'nffc']:
-    preds = pd.concat([rp, rookies, preds_ty], axis=0).reset_index(drop=True)
-else:
-    preds = pd.concat([rp, rookies, preds_ty, preds_ny], axis=0).reset_index(drop=True)
-
-
+if vers in ['dk', 'nffc']: preds = pd.concat([rp, rookies, preds_ty], axis=0).reset_index(drop=True)
+else: preds = pd.concat([rp, rookies, preds_ty, preds_ny], axis=0).reset_index(drop=True)
 preds.loc[preds.std_dev < 0, 'std_dev'] = 1
 
 preds.loc[preds.max_score < preds.pred_fp_per_game, 'max_score'] = (
@@ -348,12 +344,29 @@ downgrades = {
     'Zach Wilson': 0.2,
     'Mac Jones': 0.2,
     'Jameis Winston': 0.2,
-    'Tyler Shough': 0.5
+    'Tyler Shough': 0.5,
+    'Joe Mixon': 0.9
 }
 
 for p, d in downgrades.items():
     preds.loc[preds.player==p, ['pred_prob_upside', 'pred_prob_top', 'pred_fp_per_game', 'pred_fp_per_game_ny']] = \
         preds.loc[preds.player==p, ['pred_prob_upside', 'pred_prob_top', 'pred_fp_per_game', 'pred_fp_per_game_ny']] * d
+#%%
+
+yoe = pd.DataFrame()
+for pos in ['QB', 'RB', 'WR', 'TE']:
+    df_pos = dm.read(f'''SELECT player, year_exp Years_of_Experience
+                         FROM {pos}_{set_year}_ProjOnly 
+                         WHERE year={set_year}
+                               AND pos='{pos}' ''', f'Model_Inputs')
+    
+    yoe = pd.concat([yoe, df_pos], ignore_index=True).fillna(0)
+
+adps = dm.read(f"SELECT * FROM ADP_Averages WHERE year={set_year}", 'Season_Stats_New')
+adps = pd.merge(adps, yoe, on='player', how='left')
+adps = adps.drop('pos', axis=1)
+dm.delete_from_db('Simulation', 'Avg_ADPs', f"year={set_year}", create_backup=True)
+dm.write_to_db(adps, 'Simulation', 'Avg_ADPs', if_exist='append')
 
 # %%
 import shutil

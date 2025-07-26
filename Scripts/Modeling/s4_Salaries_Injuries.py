@@ -40,13 +40,13 @@ LEAGUE = 'beta'
 
 ty_keepers = {
     'Bucky Irving': [12],
-    # 'Malik Nabers': [50],
+    'Malik Nabers': [50],
 
     'Brock Bowers': [19],
     'Kyren Williams': [26],
 
     # 'James Cook': [54],
-    # 'Jayden Daniels': [13],
+    'Jayden Daniels': [13],
 
     'Nico Collins': [27],
     'Puka Nacua': [67],
@@ -360,7 +360,8 @@ y_train = y.iloc[X_train.index].reset_index(drop=True); X_train.reset_index(drop
 X_test = X[X.year == YEAR].reset_index(drop=True)
 y_test = y.iloc[X_test.index].reset_index(drop=True); X_test.reset_index(drop=True, inplace=True)
 
-pd.concat([X,y], axis=1).corr()['y_act'].sort_values().head(20)
+print(pd.concat([X,y], axis=1).corr()['y_act'].sort_values().head(20))
+pd.concat([X,y], axis=1).corr()['y_act'].sort_values(ascending=False).head(20)
 
 
 #%%

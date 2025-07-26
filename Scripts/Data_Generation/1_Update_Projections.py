@@ -6,7 +6,7 @@ import os
 
 # Add Scripts directory to path to import config
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config import YEAR, DB_NAME, POSITIONS
+from config import YEAR, DB_NAME, POSITIONS, LEAGUE
 
 from ff.db_operations import DataManage
 from ff import general
@@ -508,7 +508,10 @@ dm.write_to_db(df, DB_NAME, 'PFF_Projections', 'append')
 
 #%%
 
-df = move_download_to_folder(root_path, 'ETR', f'{YEAR} Re-Draft Half PPR Rankings.csv', YEAR)
+if LEAGUE in ['nffc', 'dk']: etr_name = f'{YEAR} Re-Draft Full PPR Rankings.csv'
+else: etr_name = f'{YEAR} Re-Draft Half PPR Rankings.csv'
+
+df = move_download_to_folder(root_path, 'ETR', etr_name, YEAR)
 df = df.rename(columns={'Name': 'player', 
                         'Team': 'team', 
                         'Pos': 'pos',
