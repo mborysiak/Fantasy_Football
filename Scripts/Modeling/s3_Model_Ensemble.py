@@ -256,7 +256,7 @@ display(preds_ny[((preds_ny.pos!='QB'))].iloc[:50])
 
 #%%
 
-if vers in ['dk', 'nffc']: preds = pd.concat([rp, rookies, preds_ty], axis=0).reset_index(drop=True)
+if vers in ['dk', 'nffc']: preds = pd.concat([rp, rookies, preds_ty, preds_ny], axis=0).reset_index(drop=True)
 else: preds = pd.concat([rp, rookies, preds_ty, preds_ny], axis=0).reset_index(drop=True)
 preds.loc[preds.std_dev < 0, 'std_dev'] = 1
 
@@ -336,7 +336,7 @@ display(preds[((preds.pos!='QB'))].iloc[:50])
 
 #%%
 downgrades = {
-    'Anthony Richardson': 0.75,
+    'Anthony Richardson': 0.9,
     'Jalen Milroe': 0.2,
     'Quinshon Judkins': 0.5,
     'Rashee Rice': 0.75,
@@ -345,7 +345,9 @@ downgrades = {
     'Mac Jones': 0.2,
     'Jameis Winston': 0.2,
     'Tyler Shough': 0.5,
-    'Joe Mixon': 0.9
+    'Joe Mixon': 0.75,
+    'Chris Godwin': 0.9,
+    'Emeka Egbuka': 1.2,
 }
 
 for p, d in downgrades.items():
@@ -384,3 +386,5 @@ dst = f'/Users/borys/OneDrive/Documents/Github/Fantasy_Football_Snake/app/Simula
 shutil.copyfile(src, dst)
 
 #%%
+
+

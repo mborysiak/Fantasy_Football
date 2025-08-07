@@ -508,29 +508,43 @@ dm.write_to_db(df, DB_NAME, 'PFF_Projections', 'append')
 
 #%%
 
-if LEAGUE in ['nffc', 'dk']: etr_name = f'{YEAR} Re-Draft Full PPR Rankings.csv'
-else: etr_name = f'{YEAR} Re-Draft Half PPR Rankings.csv'
+etr_name = f'{YEAR} Re-Draft Half PPR Rankings.csv'
 
 df = move_download_to_folder(root_path, 'ETR', etr_name, YEAR)
 df = df.rename(columns={'Name': 'player', 
                         'Team': 'team', 
                         'Pos': 'pos',
-                        #'ADP': 'etr_adp', 
-                        'ETR_Rank': 'etr_rank', 
-                        'Pos_Rank': 'etr_pos_rank',
-                        #'ADP Differential': 'etr_adp_diff', 
-                        #'ADP Pos Rank': 'etr_adp_pos_rank'
+                        'ETR Rank': 'etr_rank', 
+                        'ETR Pos Rank': 'etr_pos_rank',
                         })
 df = df[~df.pos.isin(['K', 'DST'])].reset_index(drop=True)
-# df = df[df.etr_adp!= 'Unranked'].reset_index(drop=True)
 df.player = df.player.apply(dc.name_clean)
 df.etr_pos_rank = df.etr_pos_rank.apply(lambda x: int(x[2:]))
-# df.etr_adp_pos_rank = df.etr_adp_pos_rank.apply(lambda x: int(x[2:]))
-# df.etr_adp = df.etr_adp.astype('float')
 df = df.assign(year=YEAR)
+df = df[['player', 'pos', 'team', 'year', 'etr_rank', 'etr_pos_rank']]
 
 dm.delete_from_db(DB_NAME, 'ETR_Ranks', f"year={YEAR}", create_backup=False)
 dm.write_to_db(df, DB_NAME, 'ETR_Ranks', 'append')
+
+#%%
+
+etr_name = f'{YEAR} Re-Draft Full PPR Rankings.csv'
+
+df = move_download_to_folder(root_path, 'ETR', etr_name, YEAR)
+df = df.rename(columns={'Name': 'player', 
+                        'Team': 'team', 
+                        'Pos': 'pos',
+                        'ETR Rank': 'etr_rank', 
+                        'ETR Pos Rank': 'etr_pos_rank',
+                        })
+df = df[~df.pos.isin(['K', 'DST'])].reset_index(drop=True)
+df.player = df.player.apply(dc.name_clean)
+df.etr_pos_rank = df.etr_pos_rank.apply(lambda x: int(x[2:]))
+df = df.assign(year=YEAR)
+df = df[['player', 'pos', 'team', 'year', 'etr_rank', 'etr_pos_rank']]
+
+dm.delete_from_db(DB_NAME, 'ETR_Ranks_PPR', f"year={YEAR}", create_backup=False)
+dm.write_to_db(df, DB_NAME, 'ETR_Ranks_PPR', 'append')
 
 #%%
 

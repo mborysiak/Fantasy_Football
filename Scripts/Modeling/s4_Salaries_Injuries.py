@@ -40,7 +40,6 @@ LEAGUE = 'beta'
 
 ty_keepers = {
     'Bucky Irving': [12],
-    'Malik Nabers': [50],
 
     'Brock Bowers': [19],
     'Kyren Williams': [26],
@@ -58,7 +57,7 @@ ty_keepers = {
     'Jalen Hurts': [37],
 
     'Jaxon Smith-Njigba': [27],
-    'Rashee Rice': [11],
+    'Christian Mccaffrey': [57],
 
     'Brian Thomas': [13],
 
@@ -179,8 +178,9 @@ def get_adp():
     for pos in ['QB', 'RB', 'WR', 'TE']:
         print(pos)
 
-        stats = dm.read(f'''SELECT player, year, avg_pick, avg_proj_points,
-                                fpros_pos_rank, year_exp, avg_proj_points_exp_diff
+        stats = dm.read(f'''SELECT player, year, avg_pick, avg_pick_log, avg_proj_points,
+                                   fpros_pos_rank, year_exp, avg_proj_points_exp_diff,
+                                   fpros_pos_rank_log
                             FROM {pos}_{YEAR}_ProjOnly
                          ''', 'Model_Inputs')
         stats['pos'] = pos

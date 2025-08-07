@@ -16,7 +16,7 @@ import datetime as dt
 YEAR = 2025
 
 # Primary league/version for analysis
-LEAGUE = 'dk'  # Options: 'nffc', 'beta', 'dk', 'nv'
+LEAGUE = 'beta'  # Options: 'nffc', 'beta', 'dk', 'nv'
 
 # Model version/prediction version
 PRED_VERSION = 'final_ensemble'

@@ -18,7 +18,7 @@ warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
 set_year = YEAR
 show_plot = False
 vers = LEAGUE
-predict_only = False
+predict_only = True
 
 runs = [
         # ['WR', 'current', 'greater_equal', 0, '', 'Rookie'],
@@ -85,9 +85,6 @@ for sp, cn, fd, ye, rp, dset in runs:
     pos[set_pos]['filter_data'] = fd
     pos[set_pos]['year_exp'] = ye
     pos[set_pos]['rush_pass'] = rp
-
-    if LEAGUE in ['dk', 'nffc'] and current_or_next_year == 'next':
-        continue
 
     print(f'{set_pos} - {current_or_next_year} - {pos[set_pos]["filter_data"]} - {pos[set_pos]["year_exp"]} - {pos[set_pos]["rush_pass"]} - {dset}')
 
