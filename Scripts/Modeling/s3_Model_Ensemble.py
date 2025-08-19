@@ -30,10 +30,10 @@ vers = LEAGUE
 #==========
 # Check Rush Pass vs All Weighting
 #==========
-set_pos = 'QB'
+set_pos = 'RB'
 current_or_next_year = 'current'
 dataset = 'ProjOnly'
-year_exp = 0
+year_exp = 4
 filter_data = 'greater_equal'
 
 from sklearn.metrics import mean_squared_error, r2_score
@@ -339,20 +339,24 @@ downgrades = {
     'Anthony Richardson': 0.9,
     'Jalen Milroe': 0.2,
     'Quinshon Judkins': 0.5,
-    'Rashee Rice': 0.75,
-    'Daniel Jones': 0.75,
+    'Daniel Jones': 0.5,
     'Zach Wilson': 0.2,
     'Mac Jones': 0.2,
     'Jameis Winston': 0.2,
     'Tyler Shough': 0.5,
     'Joe Mixon': 0.75,
     'Chris Godwin': 0.9,
-    'Emeka Egbuka': 1.2,
+    'Emeka Egbuka': 1.25,
+    'Treveyon Henderson': 1.05,
+    'Tet Mcmillan': 1.1,
+    'Tyler Warren': 1.1,
+    'Ricky Pearsall': 1.1
 }
 
 for p, d in downgrades.items():
     preds.loc[preds.player==p, ['pred_prob_upside', 'pred_prob_top', 'pred_fp_per_game', 'pred_fp_per_game_ny']] = \
         preds.loc[preds.player==p, ['pred_prob_upside', 'pred_prob_top', 'pred_fp_per_game', 'pred_fp_per_game_ny']] * d
+
 #%%
 
 yoe = pd.DataFrame()
@@ -369,6 +373,12 @@ adps = pd.merge(adps, yoe, on='player', how='left')
 adps = adps.drop('pos', axis=1)
 dm.delete_from_db('Simulation', 'Avg_ADPs', f"year={set_year}", create_backup=True)
 dm.write_to_db(adps, 'Simulation', 'Avg_ADPs', if_exist='append')
+
+etr = dm.read(f'''SELECT player, etr_rank as avg_pick, 'etr' as league, year
+                  FROM ETR_Ranks 
+                  WHERE year={set_year}''', 
+                  'Season_Stats_New')
+dm.write_to_db(etr, 'Simulation', 'Avg_ADPs', if_exist='append')
 
 # %%
 import shutil

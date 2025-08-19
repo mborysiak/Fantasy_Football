@@ -202,6 +202,18 @@ def fantasy_points_proj(df, pos):
 
     return df
 
+def fanduel_proj(df):
+    fpts = dm.read(f'''SELECT * 
+                       FROM Fanduel_Projections
+                        ''', DB_NAME)
+    fpts = fpts.rename(columns={'fanduel_pass_cmp': 'fanduel_pass_comp'})
+    fpts = name_cleanup(fpts)
+    fpts = calc_total_tds(fpts, 'fanduel')
+    df = pd.merge(df, fpts, on=['player', 'year'], how='left')
+
+    return df
+
+
 
 def add_adp(df, pos, source, bad_ty_adp=False):
     adp = dm.read(f'''SELECT player, year, pick
@@ -274,7 +286,7 @@ def get_cols_to_fill(stat_name, data_sources, drop_sources=[]):
 
 def consensus_fill(df, pos):
 
-    sources = ['fpros', 'ffa', 'fft', 'fdta', 'pff', 'fpts']
+    sources = ['fpros', 'ffa', 'fft', 'fdta', 'pff', 'fpts', 'fanduel']
 
     to_fill = {
 
@@ -284,8 +296,7 @@ def consensus_fill(df, pos):
         'proj_pass_int': get_cols_to_fill('pass_int', sources),
         'proj_pass_comp': get_cols_to_fill('pass_comp', sources, drop_sources=['ffa', 'fdta']),
         'proj_pass_att':  get_cols_to_fill('pass_att', sources, drop_sources=['ffa', 'fdta']),
-        'proj_pass_int': get_cols_to_fill('pass_int', sources),
-        'proj_pass_sacks': get_cols_to_fill('pass_sacks', sources, drop_sources=['ffa', 'fdta', 'fpts', 'fpros']),
+        'proj_pass_sacks': get_cols_to_fill('pass_sacks', sources, drop_sources=['ffa', 'fdta', 'fpts', 'fpros', 'fanduel']),
 
         # rushing stats
         'proj_rush_yds': get_cols_to_fill('rush_yds', sources),
@@ -386,6 +397,7 @@ def fill_pff_targets(df):
     lm = LinearRegression()
     lm.fit(X, y)
     df.loc[df.pff_rec_targets.isnull(), 'pff_rec_targets'] = lm.predict(df.loc[df.pff_rec_targets.isnull(), ['avg_proj_rec_yds', 'avg_proj_rec_td', 'avg_proj_rec']])
+    df.loc[df.fanduel_rec_targets.isnull(), 'fanduel_rec_targets'] = df.loc[df.fanduel_rec_targets.isnull(), 'pff_rec_targets']
     return df
 
 def rolling_proj_stats(df):
@@ -428,6 +440,7 @@ def get_team_projections():
         df = ffa_compile_stats(df, pos)
         df = fantasy_data_proj(df, pos)
         df = fantasy_points_proj(df, pos)
+        df = fanduel_proj(df)
         df = add_etr_rank(df, pos)
 
         df = add_adp(df, pos, 'mfl', bad_adps); print(df.shape[0])
@@ -448,14 +461,14 @@ def get_team_projections():
     cnts = team_proj.groupby(['team', 'year']).agg({'avg_proj_points': 'count'})
     print('Team counts that do not equal 7:', cnts[cnts.avg_proj_points!=7])
 
-    sources = ['fft', 'fpros', 'ffa', 'fdta', 'pff', 'fpts', 'avg_proj']
+    sources = ['fft', 'fpros', 'ffa', 'fdta', 'pff', 'fpts', 'fanduel', 'avg_proj']
     cols = []
     cols.extend(get_cols_to_fill('pass_yds', sources))
     cols.extend(get_cols_to_fill('pass_td', sources))
     cols.extend(get_cols_to_fill('pass_int', sources))
     cols.extend(get_cols_to_fill('pass_comp', sources, drop_sources=['ffa', 'fdta']))
     cols.extend(get_cols_to_fill('pass_att', sources, drop_sources=['ffa', 'fdta']))
-    cols.extend(get_cols_to_fill('pass_sacks', sources, drop_sources=['ffa', 'fdta', 'fpts', 'fpros']))
+    cols.extend(get_cols_to_fill('pass_sacks', sources, drop_sources=['ffa', 'fdta', 'fpts', 'fpros', 'fanduel']))
     cols.extend(get_cols_to_fill('rush_yds', sources))
     cols.extend(get_cols_to_fill('rush_td', sources))
     cols.extend(get_cols_to_fill('rush_att', sources, drop_sources=['ffa', 'fdta']))
@@ -602,7 +615,7 @@ def add_pff_stats(df, pos, stat):
 
     if stat == 'Rec':
         roll_cols = ['grades_offense', 'grades_pass_route', 'slot_rate', 'slot_snaps', 'wide_snaps', 'targeted_qb_rating',
-                    'yprr', 'avg_depth_of_target', 'grades_hands_drop', 'route_rate', 'wide_rate']
+                    'yprr', 'avg_depth_of_target', 'grades_hands_drop', 'route_rate', 'wide_rate', 'yards_after_catch_per_reception']
     
     if stat == 'Rush':
         roll_cols = ['attempts', 'avoided_tackles', 'breakaway_attempts', 'breakaway_percent', 'breakaway_yards',
@@ -689,13 +702,13 @@ def remove_low_corrs(df, corr_cut = 3, collinear_cut = 0.995):
     obj_cols = list(df.dtypes[df.dtypes=='object'].index)
     obj_cols.extend(['year', 'pos', 'games', 'season', 'games_next', 'year_exp', 
                      'avg_pick', 'avg_pick_log', 'pick_fpros', 'pick_fpros_log', 'pick_nffc', 'pick_best_ball',
-                     'avg_pos_rank', 'fpros_avg_pos_rank',
+                     'avg_pos_rank', 'fpros_avg_pos_rank', 'fpros_pos_rank_log', 'pick_mfl_log',
                      'avg_proj_pass_yds', 'avg_proj_pass_td', 'avg_proj_rush_yds', 'avg_proj_rush_td', 'avg_proj_rec_yds', 'avg_proj_rec_td', 'avg_proj_rec',
                      'avg_proj_points', 'avg_proj_rush_points', 'avg_proj_pass_points', 'avg_proj_rec_points',
                      'avg_proj_points_exp', 'avg_proj_points_exp_diff', 'avg_proj_points_exp_diff', 'avg_pick_exp', 'avg_pick_exp_diff',
                      'avg_proj_rank'])
     obj_cols.extend([c for c in df.columns if 'y_act_' in c])
-    obj_cols = [c for c in obj_cols if c in df.columns]
+    obj_cols = list(set([c for c in obj_cols if c in df.columns]))
 
     orig_shape = df.shape[1]
     skm = SciKitModel(df, model_obj='reg')
@@ -905,7 +918,7 @@ def get_next_year_stats(df, stats_proj, ty_mean=False, is_rookie=False):
 #%%
 
 for pos in POSITIONS:
-
+    print(f'Compiling {pos} data...')
     bad_adps = True
 
     # Use class cuts from config
@@ -922,6 +935,7 @@ for pos in POSITIONS:
     df = get_pff_proj(df, pos); print(df.shape[0])
     df = ffa_compile_stats(df, pos); print(df.shape[0])
     df = fantasy_data_proj(df, pos); print(df.shape[0])
+    df = fanduel_proj(df);  print(df.shape[0])
     df = fantasy_points_proj(df, pos); print(df.shape[0])
     df = add_etr_rank(df, pos); print(df.shape[0])
     df = add_evan_silva_rank(df, pos); print(df.shape[0])
@@ -1157,8 +1171,8 @@ for pos in POSITIONS:
 
 #%%
 
-pos = 'WR'
-
+pos = 'RB'
+year=2025
 from skmodel import SciKitModel
 from hyperopt import Trials
 from sklearn.metrics import r2_score
@@ -1175,11 +1189,10 @@ class_metric = '_upside'
 if model_obj =='class': proba = True
 else: proba = False
 
-Xy = dm.read(f"SELECT * FROM {pos}_{YEAR}_ProjOnly WHERE pos='{pos}' ", f'Model_Inputs{lbl}')
+# Xy = dm.read(f"SELECT * FROM {pos}_{YEAR}_ProjOnly WHERE pos='{pos}' ", f'Model_Inputs{lbl}')
 # Xy = dm.read(f"SELECT * FROM {pos}_{year}_Stats WHERE pos='{pos}' ", 'Model_Inputs')
-# if Xy.shape[1]==2000:
-#     Xy = pd.concat([Xy, dm.read(f"SELECT * FROM {pos}_{year}_Stats_V2 ", 'Model_Inputs')], axis=1)
-# Xy = dm.read(f"SELECT * FROM {pos}_{year}_Rookie ", f'Model_Inputs{lbl}')
+# Xy = Xy.drop('y_act', axis=1).rename(columns={f'y_act_rec': 'y_act'})
+Xy = dm.read(f"SELECT * FROM {pos}_{year}_Rookie ", f'Model_Inputs{lbl}')
 if proba: Xy = Xy.drop('y_act', axis=1).rename(columns={f'y_act_class{class_metric}': 'y_act'})
 
 Xy = Xy.sort_values(by='year').reset_index(drop=True)
@@ -1249,15 +1262,15 @@ oof_data['full_hold'].sort_values(by='pred', ascending=False).iloc[:50]
 # %%
 
 pred = pred.fillna({'games': 16})
-try: pred['pred'] = best_models[-1].fit(X,y).predict_proba(pred[X.columns].fillna(pred.mean()))[:,1]
-except: pred['pred'] = best_models[-1].fit(X,y).predict(pred[X.columns].fillna(pred.mean()))
+try: pred['pred'] = best_models[-1].fit(X,y).predict_proba(pred[X.columns])[:,1]
+except: pred['pred'] = best_models[-1].fit(X,y).predict(pred[X.columns])
 pred[['player', 'year', 'pred']].sort_values(by='pred', ascending=False).iloc[:35]
 
 # %%
 
 import matplotlib.pyplot as plt
 
-pipeline = best_models[1]
+pipeline = best_models[0]
 pipeline.fit(X,y)
 # Extract the coefficients
 log_reg = pipeline.named_steps[m]
@@ -1273,3 +1286,19 @@ coef = pd.Series(coefficients, index=X.columns[selected_features])
 coef[np.abs(coef) > 0.01].sort_values().plot(kind = 'barh', figsize=(10, 10))
 
 #%%
+
+Xy.loc[Xy.player=='Ashton Jeanty', ['team_proj_share_diff_pff_rush_att', 'pff_rush_att']]
+# %%
+
+Xy.loc[Xy.player=='Ashton Jeanty', ['pos_proj_share_fdta_rush_td', 'fdta_rush_td']]
+#%%
+Xy.loc[Xy.player=='Ashton Jeanty', ['fpros_pos_rank']]
+
+
+# %%
+
+Xy[['player', 'year', 'pff_rush_att']].sort_values(by='pff_rush_att', ascending=False).iloc[:50]
+# %%
+
+Xy.loc[Xy.year==2025].sort_values(by='fpros_pos_rank', ascending=True).iloc[:50][['player', 'year', 'fpros_pos_rank']]
+# %%

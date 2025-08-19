@@ -7,6 +7,10 @@ import gc
 import sys
 import os
 
+from joblib import parallel_backend
+import joblib
+joblib.parallel.DEFAULT_BACKEND = 'threading'
+
 # Add Scripts directory to path to import config
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import YEAR, LEAGUE
@@ -21,60 +25,60 @@ vers = LEAGUE
 predict_only = True
 
 runs = [
-        # ['WR', 'current', 'greater_equal', 0, '', 'Rookie'],
-        # ['RB', 'current', 'greater_equal', 0, '', 'Rookie'],
+        ['WR', 'current', 'greater_equal', 0, '', 'Rookie'],
+        ['RB', 'current', 'greater_equal', 0, '', 'Rookie'],
 
-        # ['WR', 'current', 'greater_equal', 0, '', 'ProjOnly'],
-        # ['WR', 'current', 'less_equal', 3, '', 'ProjOnly'],
-        # ['WR', 'current', 'greater_equal', 4, '', 'ProjOnly'],
+        ['WR', 'current', 'greater_equal', 0, '', 'ProjOnly'],
+        ['WR', 'current', 'less_equal', 3, '', 'ProjOnly'],
+        ['WR', 'current', 'greater_equal', 4, '', 'ProjOnly'],
 
-        # ['WR', 'next', 'greater_equal', 0, '', 'ProjOnly'],
-        # ['WR', 'next', 'less_equal', 3, '', 'ProjOnly'],
-        # ['WR', 'next', 'greater_equal', 4, '', 'ProjOnly'],
+        ['WR', 'next', 'greater_equal', 0, '', 'ProjOnly'],
+        ['WR', 'next', 'less_equal', 3, '', 'ProjOnly'],
+        ['WR', 'next', 'greater_equal', 4, '', 'ProjOnly'],
 
-        # ['WR', 'current', 'greater_equal', 0, '', 'Stats'],
-        # ['WR', 'current', 'less_equal', 3, '', 'Stats'],
-        # ['WR', 'current', 'greater_equal', 4, '', 'Stats'],
+        ['WR', 'current', 'greater_equal', 0, '', 'Stats'],
+        ['WR', 'current', 'less_equal', 3, '', 'Stats'],
+        ['WR', 'current', 'greater_equal', 4, '', 'Stats'],
 
-        # ['TE', 'current', 'greater_equal', 0, '', 'ProjOnly'],
-        # ['TE', 'current', 'greater_equal', 0, '', 'Stats'],
-        # ['TE', 'next', 'greater_equal', 0, '', 'ProjOnly'],
+        ['TE', 'current', 'greater_equal', 0, '', 'ProjOnly'],
+        ['TE', 'current', 'greater_equal', 0, '', 'Stats'],
+        ['TE', 'next', 'greater_equal', 0, '', 'ProjOnly'],
 
-        # ['QB', 'current', 'greater_equal', 0, '', 'ProjOnly'],
-        # ['QB', 'current', 'greater_equal', 0, 'rush', 'ProjOnly'],
-        # ['QB', 'current', 'greater_equal', 0, 'pass', 'ProjOnly'],
-        # ['QB', 'next', 'greater_equal', 0, '', 'ProjOnly'],
+        ['QB', 'current', 'greater_equal', 0, '', 'ProjOnly'],
+        ['QB', 'current', 'greater_equal', 0, 'rush', 'ProjOnly'],
+        ['QB', 'current', 'greater_equal', 0, 'pass', 'ProjOnly'],
+        ['QB', 'next', 'greater_equal', 0, '', 'ProjOnly'],
 
-        # ['QB', 'current', 'greater_equal', 0, '', 'Stats'],
-        # ['QB', 'current', 'greater_equal', 0, 'rush', 'Stats'],
-        # ['QB', 'current', 'greater_equal', 0, 'pass', 'Stats'],
+        ['QB', 'current', 'greater_equal', 0, '', 'Stats'],
+        ['QB', 'current', 'greater_equal', 0, 'rush', 'Stats'],
+        ['QB', 'current', 'greater_equal', 0, 'pass', 'Stats'],
 
-        ['RB', 'current', 'greater_equal', 0, '', 'ProjOnly'],
-        ['RB', 'current', 'less_equal', 3, '', 'ProjOnly'],
-        ['RB', 'current', 'greater_equal', 4, '', 'ProjOnly'],
-        ['RB', 'current', 'greater_equal', 0, 'rush', 'ProjOnly'],
-        ['RB', 'current', 'greater_equal', 0, 'rec', 'ProjOnly'],
-        ['RB', 'current', 'less_equal', 3, 'rush', 'ProjOnly'],
-        ['RB', 'current', 'less_equal', 3, 'rec', 'ProjOnly'],
-        ['RB', 'current', 'greater_equal', 4, 'rush', 'ProjOnly'],
-        ['RB', 'current', 'greater_equal', 4, 'rec', 'ProjOnly'],
+        # ['RB', 'current', 'greater_equal', 0, '', 'ProjOnly'],
+        # ['RB', 'current', 'less_equal', 3, '', 'ProjOnly'],
+        # ['RB', 'current', 'greater_equal', 4, '', 'ProjOnly'],
+        # ['RB', 'current', 'greater_equal', 0, 'rush', 'ProjOnly'],
+        # ['RB', 'current', 'greater_equal', 0, 'rec', 'ProjOnly'],
+        # ['RB', 'current', 'less_equal', 3, 'rush', 'ProjOnly'],
+        # ['RB', 'current', 'less_equal', 3, 'rec', 'ProjOnly'],
+        # ['RB', 'current', 'greater_equal', 4, 'rush', 'ProjOnly'],
+        # ['RB', 'current', 'greater_equal', 4, 'rec', 'ProjOnly'],
 
-        ['RB', 'next', 'greater_equal', 0, '', 'ProjOnly'],
-        ['RB', 'next', 'less_equal', 3, '', 'ProjOnly'],
-        ['RB', 'next', 'greater_equal', 4, '', 'ProjOnly'],
+        # ['RB', 'next', 'greater_equal', 0, '', 'ProjOnly'],
+        # ['RB', 'next', 'less_equal', 3, '', 'ProjOnly'],
+        # ['RB', 'next', 'greater_equal', 4, '', 'ProjOnly'],
 
-        ['RB', 'current', 'greater_equal', 0, '', 'Stats'],
-        ['RB', 'current', 'less_equal', 3, '', 'Stats'],
-        ['RB', 'current', 'greater_equal', 4, '', 'Stats'],
-        ['RB', 'current', 'greater_equal', 0, 'rush', 'Stats'],
-        ['RB', 'current', 'greater_equal', 0, 'rec', 'Stats'],
-        ['RB', 'current', 'less_equal', 3, 'rush', 'Stats'],
-        ['RB', 'current', 'less_equal', 3, 'rec', 'Stats'],
-        ['RB', 'current', 'greater_equal', 4, 'rush', 'Stats'],
-        ['RB', 'current', 'greater_equal', 4, 'rec', 'Stats'],
+        # ['RB', 'current', 'greater_equal', 0, '', 'Stats'],
+        # ['RB', 'current', 'less_equal', 3, '', 'Stats'],
+        # ['RB', 'current', 'greater_equal', 4, '', 'Stats'],
+        # ['RB', 'current', 'greater_equal', 0, 'rush', 'Stats'],
+        # ['RB', 'current', 'greater_equal', 0, 'rec', 'Stats'],
+        # ['RB', 'current', 'less_equal', 3, 'rush', 'Stats'],
+        # ['RB', 'current', 'less_equal', 3, 'rec', 'Stats'],
+        # ['RB', 'current', 'greater_equal', 4, 'rush', 'Stats'],
+        # ['RB', 'current', 'greater_equal', 4, 'rec', 'Stats'],
 ]
 
-print(vers)
+print(f'Running models for {vers}')
 
 #%%
 
@@ -120,7 +124,7 @@ for sp, cn, fd, ye, rp, dset in runs:
         out_dict_reg, out_dict_top, out_dict_upside, out_dict_quant = output_dict(), output_dict(), output_dict(), output_dict()
 
         model_list = ['adp', 'lasso', 'lgbm', 'rf', 'gbm', 'gbmh', 'mlp', 'cb', 'huber', 'xgb', 'knn', 'ridge', 'bridge', 'enet']
-        results = Parallel(n_jobs=16, verbose=1)(
+        results = Parallel(n_jobs=16, verbose=1, backend='threading')(
                         delayed(get_model_output)
                         (m, df_train, 'reg', out_dict_reg, pos, set_pos, hp_algo, bayes_rand, i, optuna_timeout=optuna_timeout) \
                         for i, m in enumerate(model_list) 

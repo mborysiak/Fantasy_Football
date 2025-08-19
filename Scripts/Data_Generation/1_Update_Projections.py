@@ -503,19 +503,25 @@ col_order.extend([c for c in df.columns if 'pff' in c])
 df = df[col_order]
 df = df.round(2)
 
+for c in ['pff_pass_comp', 'pff_pass_att', 'pff_pass_yds', 'pff_pass_td', 'pff_pass_int', 'pff_pass_sacked',
+          'pff_rush_att', 'pff_rush_yds', 'pff_rush_td', 
+          'pff_rec_targets', 'pff_rec_receptions', 'pff_rec_yds', 'pff_rec_td',
+          'pff_fumbles', 'pff_fumbles_lost']:
+    df[c] = df[c] * 17/df['pff_games']
+
 dm.delete_from_db(DB_NAME, 'PFF_Projections', f"year={YEAR}", create_backup=False)
 dm.write_to_db(df, DB_NAME, 'PFF_Projections', 'append')
 
 #%%
 
-etr_name = f'{YEAR} Re-Draft Half PPR Rankings.csv'
+etr_name = [f for f in os.listdir("/Users/borys/Downloads/") if 'ETR' in f and 'Half' in f][0]
 
 df = move_download_to_folder(root_path, 'ETR', etr_name, YEAR)
 df = df.rename(columns={'Name': 'player', 
                         'Team': 'team', 
-                        'Pos': 'pos',
+                        'Position': 'pos',
                         'ETR Rank': 'etr_rank', 
-                        'ETR Pos Rank': 'etr_pos_rank',
+                        'Pos Rank ETR': 'etr_pos_rank',
                         })
 df = df[~df.pos.isin(['K', 'DST'])].reset_index(drop=True)
 df.player = df.player.apply(dc.name_clean)
@@ -528,14 +534,14 @@ dm.write_to_db(df, DB_NAME, 'ETR_Ranks', 'append')
 
 #%%
 
-etr_name = f'{YEAR} Re-Draft Full PPR Rankings.csv'
+etr_name = [f for f in os.listdir("/Users/borys/Downloads/") if 'ETR' in f and 'PPR' in f][0]
 
 df = move_download_to_folder(root_path, 'ETR', etr_name, YEAR)
 df = df.rename(columns={'Name': 'player', 
                         'Team': 'team', 
-                        'Pos': 'pos',
+                        'Position': 'pos',
                         'ETR Rank': 'etr_rank', 
-                        'ETR Pos Rank': 'etr_pos_rank',
+                        'Pos Rank ETR': 'etr_pos_rank',
                         })
 df = df[~df.pos.isin(['K', 'DST'])].reset_index(drop=True)
 df.player = df.player.apply(dc.name_clean)
@@ -548,12 +554,14 @@ dm.write_to_db(df, DB_NAME, 'ETR_Ranks_PPR', 'append')
 
 #%%
 
-df = move_download_to_folder(root_path, 'ETR', f"Evan Silva's Top 150 Rankings.csv", YEAR)
-df = df.rename(columns={'Player': 'player', 
-                        'Tm': 'team', 
-                        'Pos': 'pos',
-                        'Rank': 'evan_silva_rank', 
-                        'Pos Rank': 'evan_silva_pos_rank',
+etr_name = [f for f in os.listdir("/Users/borys/Downloads/") if 'Silva' in f][0]
+
+df = move_download_to_folder(root_path, 'ETR', etr_name, YEAR)
+df = df.rename(columns={'Name': 'player', 
+                        'Team': 'team', 
+                        'Position': 'pos',
+                        'Silva Rank': 'evan_silva_rank', 
+                        'Pos Rank Silva': 'evan_silva_pos_rank',
                         })
 
 df.player = df.player.apply(dc.name_clean)
@@ -605,6 +613,37 @@ cols.extend([c for c in df.columns if 'fpts' in c])
 df = df[cols]
 dm.delete_from_db(DB_NAME, 'FantasyPoints_Projections', f"year={YEAR}", create_backup=False)
 dm.write_to_db(df, DB_NAME, 'FantasyPoints_Projections', 'append')
+
+#%%
+
+df = move_download_to_folder(root_path, 'FanduelResearch', 'REMAINING.csv', YEAR)
+df['completions'] = df.completionsAttempts.apply(lambda x: float(x.split('/')[0]))
+df['attempts'] = df.completionsAttempts.apply(lambda x: float(x.split('/')[1]))
+cols = {
+    'player': 'player', 
+    'completions': 'fanduel_pass_cmp',
+    'attempts': 'fanduel_pass_att',
+    'passingYards': 'fanduel_pass_yds',
+    'passingTouchdowns': 'fanduel_pass_td',
+    'interceptionsThrown': 'fanduel_pass_int',
+    'rushingAttempts': 'fanduel_rush_att',
+    'rushingYards': 'fanduel_rush_yds',
+    'rushingTouchdowns': 'fanduel_rush_td',
+    'receptions': 'fanduel_rec',
+    'targets': 'fanduel_rec_targets',
+    'receivingYards': 'fanduel_rec_yds',
+    'receivingTouchdowns': 'fanduel_rec_td',
+}
+df = (
+    df
+    .rename(columns=cols)
+    .loc[:, cols.values()]
+    .assign(year=YEAR)
+)
+
+df.player = df.player.apply(dc.name_clean)
+dm.delete_from_db(DB_NAME, 'Fanduel_Projections', f"year={YEAR}", create_backup=False)
+dm.write_to_db(df, DB_NAME, 'Fanduel_Projections', 'append')
 
 
 #%%

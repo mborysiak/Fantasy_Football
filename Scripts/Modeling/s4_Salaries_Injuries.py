@@ -40,6 +40,7 @@ LEAGUE = 'beta'
 
 ty_keepers = {
     'Bucky Irving': [12],
+    'Chase Brown': [19],
 
     'Brock Bowers': [19],
     'Kyren Williams': [26],
@@ -48,18 +49,19 @@ ty_keepers = {
     'Jayden Daniels': [13],
 
     'Nico Collins': [27],
-    'Puka Nacua': [67],
+    'Chuba Hubbard': [13],
 
     'Ladd Mcconkey': [19],
 
     'Josh Jacobs': [57],
 
-    'Jalen Hurts': [37],
+    'George Pickens': [22],
 
     'Jaxon Smith-Njigba': [27],
     'Christian Mccaffrey': [57],
 
     'Brian Thomas': [13],
+    'Derrick Henry': [88],
 
     'Jerry Jeudy': [11],   
 }
@@ -180,7 +182,7 @@ def get_adp():
 
         stats = dm.read(f'''SELECT player, year, avg_pick, avg_pick_log, avg_proj_points,
                                    fpros_pos_rank, year_exp, avg_proj_points_exp_diff,
-                                   fpros_pos_rank_log
+                                   fpros_pos_rank_log, pick_mfl_log
                             FROM {pos}_{YEAR}_ProjOnly
                          ''', 'Model_Inputs')
         stats['pos'] = pos
@@ -383,7 +385,7 @@ import optuna
 optuna.logging.set_verbosity(optuna.logging.WARNING)
 best_models = {}
 scores = {}
-model_list = ['lgbm', 'ridge', 'svr', 'lasso', 'enet', 'xgb', 'knn', 'gbm', 'rf', 'gbmh', 'huber', 'cb', 'mlp']
+model_list = ['lgbm', 'ridge', 'svr', 'lasso', 'enet', 'xgb', 'knn', 'gbm', 'rf', 'gbmh', 'huber', 'cb', 'mlp', 'et']
 i = 0
 
 for m in model_list:
@@ -501,10 +503,13 @@ total_off = np.max([0, -total_from_available])
 display(pred_results.iloc[:50])
 display(pred_results[np.abs(pred_results.pred_diff) > 4].sort_values(by='pred_diff', ascending=False))
 
-pred_results.loc[pred_results.is_keeper==0, 'pred_salary'] = (
-                                                              pred_results.loc[pred_results.is_keeper==0, 'pred_salary'] 
-                                                              * (1 + (total_off / 3600))
-                                                              ).astype('int')
+# Calculate flat dollar amount per non-keeper player
+non_keeper_count = len(pred_results[pred_results.is_keeper == 0])
+extra_per_player = np.ceil(total_off / non_keeper_count)
+
+# Apply the flat increase to all non-keeper players
+pred_results.loc[pred_results.is_keeper == 0, 'pred_salary'] += extra_per_player
+pred_results['pred_salary'] = pred_results['pred_salary'].astype('int')
 pred_results.iloc[:50]
 
 #%%
@@ -575,4 +580,3 @@ combined.plot.scatter(x='salary', y='actual_salary')
 combined['error'] = combined.actual_salary - combined.salary
 display(combined.sort_values(by='error').iloc[:40])
 display(combined.sort_values(by='error').iloc[-40:])
-
