@@ -16,7 +16,7 @@ import datetime as dt
 YEAR = 2025
 
 # Primary league/version for analysis
-LEAGUE = 'beta'  # Options: 'nffc', 'beta', 'dk', 'nv'
+LEAGUE = 'nv'  # Options: 'nffc', 'beta', 'dk', 'nv'
 
 # Model version/prediction version
 PRED_VERSION = 'final_ensemble'
@@ -125,7 +125,7 @@ PASSING_SCORING = {
         'pass_yards_gained_sum': 0.04,
         'pass_pass_touchdown_sum': 4,
         'pass_interception_sum': -2,
-        'sack_sum': 2,
+        'sack_sum': -1,
         'pass_yd_300_bonus': 1,
         'pass_yd_400_bonus': 2,
     }

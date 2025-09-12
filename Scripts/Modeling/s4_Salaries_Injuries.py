@@ -35,40 +35,66 @@ dm = DataManage(db_path)
 # set core path
 PATH = f'{root_path}/Data/'
 YEAR = 2025
-LEAGUE = 'beta'
+LEAGUE = 'nv'
 
-
-ty_keepers = {
-    'Bucky Irving': [12],
-    'Chase Brown': [19],
-
-    'Brock Bowers': [19],
-    'Kyren Williams': [26],
-
-    # 'James Cook': [54],
-    'Jayden Daniels': [13],
-
-    'Nico Collins': [27],
-    'Chuba Hubbard': [13],
-
-    'Ladd Mcconkey': [19],
-
-    'Josh Jacobs': [57],
-
-    'George Pickens': [22],
-
-    'Jaxon Smith-Njigba': [27],
-    'Christian Mccaffrey': [57],
-
-    'Brian Thomas': [13],
-    'Derrick Henry': [88],
-
-    'Jerry Jeudy': [11],   
-}
 
 # ty_keepers = {
+#     'Bucky Irving': [12],
+#     'Chase Brown': [19],
 
+#     'Brock Bowers': [21],
+#     'Kyren Williams': [26],
+
+#     # 'James Cook': [54],
+#     # 'Jayden Daniels': [13],
+
+#     'Nico Collins': [27],
+#     'Chuba Hubbard': [13],
+
+#     'Ladd Mcconkey': [19],
+
+#     'Josh Allen': [46],
+#     'Josh Jacobs': [57],
+
+#     'Jaxon Smith Njigba': [27],
+#     'Christian Mccaffrey': [57],
+
+#     'Brian Thomas': [13],
+#     'Derrick Henry': [88],
+
+#     'Stefon Diggs': [11],
+#     'Davante Adams': [49],
+
+#     'Jerry Jeudy': [11],   
+#     'Courtland Sutton': [14]
 # }
+
+ty_keepers = {
+    "Devon Achane": [27],
+    'Jayden Daniels': [36],
+
+    'Baker Mayfield': [13],
+    'Bucky Irving': [20],
+
+    'Bo Nix': [11],
+    'Tee Higgins': [27],
+
+    'Rashee Rice': [10],
+    'Chris Olave': [13],
+
+    'Bijan Robinson': [107],
+    'Brock Bowers': [11],
+    
+    'Brian Thomas': [12],
+    'Joe Burrow': [29],
+
+    "Ja'Marr Chase": [71],
+    'Ladd Mcconkey': [11],
+    
+    'Chase Brown': [23],
+
+    'Josh Jacobs': [42]
+}
 
 ty_keepers = pd.DataFrame(ty_keepers)
 ty_keepers = ty_keepers.T.reset_index()
@@ -139,7 +165,7 @@ def clean_results(path, fname, year, league, team_split=True):
 
     # drop null rows from formatting and nonsense rows
     results = results.dropna(subset=['actual_salary'])
-    results = results[results.player!='PLAYER'].reset_index(drop=True)
+    results = results[results.player!='Player'].reset_index(drop=True)
 
     # fill in all non-keeper player flags
     results.loc[results.is_keeper.isnull(), 'is_keeper'] = 0
@@ -157,21 +183,27 @@ def clean_results(path, fname, year, league, team_split=True):
     
     return results
 
-# FNAME = f'{LEAGUE}_{YEAR}_results'
-# results = clean_results(PATH, FNAME, YEAR, LEAGUE)
-# dm.delete_from_db('Simulation', 'Actual_Salaries', f"year='{YEAR}' AND league='{LEAGUE}'")
-# dm.write_to_db(results, 'Simulation', 'Actual_Salaries', 'append')
+FNAME = f'{LEAGUE}_{YEAR}_results'
+results = clean_results(PATH, FNAME, YEAR, LEAGUE)
+dm.delete_from_db('Simulation', 'Actual_Salaries', f"year='{YEAR}' AND league='{LEAGUE}'")
+dm.write_to_db(results, 'Simulation', 'Actual_Salaries', 'append')
 
-# # push the actuals to salary database to re-run simulation
-# to_actual = dm.read(f"SELECT * FROM Actual_Salaries WHERE year={YEAR} AND league='{LEAGUE}'", 'Simulation')
-# to_actual = to_actual[['player', 'actual_salary', 'year', 'league']].rename(columns={'actual_salary': 'salary'})
-# to_actual['league'] = to_actual.league.apply(lambda x: f'{x}_actual')
-# to_actual['std_dev'] = 0.1
-# to_actual['min_score'] = to_actual.salary - 1
-# to_actual['max_score'] = to_actual.salary + 1
+# push the actuals to salary database to re-run simulation
+to_actual = dm.read(f"SELECT * FROM Actual_Salaries WHERE year={YEAR} AND league='{LEAGUE}'", 'Simulation')
+to_actual = to_actual[['player', 'actual_salary', 'year', 'league']].rename(columns={'actual_salary': 'salary'})
+to_actual['league'] = to_actual.league.apply(lambda x: f'{x}_actual')
+to_actual['std_dev'] = 0.1
+to_actual['min_score'] = to_actual.salary - 1
+to_actual['max_score'] = to_actual.salary + 1
 
-# dm.delete_from_db('Simulation', 'Salaries_Pred', f"year={YEAR} AND league='{LEAGUE}_actual'")
-# dm.write_to_db(to_actual, 'Simulation', 'Salaries_Pred', 'append')
+dm.delete_from_db('Simulation', 'Salaries_Pred', f"year={YEAR} AND league='{LEAGUE}_actual'")
+dm.write_to_db(to_actual, 'Simulation', 'Salaries_Pred', 'append')
+
+import shutil
+
+src = f'{root_path}/Data/Databases/Simulation.sqlite3'
+dst = f'/Users/borys/OneDrive/Documents/Github/Fantasy_Football_App/app/Simulation.sqlite3'
+shutil.copyfile(src, dst)
 
 #%%
 
@@ -385,7 +417,8 @@ import optuna
 optuna.logging.set_verbosity(optuna.logging.WARNING)
 best_models = {}
 scores = {}
-model_list = ['lgbm', 'ridge', 'svr', 'lasso', 'enet', 'xgb', 'knn', 'gbm', 'rf', 'gbmh', 'huber', 'cb', 'mlp', 'et']
+model_list = ['lgbm', 'ridge', 'svr', 'lasso', 'enet', 'xgb', 'knn', 'gbm', 
+              'rf', 'gbmh', 'huber', 'cb', 'mlp', 'et']
 i = 0
 
 for m in model_list:
@@ -407,7 +440,7 @@ for m in model_list:
     study = optuna.create_study(direction='minimize')
     best_models_cur, oof_data, _, _ = skm.time_series_cv(pipe, X_train, y_train, params, n_iter=25, 
                                                         n_splits=5, alpha='',
-                                                        col_split='game_date', time_split=2021,
+                                                        col_split='game_date', time_split=2022,
                                                         bayes_rand='optuna', proba=False, trials=study,
                                                         random_seed=(i+7)*19+(i*12)+6, optuna_timeout=60)
 
@@ -572,11 +605,24 @@ shutil.copyfile(src, dst)
 
 # %%
 
-pred = dm.read("SELECT * FROM Salaries_Pred WHERE year=2024 AND league='betapred'", 'Simulation')
-actual = dm.read("SELECT * FROM Actual_Salaries WHERE year=2024 AND league='beta' AND is_keeper=0", 'Simulation')
+pred = dm.read("SELECT * FROM Salaries_Pred WHERE year=2025 AND league='nvpred'", 'Simulation')
+actual = dm.read("SELECT * FROM Actual_Salaries WHERE year=2025 AND league='nv' AND is_keeper=0", 'Simulation')
 combined = pd.merge(pred[['player', 'salary']], actual[['player', 'actual_salary']], on='player')
 print(r2_score(combined.actual_salary, combined.salary))
+print(mean_squared_error(combined.actual_salary, combined.salary))
 combined.plot.scatter(x='salary', y='actual_salary')
 combined['error'] = combined.actual_salary - combined.salary
 display(combined.sort_values(by='error').iloc[:40])
 display(combined.sort_values(by='error').iloc[-40:])
+
+# %%
+pred = dm.read("SELECT * FROM Salaries WHERE year=2025 AND league='nv'", 'Simulation')
+actual = dm.read("SELECT * FROM Actual_Salaries WHERE year=2025 AND league='nv' AND is_keeper=0", 'Simulation')
+combined = pd.merge(pred[['player', 'salary']], actual[['player', 'actual_salary']], on='player')
+print(r2_score(combined.actual_salary, combined.salary))
+print(mean_squared_error(combined.actual_salary, combined.salary))
+combined.plot.scatter(x='salary', y='actual_salary')
+combined['error'] = combined.actual_salary - combined.salary
+display(combined.sort_values(by='error').iloc[:40])
+display(combined.sort_values(by='error').iloc[-40:])
+# %%

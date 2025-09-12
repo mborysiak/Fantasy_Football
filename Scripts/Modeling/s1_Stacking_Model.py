@@ -558,22 +558,12 @@ def run_stack_models(final_m, X_stack, y_stack, i, model_obj, alpha, run_params)
     
 
 def fit_and_predict(m, df_predict, X, y, proba):
-    from sklearn.pipeline import Pipeline
-    try:
-        cols = m.steps[0][-1].columns
-        cols = [c for c in cols if c in X.columns]
-        X = X[cols]
-        X_predict = df_predict[cols]
-        m = Pipeline(m.steps[1:])
-        m.fit(X,y)
-    except:
-        m.fit(X, y)
-        X_predict = df_predict[X.columns]
+    
+    m.fit(X, y)
 
+    X_predict = df_predict[X.columns]
     if proba: cur_predict = m.predict_proba(X_predict)[:,1]
     else: cur_predict = m.predict(X_predict)
-    # except:
-        # cur_predict = []
 
     return cur_predict
 
@@ -669,9 +659,6 @@ def stack_predictions(X_predict, best_models, final_models, model_obj='reg'):
     predictions = pd.DataFrame()
     for bm, fm in zip(best_models, final_models):
 
-        start_cols = bm.steps[0][1].start_columns
-        X_predict = X_predict[start_cols]
-        
         if model_obj in ('reg', 'quantile'): cur_prediction = np.round(bm.predict(X_predict), 2)
         elif model_obj=='class': cur_prediction = np.round(bm.predict_proba(X_predict)[:,1], 3)
         
@@ -1007,4 +994,3 @@ def save_out_results(df, db_name, table_name, vers, pos, set_year, set_pos, data
 # val_compare = validation_compare_df(model_output_path, best_val_reg)
 # save_out_results(val_compare, 'Validations', 'Model_Validations', pos, set_year, set_pos, dataset, current_or_next_year)
 # save_out_results(output, 'Simulation', 'Model_Predictions', pos, set_year, set_pos, dataset, current_or_next_year)
-

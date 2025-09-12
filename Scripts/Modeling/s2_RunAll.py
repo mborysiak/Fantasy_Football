@@ -7,16 +7,14 @@ import gc
 import sys
 import os
 
-from joblib import parallel_backend
-import joblib
-joblib.parallel.DEFAULT_BACKEND = 'threading'
-
 # Add Scripts directory to path to import config
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import YEAR, LEAGUE
 
 warnings.simplefilter(action='ignore', category=FutureWarning)
 warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
+
+VERBOSE = 1
 
 # Use config settings
 set_year = YEAR
@@ -25,24 +23,24 @@ vers = LEAGUE
 predict_only = True
 
 runs = [
-        ['WR', 'current', 'greater_equal', 0, '', 'Rookie'],
-        ['RB', 'current', 'greater_equal', 0, '', 'Rookie'],
+        # ['WR', 'current', 'greater_equal', 0, '', 'Rookie'],
+        # ['RB', 'current', 'greater_equal', 0, '', 'Rookie'],
 
-        ['WR', 'current', 'greater_equal', 0, '', 'ProjOnly'],
-        ['WR', 'current', 'less_equal', 3, '', 'ProjOnly'],
-        ['WR', 'current', 'greater_equal', 4, '', 'ProjOnly'],
+        # ['WR', 'current', 'greater_equal', 0, '', 'ProjOnly'],
+        # ['WR', 'current', 'less_equal', 3, '', 'ProjOnly'],
+        # ['WR', 'current', 'greater_equal', 4, '', 'ProjOnly'],
 
-        ['WR', 'next', 'greater_equal', 0, '', 'ProjOnly'],
-        ['WR', 'next', 'less_equal', 3, '', 'ProjOnly'],
-        ['WR', 'next', 'greater_equal', 4, '', 'ProjOnly'],
+        # ['WR', 'next', 'greater_equal', 0, '', 'ProjOnly'],
+        # ['WR', 'next', 'less_equal', 3, '', 'ProjOnly'],
+        # ['WR', 'next', 'greater_equal', 4, '', 'ProjOnly'],
 
-        ['WR', 'current', 'greater_equal', 0, '', 'Stats'],
-        ['WR', 'current', 'less_equal', 3, '', 'Stats'],
-        ['WR', 'current', 'greater_equal', 4, '', 'Stats'],
+        # ['WR', 'current', 'greater_equal', 0, '', 'Stats'],
+        # ['WR', 'current', 'less_equal', 3, '', 'Stats'],
+        # ['WR', 'current', 'greater_equal', 4, '', 'Stats'],
 
-        ['TE', 'current', 'greater_equal', 0, '', 'ProjOnly'],
-        ['TE', 'current', 'greater_equal', 0, '', 'Stats'],
-        ['TE', 'next', 'greater_equal', 0, '', 'ProjOnly'],
+        # ['TE', 'current', 'greater_equal', 0, '', 'ProjOnly'],
+        # ['TE', 'current', 'greater_equal', 0, '', 'Stats'],
+        # ['TE', 'next', 'greater_equal', 0, '', 'ProjOnly'],
 
         ['QB', 'current', 'greater_equal', 0, '', 'ProjOnly'],
         ['QB', 'current', 'greater_equal', 0, 'rush', 'ProjOnly'],
@@ -124,7 +122,7 @@ for sp, cn, fd, ye, rp, dset in runs:
         out_dict_reg, out_dict_top, out_dict_upside, out_dict_quant = output_dict(), output_dict(), output_dict(), output_dict()
 
         model_list = ['adp', 'lasso', 'lgbm', 'rf', 'gbm', 'gbmh', 'mlp', 'cb', 'huber', 'xgb', 'knn', 'ridge', 'bridge', 'enet']
-        results = Parallel(n_jobs=16, verbose=1, backend='threading')(
+        results = Parallel(n_jobs=16, verbose=VERBOSE)(
                         delayed(get_model_output)
                         (m, df_train, 'reg', out_dict_reg, pos, set_pos, hp_algo, bayes_rand, i, optuna_timeout=optuna_timeout) \
                         for i, m in enumerate(model_list) 
@@ -137,7 +135,7 @@ for sp, cn, fd, ye, rp, dset in runs:
 
         # run all other models
         model_list = ['lgbm_c', 'knn_c', 'lr_c', 'rf_c', 'gbm_c', 'gbmh_c', 'mlp_c', 'cb_c', 'xgb_c']
-        results = Parallel(n_jobs=12, verbose=1)(
+        results = Parallel(n_jobs=12, verbose=VERBOSE)(
                         delayed(get_model_output)
                         (m, df_train_top, 'class', out_dict_top, pos, set_pos, hp_algo, bayes_rand, i, '_top', optuna_timeout=optuna_timeout) \
                         for i, m in enumerate(model_list) 
@@ -149,7 +147,7 @@ for sp, cn, fd, ye, rp, dset in runs:
 
         # run all other models
         model_list = ['lgbm_c', 'knn_c', 'lr_c', 'rf_c', 'gbm_c', 'gbmh_c', 'mlp_c', 'cb_c', 'xgb_c']
-        results = Parallel(n_jobs=12, verbose=1)(
+        results = Parallel(n_jobs=12, verbose=VERBOSE)(
                         delayed(get_model_output)
                         (m, df_train_upside, 'class', out_dict_upside, pos, set_pos, hp_algo, bayes_rand, i, '_upside', optuna_timeout=optuna_timeout) \
                         for i, m in enumerate(model_list) 
@@ -162,7 +160,7 @@ for sp, cn, fd, ye, rp, dset in runs:
         # run all other models
         model_list = ['qr_q','lgbm_q', 'gbm_q', 'gbmh_q', 'cb_q']
         models_q = [[alph, m] for alph in [0.65, 0.8] for m in model_list]
-        results = Parallel(n_jobs=8, verbose=1)(
+        results = Parallel(n_jobs=8, verbose=VERBOSE)(
                         delayed(get_model_output)
                         (m[1], df_train, 'quantile', out_dict_quant, pos, set_pos, hp_algo, bayes_rand, i, alpha=m[0], optuna_timeout=optuna_timeout) \
                         for i, m in enumerate(models_q) 
@@ -208,7 +206,7 @@ for sp, cn, fd, ye, rp, dset in runs:
         final_models = ['bridge', 'enet', 'rf', 'gbm', 'gbmh', 'mlp', 'cb', 'huber', 'lgbm', 'knn', 'ridge', 'lasso', 'xgb', 'et']
         stack_val_pred = pd.DataFrame(); scores = []; best_models = []
 
-        results = Parallel(n_jobs=16, verbose=1)(
+        results = Parallel(n_jobs=16, verbose=VERBOSE)(
                         delayed(run_stack_models)
                         (fm, X_stack, y_stack, i, 'reg', None, run_params) \
                         for i, fm in enumerate(final_models) 
@@ -226,7 +224,7 @@ for sp, cn, fd, ye, rp, dset in runs:
         #---------------
         final_models_top = [ 'lgbm_c', 'lr_c', 'rf_c', 'gbm_c', 'gbmh_c', 'mlp_c', 'cb_c', 'xgb_c', 'et_c']
         stack_val_top = pd.DataFrame(); scores_top = []; best_models_top = []
-        results = Parallel(n_jobs=12, verbose=1)(
+        results = Parallel(n_jobs=12, verbose=VERBOSE)(
                         delayed(run_stack_models)
                         (fm, X_stack, y_stack_top, i, 'class', None, run_params) \
                         for i, fm in enumerate(final_models_top) 
@@ -244,7 +242,7 @@ for sp, cn, fd, ye, rp, dset in runs:
         #---------------
         final_models_upside = [ 'lgbm_c', 'lr_c', 'rf_c', 'gbm_c', 'gbmh_c', 'mlp_c', 'cb_c', 'xgb_c', 'et_c']
         stack_val_upside = pd.DataFrame(); scores_upside = []; best_models_upside = []
-        results = Parallel(n_jobs=12, verbose=1)(
+        results = Parallel(n_jobs=12, verbose=VERBOSE)(
                         delayed(run_stack_models)
                         (fm, X_stack, y_stack_upside, i, 'class', None, run_params) \
                         for i, fm in enumerate(final_models_upside) 
@@ -265,7 +263,7 @@ for sp, cn, fd, ye, rp, dset in runs:
         final_models_quant = ['qr_q', 'gbm_q', 'gbmh_q', 'rf_q', 'lgbm_q', 'cb_q']
         stack_val_quant = pd.DataFrame(); scores_quant = []; best_models_quant = []
 
-        results = Parallel(n_jobs=8, verbose=1)(
+        results = Parallel(n_jobs=8, verbose=VERBOSE)(
                         delayed(run_stack_models)
                         (fm, X_stack, y_stack, i, 'quantile', 0.80, run_params) \
                         for i, fm in enumerate(final_models_quant) 

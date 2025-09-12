@@ -1,5 +1,13 @@
 #%%
 
+
+#==================================
+# Next Year Ideas
+# - Include overall ranking instead of just pos
+# - Adjust year_exp cuts according to FPts breakout curves
+# - Add model for VOR in a given season
+#==================================
+
 # Import configuration
 import sys
 import os
@@ -213,6 +221,19 @@ def fanduel_proj(df):
 
     return df
 
+def fff_proj(df, pos):
+    fff = dm.read(f'''SELECT * 
+                       FROM FFF_Projections
+                        ''', DB_NAME)
+
+    fff = fff.drop(['team', 'pos', 'fff_pass_first_downs', 'fff_rush_first_downs', 'fff_rec_first_downs', 'fff_health'], axis=1)
+    fff = fff.rename(columns={'fff_pass_cmp': 'fff_pass_comp'})
+    fff = name_cleanup(fff)
+    fff = calc_total_tds(fff, 'fff')
+    df = pd.merge(df, fff, on=['player', 'year'], how='left')
+
+    return df
+
 
 
 def add_adp(df, pos, source, bad_ty_adp=False):
@@ -286,7 +307,7 @@ def get_cols_to_fill(stat_name, data_sources, drop_sources=[]):
 
 def consensus_fill(df, pos):
 
-    sources = ['fpros', 'ffa', 'fft', 'fdta', 'pff', 'fpts', 'fanduel']
+    sources = ['fpros', 'ffa', 'fft', 'fdta', 'pff', 'fpts', 'fanduel', 'fff']
 
     to_fill = {
 
@@ -296,7 +317,7 @@ def consensus_fill(df, pos):
         'proj_pass_int': get_cols_to_fill('pass_int', sources),
         'proj_pass_comp': get_cols_to_fill('pass_comp', sources, drop_sources=['ffa', 'fdta']),
         'proj_pass_att':  get_cols_to_fill('pass_att', sources, drop_sources=['ffa', 'fdta']),
-        'proj_pass_sacks': get_cols_to_fill('pass_sacks', sources, drop_sources=['ffa', 'fdta', 'fpts', 'fpros', 'fanduel']),
+        'proj_pass_sacks': get_cols_to_fill('pass_sacks', sources, drop_sources=['ffa', 'fdta', 'fpts', 'fpros', 'fanduel', 'fff']),
 
         # rushing stats
         'proj_rush_yds': get_cols_to_fill('rush_yds', sources),
@@ -441,6 +462,7 @@ def get_team_projections():
         df = fantasy_data_proj(df, pos)
         df = fantasy_points_proj(df, pos)
         df = fanduel_proj(df)
+        df = fff_proj(df, pos)
         df = add_etr_rank(df, pos)
 
         df = add_adp(df, pos, 'mfl', bad_adps); print(df.shape[0])
@@ -461,14 +483,14 @@ def get_team_projections():
     cnts = team_proj.groupby(['team', 'year']).agg({'avg_proj_points': 'count'})
     print('Team counts that do not equal 7:', cnts[cnts.avg_proj_points!=7])
 
-    sources = ['fft', 'fpros', 'ffa', 'fdta', 'pff', 'fpts', 'fanduel', 'avg_proj']
+    sources = ['fft', 'fpros', 'ffa', 'fdta', 'pff', 'fpts', 'fanduel', 'fff', 'avg_proj']
     cols = []
     cols.extend(get_cols_to_fill('pass_yds', sources))
     cols.extend(get_cols_to_fill('pass_td', sources))
     cols.extend(get_cols_to_fill('pass_int', sources))
     cols.extend(get_cols_to_fill('pass_comp', sources, drop_sources=['ffa', 'fdta']))
     cols.extend(get_cols_to_fill('pass_att', sources, drop_sources=['ffa', 'fdta']))
-    cols.extend(get_cols_to_fill('pass_sacks', sources, drop_sources=['ffa', 'fdta', 'fpts', 'fpros', 'fanduel']))
+    cols.extend(get_cols_to_fill('pass_sacks', sources, drop_sources=['ffa', 'fdta', 'fpts', 'fpros', 'fanduel', 'fff']))
     cols.extend(get_cols_to_fill('rush_yds', sources))
     cols.extend(get_cols_to_fill('rush_td', sources))
     cols.extend(get_cols_to_fill('rush_att', sources, drop_sources=['ffa', 'fdta']))
@@ -912,7 +934,7 @@ def get_next_year_stats(df, stats_proj, ty_mean=False, is_rookie=False):
     
     df_proj_next = df_proj_next.drop('y_act_next', axis=1)
 
-    return df_proj_next, games, games_next
+#    return df_proj_next, games, games_next
 
 
 #%%
@@ -1171,7 +1193,7 @@ for pos in POSITIONS:
 
 #%%
 
-pos = 'RB'
+pos = 'WR'
 year=2025
 from skmodel import SciKitModel
 from hyperopt import Trials
@@ -1226,7 +1248,7 @@ if proba:
 else:
     p = 'select_perc'
     kb = 'k_best'
-    m = 'enet'
+    m = 'lgbm'
 
 pipe = skm.model_pipe([skm.piece('random_sample'),
                         skm.piece('std_scale'), 

@@ -4,7 +4,7 @@ import pandas as pd
 import numpy as np
 import sys
 import os
-
+from sklearn.metrics import mean_squared_error, r2_score
 # Add Scripts directory to path to import config
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config import YEAR, LEAGUE, PRED_VERSION
@@ -24,6 +24,77 @@ dm = DataManage(db_path)
 
 set_year = YEAR
 vers = LEAGUE
+
+#%%
+playoff_pts = pd.DataFrame()
+for pos in ['QB', 'RB', 'WR', 'TE']:
+    playoffs = dm.read(f'''SELECT player, season, fantasy_pts_per_game playoff_pts 
+                           FROM {pos}_Stats
+                           WHERE games =3''', 
+                           'Season_Stats_Playoffs')
+    playoff_pts = pd.concat([playoff_pts, playoffs], ignore_index=True)
+
+proj_pts = pd.DataFrame()
+for pos in ['QB', 'RB', 'WR', 'TE']:
+    df_pos = dm.read(f'''SELECT player, 
+                                year+1 as season, 
+                                avg_proj_points/16.5 as next_year_proj_points
+                         FROM {pos}_{set_year}_ProjOnly 
+                         WHERE pos='{pos}' ''', f'Model_Inputs')
+
+    proj_pts = pd.concat([proj_pts, df_pos], ignore_index=True).fillna(0)
+
+
+model_proj = dm.read(f'''
+                SELECT player, 
+                        year as season, 
+                        current_or_next_year,
+                        AVG(pred_fp_per_game) avg_pred
+                FROM Model_Predictions
+                WHERE version = '{vers}'
+                      AND rush_pass NOT IN ('rush', 'pass', 'rec')
+                      AND dataset='ProjOnly'
+                     
+                      AND pos!='QB'
+                GROUP BY player, season, current_or_next_year
+''', 'Simulation')
+
+avg_model_proj=model_proj.groupby(['player', 'season']).agg({'avg_pred': 'mean'}).reset_index()
+
+for cur_next in ['current', 'next']:
+    print("===================================")
+    print('Running for:', cur_next)
+    cur_df = pd.merge(proj_pts, model_proj, on=['player', 'season'])
+    cur_df_proj = cur_df[cur_df.current_or_next_year == cur_next].reset_index()
+    print('R2 Score Proj:', r2_score(cur_df_proj['next_year_proj_points'], cur_df_proj['avg_pred']))
+    print('MSE Proj:', mean_squared_error(cur_df_proj['next_year_proj_points'], cur_df_proj['avg_pred']))
+    cur_df_proj.plot.scatter(x='next_year_proj_points', y='avg_pred', title=f'Next Year Projections - {cur_next}')
+
+    cur_df = pd.merge(model_proj, playoff_pts, on=['player', 'season'])
+    cur_df_playoffs = cur_df[cur_df.current_or_next_year == cur_next].reset_index()
+    print('R2 Score Playoffs:', r2_score(cur_df_playoffs['playoff_pts'], cur_df_playoffs['avg_pred']))
+    print('MSE Playoffs:', mean_squared_error(cur_df_playoffs['playoff_pts'], cur_df_playoffs['avg_pred']))
+    cur_df_playoffs.plot.scatter(x='playoff_pts', y='avg_pred', title=f'Playoff Points - {cur_next}')
+
+print("===================================")
+print('Running for: Combined')
+
+cur_df = pd.merge(avg_model_proj, proj_pts, on=['player', 'season'])
+print('R2 Score Playoffs:', r2_score(cur_df['next_year_proj_points'], cur_df['avg_pred']))
+print('MSE Playoffs:', mean_squared_error(cur_df['next_year_proj_points'], cur_df['avg_pred']))
+cur_df.plot.scatter(x='next_year_proj_points', y='avg_pred', title=f'Next Year Projections - Average')
+
+cur_df = pd.merge(avg_model_proj, playoff_pts, on=['player', 'season'])
+print('R2 Score Proj:', r2_score(cur_df['playoff_pts'], cur_df['avg_pred']))
+print('MSE Proj:', mean_squared_error(cur_df['playoff_pts'], cur_df['avg_pred']))
+cur_df.plot.scatter(x='playoff_pts', y='avg_pred', title=f'Playoff Points - Average')
+
+#%%
+xx = pd.pivot(model_proj, columns=['current_or_next_year'], index=['player', 'season'])
+xx.columns = [x[1] for x in xx.columns]
+xx = xx.reset_index()
+xx['pts_diff'] = xx['next'] - xx['current']
+xx[(xx.season==2025) & (xx.current > 8)].sort_values(by='pts_diff', ascending=False).head(50)
 
 #%%
 
@@ -118,11 +189,13 @@ def get_val_ratio(vers, set_year, pos, dataset):
     y_act_max = np.mean([np.percentile(val.y_act, 94), 
                          np.percentile(val.y_act, 95), 
                          np.percentile(val.y_act, 96), 
-                         np.percentile(val.y_act, 97)])
+                         np.percentile(val.y_act, 97),
+                         ])
     pred_max = np.mean([np.percentile(val.pred, 94), 
                         np.percentile(val.pred, 95), 
                         np.percentile(val.pred, 96), 
-                        np.percentile(val.pred, 97)])
+                        np.percentile(val.pred, 97)
+                        ])
     return y_act_max/pred_max
 
 rookie_wr_ratio = []
@@ -256,8 +329,8 @@ display(preds_ny[((preds_ny.pos!='QB'))].iloc[:50])
 
 #%%
 
-if vers in ['dk', 'nffc']: preds = pd.concat([rp, rookies, preds_ty, preds_ny], axis=0).reset_index(drop=True)
-else: preds = pd.concat([rp, rookies, preds_ty, preds_ny], axis=0).reset_index(drop=True)
+preds = pd.concat([rp, rookies, preds_ty, preds_ny
+                   ], axis=0).reset_index(drop=True)
 preds.loc[preds.std_dev < 0, 'std_dev'] = 1
 
 preds.loc[preds.max_score < preds.pred_fp_per_game, 'max_score'] = (
@@ -336,21 +409,22 @@ display(preds[((preds.pos!='QB'))].iloc[:50])
 
 #%%
 downgrades = {
-    'Anthony Richardson': 0.9,
-    'Jalen Milroe': 0.2,
-    'Quinshon Judkins': 0.5,
-    'Daniel Jones': 0.5,
-    'Zach Wilson': 0.2,
-    'Mac Jones': 0.2,
-    'Jameis Winston': 0.2,
-    'Tyler Shough': 0.5,
-    'Joe Mixon': 0.75,
-    'Chris Godwin': 0.9,
-    'Emeka Egbuka': 1.25,
+    # 'Anthony Richardson': 0.9,
+    # 'Jalen Milroe': 0.2,
+    'Quinshon Judkins': 0.75,
+    # 'Daniel Jones': 0.5,
+    # 'Zach Wilson': 0.2,
+    # 'Mac Jones': 0.2,
+    # 'Jameis Winston': 0.2,
+    # 'Tyler Shough': 0.5,
+    # 'Joe Mixon': 0.75,
+    # 'Chris Godwin': 0.9,
+    'Emeka Egbuka': 1.2,
     'Treveyon Henderson': 1.05,
-    'Tet Mcmillan': 1.1,
-    'Tyler Warren': 1.1,
-    'Ricky Pearsall': 1.1
+    'Tet Mcmillan': 1.05,
+    'Tyler Warren': 1.2,
+    'Ricky Pearsall': 1.2,
+    'George Pickens': 1.08
 }
 
 for p, d in downgrades.items():

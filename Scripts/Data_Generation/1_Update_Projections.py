@@ -519,7 +519,7 @@ etr_name = [f for f in os.listdir("/Users/borys/Downloads/") if 'ETR' in f and '
 df = move_download_to_folder(root_path, 'ETR', etr_name, YEAR)
 df = df.rename(columns={'Name': 'player', 
                         'Team': 'team', 
-                        'Position': 'pos',
+                        'Pos': 'pos',
                         'ETR Rank': 'etr_rank', 
                         'Pos Rank ETR': 'etr_pos_rank',
                         })
@@ -539,7 +539,7 @@ etr_name = [f for f in os.listdir("/Users/borys/Downloads/") if 'ETR' in f and '
 df = move_download_to_folder(root_path, 'ETR', etr_name, YEAR)
 df = df.rename(columns={'Name': 'player', 
                         'Team': 'team', 
-                        'Position': 'pos',
+                        'Pos': 'pos',
                         'ETR Rank': 'etr_rank', 
                         'Pos Rank ETR': 'etr_pos_rank',
                         })
@@ -559,7 +559,7 @@ etr_name = [f for f in os.listdir("/Users/borys/Downloads/") if 'Silva' in f][0]
 df = move_download_to_folder(root_path, 'ETR', etr_name, YEAR)
 df = df.rename(columns={'Name': 'player', 
                         'Team': 'team', 
-                        'Position': 'pos',
+                        'Pos': 'pos',
                         'Silva Rank': 'evan_silva_rank', 
                         'Pos Rank Silva': 'evan_silva_pos_rank',
                         })
@@ -616,7 +616,28 @@ dm.write_to_db(df, DB_NAME, 'FantasyPoints_Projections', 'append')
 
 #%%
 
+barret = f'Scott Barretts {YEAR} Redraft Fantasy Football Rankings  Fantasy Points'
+df = move_download_to_folder(root_path, 'FantasyPoints', f'{barret}.csv', YEAR)
+cols = {
+    'Overall': 'barret_total_rank',
+    'NAME':'player',
+    'POS': 'pos',
+    'TEAM': 'team',
+    'EXODIA': 'exodia'
+}
+df = df.rename(columns=cols)
+df = df[cols.values()]
+df.player = df.player.apply(dc.name_clean)
+df = df.assign(year=YEAR)
+df.exodia = df.exodia.fillna('1').apply(lambda x: int(x.replace('-', '0')))
+
+dm.delete_from_db(DB_NAME, 'Barret_Ranks', f"year={YEAR}", create_backup=False)
+dm.write_to_db(df, DB_NAME, 'Barret_Ranks', 'append')
+
+#%%
+
 df = move_download_to_folder(root_path, 'FanduelResearch', 'REMAINING.csv', YEAR)
+
 df['completions'] = df.completionsAttempts.apply(lambda x: float(x.split('/')[0]))
 df['attempts'] = df.completionsAttempts.apply(lambda x: float(x.split('/')[1]))
 cols = {
@@ -645,20 +666,85 @@ df.player = df.player.apply(dc.name_clean)
 dm.delete_from_db(DB_NAME, 'Fanduel_Projections', f"year={YEAR}", create_backup=False)
 dm.write_to_db(df, DB_NAME, 'Fanduel_Projections', 'append')
 
+#%%
+
+fff_name = [f for f in os.listdir("/Users/borys/Downloads/") if '4for4' in f and 'proj' in f][0]
+df = move_download_to_folder(root_path, '4for4', fff_name, YEAR)
+cols = {
+    'Player': 'player', 
+    'Pos': 'pos',
+    'Team': 'team',
+    'Pass Comp': 'fff_pass_cmp',
+    'Pass Att': 'fff_pass_att',
+    'Pass Yds': 'fff_pass_yds',
+    'Pass TD': 'fff_pass_td',
+    'INT': 'fff_pass_int',
+    'Rush Att': 'fff_rush_att',
+    'Rush Yds': 'fff_rush_yds',
+    'Rush TD': 'fff_rush_td',
+    'Rec': 'fff_rec',
+    'Rec Yds': 'fff_rec_yds',
+    'Rec TD': 'fff_rec_td',
+    'Pa1D': 'fff_pass_first_downs',
+    'Ru1D': 'fff_rush_first_downs',
+    'Rec1D': 'fff_rec_first_downs',
+    'Health': 'fff_health'
+}
+df = (
+    df
+    .rename(columns=cols)
+    .loc[:, cols.values()]
+    .assign(year=YEAR)
+)
+
+df.player = df.player.apply(dc.name_clean)
+dm.delete_from_db(DB_NAME, 'FFF_Projections', f"year={YEAR}", create_backup=False)
+dm.write_to_db(df, DB_NAME, 'FFF_Projections', 'append')
+
+#%%
+
+fff_name = [f for f in os.listdir("/Users/borys/Downloads/") if '4for4' in f and 'rank' in f][0]
+df = move_download_to_folder(root_path, '4for4', fff_name, YEAR)
+
+cols = {
+'Rank': 'fff_total_rank',
+'Player': 'player',
+'Team': 'team',
+'Position': 'pos',
+'RV': 'rv',
+'FF Pts': 'ff_pts',
+'ADP ( Average )': 'avg_total_rank',
+'ADP (Underdog)': 'underdog_total_rank',
+'ADP (CBS)': 'cbs_total_rank',
+'ADP (ESPN)': 'espn_total_rank',
+'ADP (FFPC)': 'ffpc_total_rank',
+'ADP (BB10s)': 'bb10s_total_rank',
+'ADP (NFL)': 'nfl_total_rank',
+'ADP (Y!)': 'yahoo_total_rank',
+'ADP (Superflex)': 'superflex_total_rank'
+}
+
+df = df.rename(columns=cols)
+df = df[cols.values()]
+df.player = df.player.apply(dc.name_clean)
+df = df.assign(year=YEAR)
+
+dm.delete_from_db(DB_NAME, 'FFF_Ranks', f"year={YEAR}", create_backup=False)
+dm.write_to_db(df, DB_NAME, 'FFF_Ranks', 'append')
 
 #%%
 # create full positional list to loop through
 draft_pos = pd.DataFrame()
 
 # scrape in the results for each position
-DRAFT_URL = f'https://www.pro-football-reference.com/years/{year}/draft.htm'
+DRAFT_URL = f'https://www.pro-football-reference.com/years/{YEAR}/draft.htm'
 d = pd.read_html(DRAFT_URL)[0]
 
 # pull out the column names from multi column index
 good_cols = [c[1] for c in d.columns]
 d = d.T.reset_index(drop=True).T
 d.columns = good_cols
-d['Year'] = year
+d['Year'] = YEAR
 
 # grab relevant columns and rename
 d = d[['Year', 'Rnd', 'Pick', 'Player', 'Pos', 'Tm', 'College/Univ']]
@@ -685,7 +771,7 @@ draft_pos.loc[draft_pos.team == 'OAK', 'team'] = 'LVR'
 draft_pos.player = draft_pos.player.apply(dc.name_clean)
 draft_pos
 #%%
-dm.delete_from_db(DB_NAME, 'Draft_Positions', f"year={year}")
+dm.delete_from_db(DB_NAME, 'Draft_Positions', f"year={YEAR}")
 dm.write_to_db(draft_pos, DB_NAME, table_name='Draft_Positions', if_exist='append')
 
 #%%
