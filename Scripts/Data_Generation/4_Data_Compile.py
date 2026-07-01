@@ -933,8 +933,8 @@ def get_next_year_stats(df, stats_proj, ty_mean=False, is_rookie=False):
         games_next = 4
     
     df_proj_next = df_proj_next.drop('y_act_next', axis=1)
-
-#    return df_proj_next, games, games_next
+    
+    return df_proj_next, games, games_next
 
 
 #%%
@@ -1194,7 +1194,7 @@ for pos in POSITIONS:
 #%%
 
 pos = 'WR'
-year=2025
+year=2026
 from skmodel import SciKitModel
 from hyperopt import Trials
 from sklearn.metrics import r2_score
@@ -1202,6 +1202,7 @@ alpha = 0.8
 
 model_obj = 'reg'
 y_act_next = False
+dataset = 'Rookie'
 
 if y_act_next: lbl = '_next'
 else: lbl = ''
@@ -1214,7 +1215,7 @@ else: proba = False
 # Xy = dm.read(f"SELECT * FROM {pos}_{YEAR}_ProjOnly WHERE pos='{pos}' ", f'Model_Inputs{lbl}')
 # Xy = dm.read(f"SELECT * FROM {pos}_{year}_Stats WHERE pos='{pos}' ", 'Model_Inputs')
 # Xy = Xy.drop('y_act', axis=1).rename(columns={f'y_act_rec': 'y_act'})
-Xy = dm.read(f"SELECT * FROM {pos}_{year}_Rookie ", f'Model_Inputs{lbl}')
+Xy = dm.read(f"SELECT * FROM {pos}_{year}_{dataset}", f'Model_Inputs{lbl}')
 if proba: Xy = Xy.drop('y_act', axis=1).rename(columns={f'y_act_class{class_metric}': 'y_act'})
 
 Xy = Xy.sort_values(by='year').reset_index(drop=True)
@@ -1248,7 +1249,7 @@ if proba:
 else:
     p = 'select_perc'
     kb = 'k_best'
-    m = 'lgbm'
+    m = 'ridge'
 
 pipe = skm.model_pipe([skm.piece('random_sample'),
                         skm.piece('std_scale'), 
@@ -1307,20 +1308,4 @@ selected_features = pipeline.named_steps[kb].get_support(indices=True)
 coef = pd.Series(coefficients, index=X.columns[selected_features])
 coef[np.abs(coef) > 0.01].sort_values().plot(kind = 'barh', figsize=(10, 10))
 
-#%%
-
-Xy.loc[Xy.player=='Ashton Jeanty', ['team_proj_share_diff_pff_rush_att', 'pff_rush_att']]
-# %%
-
-Xy.loc[Xy.player=='Ashton Jeanty', ['pos_proj_share_fdta_rush_td', 'fdta_rush_td']]
-#%%
-Xy.loc[Xy.player=='Ashton Jeanty', ['fpros_pos_rank']]
-
-
-# %%
-
-Xy[['player', 'year', 'pff_rush_att']].sort_values(by='pff_rush_att', ascending=False).iloc[:50]
-# %%
-
-Xy.loc[Xy.year==2025].sort_values(by='fpros_pos_rank', ascending=True).iloc[:50][['player', 'year', 'fpros_pos_rank']]
 # %%

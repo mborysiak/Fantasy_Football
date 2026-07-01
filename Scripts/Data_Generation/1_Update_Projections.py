@@ -3,6 +3,9 @@
 
 import sys
 import os
+import re
+from io import StringIO
+from pathlib import Path
 
 # Add Scripts directory to path to import config
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -18,6 +21,8 @@ db_path = f'{root_path}/Data/Databases/'
 dm = DataManage(db_path)
 
 import pandas as pd
+import requests
+from bs4 import BeautifulSoup
 from zData_Functions import *
 pd.options.mode.chained_assignment = None
 import numpy as np
@@ -67,6 +72,90 @@ def clean_adp(data_adp, year_val):
     
     return df_adp
 
+def pull_fantasypros_adp(year_val):
+    base_url = "https://www.fantasypros.com/nfl/adp/half-point-ppr-overall.php"
+    urls = [
+        f"{base_url}?year={year_val}&export=csv",
+        f"{base_url}?year={year_val}&type=csv",
+        f"{base_url}?year={year_val}&csv=1",
+        f"{base_url}?export=csv",
+    ]
+
+    table = None
+    for url in urls:
+        response = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=30)
+        response.raise_for_status()
+
+        soup = BeautifulSoup(response.text, 'html.parser')
+        table = soup.find('table', id='data')
+        if table is not None:
+            break
+
+    if table is None:
+        raise ValueError("FantasyPros ADP table was not found in the page response")
+
+    rows = []
+    for row in table.select('tbody tr'):
+        cells = row.find_all('td')
+        if len(cells) < 4:
+            continue
+
+        player_link = cells[1].select_one('.player-name')
+        if player_link is not None:
+            player = player_link.get('fp-player-name') or player_link.get_text(' ', strip=True)
+        else:
+            player = cells[1].get_text(' ', strip=True)
+
+        rows.append({
+            'player': player,
+            'pos': cells[2].get_text(strip=True),
+            'pick': cells[3].get_text(strip=True)
+        })
+
+    if not rows:
+        raise ValueError("FantasyPros ADP table was found, but it did not contain player rows")
+
+    return pd.DataFrame(rows)
+
+def pull_draftkings_best_ball_adp():
+    url = "https://www.occupyfantasyapi.com/best_ball/adps?site=draftkings&contest=all"
+    response = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=30)
+    response.raise_for_status()
+
+    data = response.json()
+    rows = data.get('adps', [])
+    if not rows:
+        raise ValueError("DraftKings best ball ADP data was not found in the Occupy Fantasy API response")
+
+    df = pd.DataFrame(rows)
+    required_cols = {'player_name', 'curr_adp'}
+    missing_cols = required_cols - set(df.columns)
+    if missing_cols:
+        raise ValueError(f"DraftKings best ball ADP response is missing columns: {missing_cols}")
+
+    df = df.rename(columns={'player_name': 'player', 'curr_adp': 'pick_dk'})
+    df = df[['player', 'pick_dk']].dropna()
+    df['pick_dk'] = df.pick_dk.astype('float')
+
+    return df
+
+def split_fantasypros_best_ball_player(player_value):
+    if pd.isna(player_value):
+        return pd.Series({'player': np.nan, 'team': np.nan})
+
+    has_bye = '(' in str(player_value)
+    player_team = str(player_value).split('(')[0].strip()
+    player_team_split = player_team.split()
+
+    if has_bye and len(player_team_split) > 2:
+        player = ' '.join(player_team_split[:-1])
+        team = player_team_split[-1]
+    else:
+        player = player_team
+        team = np.nan
+
+    return pd.Series({'player': player, 'team': team})
+
 def get_adp(year_val, pos, source):
     
     if source == 'mfl':
@@ -85,15 +174,11 @@ def get_adp(year_val, pos, source):
         df = df.assign(pos=pos, year=year_val, source='mfl')
     
     elif source == 'fantasypros':
-        df = pd.read_html("https://www.fantasypros.com/nfl/adp/half-point-ppr-overall.php")[0]
-        df = df.rename(columns={'Player Team (Bye)': 'player', 'AVG': 'pick', 'POS': 'pos'})
-        
-        df.player = df.player.apply(lambda x: x.split('(')[0].rstrip())
-        df.player = df.player.apply(lambda x: x.split(' ')[:-1])
-        df.player = df.player.apply(lambda x: ' '.join(x))
+        df = pull_fantasypros_adp(year_val)
         df['player'] = df.player.apply(dc.name_clean)
-        df['pos'] = df.pos.apply(lambda x: x[:2])
-        df['pick'] = df.pick.astype('float')
+        df['pos'] = df.pos.str.extract(r'^([A-Z]+)', expand=False)
+        df['pick'] = df.pick.replace('-', np.nan).astype('float')
+        df = df.dropna(subset=['player', 'pos', 'pick']).reset_index(drop=True)
         df = df.assign(year=year_val, source='fpros')
         df = df[['player', 'pick', 'pos', 'year', 'source']]
         
@@ -103,18 +188,164 @@ def get_adp(year_val, pos, source):
 
 def move_download_to_folder(root_path, folder, fname, set_year, sep=','):
 
-    if not os.path.exists(f'{root_path}/Data/OtherData/{folder}'):
-        os.makedirs(f'{root_path}/Data/OtherData/{folder}')
+    output_folder = Path(root_path) / 'Data' / 'OtherData' / folder
+    output_folder.mkdir(parents=True, exist_ok=True)
+    output_path = output_folder / f'{set_year}{fname}'
 
-    try:
-        os.replace(f"/Users/borys/Downloads/{fname}", 
-                    f'{root_path}/Data/OtherData/{folder}/{set_year}{fname}')
-    except:
-        pass
+    for download_folder in [Path.home() / 'Downloads', Path('/Users/borys/Downloads')]:
+        download_path = download_folder / fname
+        if download_path.exists():
+            os.replace(download_path, output_path)
+            break
 
-    df = pd.read_csv(f'{root_path}/Data/OtherData/{folder}/{set_year}{fname}', sep=sep, on_bad_lines='skip')
+    df = pd.read_csv(output_path, sep=sep, on_bad_lines='skip')
 
     return df
+
+def find_data_file(folder, include_terms, set_year=None, exclude_terms=None):
+    exclude_terms = exclude_terms or []
+    include_terms = [term.lower() for term in include_terms]
+    exclude_terms = [term.lower() for term in exclude_terms]
+    search_folders = [Path.home() / 'Downloads', Path(root_path) / 'Data' / 'OtherData' / folder]
+
+    matches = []
+    for search_folder in search_folders:
+        if not search_folder.exists():
+            continue
+        for file_path in search_folder.iterdir():
+            if not file_path.is_file():
+                continue
+            file_name = file_path.name.lower()
+            if all(term in file_name for term in include_terms) and not any(term in file_name for term in exclude_terms):
+                matches.append(file_path)
+
+    if not matches:
+        raise FileNotFoundError(f"No file found for terms {include_terms} excluding {exclude_terms}")
+
+    matches = sorted(matches, key=lambda x: x.stat().st_mtime, reverse=True)
+    file_name = matches[0].name
+    year_prefix = str(set_year) if set_year is not None else ''
+    if year_prefix and file_name.startswith(year_prefix):
+        file_name = file_name[len(year_prefix):]
+
+    return file_name
+
+def first_existing_col(df, col_options, label):
+    for col in col_options:
+        if col in df.columns:
+            return col
+    raise ValueError(f"Could not find {label} column. Available columns: {list(df.columns)}")
+
+def parse_pos_rank(pos_rank):
+    if pd.isna(pos_rank):
+        return np.nan
+
+    match = re.search(r'\d+', str(pos_rank))
+    if match is None:
+        return np.nan
+
+    return int(match.group())
+
+def normalize_etr_rank_download(df, year_val, include_adp=False):
+    df = df.copy()
+    df.columns = [str(c).strip() for c in df.columns]
+
+    df = df.rename(columns={
+        first_existing_col(df, ['Player', 'Name', 'player'], 'player'): 'player',
+        first_existing_col(df, ['Position', 'Pos', 'pos'], 'position'): 'pos',
+        first_existing_col(df, ['Team', 'Tm', 'team'], 'team'): 'team',
+        first_existing_col(df, ['ETR Rank', 'ETR_Rank', 'etr_rank'], 'ETR rank'): 'etr_rank',
+        first_existing_col(df, ['ETR Pos Rank', 'Pos Rank ETR', 'Pos_Rank', 'etr_pos_rank'], 'ETR position rank'): 'etr_pos_rank',
+    })
+
+    df['pos'] = df.pos.astype(str).str.upper().str.strip()
+    df = df[~df.pos.isin(['K', 'DST'])].reset_index(drop=True)
+    df.player = df.player.apply(dc.name_clean)
+    df.etr_rank = pd.to_numeric(df.etr_rank, errors='coerce')
+    df.etr_pos_rank = df.etr_pos_rank.apply(parse_pos_rank)
+    df = df.assign(year=year_val)
+
+    if include_adp:
+        optional_cols = {
+            'etr_adp': ['ADP', 'etr_adp'],
+            'etr_adp_pos_rank': ['ADP Pos Rank', 'Pos Rank ADP', 'etr_adp_pos_rank'],
+            'etr_adp_diff': ['Ranking Diff', 'ADP Dif', 'ADP Delta', 'Delta', 'ADP Differential', 'etr_adp_diff'],
+        }
+        for output_col, source_cols in optional_cols.items():
+            source_col = next((c for c in source_cols if c in df.columns), None)
+            if source_col is None:
+                df[output_col] = np.nan
+            elif output_col == 'etr_adp_pos_rank':
+                df[output_col] = df[source_col].apply(parse_pos_rank)
+            else:
+                df[output_col] = pd.to_numeric(df[source_col], errors='coerce')
+
+        return df[['player', 'team', 'pos', 'etr_rank', 'etr_pos_rank', 'etr_adp', 'etr_adp_pos_rank', 'etr_adp_diff', 'year']]
+
+    return df[['player', 'pos', 'team', 'year', 'etr_rank', 'etr_pos_rank']]
+
+def normalize_silva_rank_download(df, year_val):
+    df = df.copy()
+    df.columns = [str(c).strip() for c in df.columns]
+
+    df = df.rename(columns={
+        first_existing_col(df, ['Player', 'Name', 'player'], 'player'): 'player',
+        first_existing_col(df, ['Position', 'Pos', 'pos'], 'position'): 'pos',
+        first_existing_col(df, ['Team', 'Tm', 'team'], 'team'): 'team',
+        first_existing_col(df, ['Silva Rank', 'Rank', 'evan_silva_rank'], 'Silva rank'): 'evan_silva_rank',
+        first_existing_col(df, ['Silva Pos Rank', 'Pos Rank Silva', 'Pos Rank', 'Position Rank', 'evan_silva_pos_rank'], 'Silva position rank'): 'evan_silva_pos_rank',
+    })
+
+    df['pos'] = df.pos.astype(str).str.upper().str.strip()
+    df.player = df.player.apply(dc.name_clean)
+    df.evan_silva_rank = pd.to_numeric(df.evan_silva_rank, errors='coerce')
+    df.evan_silva_pos_rank = df.evan_silva_pos_rank.apply(parse_pos_rank)
+    df = df.assign(year=year_val)
+
+    return df[['player', 'pos', 'team', 'year', 'evan_silva_rank', 'evan_silva_pos_rank']]
+
+def pull_draft_results(year_val):
+    draft_url = f'https://www.pro-football-reference.com/years/{year_val}/draft.htm'
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9',
+    }
+
+    try:
+        response = requests.get(draft_url, headers=headers, timeout=30)
+        response.raise_for_status()
+        if 'Just a moment' in response.text[:5000]:
+            raise ValueError("Pro Football Reference returned an anti-bot challenge page")
+
+        df = pd.read_html(StringIO(response.text))[0]
+        good_cols = [c[1] if isinstance(c, tuple) else c for c in df.columns]
+        df = df.T.reset_index(drop=True).T
+        df.columns = good_cols
+        df['Year'] = year_val
+
+        df = df[['Year', 'Rnd', 'Pick', 'Player', 'Pos', 'Tm', 'College/Univ']]
+        df.columns = ['year', 'Round', 'Pick', 'player', 'pos', 'team', 'college']
+        return df
+
+    except Exception as pfr_error:
+        nflverse_url = 'https://github.com/nflverse/nflverse-data/releases/download/draft_picks/draft_picks.csv'
+        df = pd.read_csv(nflverse_url)
+        df = df[df.season == year_val].copy()
+        if df.empty:
+            raise ValueError(f"No draft data found for {year_val} in the nflverse fallback source") from pfr_error
+
+        df = df.rename(columns={
+            'season': 'year',
+            'round': 'Round',
+            'pick': 'Pick',
+            'pfr_player_name': 'player',
+            'position': 'pos',
+            'team': 'team',
+            'college': 'college',
+        })
+
+        return df[['year', 'Round', 'Pick', 'player', 'pos', 'team', 'college']]
 
 
 def convert_to_float(df):
@@ -332,9 +563,7 @@ nffc = dm.read(f'''SELECT *
                          AND league = 'nffc'
                 ''', f'Season_Stats_New')
 
-dk = move_download_to_folder(root_path, 'DK_ADP', 'Draftkings ADP.csv', YEAR)
-dk = dk[['Player', 'ADP']]
-dk.columns = ['player', 'pick_dk']
+dk = pull_draftkings_best_ball_adp()
 dk.player = dk.player.apply(dc.name_clean)
 dk = dk.assign(year=YEAR)
 
@@ -356,10 +585,26 @@ dm.write_to_db(dk, DB_NAME, 'ADP_Averages', 'append')
 #%%
 
 df = move_download_to_folder(root_path, 'FantasyPros_Best_Ball', f'FantasyPros_{YEAR}_Overall_ADP_Rankings.csv', YEAR)
-df = df.dropna(subset=['Player']).reset_index(drop=True)
-df = df[['Player', 'Team', 'BB10', 'RTSports', 'Underdog', 'Drafters', 'AVG']]
+df
+
+#%%
+
+if 'Player (Team / Bye)' in df.columns:
+    df = df.rename(columns={'Player (Team / Bye)': 'Player'})
+    player_team = df.Player.apply(split_fantasypros_best_ball_player)
+    df = pd.concat([df.drop(columns=['Player']), player_team], axis=1)
+elif 'Team' in df.columns:
+    df = df.rename(columns={'Player': 'player', 'Team': 'team'})
+else:
+    df = df.rename(columns={'Player': 'player'})
+    df['team'] = np.nan
+
+df = df.dropna(subset=['player']).reset_index(drop=True)
+df = df[['player', 'team', 'BB10', 'RTSports', 'Underdog', 'Drafters', 'AVG']]
 df.columns = ['player', 'team', 'pick_bb10', 'pick_rtsports', 'pick_underdog', 'pick_drafters', 'pick_best_ball']
 df.player = df.player.apply(dc.name_clean)
+pick_cols = ['pick_bb10', 'pick_rtsports', 'pick_underdog', 'pick_drafters', 'pick_best_ball']
+df[pick_cols] = df[pick_cols].replace({'-': np.nan, '—': np.nan}).apply(pd.to_numeric, errors='coerce')
 df['year'] = YEAR
 
 dm.delete_from_db(DB_NAME, 'FantasyPros_Best_Ball_ADP', f"year={YEAR}", create_backup=False)
@@ -514,60 +759,30 @@ dm.write_to_db(df, DB_NAME, 'PFF_Projections', 'append')
 
 #%%
 
-etr_name = [f for f in os.listdir("/Users/borys/Downloads/") if 'ETR' in f and 'Half' in f][0]
+etr_name = find_data_file('ETR', ['etr', 'half'], YEAR)
 
 df = move_download_to_folder(root_path, 'ETR', etr_name, YEAR)
-df = df.rename(columns={'Name': 'player', 
-                        'Team': 'team', 
-                        'Pos': 'pos',
-                        'ETR Rank': 'etr_rank', 
-                        'Pos Rank ETR': 'etr_pos_rank',
-                        })
-df = df[~df.pos.isin(['K', 'DST'])].reset_index(drop=True)
-df.player = df.player.apply(dc.name_clean)
-df.etr_pos_rank = df.etr_pos_rank.apply(lambda x: int(x[2:]))
-df = df.assign(year=YEAR)
-df = df[['player', 'pos', 'team', 'year', 'etr_rank', 'etr_pos_rank']]
+df = normalize_etr_rank_download(df, YEAR, include_adp=True)
 
 dm.delete_from_db(DB_NAME, 'ETR_Ranks', f"year={YEAR}", create_backup=False)
 dm.write_to_db(df, DB_NAME, 'ETR_Ranks', 'append')
 
 #%%
 
-etr_name = [f for f in os.listdir("/Users/borys/Downloads/") if 'ETR' in f and 'PPR' in f][0]
+etr_name = find_data_file('ETR', ['etr', 'ppr'], YEAR, exclude_terms=['half'])
 
 df = move_download_to_folder(root_path, 'ETR', etr_name, YEAR)
-df = df.rename(columns={'Name': 'player', 
-                        'Team': 'team', 
-                        'Pos': 'pos',
-                        'ETR Rank': 'etr_rank', 
-                        'Pos Rank ETR': 'etr_pos_rank',
-                        })
-df = df[~df.pos.isin(['K', 'DST'])].reset_index(drop=True)
-df.player = df.player.apply(dc.name_clean)
-df.etr_pos_rank = df.etr_pos_rank.apply(lambda x: int(x[2:]))
-df = df.assign(year=YEAR)
-df = df[['player', 'pos', 'team', 'year', 'etr_rank', 'etr_pos_rank']]
+df = normalize_etr_rank_download(df, YEAR)
 
 dm.delete_from_db(DB_NAME, 'ETR_Ranks_PPR', f"year={YEAR}", create_backup=False)
 dm.write_to_db(df, DB_NAME, 'ETR_Ranks_PPR', 'append')
 
 #%%
 
-etr_name = [f for f in os.listdir("/Users/borys/Downloads/") if 'Silva' in f][0]
+etr_name = find_data_file('ETR', ['silva'], YEAR)
 
 df = move_download_to_folder(root_path, 'ETR', etr_name, YEAR)
-df = df.rename(columns={'Name': 'player', 
-                        'Team': 'team', 
-                        'Pos': 'pos',
-                        'Silva Rank': 'evan_silva_rank', 
-                        'Pos Rank Silva': 'evan_silva_pos_rank',
-                        })
-
-df.player = df.player.apply(dc.name_clean)
-df.evan_silva_pos_rank = df.evan_silva_pos_rank.apply(lambda x: int(x[2:]))
-df = df.assign(year=YEAR)
-df = df[['player', 'pos', 'team', 'year', 'evan_silva_rank', 'evan_silva_pos_rank']]
+df = normalize_silva_rank_download(df, YEAR)
 
 dm.delete_from_db(DB_NAME, 'Evan_Silva_Ranks', f"year={YEAR}", create_backup=False)
 dm.write_to_db(df, DB_NAME, 'Evan_Silva_Ranks', 'append')
@@ -737,18 +952,7 @@ dm.write_to_db(df, DB_NAME, 'FFF_Ranks', 'append')
 draft_pos = pd.DataFrame()
 
 # scrape in the results for each position
-DRAFT_URL = f'https://www.pro-football-reference.com/years/{YEAR}/draft.htm'
-d = pd.read_html(DRAFT_URL)[0]
-
-# pull out the column names from multi column index
-good_cols = [c[1] for c in d.columns]
-d = d.T.reset_index(drop=True).T
-d.columns = good_cols
-d['Year'] = YEAR
-
-# grab relevant columns and rename
-d = d[['Year', 'Rnd', 'Pick', 'Player', 'Pos', 'Tm', 'College/Univ']]
-d.columns = ['year', 'Round', 'Pick', 'player', 'pos', 'team', 'college']
+d = pull_draft_results(YEAR)
 
 # concat current results to all results
 draft_pos = pd.concat([draft_pos, d], axis=0)

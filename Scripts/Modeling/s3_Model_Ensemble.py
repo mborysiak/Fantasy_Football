@@ -54,8 +54,6 @@ model_proj = dm.read(f'''
                 WHERE version = '{vers}'
                       AND rush_pass NOT IN ('rush', 'pass', 'rec')
                       AND dataset='ProjOnly'
-                     
-                      AND pos!='QB'
                 GROUP BY player, season, current_or_next_year
 ''', 'Simulation')
 
@@ -90,11 +88,25 @@ print('MSE Proj:', mean_squared_error(cur_df['playoff_pts'], cur_df['avg_pred'])
 cur_df.plot.scatter(x='playoff_pts', y='avg_pred', title=f'Playoff Points - Average')
 
 #%%
+
+model_proj = dm.read(f'''
+                SELECT player, 
+                        year as season, 
+                        current_or_next_year,
+                        AVG(pred_fp_per_game) avg_pred
+                FROM Model_Predictions_Resid
+                WHERE version = '{vers}'
+                      AND rush_pass NOT IN ('rush', 'pass', 'rec')
+                      AND dataset='ProjOnly'
+                      AND pos!='QB'
+                GROUP BY player, season, current_or_next_year
+''', 'Simulation')
+
 xx = pd.pivot(model_proj, columns=['current_or_next_year'], index=['player', 'season'])
 xx.columns = [x[1] for x in xx.columns]
 xx = xx.reset_index()
 xx['pts_diff'] = xx['next'] - xx['current']
-xx[(xx.season==2025) & (xx.current > 8)].sort_values(by='pts_diff', ascending=False).head(50)
+xx[(xx.season==2026) & (xx.current > 8)].sort_values(by='pts_diff', ascending=False).head(50)
 
 #%%
 
@@ -104,7 +116,7 @@ xx[(xx.season==2025) & (xx.current > 8)].sort_values(by='pts_diff', ascending=Fa
 set_pos = 'RB'
 current_or_next_year = 'current'
 dataset = 'ProjOnly'
-year_exp = 4
+year_exp = 0
 filter_data = 'greater_equal'
 
 from sklearn.metrics import mean_squared_error, r2_score
@@ -117,7 +129,7 @@ rp = dm.read(f'''
                         rush_pass,
                         AVG(pred_fp_per_game) rp_pred, 
                         AVG(y_act) rp_y_act
-                FROM Model_Validations
+                FROM Model_Validations_Resid
                 WHERE rush_pass in ('rush', 'pass', 'rec')
                       AND pos = '{set_pos}'
                       AND year_exp={year_exp}
@@ -135,7 +147,7 @@ both = dm.read(f'''SELECT player,
                          season, 
                          AVG(pred_fp_per_game) both_pred, 
                          AVG(y_act) both_y_act
-                FROM Model_Validations
+                FROM Model_Validations_Resid
                 WHERE rush_pass NOT IN ('rush', 'pass', 'rec')
                       AND pos = '{set_pos}'
                       AND year_exp={year_exp}
@@ -164,88 +176,88 @@ print('R2 Avg:', r2_score(rp.y_act_avg, rp.avg_pred))
 
 #%%
 
-#===========
-# Rookie Val Ratios
-#===========
+# #===========
+# # Rookie Val Ratios
+# #===========
 
-def get_val_ratio(vers, set_year, pos, dataset):
+# def get_val_ratio(vers, set_year, pos, dataset):
 
-    val = dm.read(f'''SELECT player, 
-                            season, 
-                            dataset,
-                            AVG(pred_fp_per_game) pred, 
-                            AVG(y_act) y_act
-            FROM Model_Validations
-            WHERE version='{vers}'
-                AND year = {set_year}
-                AND dataset {dataset}
-                AND rush_pass NOT IN ('rush', 'pass', 'rec')
-                AND pos = '{pos}'
-                AND current_or_next_year = 'current'
-            GROUP BY player, season
-        ''', 'Validations')
+#     val = dm.read(f'''SELECT player, 
+#                             season, 
+#                             dataset,
+#                             AVG(pred_fp_per_game) pred, 
+#                             AVG(y_act) y_act
+#             FROM Model_Validations
+#             WHERE version='{vers}'
+#                 AND year = {set_year}
+#                 AND dataset {dataset}
+#                 AND rush_pass NOT IN ('rush', 'pass', 'rec')
+#                 AND pos = '{pos}'
+#                 AND current_or_next_year = 'current'
+#             GROUP BY player, season
+#         ''', 'Validations')
     
 
-    y_act_max = np.mean([np.percentile(val.y_act, 94), 
-                         np.percentile(val.y_act, 95), 
-                         np.percentile(val.y_act, 96), 
-                         np.percentile(val.y_act, 97),
-                         ])
-    pred_max = np.mean([np.percentile(val.pred, 94), 
-                        np.percentile(val.pred, 95), 
-                        np.percentile(val.pred, 96), 
-                        np.percentile(val.pred, 97)
-                        ])
-    return y_act_max/pred_max
+#     y_act_max = np.mean([np.percentile(val.y_act, 94), 
+#                          np.percentile(val.y_act, 95), 
+#                          np.percentile(val.y_act, 96), 
+#                          np.percentile(val.y_act, 97),
+#                          ])
+#     pred_max = np.mean([np.percentile(val.pred, 94), 
+#                         np.percentile(val.pred, 95), 
+#                         np.percentile(val.pred, 96), 
+#                         np.percentile(val.pred, 97)
+#                         ])
+#     return y_act_max/pred_max
 
-rookie_wr_ratio = []
-for pos in ['WR', 'RB']:
-    pos_val = get_val_ratio(vers, set_year, pos, 'NOT LIKE "%Rookie%"')
-    rookie_val = get_val_ratio(vers, set_year, 'WR', 'LIKE "%Rookie%"')
-    rookie_ratio_cur = rookie_val - pos_val + 1
-    rookie_wr_ratio.append(rookie_ratio_cur)
+# rookie_wr_ratio = []
+# for pos in ['WR', 'RB']:
+#     pos_val = get_val_ratio(vers, set_year, pos, 'NOT LIKE "%Rookie%"')
+#     rookie_val = get_val_ratio(vers, set_year, 'WR', 'LIKE "%Rookie%"')
+#     rookie_ratio_cur = rookie_val - pos_val + 1
+#     rookie_wr_ratio.append(rookie_ratio_cur)
 
-rookie_wr_ratio = np.mean(rookie_wr_ratio)
-print('Rookie WR Ratio:', rookie_wr_ratio)
+# rookie_wr_ratio = np.mean(rookie_wr_ratio)
+# print('Rookie WR Ratio:', rookie_wr_ratio)
 
 
-rookie_rb_ratio = []
-for pos in ['RB']:
-    pos_val = get_val_ratio(vers, set_year, pos, 'NOT LIKE "%Rookie%"')
-    rookie_val = get_val_ratio(vers, set_year, 'RB', 'LIKE "%Rookie%"')
-    rookie_ratio_cur = rookie_val - pos_val + 1
-    rookie_rb_ratio.append(rookie_ratio_cur)
+# rookie_rb_ratio = []
+# for pos in ['RB']:
+#     pos_val = get_val_ratio(vers, set_year, pos, 'NOT LIKE "%Rookie%"')
+#     rookie_val = get_val_ratio(vers, set_year, 'RB', 'LIKE "%Rookie%"')
+#     rookie_ratio_cur = rookie_val - pos_val + 1
+#     rookie_rb_ratio.append(rookie_ratio_cur)
 
-rookie_rb_ratio = np.mean(rookie_rb_ratio)
-print('Rookie RB Ratio:', rookie_rb_ratio)
+# rookie_rb_ratio = np.mean(rookie_rb_ratio)
+# print('Rookie RB Ratio:', rookie_rb_ratio)
 
 
 
 #%%
 
-rookies = dm.read(f'''SELECT player, 
-                             pos,
-                             rush_pass,
-                             AVG(pred_fp_per_game) pred_fp_per_game,
-                             AVG(pred_fp_per_game_upside) pred_prob_upside,
-                             AVG(pred_fp_per_game_top) pred_prob_top,
-                             AVG(std_dev) std_dev,
-                             AVG(min_score) min_score,   
-                             AVG(max_score) max_score
-                FROM Model_Predictions
-                WHERE version='{vers}'
-                       AND year = {set_year}
-                       AND dataset LIKE '%Rookie%'
-                GROUP BY player, pos, rush_pass
-             ''', 'Simulation').sort_values(by='pred_fp_per_game', ascending=False).reset_index(drop=True)
+# rookies = dm.read(f'''SELECT player, 
+#                              pos,
+#                              rush_pass,
+#                              AVG(pred_fp_per_game) pred_fp_per_game,
+#                              AVG(pred_fp_per_game_upside) pred_prob_upside,
+#                              AVG(pred_fp_per_game_top) pred_prob_top,
+#                              AVG(std_dev) std_dev,
+#                              AVG(min_score) min_score,   
+#                              AVG(max_score) max_score
+#                 FROM Model_Predictions
+#                 WHERE version='{vers}'
+#                        AND year = {set_year}
+#                        AND dataset LIKE '%Rookie%'
+#                 GROUP BY player, pos, rush_pass
+#              ''', 'Simulation').sort_values(by='pred_fp_per_game', ascending=False).reset_index(drop=True)
 
-rookies.loc[rookies.pos=='WR', ['pred_fp_per_game', 'max_score', 'pred_prob_upside', 'pred_prob_top']] = \
-    rookies.loc[rookies.pos=='WR', ['pred_fp_per_game', 'max_score', 'pred_prob_upside', 'pred_prob_top']] * 1.05#* rookie_wr_ratio
+# rookies.loc[rookies.pos=='WR', ['pred_fp_per_game', 'max_score', 'pred_prob_upside', 'pred_prob_top']] = \
+#     rookies.loc[rookies.pos=='WR', ['pred_fp_per_game', 'max_score', 'pred_prob_upside', 'pred_prob_top']] * 1.05#* rookie_wr_ratio
 
-rookies.loc[rookies.pos=='RB', ['pred_fp_per_game', 'max_score', 'pred_prob_upside', 'pred_prob_top']] = \
-    rookies.loc[rookies.pos=='RB', ['pred_fp_per_game', 'max_score', 'pred_prob_upside', 'pred_prob_top']] * 1.05#* rookie_rb_ratio
+# rookies.loc[rookies.pos=='RB', ['pred_fp_per_game', 'max_score', 'pred_prob_upside', 'pred_prob_top']] = \
+#     rookies.loc[rookies.pos=='RB', ['pred_fp_per_game', 'max_score', 'pred_prob_upside', 'pred_prob_top']] * 1.05#* rookie_rb_ratio
 
-display(rookies.iloc[:50])
+# display(rookies.iloc[:50])
 
 
 #%%
@@ -259,7 +271,7 @@ rp = dm.read(f'''SELECT player,
                         AVG(std_dev) std_dev,
                         AVG(min_score) min_score,   
                         AVG(max_score) max_score
-                FROM Model_Predictions
+                FROM Model_Predictions_Resid
                 WHERE rush_pass IN ('rush', 'pass', 'rec')
                       AND version='{vers}'
                       AND year = {set_year}

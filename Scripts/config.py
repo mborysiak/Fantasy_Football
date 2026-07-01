@@ -13,10 +13,10 @@ import datetime as dt
 # =============================================================================
 
 # Current year for projections and analysis
-YEAR = 2025
+YEAR = 2026
 
 # Primary league/version for analysis
-LEAGUE = 'nv'  # Options: 'nffc', 'beta', 'dk', 'nv'
+LEAGUE = 'dk'  # Options: 'nffc', 'beta', 'dk', 'nv'
 
 # Model version/prediction version
 PRED_VERSION = 'final_ensemble'
