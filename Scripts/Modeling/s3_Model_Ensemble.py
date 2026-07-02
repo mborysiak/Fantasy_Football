@@ -262,32 +262,130 @@ print('R2 Avg:', r2_score(rp.y_act_avg, rp.avg_pred))
 
 #%%
 
+resid_percentiles = [5, 10, 25, 75, 90, 95]
+resid_cols = [f'pred_resid_{p}' for p in resid_percentiles]
+resid_avg_sql = ',\n                        '.join([f'AVG({c}) {c}' for c in resid_cols])
+
+
+def enforce_resid_order(df, cols):
+    cols = [c for c in cols if c in df.columns]
+    if cols:
+        df[cols] = np.maximum.accumulate(df[cols].to_numpy(), axis=1)
+    return df
+
+
+def estimate_component_rho(default_rho=0.35, min_samples=50):
+    val = dm.read(f'''SELECT player,
+                             season,
+                             pos,
+                             rush_pass,
+                             AVG(pred_fp_per_game) pred_fp_per_game,
+                             AVG(y_act) y_act
+                      FROM Model_Validations_Resid
+                      WHERE rush_pass IN ('rush', 'pass', 'rec')
+                            AND version='{vers}'
+                            AND year = {set_year}
+                            AND dataset NOT LIKE '%Rookie%'
+                            AND current_or_next_year = 'current'
+                      GROUP BY player, season, pos, rush_pass
+                   ''', 'Validations')
+
+    if len(val) == 0:
+        return {}, pd.DataFrame()
+
+    val['resid'] = val.y_act - val.pred_fp_per_game
+    val = val.pivot_table(
+        index=['player', 'season', 'pos'],
+        columns='rush_pass',
+        values='resid',
+        aggfunc='mean'
+    )
+
+    rho_records = []
+    for pos, pos_val in val.groupby(level='pos'):
+        pos_val = pos_val.dropna(axis=1, how='all')
+        comp_cols = [c for c in ['rush', 'pass', 'rec'] if c in pos_val.columns]
+        pos_val = pos_val[comp_cols].dropna()
+
+        rho = default_rho
+        if len(comp_cols) > 1 and len(pos_val) >= min_samples:
+            cov = pos_val.cov()
+            std = pos_val.std(ddof=1)
+            cov_sum = 0
+            std_prod_sum = 0
+
+            for i, c1 in enumerate(comp_cols):
+                for c2 in comp_cols[i + 1:]:
+                    cov_sum += cov.loc[c1, c2]
+                    std_prod_sum += std[c1] * std[c2]
+
+            if std_prod_sum > 0:
+                rho = cov_sum / std_prod_sum
+                rho = np.clip(rho, 0, 0.95)
+
+        rho_records.append({
+            'pos': pos,
+            'rho': rho,
+            'samples': len(pos_val),
+            'components': ','.join(comp_cols),
+        })
+
+    rho_df = pd.DataFrame(rho_records)
+    return dict(zip(rho_df.pos, rho_df.rho)), rho_df
+
+
+def combine_component_residuals(group, lower_cols, upper_cols, default_rho=0.35):
+    pos = group.name[1]
+    rho = component_rho.get(pos, default_rho)
+    out = {'pred_fp_per_game': group.pred_fp_per_game.sum()}
+
+    for col in lower_cols + upper_cols:
+        vals = group[col].dropna().to_numpy()
+        if len(vals) == 0:
+            out[col] = np.nan
+            continue
+
+        if len(vals) == 1:
+            out[col] = vals[0]
+            continue
+
+        sign = -1 if col in lower_cols else 1
+        vals = np.minimum(vals, 0) if sign < 0 else np.maximum(vals, 0)
+        vals = np.abs(vals)
+        resid_var = ((1 - rho) * np.sum(vals**2)) + (rho * (np.sum(vals) ** 2))
+        out[col] = sign * np.sqrt(max(resid_var, 0))
+
+    return pd.Series(out)
+
+
+lower_resid_cols = [c for c in resid_cols if c in ['pred_resid_5', 'pred_resid_10', 'pred_resid_25']]
+upper_resid_cols = [c for c in resid_cols if c in ['pred_resid_75', 'pred_resid_90', 'pred_resid_95']]
+component_rho, component_rho_df = estimate_component_rho()
+display(component_rho_df)
+
+
 rp = dm.read(f'''SELECT player, 
                         pos,
                         rush_pass,
                         AVG(pred_fp_per_game) pred_fp_per_game,
-                        AVG(pred_fp_per_game_upside) pred_prob_upside,
-                        AVG(pred_fp_per_game_top) pred_prob_top,
-                        AVG(std_dev) std_dev,
-                        AVG(min_score) min_score,   
-                        AVG(max_score) max_score
+                        {resid_avg_sql}
                 FROM Model_Predictions_Resid
                 WHERE rush_pass IN ('rush', 'pass', 'rec')
                       AND version='{vers}'
                       AND year = {set_year}
+                      AND dataset NOT LIKE '%Rookie%'
+                      AND current_or_next_year = 'current'
                 GROUP BY player, pos, rush_pass
              ''', 'Simulation')
 
-wm = lambda x: np.average(x, weights=rp.loc[x.index, "pred_fp_per_game"])
-rp = rp.assign(std_dev=rp.std_dev**2, max_score=rp.max_score**2)
-rp = rp.groupby(['player', 'pos'], as_index=False).agg({'pred_fp_per_game': 'sum', 
-                                                        'pred_prob_upside': wm,
-                                                        'pred_prob_top': wm,
-                                                        'std_dev': 'sum',
-                                                        'min_score': 'sum',
-                                                        'max_score': 'sum'})
-rp = rp.assign(std_dev=np.sqrt(rp.std_dev), max_score=np.sqrt(rp.max_score))
+rp = (
+    rp.groupby(['player', 'pos'])[['pred_fp_per_game', *resid_cols]]
+      .apply(combine_component_residuals, lower_resid_cols, upper_resid_cols)
+      .reset_index()
+)
+rp = enforce_resid_order(rp, resid_cols)
 rp = rp.sort_values(by='pred_fp_per_game', ascending=False).reset_index(drop=True)
+rp['ensemble_source'] = 'rush_pass_rec'
 display(rp[((rp.pos=='QB'))].iloc[:15])
 display(rp[((rp.pos!='QB'))].iloc[:50])
 
@@ -298,12 +396,8 @@ preds_ty = dm.read(f'''SELECT player,
                         pos,
                         rush_pass,
                         AVG(pred_fp_per_game) pred_fp_per_game,
-                        AVG(pred_fp_per_game_upside) pred_prob_upside,
-                        AVG(pred_fp_per_game_top) pred_prob_top,
-                        AVG(std_dev) std_dev,
-                        AVG(min_score) min_score,   
-                        AVG(max_score) max_score
-                FROM Model_Predictions
+                        {resid_avg_sql}
+                FROM Model_Predictions_Resid
                 WHERE rush_pass NOT IN ('rush', 'pass', 'rec')
                        AND version='{vers}'
                        AND year = {set_year}
@@ -311,6 +405,7 @@ preds_ty = dm.read(f'''SELECT player,
                        AND current_or_next_year = 'current'
                 GROUP BY player, pos, rush_pass
              ''', 'Simulation').sort_values(by='pred_fp_per_game', ascending=False).reset_index(drop=True)
+preds_ty['ensemble_source'] = 'all_current'
 
 display(preds_ty[((preds_ty.pos=='QB'))].iloc[:15])
 display(preds_ty[((preds_ty.pos!='QB'))].iloc[:50])
@@ -321,12 +416,8 @@ preds_ny = dm.read(f'''SELECT player,
                         pos,
                         rush_pass,
                         AVG(pred_fp_per_game) pred_fp_per_game,
-                        AVG(pred_fp_per_game_upside) pred_prob_upside,
-                        AVG(pred_fp_per_game_top) pred_prob_top,
-                        AVG(std_dev) std_dev,
-                        AVG(min_score) min_score,   
-                        AVG(max_score) max_score
-                FROM Model_Predictions
+                        {resid_avg_sql}
+                FROM Model_Predictions_Resid
                 WHERE rush_pass NOT IN ('rush', 'pass', 'rec')
                        AND version='{vers}'
                        AND year = {set_year}
@@ -335,50 +426,39 @@ preds_ny = dm.read(f'''SELECT player,
                        AND pos != 'QB'
                 GROUP BY player, pos, rush_pass
              ''', 'Simulation').sort_values(by='pred_fp_per_game', ascending=False).reset_index(drop=True)
+preds_ny['ensemble_source'] = 'all_next'
 
 display(preds_ny[((preds_ny.pos=='QB'))].iloc[:15])
 display(preds_ny[((preds_ny.pos!='QB'))].iloc[:50])
 
 #%%
 
-preds = pd.concat([rp, rookies, preds_ty, preds_ny
-                   ], axis=0).reset_index(drop=True)
-preds.loc[preds.std_dev < 0, 'std_dev'] = 1
+ensemble_frames = [df for df in [rp, preds_ty, preds_ny] if len(df) > 0]
+if not ensemble_frames:
+    raise ValueError(f"No Model_Predictions_Resid rows found for version={vers} year={set_year}.")
 
-preds.loc[preds.max_score < preds.pred_fp_per_game, 'max_score'] = (
-    preds.loc[preds.max_score < preds.pred_fp_per_game, 'pred_fp_per_game'] +
-    preds.loc[preds.max_score < preds.pred_fp_per_game, 'std_dev'] * 1.5
-)
-
-preds.loc[preds.min_score > preds.pred_fp_per_game, 'min_score'] = (
-    preds.loc[preds.min_score > preds.pred_fp_per_game, 'pred_fp_per_game'] -
-    preds.loc[preds.min_score > preds.pred_fp_per_game, 'std_dev'] * 1.5
-)
-
-preds = preds.groupby(['player', 'pos'], as_index=False).agg({'pred_fp_per_game': 'mean', 
-                                                              'pred_prob_upside': 'mean',
-                                                              'pred_prob_top': 'mean',
-                                                              'std_dev': 'mean',
-                                                              'min_score': 'mean',
-                                                              'max_score': 'mean'})
+preds = pd.concat(ensemble_frames, axis=0).reset_index(drop=True)
+preds = preds.groupby(['player', 'pos'], as_index=False).agg({
+    'pred_fp_per_game': 'mean',
+    **{c: 'mean' for c in resid_cols}
+})
+preds = enforce_resid_order(preds, resid_cols)
 
 preds = preds[preds.pred_fp_per_game > 0].reset_index(drop=True)
 
-preds_ny_cpy = preds_ny[['player', 'pred_fp_per_game', 'std_dev', 'min_score', 'max_score']].copy()
-preds_ny_cpy.columns = ['player', 'pred_fp_per_game_ny', 'std_dev_ny', 'min_score_ny', 'max_score_ny']
-preds = pd.merge(preds, preds_ny_cpy, on='player', how='left')
+preds_ny_cpy = preds_ny[['player', 'pos', 'pred_fp_per_game', *resid_cols]].copy()
+preds_ny_cpy = preds_ny_cpy.rename(columns={
+    'pred_fp_per_game': 'pred_fp_per_game_ny',
+    **{c: f'{c}_ny' for c in resid_cols}
+})
+preds = pd.merge(preds, preds_ny_cpy, on=['player', 'pos'], how='left')
 
-preds.loc[preds.std_dev_ny < 0, 'std_dev_ny'] = 1
-
-preds.loc[preds.max_score_ny < preds.pred_fp_per_game_ny, 'max_score_ny'] = (
-    preds.loc[preds.max_score_ny < preds.pred_fp_per_game_ny, 'pred_fp_per_game_ny'] +
-    preds.loc[preds.max_score_ny < preds.pred_fp_per_game_ny, 'std_dev_ny'] * 1.5
+ny_fill_cols = ['pred_fp_per_game_ny', *[f'{c}_ny' for c in resid_cols]]
+current_fill_cols = ['pred_fp_per_game', *resid_cols]
+preds.loc[preds.pred_fp_per_game_ny.isnull(), ny_fill_cols] = (
+    preds.loc[preds.pred_fp_per_game_ny.isnull(), current_fill_cols].values
 )
-
-preds.loc[preds.min_score_ny > preds.pred_fp_per_game_ny, 'min_score_ny'] = (
-    preds.loc[preds.min_score_ny > preds.pred_fp_per_game_ny, 'pred_fp_per_game_ny'] -
-    preds.loc[preds.min_score_ny > preds.pred_fp_per_game_ny, 'std_dev_ny'] * 1.5
-)
+preds = enforce_resid_order(preds, [f'{c}_ny' for c in resid_cols])
 
 preds['dataset'] = 'final_ensemble'
 preds['version'] = vers
@@ -398,7 +478,7 @@ elif vers == 'beta':
     num_rb = 60
     num_wr = 72
 elif vers == 'dk': 
-    num_qb = 36
+    num_qb = 40
     num_te = 36
     num_rb = 84
     num_wr = 108
@@ -413,35 +493,30 @@ preds = preds[~((preds.pos=='TE') & (preds.pos_rank > num_te))].reset_index(drop
 preds = preds[~((preds.pos=='RB') & (preds.pos_rank > num_rb))].reset_index(drop=True)
 preds = preds[~((preds.pos=='WR') & (preds.pos_rank > num_wr))].reset_index(drop=True).drop('pos_rank', axis=1)
 
-preds.loc[preds.pred_fp_per_game_ny.isnull(), ['pred_fp_per_game_ny', 'std_dev_ny', 'min_score_ny', 'max_score_ny']] = \
-    preds.loc[preds.pred_fp_per_game_ny.isnull(), ['pred_fp_per_game', 'std_dev', 'min_score', 'max_score']].values
-
-display(preds[((preds.pos=='QB'))].iloc[:15])
+display(preds[((preds.pos=='QB'))].iloc[:50])
 display(preds[((preds.pos!='QB'))].iloc[:50])
 
 #%%
 downgrades = {
-    # 'Anthony Richardson': 0.9,
-    # 'Jalen Milroe': 0.2,
-    'Quinshon Judkins': 0.75,
-    # 'Daniel Jones': 0.5,
-    # 'Zach Wilson': 0.2,
-    # 'Mac Jones': 0.2,
-    # 'Jameis Winston': 0.2,
-    # 'Tyler Shough': 0.5,
-    # 'Joe Mixon': 0.75,
-    # 'Chris Godwin': 0.9,
-    'Emeka Egbuka': 1.2,
-    'Treveyon Henderson': 1.05,
-    'Tet Mcmillan': 1.05,
-    'Tyler Warren': 1.2,
-    'Ricky Pearsall': 1.2,
-    'George Pickens': 1.08
+    'Justin Field': 3/17,
+    'Deshaun Watson': 12/17,
+    'Jj Mccarthy': 3/17,
+    'Carson Beck': 5/17,
+    'Joe Milton': 2/17,
+    'Tua Tagovailoa': 8/17,
+    'Jacoby Brisset': 11/17,
+    'Michael Penix': 9/17,
+    'Mac Jones': 3/17,
+    'Kirk Cousins': 3/17,
+    'Cade Klubnik': 2/17
 }
 
 for p, d in downgrades.items():
-    preds.loc[preds.player==p, ['pred_prob_upside', 'pred_prob_top', 'pred_fp_per_game', 'pred_fp_per_game_ny']] = \
-        preds.loc[preds.player==p, ['pred_prob_upside', 'pred_prob_top', 'pred_fp_per_game', 'pred_fp_per_game_ny']] * d
+    adjust_cols = ['pred_fp_per_game', 'pred_fp_per_game_ny', *resid_cols, *[f'{c}_ny' for c in resid_cols]]
+    preds.loc[preds.player==p, adjust_cols] = preds.loc[preds.player==p, adjust_cols] * d
+
+preds = enforce_resid_order(preds, resid_cols)
+preds = enforce_resid_order(preds, [f'{c}_ny' for c in resid_cols])
 
 #%%
 
@@ -469,8 +544,30 @@ dm.write_to_db(etr, 'Simulation', 'Avg_ADPs', if_exist='append')
 # %%
 import shutil
 
-dm.delete_from_db('Simulation', 'Final_Predictions', f"version='{vers}' AND year={set_year} AND dataset='final_ensemble'", create_backup=True)
-dm.write_to_db(preds, 'Simulation', 'Final_Predictions', 'append')
+final_resid_table = 'Final_Predictions_Resid'
+final_resid_exists = dm.read(f'''
+    SELECT name
+    FROM sqlite_master
+    WHERE type='table'
+          AND name='{final_resid_table}'
+''', 'Simulation')
+
+if len(final_resid_exists) > 0:
+    existing_preds = dm.read(f'SELECT * FROM {final_resid_table}', 'Simulation')
+    if {'version', 'year', 'dataset'}.issubset(existing_preds.columns):
+        keep_preds = existing_preds[
+            ~(
+                (existing_preds.version == vers) &
+                (existing_preds.year == set_year) &
+                (existing_preds.dataset == 'final_ensemble')
+            )
+        ].copy()
+    else:
+        keep_preds = existing_preds.iloc[0:0].copy()
+    final_preds = pd.concat([keep_preds, preds], ignore_index=True, sort=False)
+    dm.write_to_db(final_preds, 'Simulation', final_resid_table, 'replace', create_backup=True)
+else:
+    dm.write_to_db(preds, 'Simulation', final_resid_table, 'replace')
 
 src = f'{root_path}/Data/Databases/Simulation.sqlite3'
 dst = f'/Users/borys/OneDrive/Documents/Github/Fantasy_Football_App/app/Simulation.sqlite3'

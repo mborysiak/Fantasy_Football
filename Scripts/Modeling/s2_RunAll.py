@@ -123,8 +123,8 @@ runs = [
         # ['RB', 'current', 'greater_equal', 0, 'rec', 'Stats'],
         # ['RB', 'current', 'less_equal', 3, 'rush', 'Stats'],
         # ['RB', 'current', 'less_equal', 3, 'rec', 'Stats'],
-        ['RB', 'current', 'greater_equal', 4, 'rush', 'Stats'],
-        ['RB', 'current', 'greater_equal', 4, 'rec', 'Stats'],
+        # ['RB', 'current', 'greater_equal', 4, 'rush', 'Stats'],
+        # ['RB', 'current', 'greater_equal', 4, 'rec', 'Stats'],
 ]
 
 #%%
