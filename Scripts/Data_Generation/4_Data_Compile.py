@@ -1202,7 +1202,7 @@ alpha = 0.8
 
 model_obj = 'reg'
 y_act_next = False
-dataset = 'Rookie'
+dataset = 'ProjOnly'
 
 if y_act_next: lbl = '_next'
 else: lbl = ''

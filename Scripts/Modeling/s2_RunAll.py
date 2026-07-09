@@ -5,6 +5,7 @@ import os
 import sys
 from joblib import delayed
 import warnings
+from IPython.display import display
 from s1_Stacking_Model import (
     install_model_print_filter, 
     install_warning_filters,
@@ -123,8 +124,8 @@ runs = [
         # ['RB', 'current', 'greater_equal', 0, 'rec', 'Stats'],
         # ['RB', 'current', 'less_equal', 3, 'rush', 'Stats'],
         # ['RB', 'current', 'less_equal', 3, 'rec', 'Stats'],
-        # ['RB', 'current', 'greater_equal', 4, 'rush', 'Stats'],
-        # ['RB', 'current', 'greater_equal', 4, 'rec', 'Stats'],
+        ['RB', 'current', 'greater_equal', 4, 'rush', 'Stats'],
+        ['RB', 'current', 'greater_equal', 4, 'rec', 'Stats'],
 ]
 
 #%%

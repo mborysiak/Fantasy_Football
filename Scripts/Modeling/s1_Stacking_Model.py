@@ -5,7 +5,6 @@ from contextlib import nullcontext
 import builtins
 import warnings
 
-
 def install_warning_filters(include_pandas=False):
     warnings.simplefilter(action='ignore', category=FutureWarning)
     warnings.simplefilter(action='ignore', category=DeprecationWarning)

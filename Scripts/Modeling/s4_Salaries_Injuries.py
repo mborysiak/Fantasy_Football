@@ -6,6 +6,7 @@
 import pandas as pd
 import numpy as np
 import sqlite3
+from pathlib import Path
 import zModel_Functions as mf
 import joblib
 from ff.db_operations import DataManage
@@ -18,6 +19,12 @@ from sklearn.metrics import r2_score, mean_squared_error
 
 from sklearn.preprocessing import StandardScaler
 from zFix_Standard_Dev import *
+
+try:
+    from IPython.display import display
+except ImportError:
+    def display(obj):
+        print(obj)
 
 import warnings
 warnings.filterwarnings("ignore", category=RuntimeWarning) 
@@ -34,67 +41,71 @@ dm = DataManage(db_path)
 
 # set core path
 PATH = f'{root_path}/Data/'
-YEAR = 2025
-LEAGUE = 'nv'
+YEAR = 2026
+LEAGUE = 'beta'
 
+SALARY_RESID_ALPHAS = (0.05, 0.10, 0.25, 0.75, 0.90, 0.95)
+SALARY_RESID_COLS = [f'salary_resid_{int(round(alpha * 100))}' for alpha in SALARY_RESID_ALPHAS]
+SALARY_RESID_SCHEMA = {col: 'REAL' for col in SALARY_RESID_COLS}
 
-# ty_keepers = {
-#     'Bucky Irving': [12],
-#     'Chase Brown': [19],
-
-#     'Brock Bowers': [21],
-#     'Kyren Williams': [26],
-
-#     # 'James Cook': [54],
-#     # 'Jayden Daniels': [13],
-
-#     'Nico Collins': [27],
-#     'Chuba Hubbard': [13],
-
-#     'Ladd Mcconkey': [19],
-
-#     'Josh Allen': [46],
-#     'Josh Jacobs': [57],
-
-#     'Jaxon Smith Njigba': [27],
-#     'Christian Mccaffrey': [57],
-
-#     'Brian Thomas': [13],
-#     'Derrick Henry': [88],
-
-#     'Stefon Diggs': [11],
-#     'Davante Adams': [49],
-
-#     'Jerry Jeudy': [11],   
-#     'Courtland Sutton': [14]
-# }
 
 ty_keepers = {
-    "Devon Achane": [27],
-    'Jayden Daniels': [36],
+    # 'Bucky Irving': [12],
+    'Chase Brown': [34],
 
-    'Baker Mayfield': [13],
-    'Bucky Irving': [20],
+    # 'Brock Bowers': [21],
+    # 'Kyren Williams': [26],
 
-    'Bo Nix': [11],
-    'Tee Higgins': [27],
+    # 'James Cook': [54],
+    # 'Jayden Daniels': [13],
 
-    'Rashee Rice': [10],
-    'Chris Olave': [13],
+    # 'Nico Collins': [27],
+    # 'Chuba Hubbard': [13],
 
-    'Bijan Robinson': [107],
-    'Brock Bowers': [11],
-    
-    'Brian Thomas': [12],
-    'Joe Burrow': [29],
+    # 'Ladd Mcconkey': [19],
 
-    "Ja'Marr Chase": [71],
-    'Ladd Mcconkey': [11],
-    
-    'Chase Brown': [23],
+    # 'Josh Allen': [46],
+    # 'Josh Jacobs': [57],
 
-    'Josh Jacobs': [42]
+    # 'Jaxon Smith Njigba': [27],
+    # 'Christian Mccaffrey': [57],
+
+    # 'Brian Thomas': [13],
+    # 'Derrick Henry': [88],
+
+    # 'Stefon Diggs': [11],
+    # 'Davante Adams': [49],
+
+    # 'Jerry Jeudy': [11],   
+    # 'Courtland Sutton': [14]
 }
+
+# ty_keepers = {
+#     "Devon Achane": [27],
+#     'Jayden Daniels': [36],
+
+#     'Baker Mayfield': [13],
+#     'Bucky Irving': [20],
+
+#     'Bo Nix': [11],
+#     'Tee Higgins': [27],
+
+#     'Rashee Rice': [10],
+#     'Chris Olave': [13],
+
+#     'Bijan Robinson': [107],
+#     'Brock Bowers': [11],
+    
+#     'Brian Thomas': [12],
+#     'Joe Burrow': [29],
+
+#     "Ja'Marr Chase": [71],
+#     'Ladd Mcconkey': [11],
+    
+#     'Chase Brown': [23],
+
+#     'Josh Jacobs': [42]
+# }
 
 ty_keepers = pd.DataFrame(ty_keepers)
 ty_keepers = ty_keepers.T.reset_index()
@@ -183,27 +194,27 @@ def clean_results(path, fname, year, league, team_split=True):
     
     return results
 
-FNAME = f'{LEAGUE}_{YEAR}_results'
-results = clean_results(PATH, FNAME, YEAR, LEAGUE)
-dm.delete_from_db('Simulation', 'Actual_Salaries', f"year='{YEAR}' AND league='{LEAGUE}'")
-dm.write_to_db(results, 'Simulation', 'Actual_Salaries', 'append')
+# FNAME = f'{LEAGUE}_{YEAR}_results'
+# results = clean_results(PATH, FNAME, YEAR, LEAGUE)
+# dm.delete_from_db('Simulation', 'Actual_Salaries', f"year='{YEAR}' AND league='{LEAGUE}'")
+# dm.write_to_db(results, 'Simulation', 'Actual_Salaries', 'append')
 
-# push the actuals to salary database to re-run simulation
-to_actual = dm.read(f"SELECT * FROM Actual_Salaries WHERE year={YEAR} AND league='{LEAGUE}'", 'Simulation')
-to_actual = to_actual[['player', 'actual_salary', 'year', 'league']].rename(columns={'actual_salary': 'salary'})
-to_actual['league'] = to_actual.league.apply(lambda x: f'{x}_actual')
-to_actual['std_dev'] = 0.1
-to_actual['min_score'] = to_actual.salary - 1
-to_actual['max_score'] = to_actual.salary + 1
+# # push the actuals to salary database to re-run simulation
+# to_actual = dm.read(f"SELECT * FROM Actual_Salaries WHERE year={YEAR} AND league='{LEAGUE}'", 'Simulation')
+# to_actual = to_actual[['player', 'actual_salary', 'year', 'league']].rename(columns={'actual_salary': 'salary'})
+# to_actual['league'] = to_actual.league.apply(lambda x: f'{x}_actual')
+# to_actual['std_dev'] = 0.1
+# to_actual['min_score'] = to_actual.salary - 1
+# to_actual['max_score'] = to_actual.salary + 1
 
-dm.delete_from_db('Simulation', 'Salaries_Pred', f"year={YEAR} AND league='{LEAGUE}_actual'")
-dm.write_to_db(to_actual, 'Simulation', 'Salaries_Pred', 'append')
+# dm.delete_from_db('Simulation', 'Salaries_Pred', f"year={YEAR} AND league='{LEAGUE}_actual'")
+# dm.write_to_db(to_actual, 'Simulation', 'Salaries_Pred', 'append')
 
-import shutil
+# import shutil
 
-src = f'{root_path}/Data/Databases/Simulation.sqlite3'
-dst = f'/Users/borys/OneDrive/Documents/Github/Fantasy_Football_App/app/Simulation.sqlite3'
-shutil.copyfile(src, dst)
+# src = f'{root_path}/Data/Databases/Simulation.sqlite3'
+# dst = f'/Users/borys/OneDrive/Documents/Github/Fantasy_Football_App/app/Simulation.sqlite3'
+# shutil.copyfile(src, dst)
 
 #%%
 
@@ -213,8 +224,7 @@ def get_adp():
         print(pos)
 
         stats = dm.read(f'''SELECT player, year, avg_pick, avg_pick_log, avg_proj_points,
-                                   fpros_pos_rank, year_exp, avg_proj_points_exp_diff,
-                                   fpros_pos_rank_log, pick_mfl_log
+                                   avg_pos_rank, year_exp, avg_proj_points_exp_diff
                             FROM {pos}_{YEAR}_ProjOnly
                          ''', 'Model_Inputs')
         stats['pos'] = pos
@@ -241,15 +251,6 @@ def get_salaries():
                                 WHERE League='{LEAGUE}'
                                  AND year <= {YEAR} ''', 'Simulation')
     salaries = pd.merge(actual_sal, base_sal, on=['player', 'year'], how='right')
-    return salaries
-
-def add_osu(salaries):
-    osu = dm.read('''SELECT DISTINCT player, 1 as is_OSU 
-                    FROM college_stats
-                    where team='Ohio State' ''', 'Season_Stats_New')
-    salaries = pd.merge(salaries, osu, on=['player'], how='left')
-    salaries.is_OSU = salaries.is_OSU.fillna(0)
-
     return salaries
 
 def add_rookie(salaries):
@@ -318,6 +319,311 @@ def remove_outliers(salaries):
     return salaries
 
 
+def ensure_table_columns(db_file, table_name, column_types):
+    conn = sqlite3.connect(db_file)
+    cur = conn.cursor()
+    existing_cols = {row[1] for row in cur.execute(f"PRAGMA table_info({table_name})")}
+
+    if existing_cols:
+        for col, col_type in column_types.items():
+            if col not in existing_cols:
+                cur.execute(f"ALTER TABLE {table_name} ADD COLUMN {col} {col_type}")
+        conn.commit()
+
+    conn.close()
+
+
+def finalize_salary_predictions(pred_results, avg_spent, top_n=156, show_results=False):
+    pred_results = pred_results.copy()
+    pred_results['is_keeper'] = pred_results.is_keeper.fillna(0)
+    pred_results['pred_salary'] = pd.to_numeric(pred_results.pred_salary, errors='coerce')
+    pred_results['salary'] = pd.to_numeric(pred_results.salary, errors='coerce')
+    pred_results.loc[pred_results.pred_salary < 1, 'pred_salary'] = 1
+    pred_results['pred_salary'] = pred_results.pred_salary.fillna(1).astype(int)
+
+    processed = []
+    for year, year_results in pred_results.groupby('year', sort=False):
+        year_results = year_results.sort_values(by='salary', ascending=False).reset_index(drop=True)
+
+        keeper_mask = (year_results.is_keeper == 1) & year_results.actual_salary.notna()
+        year_results.loc[keeper_mask, 'pred_salary'] = year_results.loc[keeper_mask, 'actual_salary']
+        year_results['pred_salary'] = year_results.pred_salary.astype(int)
+        year_results['pred_diff'] = year_results.pred_salary - year_results.salary
+
+        total_diff = year_results.pred_diff.sum()
+        total_from_available = year_results.iloc[:top_n].pred_salary.sum() - avg_spent
+        total_off = np.max([0, -total_from_available])
+
+        if show_results:
+            print(f'{year} Total Diff:', total_diff)
+            print(f'{year} Total from available:', total_from_available)
+            display(year_results.iloc[:50])
+            display(year_results[np.abs(year_results.pred_diff) > 4].sort_values(by='pred_diff', ascending=False))
+
+        non_keeper_count = len(year_results[year_results.is_keeper == 0])
+        extra_per_player = np.ceil(total_off / non_keeper_count) if non_keeper_count > 0 else 0
+        year_results.loc[year_results.is_keeper == 0, 'pred_salary'] += extra_per_player
+        year_results['pred_salary'] = year_results.pred_salary.astype(int)
+        year_results['pred_diff'] = year_results.pred_salary - year_results.salary
+
+        processed.append(year_results)
+
+    return pd.concat(processed, axis=0).reset_index(drop=True)
+
+
+def _quantile_series(values, alphas=SALARY_RESID_ALPHAS, q_cols=SALARY_RESID_COLS):
+    if len(values) == 0:
+        return pd.Series(np.zeros(len(q_cols)), index=q_cols)
+
+    q = values.quantile(list(alphas))
+    return pd.Series(q.to_numpy(), index=q_cols)
+
+
+def _single_bucket_table(cur_val, fallback_q, q_cols=SALARY_RESID_COLS, pred_col='pred_salary'):
+    bucket_table = pd.DataFrame([fallback_q.to_numpy()], columns=q_cols)
+    bucket_table.index.name = '_salary_resid_bucket'
+    bucket_table['resid_bucket_n'] = len(cur_val)
+    bucket_table['resid_bucket_mean_pred'] = cur_val[pred_col].mean()
+    bucket_table[q_cols] = np.maximum.accumulate(bucket_table[q_cols].to_numpy(), axis=1)
+    return bucket_table, np.array([])
+
+
+def _fit_salary_resid_bucket_table(
+    cur_val,
+    fallback_q,
+    q_cols=SALARY_RESID_COLS,
+    pred_col='pred_salary',
+    resid_col='actual_resid',
+    min_n=30,
+    min_bins=2,
+    max_bins=8,
+):
+    cur_val = cur_val[[pred_col, resid_col]].dropna().copy()
+    unique_pred = cur_val[pred_col].nunique()
+
+    if len(cur_val) == 0 or unique_pred < min_bins:
+        return _single_bucket_table(cur_val, fallback_q, q_cols, pred_col)
+
+    n_bins = max(min_bins, int(len(cur_val) // min_n))
+    n_bins = min(n_bins, max_bins, unique_pred, len(cur_val))
+    if n_bins < min_bins:
+        return _single_bucket_table(cur_val, fallback_q, q_cols, pred_col)
+
+    _, edges = pd.qcut(cur_val[pred_col], n_bins, retbins=True, duplicates='drop')
+    inner_edges = np.unique(edges)[1:-1]
+    cur_val['_salary_resid_bucket'] = np.searchsorted(
+        inner_edges,
+        cur_val[pred_col].to_numpy(),
+        side='right',
+    )
+
+    bucket_grp = cur_val.groupby('_salary_resid_bucket')
+    bucket_table = bucket_grp[resid_col].quantile(list(SALARY_RESID_ALPHAS)).unstack()
+    bucket_table.columns = q_cols
+    bucket_table['resid_bucket_n'] = bucket_grp[resid_col].size()
+    bucket_table['resid_bucket_mean_pred'] = bucket_grp[pred_col].mean()
+
+    small_buckets = bucket_table.resid_bucket_n < min_n
+    for col in q_cols:
+        bucket_table.loc[small_buckets, col] = fallback_q[col]
+
+    bucket_table[q_cols] = np.maximum.accumulate(bucket_table[q_cols].to_numpy(), axis=1)
+    return bucket_table, inner_edges
+
+
+def _predict_salary_resid_quantiles(
+    bucket_table,
+    inner_edges,
+    pred_values,
+    fallback_q,
+    q_cols=SALARY_RESID_COLS,
+    smooth=True,
+):
+    pred_values = np.asarray(pred_values)
+
+    if len(bucket_table) == 0:
+        return np.repeat(fallback_q.to_numpy().reshape(1, -1), len(pred_values), axis=0)
+
+    if smooth and bucket_table.resid_bucket_mean_pred.nunique() > 1:
+        interp_table = (
+            bucket_table
+            .sort_values('resid_bucket_mean_pred')
+            .drop_duplicates('resid_bucket_mean_pred')
+        )
+        x = interp_table.resid_bucket_mean_pred.to_numpy()
+        pred_q = np.column_stack([
+            np.interp(pred_values, x, interp_table[col].to_numpy())
+            for col in q_cols
+        ])
+        return np.maximum.accumulate(pred_q, axis=1)
+
+    bucket_idx = np.searchsorted(inner_edges, pred_values, side='right')
+    pred_q = pd.DataFrame({'_salary_resid_bucket': bucket_idx}).join(
+        bucket_table[q_cols],
+        on='_salary_resid_bucket',
+    )
+    pred_q = pred_q[q_cols].fillna(fallback_q).to_numpy()
+    return np.maximum.accumulate(pred_q, axis=1)
+
+
+def apply_salary_resid_quantiles(
+    val_data,
+    output,
+    q_cols=SALARY_RESID_COLS,
+    pred_col='pred_salary',
+    actual_col='actual_salary',
+    min_n=30,
+    min_bins=2,
+    max_bins=8,
+    smooth=True,
+    bootstrap_iters=50,
+    bootstrap_frac=1.0,
+    bootstrap_replace=True,
+    random_state=42,
+):
+    val = val_data[['player', 'year', 'pos', pred_col, actual_col]].dropna(subset=[pred_col, actual_col]).copy()
+    val['actual_resid'] = val[actual_col] - val[pred_col]
+    if len(val) == 0:
+        raise ValueError('No validation salary rows are available for residual calibration.')
+
+    global_q = _quantile_series(val.actual_resid)
+    output = output.copy()
+    for col in q_cols:
+        if col not in output.columns:
+            output[col] = np.nan
+    bucket_records = []
+    rng = np.random.default_rng(random_state)
+    n_iter = max(1, int(bootstrap_iters))
+
+    for pos, idx in output.groupby('pos').groups.items():
+        pos_val = val[val.pos == pos].copy()
+        if len(pos_val) >= min_n:
+            fallback_q = _quantile_series(pos_val.actual_resid)
+        else:
+            fallback_q = global_q
+
+        bucket_table, inner_edges = _fit_salary_resid_bucket_table(
+            pos_val,
+            fallback_q,
+            q_cols=q_cols,
+            pred_col=pred_col,
+            min_n=min_n,
+            min_bins=min_bins,
+            max_bins=max_bins,
+        )
+        pred_values = output.loc[idx, pred_col].to_numpy()
+        pred_q = np.zeros((len(pred_values), len(q_cols)))
+
+        for i in range(n_iter):
+            if i == 0 or len(pos_val) == 0:
+                cur_val = pos_val
+                cur_fallback_q = fallback_q
+            else:
+                sample_size = max(min_n, int(round(len(pos_val) * bootstrap_frac)))
+                if not bootstrap_replace:
+                    sample_size = min(sample_size, len(pos_val))
+                sample_idx = rng.choice(len(pos_val), size=sample_size, replace=bootstrap_replace)
+                cur_val = pos_val.iloc[sample_idx]
+                cur_fallback_q = _quantile_series(cur_val.actual_resid) if len(pos_val) >= min_n else global_q
+
+            cur_table, cur_edges = _fit_salary_resid_bucket_table(
+                cur_val,
+                cur_fallback_q,
+                q_cols=q_cols,
+                pred_col=pred_col,
+                min_n=min_n,
+                min_bins=min_bins,
+                max_bins=max_bins,
+            )
+            pred_q += _predict_salary_resid_quantiles(
+                cur_table,
+                cur_edges,
+                pred_values,
+                cur_fallback_q,
+                q_cols=q_cols,
+                smooth=smooth,
+            )
+
+        pred_q = pred_q / n_iter
+        pred_q = np.maximum.accumulate(pred_q, axis=1)
+        output.loc[idx, q_cols] = pred_q
+
+        bucket_record = bucket_table.reset_index().copy()
+        bucket_record['pos'] = pos
+        bucket_record['smooth'] = smooth
+        bucket_record['bootstrap_iters'] = n_iter
+        bucket_record['bootstrap_frac'] = bootstrap_frac
+        bucket_record['bootstrap_replace'] = bootstrap_replace
+        bucket_records.append(bucket_record)
+
+    output[q_cols] = np.maximum.accumulate(output[q_cols].to_numpy(), axis=1)
+
+    if 'is_keeper' in output.columns:
+        keeper_mask = output.is_keeper.fillna(0) == 1
+        output.loc[keeper_mask, q_cols] = 0
+
+    bucket_table = pd.concat(bucket_records, axis=0).reset_index(drop=True)
+    return output, bucket_table
+
+
+def add_salary_legacy_uncertainty(pred_results, q_cols=SALARY_RESID_COLS):
+    pred_results = pred_results.copy()
+    pred_results[q_cols] = pred_results[q_cols].fillna(0)
+    pred_results[q_cols] = np.maximum.accumulate(pred_results[q_cols].to_numpy(), axis=1)
+
+    pred_results['min_score'] = np.maximum(1, pred_results.pred_salary + pred_results.salary_resid_5)
+    pred_results['min_score'] = np.minimum(pred_results.pred_salary, pred_results.min_score)
+    pred_results['max_score'] = np.maximum(pred_results.pred_salary, pred_results.pred_salary + pred_results.salary_resid_95)
+    pred_results['std_dev'] = np.maximum(
+        (pred_results.salary_resid_90 - pred_results.salary_resid_10) / 2.563,
+        0.5,
+    )
+
+    if 'is_keeper' in pred_results.columns:
+        keeper_mask = pred_results.is_keeper.fillna(0) == 1
+        pred_results.loc[keeper_mask, q_cols] = 0
+        pred_results.loc[keeper_mask, 'std_dev'] = 0.1
+        pred_results.loc[keeper_mask, 'min_score'] = pred_results.loc[keeper_mask, 'pred_salary']
+        pred_results.loc[keeper_mask, 'max_score'] = pred_results.loc[keeper_mask, 'pred_salary']
+
+    return pred_results
+
+
+def salary_resid_coverage(val_data, q_cols=SALARY_RESID_COLS):
+    checks = [
+        ('p5_p95', 'salary_resid_5', 'salary_resid_95', 0.90),
+        ('p10_p90', 'salary_resid_10', 'salary_resid_90', 0.80),
+        ('p25_p75', 'salary_resid_25', 'salary_resid_75', 0.50),
+    ]
+    records = []
+    val_data = val_data.dropna(subset=['actual_salary', 'pred_salary']).copy()
+
+    for pos, pos_val in val_data.groupby('pos'):
+        for label, lower_col, upper_col, target in checks:
+            lower = pos_val.pred_salary + pos_val[lower_col]
+            upper = pos_val.pred_salary + pos_val[upper_col]
+            records.append({
+                'pos': pos,
+                'interval': label,
+                'target': target,
+                'coverage': ((pos_val.actual_salary >= lower) & (pos_val.actual_salary <= upper)).mean(),
+                'n': len(pos_val),
+            })
+
+    for label, lower_col, upper_col, target in checks:
+        lower = val_data.pred_salary + val_data[lower_col]
+        upper = val_data.pred_salary + val_data[upper_col]
+        records.append({
+            'pos': 'ALL',
+            'interval': label,
+            'target': target,
+            'coverage': ((val_data.actual_salary >= lower) & (val_data.actual_salary <= upper)).mean(),
+            'n': len(val_data),
+        })
+
+    return pd.DataFrame(records)
+
+
 salaries = get_salaries()
 
 total_spent = salaries.groupby('year').agg({'actual_salary': 'sum'}).reset_index().rename(columns={'actual_salary': 'total_spent'})
@@ -325,13 +631,12 @@ salaries = pd.merge(salaries, total_spent, on=['year'], how='left')
 salaries.loc[salaries.year==YEAR, 'total_spent'] = 3576
 salaries['fraction_spent'] = salaries.total_spent / 3576
 
-salaries = add_osu(salaries)
 salaries = add_rookie(salaries)
 adp_stats = get_adp()
 salaries = pd.merge(salaries, adp_stats, on=['player', 'year'])
 salaries = fill_ty_keepers(salaries, ty_keepers)
 salaries = calc_inflation(salaries)
-
+ 
 salaries = add_pos_keeper_val(salaries)
 
 salaries = drop_keepers(salaries)
@@ -341,8 +646,6 @@ salaries = remove_outliers(salaries)
 
 # salaries = pd.concat([salaries, pd.get_dummies(salaries.year, prefix='year')], axis=1)
 salaries['young_player'] = (salaries.year_exp < 2).astype('int')
-salaries['young_osu'] = salaries.young_player * salaries.is_OSU
-salaries['rookie_osu'] = salaries.is_rookie * salaries.is_OSU
 salaries['rookie_rank'] = salaries.is_rookie * salaries.avg_pick
 salaries['old_player'] = (salaries.year_exp > 5).astype('int')
 
@@ -492,7 +795,14 @@ print(all_scores_mse[best_score_mse])
 preds = all_pred[[c for c in all_pred.columns if c in best_models_names_mse]].mean(axis=1)
 preds = pd.Series(preds, name='pred_salary')
 val_data = pd.concat([all_pred[['player', 'year', 'y_act']], preds], axis=1)
-val_data = pd.merge(salaries[['player', 'year', 'pos']], val_data, on=['player', 'year'])
+val_data = pd.merge(
+    salaries[['player', 'year', 'pos', 'salary', 'is_keeper']],
+    val_data,
+    on=['player', 'year'],
+)
+val_data = val_data.rename(columns={'y_act': 'actual_salary'})
+avg_spent = salaries.groupby('year').total_spent.mean().mean()
+val_data = finalize_salary_predictions(val_data, avg_spent)
 
 #%%
 
@@ -513,85 +823,46 @@ pred_results = pd.concat([salaries.loc[salaries.year==YEAR,['player', 'pos', 'ye
                           pd.Series(pred_sal, name='pred_salary')], axis=1)
 pred_results = pred_results.rename(columns={'y_act': 'actual_salary'})
 
-pred_results = pred_results.sort_values(by='salary', ascending=False)
-pred_results.loc[pred_results.pred_salary<1, 'pred_salary'] = 1
-pred_results.pred_salary = pred_results.pred_salary.astype('int')
-
-# remove keepers and calculate extra dollars available to inflate predictions
-pred_results.loc[pred_results.is_keeper==1, 'pred_salary'] = pred_results.loc[pred_results.is_keeper==1, 'actual_salary']
-pred_results['pred_diff'] = pred_results.pred_salary - pred_results.salary
-
-# use predictions minus available dollars to inflate predictions
-total_diff = pred_results.pred_diff.sum()
-print('Total Diff:', total_diff)
-
-avg_spent = salaries.groupby('year').total_spent.mean().mean()
-total_from_available = pred_results.iloc[:156].pred_salary.sum() - avg_spent
-print('Total from available:', total_from_available)
-
-# total_off = np.max([0,-(total_diff + total_from_available)/2])
-total_off = np.max([0, -total_from_available])
-
-# display the results
-display(pred_results.iloc[:50])
-display(pred_results[np.abs(pred_results.pred_diff) > 4].sort_values(by='pred_diff', ascending=False))
-
-# Calculate flat dollar amount per non-keeper player
-non_keeper_count = len(pred_results[pred_results.is_keeper == 0])
-extra_per_player = np.ceil(total_off / non_keeper_count)
-
-# Apply the flat increase to all non-keeper players
-pred_results.loc[pred_results.is_keeper == 0, 'pred_salary'] += extra_per_player
-pred_results['pred_salary'] = pred_results['pred_salary'].astype('int')
+pred_results = finalize_salary_predictions(pred_results, avg_spent, show_results=True)
 pred_results.iloc[:50]
 
 #%%
 
-for p in ['QB', 'RB', 'WR', 'TE']:
-    print(f"\n{p}")
-    val_data_tmp = val_data.copy()[val_data.pos==p].reset_index(drop=True).copy()
-    sd_max_met = StandardScaler().fit(val_data_tmp[['pred_salary']]).transform(pred_results.loc[pred_results.pos==p, ['pred_salary']])
+pred_results, salary_resid_bucket_table = apply_salary_resid_quantiles(
+    val_data,
+    pred_results,
+    min_n=30,
+    max_bins=15,
+    smooth=True,
+    bootstrap_iters=50,
+    bootstrap_frac=1.0,
+    bootstrap_replace=True,
+    random_state=42,
+)
 
-    sd_m, max_m, min_m = get_std_splines(val_data_tmp, {'pred_salary': 1}, show_plot=True, k=2, 
-                                        min_grps_den=int(val_data_tmp.shape[0]*0.06), 
-                                        max_grps_den=int(val_data_tmp.shape[0]*0.03),
-                                        iso_spline='spline')
+val_data_resid, _ = apply_salary_resid_quantiles(
+    val_data,
+    val_data,
+    min_n=30,
+    max_bins=15,
+    smooth=True,
+    bootstrap_iters=50,
+    bootstrap_frac=1.0,
+    bootstrap_replace=True,
+    random_state=42,
+)
+display(salary_resid_coverage(val_data_resid))
+display(salary_resid_bucket_table)
 
-    pred_results.loc[pred_results.pos==p, 'std_dev'] = sd_m(sd_max_met)
-    pred_results.loc[pred_results.pos==p, 'max_score'] = max_m(sd_max_met)
-    pred_results.loc[pred_results.pos==p,'min_score'] = min_m(sd_max_met)
-
-
+pred_results = add_salary_legacy_uncertainty(pred_results)
 pred_results.sort_values(by='std_dev', ascending=False).iloc[:25]
 
 #%%
-
-# pred_results.loc[pred_results.player.isin(['Josh Allen', 'Jalen Hurts']), 'std_dev'] = 8
-# pred_results.loc[pred_results.player.isin(['Josh Allen', 'Jalen Hurts']), 'pred_salary'] = 38
-# pred_results.loc[pred_results.player.isin(['Marvin Harrison', 'Malik Nabers']), 'pred_salary'] = \
-#     pred_results.loc[pred_results.player.isin(['Marvin Harrison', 'Malik Nabers']), 'pred_salary'] + 5
-
-pred_results.loc[pred_results.std_dev <= 0, 'std_dev'] = pred_results.loc[pred_results.std_dev <= 0, 'pred_salary'] / 10
-
-pred_results.loc[pred_results.max_score < pred_results.pred_salary, 'max_score'] = \
-    pred_results.loc[pred_results.max_score < pred_results.pred_salary, 'pred_salary'] + \
-        2 * pred_results.loc[pred_results.max_score < pred_results.pred_salary, 'std_dev']
-
-pred_results.loc[pred_results.min_score > pred_results.pred_salary, 'min_score'] = \
-    pred_results.loc[pred_results.min_score > pred_results.pred_salary, 'pred_salary'] - \
-        2 * pred_results.loc[pred_results.min_score > pred_results.pred_salary, 'std_dev']
-
-pred_results.loc[pred_results.min_score < (pred_results.pred_salary - pred_results.std_dev), 'min_score'] = \
-        pred_results.loc[pred_results.min_score < (pred_results.pred_salary - pred_results.std_dev), 'pred_salary'] - \
-            pred_results.loc[pred_results.min_score < (pred_results.pred_salary - pred_results.std_dev), 'std_dev']
-
-pred_results.iloc[:50]
-
-#%%
 pred_results['league'] = LEAGUE + 'pred'
-output = pred_results[['player', 'pred_salary', 'year', 'league', 'std_dev', 'min_score', 'max_score']]
+output = pred_results[['player', 'pred_salary', 'year', 'league', 'std_dev', 'min_score', 'max_score', *SALARY_RESID_COLS]]
 output = output.rename(columns={'pred_salary': 'salary'})
 
+ensure_table_columns(Path(db_path) / 'Simulation.sqlite3', 'Salaries_Pred', SALARY_RESID_SCHEMA)
 dm.delete_from_db('Simulation', 'Salaries_Pred', f"year={YEAR} AND league='{LEAGUE}pred'", create_backup=True)
 dm.write_to_db(output, 'Simulation', 'Salaries_Pred', 'append')
 
@@ -600,13 +871,16 @@ dm.write_to_db(output, 'Simulation', 'Salaries_Pred', 'append')
 import shutil
 
 src = f'{root_path}/Data/Databases/Simulation.sqlite3'
-dst = f'/Users/borys/OneDrive/Documents/Github/Fantasy_Football_App/app/Simulation.sqlite3'
-shutil.copyfile(src, dst)
+dst = Path(root_path).parent / 'Fantasy_Football_App' / 'app' / 'Simulation.sqlite3'
+if dst.parent.exists():
+    shutil.copyfile(src, dst)
+else:
+    print(f'Skipping app DB copy; destination folder does not exist: {dst.parent}')
 
 # %%
 
-pred = dm.read("SELECT * FROM Salaries_Pred WHERE year=2025 AND league='nvpred'", 'Simulation')
-actual = dm.read("SELECT * FROM Actual_Salaries WHERE year=2025 AND league='nv' AND is_keeper=0", 'Simulation')
+pred = dm.read("SELECT * FROM Salaries_Pred WHERE year=2025 AND league='betapred'", 'Simulation')
+actual = dm.read("SELECT * FROM Actual_Salaries WHERE year=2025 AND league='beta' AND is_keeper=0", 'Simulation')
 combined = pd.merge(pred[['player', 'salary']], actual[['player', 'actual_salary']], on='player')
 print(r2_score(combined.actual_salary, combined.salary))
 print(mean_squared_error(combined.actual_salary, combined.salary))

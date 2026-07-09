@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 import sys
 import os
+from IPython.display import display
 from sklearn.metrics import mean_squared_error, r2_score
 # Add Scripts directory to path to import config
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -113,7 +114,7 @@ xx[(xx.season==2026) & (xx.current > 8)].sort_values(by='pts_diff', ascending=Fa
 #==========
 # Check Rush Pass vs All Weighting
 #==========
-set_pos = 'RB'
+set_pos = 'QB'
 current_or_next_year = 'current'
 dataset = 'ProjOnly'
 year_exp = 0
@@ -403,6 +404,7 @@ preds_ty = dm.read(f'''SELECT player,
                        AND year = {set_year}
                        AND dataset NOT LIKE '%Rookie%'
                        AND current_or_next_year = 'current'
+                       AND NOT (year_exp=0 AND less_equal='less')
                 GROUP BY player, pos, rush_pass
              ''', 'Simulation').sort_values(by='pred_fp_per_game', ascending=False).reset_index(drop=True)
 preds_ty['ensemble_source'] = 'all_current'
@@ -498,17 +500,17 @@ display(preds[((preds.pos!='QB'))].iloc[:50])
 
 #%%
 downgrades = {
-    'Justin Field': 3/17,
-    'Deshaun Watson': 12/17,
-    'Jj Mccarthy': 3/17,
-    'Carson Beck': 5/17,
-    'Joe Milton': 2/17,
-    'Tua Tagovailoa': 8/17,
-    'Jacoby Brisset': 11/17,
-    'Michael Penix': 9/17,
-    'Mac Jones': 3/17,
-    'Kirk Cousins': 3/17,
-    'Cade Klubnik': 2/17
+    # 'Justin Field': 3/17,
+    # 'Deshaun Watson': 12/17,
+    # 'Jj Mccarthy': 3/17,
+    # 'Carson Beck': 5/17,
+    # 'Joe Milton': 2/17,
+    # 'Tua Tagovailoa': 8/17,
+    # 'Jacoby Brisset': 11/17,
+    # 'Michael Penix': 9/17,
+    # 'Mac Jones': 3/17,
+    # 'Kirk Cousins': 3/17,
+    # 'Cade Klubnik': 2/17
 }
 
 for p, d in downgrades.items():

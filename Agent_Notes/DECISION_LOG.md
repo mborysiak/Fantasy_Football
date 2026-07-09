@@ -1,0 +1,25 @@
+
+ # Decision Log
+
+| Date | Area | Decision | Status | Source |
+| --- | --- | --- | --- | --- |
+| 2026-07-06 | Project memory | Use lightweight `Agent_Notes/` plus focused `docs/` and `research/studies/` instead of a heavy process layer | active | `Agent_Notes/Session_Notes/2026-07.md` |
+| 2026-07-06 | Cross-repo contract | `Fantasy_Football` owns source model/database generation; Snake app consumes copied `Simulation.sqlite3` and app-specific runtime logic | active | `Agent_Notes/CROSS_REPO_CONTEXT.md` |
+| 2026-07-06 | Best-ball templates | Keep best-ball weekly table schemas documented because app ILP behavior depends on these columns | active | `docs/data_contracts/best_ball_weekly_tables.md` |
+| 2026-07-06 | Research outputs | Store calibration and pruning audit outputs under `research/studies/` instead of app/model roots | active | `research/README.md` |
+| 2026-07-06 | Best-ball matching | Use weighted nearest-neighbor template matching instead of only within-position projected-points buckets; projection strength remains primary, with position-specific role/context features layered in | active | `Scripts/Modeling/s4_Best_Ball_Weekly.py` |
+| 2026-07-06 | Position features | Use projected fantasy-point shares for role context: RB rush/rec share of RB room, WR/TE receiving share, and QB/team passing context, rather than raw attempt-only shares | active | `Scripts/Modeling/s4_Best_Ball_Weekly.py` |
+| 2026-07-06 | QB role context | Include QB room/gap context so starter-vs-backup projection separation and QB battles are distinguishable beyond a simple team-rank bucket | active | `Scripts/Modeling/s4_Best_Ball_Weekly.py` |
+| 2026-07-06 | Template pool quality | Exclude zero-active historical templates from non-QB pools; allow QB zero-active templates where they represent backup/fringe-starter outcomes | active | `Scripts/Modeling/s4_Best_Ball_Weekly.py` |
+| 2026-07-06 | Template sampling | Preserve broad template-pool coverage but weight sampling toward closer matches using `template_sample_prob`; current intended top-to-bottom prevalence is about 2x | active | `docs/data_contracts/best_ball_weekly_tables.md` |
+| 2026-07-06 | ADP audit | Maintain `Best_Ball_ADP_Audit` as a source-table audit for draftable players with missing, fallback, or suspicious ADP context | active | `docs/runbooks/best_ball_weekly_build.md` |
+| 2026-07-07 | Best-ball table lifecycle | Make weekly template tables league-aware and preserve other league slices when rebuilding the active `YEAR`/`LEAGUE`/`PRED_VERSION` slice | active | `Scripts/Modeling/s4_Best_Ball_Weekly.py` |
+| 2026-07-07 | Auction salary uncertainty | Calibrate auction salary uncertainty from historical out-of-fold residual quantiles by position and predicted salary, using bootstrap-averaged quantile fits and preserving legacy `std_dev`/`min_score`/`max_score` app columns | active | `Scripts/Modeling/s4_Salaries_Injuries.py` |
+| 2026-07-08 | Auction app sampling | Sample auction ILP projections and salaries from residual quantile columns, and remove unused upside/top probability branches from the Fantasy_Football_App auction flow | active | `Fantasy_Football_App/app/zSim_Helper.py` |
+| 2026-07-08 | Managed auction scoring | Start managed auction weekly modeling with a roster scorer that samples weekly templates, chooses weekly starters from preseason/learned decision scores, and allows waiver baseline fill-ins before replacing the ILP objective | active | `Fantasy_Football_App/app/zSim_Helper.py` |
+| 2026-07-08 | Managed auction ILP | Use managed weekly marginal value, configurable waiver baselines, 13-player roster size, and position min/max constraints as the Fantasy_Football_App auction ILP objective | active | `Fantasy_Football_App/app/zSim_Helper.py` |
+| 2026-07-08 | Auction bench budget | Remove separate bench budget reserve once the auction optimizer directly drafts bench slots; report managed lineup EV and usage summary after simulations | active | `Fantasy_Football_App/app/ffapp.py` |
+| 2026-07-09 | Managed auction runtime | Batch managed-value objective samples once per refresh block and sample cached objective columns inside ILP iterations to reduce weekly-template marginal value rebuilds | active | `Fantasy_Football_App/app/zSim_Helper.py` |
+| 2026-07-09 | Managed auction vectorization | Compute managed marginal values with vectorized starter/flex threshold deltas instead of candidate-by-candidate lineup rescoring | active | `Fantasy_Football_App/app/zSim_Helper.py` |
+| 2026-07-09 | Managed auction matrix reuse | Reuse static managed ILP matrices within each refresh block and rebuild only sampled salary rows and objective vectors per iteration | active | `Fantasy_Football_App/app/zSim_Helper.py` |
+| 2026-07-09 | Managed auction roster refinement | After each managed ILP solve, use the matched weekly scenario for one vectorized feasible one-player swap pass scored by exact managed lineup points; preserve fixed players, manual salaries, cap, position limits, and the top-N constraint | active | `Fantasy_Football_App/app/zSim_Helper.py` |
