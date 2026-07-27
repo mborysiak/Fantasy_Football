@@ -1,0 +1,19 @@
+{
+  "methods": {
+    "v1": "current_locked_spec_v1",
+    "v3": "current_locked_spec_v3_resid_share_features",
+    "v5": "current_locked_spec_v5_compact_salary_features"
+  },
+  "model_spec_asof_year": 2026,
+  "paired_v1_v5_player_years": 644,
+  "sources": {
+    "validations_database": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\Data\\Databases\\Validations.sqlite3"
+  },
+  "outputs": {
+    "point_accuracy_by_period.csv": 54,
+    "paired_v1_v5_player_rows.csv": 644,
+    "paired_v1_v5_grouped_accuracy.csv": 34,
+    "market_total_calibration.csv": 12,
+    "v5_residual_quantile_coverage.csv": 8
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "synthetic": {
+    "primary_score_before": 192.0,
+    "primary_score_after": 228.0,
+    "primary_swap": "ExtraRB -> StrongWR"
+  },
+  "tied_decision_cases": 30,
+  "benchmark": {
+    "iterations": 50,
+    "seed": 20260711,
+    "baseline_seconds": 7.971990999998525,
+    "refined_seconds": 9.090781199978665,
+    "runtime_overhead_pct": 14.034012331177337,
+    "improved_rosters": 50,
+    "mean_construction_gain_points": 26.5651123046875,
+    "baseline_season_ev": 1520.2128735351562,
+    "refined_season_ev": 1542.3195385742188,
+    "season_ev_delta": 22.10666503906259,
+    "baseline_top_player": "Jalen Hurts",
+    "refined_top_player": "Saquon Barkley"
+  }
+}

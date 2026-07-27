@@ -1,0 +1,21 @@
+{
+  "iterations": 500,
+  "seed": 20260711,
+  "requested_workers": 8,
+  "baseline": {
+    "seconds": 8.503634499997133,
+    "top_player": "Chase Brown",
+    "season_ev": 1655.6675881347655,
+    "workers_used": 8,
+    "blocks": 10
+  },
+  "refined": {
+    "seconds": 8.998866900001303,
+    "top_player": "Chase Brown",
+    "season_ev": 1667.4003044433593,
+    "workers_used": 8,
+    "blocks": 10
+  },
+  "runtime_overhead_pct": 5.823773352492245,
+  "season_ev_delta": 11.732716308593808
+}

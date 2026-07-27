@@ -2,6 +2,7 @@
 import datetime as dt
 import pandas as pd
 import numpy as np
+import sqlite3
 import sys
 import os
 from IPython.display import display
@@ -12,6 +13,7 @@ from config import YEAR, LEAGUE, PRED_VERSION
 
 from ff.db_operations import DataManage
 from ff import general
+from zProjection_Validation import build_final_validation_residuals
 
 
 #==========
@@ -404,7 +406,6 @@ preds_ty = dm.read(f'''SELECT player,
                        AND year = {set_year}
                        AND dataset NOT LIKE '%Rookie%'
                        AND current_or_next_year = 'current'
-                       AND NOT (year_exp=0 AND less_equal='less')
                 GROUP BY player, pos, rush_pass
              ''', 'Simulation').sort_values(by='pred_fp_per_game', ascending=False).reset_index(drop=True)
 preds_ty['ensemble_source'] = 'all_current'
@@ -500,17 +501,11 @@ display(preds[((preds.pos!='QB'))].iloc[:50])
 
 #%%
 downgrades = {
-    # 'Justin Field': 3/17,
-    # 'Deshaun Watson': 12/17,
-    # 'Jj Mccarthy': 3/17,
-    # 'Carson Beck': 5/17,
-    # 'Joe Milton': 2/17,
-    # 'Tua Tagovailoa': 8/17,
-    # 'Jacoby Brisset': 11/17,
-    # 'Michael Penix': 9/17,
-    # 'Mac Jones': 3/17,
-    # 'Kirk Cousins': 3/17,
-    # 'Cade Klubnik': 2/17
+    'Zach Charbonnet': 0.7,
+    'George Kittle': 0.85,
+    'Travis Kelce': 0.85,
+    'Sam Laporta': 0.9,
+    'Derrick Henry': 0.9
 }
 
 for p, d in downgrades.items():
@@ -570,6 +565,57 @@ if len(final_resid_exists) > 0:
     dm.write_to_db(final_preds, 'Simulation', final_resid_table, 'replace', create_backup=True)
 else:
     dm.write_to_db(preds, 'Simulation', final_resid_table, 'replace')
+
+validation_rows = dm.read(f'''
+    SELECT *
+    FROM Model_Validations_Resid
+    WHERE version='{vers}'
+          AND year={set_year}
+''', 'Validations')
+final_validation_rows = build_final_validation_residuals(validation_rows)
+if not len(final_validation_rows):
+    raise ValueError(
+        f'No final validation rows built for version={vers}, year={set_year}.'
+    )
+
+final_validation_table = 'Final_Validations_Resid'
+final_validation_exists = dm.read(f'''
+    SELECT name
+    FROM sqlite_master
+    WHERE type='table'
+          AND name='{final_validation_table}'
+''', 'Validations')
+if len(final_validation_exists):
+    existing_validation_rows = dm.read(
+        f'SELECT * FROM {final_validation_table}',
+        'Validations',
+    )
+    keep_validation_rows = existing_validation_rows[
+        ~(
+            existing_validation_rows.version.eq(vers)
+            & existing_validation_rows.model_spec_asof_year.eq(set_year)
+        )
+    ].copy()
+    final_validation_rows = pd.concat(
+        [keep_validation_rows, final_validation_rows],
+        ignore_index=True,
+        sort=False,
+    )
+
+dm.write_to_db(
+    final_validation_rows,
+    'Validations',
+    final_validation_table,
+    'replace',
+    create_backup=bool(len(final_validation_exists)),
+)
+with sqlite3.connect(f'{db_path}/Validations.sqlite3') as validation_conn:
+    validation_conn.execute(f'''
+        CREATE UNIQUE INDEX IF NOT EXISTS
+        idx_final_validations_resid_identity
+        ON {final_validation_table}
+           (version, model_spec_asof_year, season, player, pos)
+    ''')
 
 src = f'{root_path}/Data/Databases/Simulation.sqlite3'
 dst = f'/Users/borys/OneDrive/Documents/Github/Fantasy_Football_App/app/Simulation.sqlite3'

@@ -1,0 +1,23 @@
+{
+  "origin_start": 2012,
+  "core_origin_start": 2017,
+  "recent_origin_start": 2020,
+  "max_season": 2025,
+  "target_counts": {
+    "QB": 24,
+    "RB": 60,
+    "WR": 72,
+    "TE": 24
+  },
+  "target_rows": 2520,
+  "prediction_rows": 12600,
+  "methods": [
+    "adaptive_full_centered",
+    "adaptive_full_uncentered",
+    "uniform_full_centered",
+    "legacy_2x_centered",
+    "adaptive_projection_centered"
+  ],
+  "runtime_seconds": 55.47800100000313,
+  "future_donor_rows": 0
+}

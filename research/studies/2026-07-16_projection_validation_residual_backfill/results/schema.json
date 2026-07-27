@@ -1,0 +1,254 @@
+{
+  "Model_Validations_Resid": [
+    {
+      "name": "player",
+      "dtype": "object"
+    },
+    {
+      "name": "team",
+      "dtype": "object"
+    },
+    {
+      "name": "season",
+      "dtype": "float64"
+    },
+    {
+      "name": "y_act",
+      "dtype": "float64"
+    },
+    {
+      "name": "pred_fp_per_game",
+      "dtype": "float64"
+    },
+    {
+      "name": "pos",
+      "dtype": "object"
+    },
+    {
+      "name": "rush_pass",
+      "dtype": "object"
+    },
+    {
+      "name": "dataset",
+      "dtype": "object"
+    },
+    {
+      "name": "filter_data",
+      "dtype": "object"
+    },
+    {
+      "name": "year_exp",
+      "dtype": "int64"
+    },
+    {
+      "name": "current_or_next_year",
+      "dtype": "object"
+    },
+    {
+      "name": "version",
+      "dtype": "object"
+    },
+    {
+      "name": "year",
+      "dtype": "int64"
+    },
+    {
+      "name": "date_modified",
+      "dtype": "object"
+    },
+    {
+      "name": "pred_resid_5",
+      "dtype": "float64"
+    },
+    {
+      "name": "pred_resid_10",
+      "dtype": "float64"
+    },
+    {
+      "name": "pred_resid_25",
+      "dtype": "float64"
+    },
+    {
+      "name": "pred_resid_75",
+      "dtype": "float64"
+    },
+    {
+      "name": "pred_resid_90",
+      "dtype": "float64"
+    },
+    {
+      "name": "pred_resid_95",
+      "dtype": "float64"
+    },
+    {
+      "name": "resid_training_rows",
+      "dtype": "int64"
+    },
+    {
+      "name": "resid_training_through_origin",
+      "dtype": "float64"
+    },
+    {
+      "name": "resid_training_through_season",
+      "dtype": "float64"
+    },
+    {
+      "name": "resid_calibration_mode",
+      "dtype": "object"
+    },
+    {
+      "name": "resid_calibration_available",
+      "dtype": "int64"
+    },
+    {
+      "name": "resid_target_season",
+      "dtype": "float64"
+    },
+    {
+      "name": "resid_target_available",
+      "dtype": "int64"
+    },
+    {
+      "name": "resid_calibration_date_modified",
+      "dtype": "object"
+    }
+  ],
+  "Final_Validations_Resid": [
+    {
+      "name": "player",
+      "dtype": "object"
+    },
+    {
+      "name": "season",
+      "dtype": "int64"
+    },
+    {
+      "name": "pos",
+      "dtype": "object"
+    },
+    {
+      "name": "y_act",
+      "dtype": "float64"
+    },
+    {
+      "name": "y_act_next",
+      "dtype": "float64"
+    },
+    {
+      "name": "y_act_ensemble_target",
+      "dtype": "float64"
+    },
+    {
+      "name": "ensemble_target_available",
+      "dtype": "int64"
+    },
+    {
+      "name": "pred_fp_per_game",
+      "dtype": "float64"
+    },
+    {
+      "name": "ensemble_source_count",
+      "dtype": "int64"
+    },
+    {
+      "name": "ensemble_sources",
+      "dtype": "object"
+    },
+    {
+      "name": "resid_source_rows",
+      "dtype": "int64"
+    },
+    {
+      "name": "resid_source_rows_available",
+      "dtype": "int64"
+    },
+    {
+      "name": "resid_source_coverage",
+      "dtype": "float64"
+    },
+    {
+      "name": "resid_training_rows_min",
+      "dtype": "float64"
+    },
+    {
+      "name": "resid_training_rows_max",
+      "dtype": "float64"
+    },
+    {
+      "name": "resid_training_through_origin",
+      "dtype": "float64"
+    },
+    {
+      "name": "resid_training_through_season",
+      "dtype": "float64"
+    },
+    {
+      "name": "version",
+      "dtype": "object"
+    },
+    {
+      "name": "model_spec_asof_year",
+      "dtype": "int64"
+    },
+    {
+      "name": "data_oos",
+      "dtype": "int64"
+    },
+    {
+      "name": "method_version",
+      "dtype": "object"
+    },
+    {
+      "name": "date_modified",
+      "dtype": "object"
+    },
+    {
+      "name": "pred_resid_5",
+      "dtype": "float64"
+    },
+    {
+      "name": "pred_resid_10",
+      "dtype": "float64"
+    },
+    {
+      "name": "pred_resid_25",
+      "dtype": "float64"
+    },
+    {
+      "name": "pred_resid_75",
+      "dtype": "float64"
+    },
+    {
+      "name": "pred_resid_90",
+      "dtype": "float64"
+    },
+    {
+      "name": "pred_resid_95",
+      "dtype": "float64"
+    },
+    {
+      "name": "component_rho",
+      "dtype": "float64"
+    },
+    {
+      "name": "component_rho_samples",
+      "dtype": "int64"
+    },
+    {
+      "name": "component_rho_components",
+      "dtype": "object"
+    },
+    {
+      "name": "component_rho_training_through_season",
+      "dtype": "float64"
+    },
+    {
+      "name": "resid_calibration_available",
+      "dtype": "int64"
+    },
+    {
+      "name": "resid_calibration_status",
+      "dtype": "object"
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "v5_best_all_year_normalized_mae_of_v1_v3_v5": true,
+  "v5_best_all_year_normalized_rmse_of_v1_v3_v5": true,
+  "all_4000_v5_frontier_cells_optimal": true,
+  "all_paired_frontier_cells_reconciled": true,
+  "frontier_period_effects_reproduced": true,
+  "all_52000_v5_selected_slots_reconciled": true,
+  "roster_gap_decomposition_reproduced": true
+}

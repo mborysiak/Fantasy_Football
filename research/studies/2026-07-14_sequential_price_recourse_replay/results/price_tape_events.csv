@@ -1,0 +1,551 @@
+year,source_roster_block_id,player,raw_player,player_key,pos,clearing_price,observed_actual_salary,price_source,salary_missing_filled_one,actionable,event_source,is_synthetic_contract_fill,preauction_score,raw_nominal_salary
+2022,1,Josh Allen,Josh Allen,joshallen,QB,41.0,41.0,observed,False,True,historical_forecast_matched,False,19.43817710876465,43.0
+2022,1,Kyle Pitts,Kyle Pitts,kylepitts,TE,38.0,38.0,observed,False,True,historical_forecast_matched,False,11.55323600769043,28.0
+2022,1,Diontae Johnson,Diontae Johnson,diontaejohnson,WR,35.0,35.0,observed,False,True,historical_forecast_matched,False,11.610716819763184,32.0
+2022,1,Deandre Hopkins,DeAndre Hopkins,deandrehopkins,WR,13.0,13.0,observed,False,True,historical_forecast_matched,False,9.990307807922363,6.0
+2022,1,Christian Kirk,Christian Kirk,christiankirk,WR,11.0,11.0,observed,False,True,historical_forecast_matched,False,9.427196502685547,8.0
+2022,1,Rashod Bateman,Rashod Bateman,rashodbateman,WR,21.0,21.0,observed,False,True,historical_forecast_matched,False,9.633731842041016,11.0
+2022,1,Antonio Gibson,Antonio Gibson,antoniogibson,RB,27.0,27.0,observed,False,False,historical_opponent_only,False,12.350625,
+2022,1,Devonta Smith,DeVonta Smith,devontasmith,WR,11.0,11.0,observed,False,True,historical_forecast_matched,False,10.023614883422852,8.0
+2022,1,Aj Dillon,AJ Dillon,ajdillon,RB,36.0,36.0,observed,False,True,historical_forecast_matched,False,10.621748924255371,11.0
+2022,1,Dameon Pierce,Dameon Pierce,dameonpierce,RB,34.0,34.0,observed,False,True,historical_forecast_matched,False,9.038881301879883,8.0
+2022,1,Rhamondre Stevenson,Rhamondre Stevenson,rhamondrestevenson,RB,25.0,25.0,observed,False,True,historical_forecast_matched,False,9.702605247497559,7.0
+2022,1,Dj Chark,DJ Chark,djchark,WR,1.0,1.0,observed,False,True,historical_forecast_matched,False,9.109689712524414,2.0
+2022,1,Mike Davis,Mike Davis,mikedavis,RB,2.0,2.0,observed,False,True,historical_forecast_matched,False,7.045876502990723,2.0
+2022,2,Najee Harris,Najee Harris,najeeharris,RB,92.0,92.0,observed,False,True,historical_forecast_matched,False,15.562064170837402,85.0
+2022,2,Jerry Jeudy,Jerry Jeudy,jerryjeudy,WR,29.0,29.0,observed,False,True,historical_forecast_matched,False,9.698941230773926,19.0
+2022,2,Brandin Cooks,Brandin Cooks,brandincooks,WR,35.0,35.0,observed,False,True,historical_forecast_matched,False,10.482514381408691,26.0
+2022,2,Tony Pollard,Tony Pollard,tonypollard,RB,26.0,26.0,observed,False,True,historical_forecast_matched,False,9.786819458007812,8.0
+2022,2,Cole Kmet,Cole Kmet,colekmet,TE,1.0,1.0,observed,False,True,historical_forecast_matched,False,8.346214294433594,1.0
+2022,2,Derek Carr,Derek Carr,derekcarr,QB,1.0,1.0,observed,False,True,historical_forecast_matched,False,15.870733261108398,6.0
+2022,2,Michael Carter,Michael Carter,michaelcarter,RB,7.0,7.0,observed,False,True,historical_forecast_matched,False,9.28796672821045,3.0
+2022,2,Alexander Mattison,Alexander Mattison,alexandermattison,RB,6.0,6.0,observed,False,True,historical_forecast_matched,False,8.616082191467285,2.0
+2022,2,Isaiah Mckenzie,Isaiah McKenzie,isaiahmckenzie,WR,1.0,1.0,observed,False,True,historical_forecast_matched,False,7.92639684677124,2.0
+2022,2,Michael Gallup,Michael Gallup,michaelgallup,WR,3.0,3.0,observed,False,True,historical_forecast_matched,False,8.860386848449707,2.0
+2022,2,Wandale Robinson,Wan'Dale Robinson,wandalerobinson,WR,1.0,,imputed_blank_one,True,True,historical_forecast_matched,False,6.915561676025391,2.0
+2022,3,Jaylen Waddle,Jaylen Waddle,jaylenwaddle,WR,38.0,38.0,observed,False,True,historical_forecast_matched,False,12.198697090148926,41.0
+2022,3,Dalvin Cook,Dalvin Cook,dalvincook,RB,96.0,96.0,observed,False,True,historical_forecast_matched,False,14.979606628417969,81.0
+2022,3,Tee Higgins,Tee Higgins,teehiggins,WR,49.0,49.0,observed,False,True,historical_forecast_matched,False,12.06070327758789,50.0
+2022,3,Juju Smith Schuster,JuJu Smith-Schuster,jujusmithschuster,WR,22.0,22.0,observed,False,True,historical_forecast_matched,False,10.996843338012695,11.0
+2022,3,Tom Brady,Tom Brady,tombrady,QB,7.0,7.0,observed,False,True,historical_forecast_matched,False,18.037158966064453,9.0
+2022,3,Tj Hockenson,T.J. Hockenson,tjhockenson,TE,5.0,5.0,observed,False,True,historical_forecast_matched,False,8.68368911743164,7.0
+2022,3,Jakobi Meyers,Jakobi Meyers,jakobimeyers,WR,3.0,3.0,observed,False,True,historical_forecast_matched,False,8.405452728271484,1.0
+2022,3,Marvin Jones,Marvin Jones,marvinjones,WR,2.0,2.0,observed,False,True,historical_forecast_matched,False,9.026055335998535,1.0
+2022,3,Russell Gage,Russell Gage,russellgage,WR,1.0,1.0,observed,False,True,historical_forecast_matched,False,9.137816429138184,5.0
+2022,3,Van Jefferson,Van Jefferson,vanjefferson,WR,1.0,1.0,observed,False,True,historical_forecast_matched,False,7.853517532348633,2.0
+2022,3,Robbie Anderson,Robbie Anderson,robbieanderson,WR,1.0,,imputed_blank_one,True,False,historical_opponent_only,False,0.0,
+2022,4,Nick Chubb,Nick Chubb,nickchubb,RB,81.0,81.0,observed,False,True,historical_forecast_matched,False,13.260684967041016,49.0
+2022,4,Lamar Jackson,Lamar Jackson,lamarjackson,QB,22.0,22.0,observed,False,True,historical_forecast_matched,False,18.32765769958496,20.0
+2022,4,Dalton Schultz,Dalton Schultz,daltonschultz,TE,19.0,19.0,observed,False,True,historical_forecast_matched,False,9.269608497619629,11.0
+2022,4,Amari Cooper,Amari Cooper,amaricooper,WR,10.0,10.0,observed,False,True,historical_forecast_matched,False,10.31868839263916,18.0
+2022,4,Mike Williams,Mike Williams,mikewilliams,WR,37.0,37.0,observed,False,True,historical_forecast_matched,False,11.355324745178223,28.0
+2022,4,Darnell Mooney,Darnell Mooney,darnellmooney,WR,18.0,18.0,observed,False,True,historical_forecast_matched,False,10.2721586227417,22.0
+2022,4,Miles Sanders,Miles Sanders,milessanders,RB,20.0,20.0,observed,False,True,historical_forecast_matched,False,10.936928749084473,16.0
+2022,4,Damien Harris,Damien Harris,damienharris,RB,27.0,27.0,observed,False,True,historical_forecast_matched,False,10.672819137573242,11.0
+2022,4,Tyler Lockett,Tyler Lockett,tylerlockett,WR,9.0,9.0,observed,False,True,historical_forecast_matched,False,9.709057807922363,14.0
+2022,4,Elijah Moore,Elijah Moore,elijahmoore,WR,20.0,20.0,observed,False,True,historical_forecast_matched,False,9.570846557617188,6.0
+2022,4,Cordarrelle Patterson,Cordarrelle Patterson,cordarrellepatterson,RB,12.0,12.0,observed,False,True,historical_forecast_matched,False,10.509927749633789,16.0
+2022,4,James Cook,James Cook,jamescook,RB,14.0,14.0,observed,False,True,historical_forecast_matched,False,10.065630912780762,11.0
+2022,4,Hunter Henry,Hunter Henry,hunterhenry,TE,1.0,1.0,observed,False,True,historical_forecast_matched,False,7.831570148468018,1.0
+2022,5,Christian Mccaffrey,Christian McCaffrey,christianmccaffrey,RB,111.0,111.0,observed,False,True,historical_forecast_matched,False,16.592546463012695,98.0
+2022,5,Dk Metcalf,DK Metcalf,dkmetcalf,WR,21.0,21.0,observed,False,True,historical_forecast_matched,False,11.160555839538574,26.0
+2022,5,Aj Brown,A.J. Brown,ajbrown,WR,45.0,45.0,observed,False,True,historical_forecast_matched,False,11.94201374053955,43.0
+2022,5,Mike Evans,Mike Evans,mikeevans,WR,57.0,57.0,observed,False,True,historical_forecast_matched,False,12.276243209838867,52.0
+2022,5,Aaron Rodgers,Aaron Rodgers,aaronrodgers,QB,2.0,2.0,observed,False,True,historical_forecast_matched,False,18.130952835083008,9.0
+2022,5,Zach Ertz,Zach Ertz,zachertz,TE,3.0,3.0,observed,False,True,historical_forecast_matched,False,8.784605979919434,2.0
+2022,5,Trey Lance,Trey Lance,treylance,QB,3.0,3.0,observed,False,False,historical_opponent_only,False,0.0,
+2022,5,Kenneth Gainwell,Kenneth Gainwell,kennethgainwell,RB,1.0,1.0,observed,False,True,historical_forecast_matched,False,9.00684642791748,2.0
+2022,5,Darrell Henderson,Darrell Henderson,darrellhenderson,RB,1.0,1.0,observed,False,True,historical_forecast_matched,False,8.26366138458252,2.0
+2022,5,Jamaal Williams,Jamaal Williams,jamaalwilliams,RB,1.0,1.0,observed,False,True,historical_forecast_matched,False,7.241827964782715,2.0
+2022,5,Joshua Palmer,Joshua Palmer,joshuapalmer,WR,1.0,,imputed_blank_one,True,True,historical_forecast_matched,False,7.894680976867676,2.0
+2022,6,Travis Kelce,Travis Kelce,traviskelce,TE,55.0,55.0,observed,False,True,historical_forecast_matched,False,12.347939491271973,45.0
+2022,6,Michael Thomas,Michael Thomas,michaelthomas,WR,19.0,19.0,observed,False,False,historical_opponent_only,False,0.0,
+2022,6,Patrick Mahomes,Patrick Mahomes,patrickmahomes,QB,29.0,29.0,observed,False,True,historical_forecast_matched,False,18.535219192504883,36.0
+2022,6,Chris Olave,Chris Olave,chrisolave,WR,16.0,16.0,observed,False,True,historical_forecast_matched,False,9.116775512695312,7.0
+2022,6,Breece Hall,Breece Hall,breecehall,RB,54.0,54.0,observed,False,True,historical_forecast_matched,False,14.028142929077148,47.0
+2022,6,Christian Watson,Christian Watson,christianwatson,WR,1.0,1.0,observed,False,False,historical_opponent_only,False,6.49,
+2022,6,Jahan Dotson,Jahan Dotson,jahandotson,WR,2.0,2.0,observed,False,False,historical_opponent_only,False,9.08,
+2022,6,David Bell,David Bell,davidbell,WR,1.0,1.0,observed,False,True,historical_forecast_matched,False,5.459232807159424,2.0
+2022,6,Alec Pierce,Alec Pierce,alecpierce,WR,1.0,1.0,observed,False,True,historical_forecast_matched,False,6.653608322143555,2.0
+2022,6,Tyrion Davis Price,Tyrion Davis-Price,tyriondavisprice,RB,1.0,1.0,observed,False,True,historical_forecast_matched,False,6.039455890655518,2.0
+2022,6,Jd Mckissic,J.D. McKissic,jdmckissic,RB,1.0,,imputed_blank_one,True,False,historical_opponent_only,False,8.85625,
+2022,7,Derrick Henry,Derrick Henry,derrickhenry,RB,87.0,87.0,observed,False,True,historical_forecast_matched,False,14.996720314025879,87.0
+2022,7,Travis Etienne,Travis Etienne,travisetienne,RB,56.0,56.0,observed,False,True,historical_forecast_matched,False,12.984338760375977,32.0
+2022,7,Elijah Mitchell,Elijah Mitchell,elijahmitchell,RB,39.0,39.0,observed,False,True,historical_forecast_matched,False,11.57573413848877,20.0
+2022,7,Jalen Hurts,Jalen Hurts,jalenhurts,QB,12.0,12.0,observed,False,True,historical_forecast_matched,False,17.756738662719727,12.0
+2022,7,Dawson Knox,Dawson Knox,dawsonknox,TE,2.0,2.0,observed,False,True,historical_forecast_matched,False,8.142569541931152,2.0
+2022,7,Treylon Burks,Treylon Burks,treylonburks,WR,5.0,5.0,observed,False,True,historical_forecast_matched,False,10.40697193145752,7.0
+2022,7,Julio Jones,Julio Jones,juliojones,WR,2.0,2.0,observed,False,False,historical_opponent_only,False,7.92125,
+2022,7,Rondale Moore,Rondale Moore,rondalemoore,WR,1.0,1.0,observed,False,True,historical_forecast_matched,False,8.650434494018555,2.0
+2022,7,Romeo Doubs,Romeo Doubs,romeodoubs,WR,1.0,1.0,observed,False,True,historical_forecast_matched,False,6.200881004333496,2.0
+2022,7,Brian Robinson,Brian Robinson,brianrobinson,RB,3.0,3.0,observed,False,True,historical_forecast_matched,False,7.117944240570068,2.0
+2022,7,Nico Collins,Nico Collins,nicocollins,WR,1.0,,imputed_blank_one,True,True,historical_forecast_matched,False,8.017452239990234,2.0
+2022,8,Mark Andrews,Mark Andrews,markandrews,TE,50.0,50.0,observed,False,True,historical_forecast_matched,False,11.843916893005371,46.0
+2022,8,Garrett Wilson,Garrett Wilson,garrettwilson,WR,9.0,9.0,observed,False,True,historical_forecast_matched,False,9.647563934326172,6.0
+2022,8,Josh Jacobs,Josh Jacobs,joshjacobs,RB,37.0,37.0,observed,False,True,historical_forecast_matched,False,12.031403541564941,33.0
+2022,8,Tyreek Hill,Tyreek Hill,tyreekhill,WR,58.0,58.0,observed,False,True,historical_forecast_matched,False,12.849662780761719,61.0
+2022,8,Keenan Allen,Keenan Allen,keenanallen,WR,53.0,53.0,observed,False,True,historical_forecast_matched,False,12.258894920349121,51.0
+2022,8,Drake London,Drake London,drakelondon,WR,12.0,12.0,observed,False,True,historical_forecast_matched,False,10.185823440551758,12.0
+2022,8,Kyler Murray,Kyler Murray,kylermurray,QB,12.0,12.0,observed,False,True,historical_forecast_matched,False,18.25320053100586,16.0
+2022,8,Brandon Aiyuk,Brandon Aiyuk,brandonaiyuk,WR,5.0,5.0,observed,False,True,historical_forecast_matched,False,9.455514907836914,3.0
+2022,8,Robert Woods,Robert Woods,robertwoods,WR,2.0,2.0,observed,False,True,historical_forecast_matched,False,9.394623756408691,3.0
+2022,8,Marquez Valdes Scantling,Marquez Valdes-Scantling,marquezvaldesscantling,WR,7.0,7.0,observed,False,True,historical_forecast_matched,False,8.376408576965332,1.0
+2022,8,Khalil Herbert,Khalil Herbert,khalilherbert,RB,1.0,,imputed_blank_one,True,True,historical_forecast_matched,False,8.112981796264648,2.0
+2022,9,Chris Godwin,Chris Godwin,chrisgodwin,WR,27.0,27.0,observed,False,True,historical_forecast_matched,False,11.454334259033203,19.0
+2022,9,Dj Moore,DJ Moore,djmoore,WR,48.0,48.0,observed,False,True,historical_forecast_matched,False,11.776554107666016,41.0
+2022,9,Darren Waller,Darren Waller,darrenwaller,TE,26.0,26.0,observed,False,True,historical_forecast_matched,False,10.480462074279785,17.0
+2022,9,Michael Pittman,Michael Pittman,michaelpittman,WR,52.0,52.0,observed,False,True,historical_forecast_matched,False,12.036909103393555,36.0
+2022,9,Dak Prescott,Dak Prescott,dakprescott,QB,6.0,6.0,observed,False,True,historical_forecast_matched,False,17.823928833007812,13.0
+2022,9,Chase Claypool,Chase Claypool,chaseclaypool,WR,2.0,2.0,observed,False,True,historical_forecast_matched,False,9.312097549438477,5.0
+2022,9,Tyler Boyd,Tyler Boyd,tylerboyd,WR,4.0,4.0,observed,False,True,historical_forecast_matched,False,8.99085807800293,1.0
+2022,9,Skyy Moore,Skyy Moore,skyymoore,WR,4.0,4.0,observed,False,True,historical_forecast_matched,False,6.791190147399902,1.0
+2022,9,Melvin Gordon,Melvin Gordon,melvingordon,RB,22.0,22.0,observed,False,True,historical_forecast_matched,False,9.181955337524414,5.0
+2022,9,James Robinson,James Robinson,jamesrobinson,RB,6.0,6.0,observed,False,True,historical_forecast_matched,False,9.28697395324707,3.0
+2022,9,Kenneth Walker,Kenneth Walker,kennethwalker,RB,17.0,17.0,observed,False,True,historical_forecast_matched,False,10.385293960571289,2.0
+2022,10,Alvin Kamara,Alvin Kamara,alvinkamara,RB,85.0,85.0,observed,False,True,historical_forecast_matched,False,13.856033325195312,62.0
+2022,10,Joe Mixon,Joe Mixon,joemixon,RB,96.0,96.0,observed,False,True,historical_forecast_matched,False,14.627096176147461,74.0
+2022,10,Kirk Cousins,Kirk Cousins,kirkcousins,QB,2.0,2.0,observed,False,True,historical_forecast_matched,False,16.43781852722168,5.0
+2022,10,Hunter Renfrow,Hunter Renfrow,hunterrenfrow,WR,16.0,16.0,observed,False,True,historical_forecast_matched,False,9.854259490966797,10.0
+2022,10,Pat Freiermuth,Pat Freiermuth,patfreiermuth,TE,4.0,4.0,observed,False,True,historical_forecast_matched,False,8.512368202209473,1.0
+2022,10,Chase Edmonds,Chase Edmonds,chaseedmonds,RB,23.0,23.0,observed,False,True,historical_forecast_matched,False,9.818498611450195,7.0
+2022,10,Kadarius Toney,Kadarius Toney,kadariustoney,WR,5.0,5.0,observed,False,True,historical_forecast_matched,False,9.264324188232422,3.0
+2022,10,Jalen Tolbert,Jalen Tolbert,jalentolbert,WR,1.0,1.0,observed,False,True,historical_forecast_matched,False,6.555197715759277,2.0
+2022,10,Mecole Hardman,Mecole Hardman,mecolehardman,WR,2.0,2.0,observed,False,True,historical_forecast_matched,False,8.404789924621582,1.0
+2022,10,Jameson Williams,Jameson Williams,jamesonwilliams,WR,1.0,1.0,observed,False,True,historical_forecast_matched,False,8.235515594482422,1.0
+2022,10,Raheem Mostert,Raheem Mostert,raheemmostert,RB,1.0,,imputed_blank_one,True,False,historical_opponent_only,False,7.538125,
+2022,11,Gabriel Davis,Gabe Davis,gabrieldavis,WR,21.0,21.0,observed,False,True,historical_forecast_matched,False,9.45041561126709,17.0
+2022,11,Aaron Jones,Aaron Jones,aaronjones,RB,67.0,67.0,observed,False,True,historical_forecast_matched,False,13.398380279541016,61.0
+2022,11,Davante Adams,Davante Adams,davanteadams,WR,88.0,88.0,observed,False,True,historical_forecast_matched,False,14.508094787597656,77.0
+2022,11,Marquise Brown,Marquise Brown,marquisebrown,WR,20.0,20.0,observed,False,True,historical_forecast_matched,False,10.41264533996582,27.0
+2022,11,Joe Burrow,Joe Burrow,joeburrow,QB,12.0,12.0,observed,False,True,historical_forecast_matched,False,16.58631134033203,16.0
+2022,11,Dallas Goedert,Dallas Goedert,dallasgoedert,TE,5.0,5.0,observed,False,True,historical_forecast_matched,False,9.230708122253418,4.0
+2022,11,Rashaad Penny,Rashaad Penny,rashaadpenny,RB,27.0,27.0,observed,False,True,historical_forecast_matched,False,9.75648307800293,8.0
+2022,11,Nyheim Hines,Nyheim Hines,nyheimhines,RB,1.0,1.0,observed,False,True,historical_forecast_matched,False,7.752114295959473,2.0
+2022,11,Kenny Golladay,Kenny Golladay,kennygolladay,WR,1.0,1.0,observed,False,True,historical_forecast_matched,False,8.730375289916992,1.0
+2022,11,Matthew Stafford,Matthew Stafford,matthewstafford,QB,1.0,1.0,observed,False,True,historical_forecast_matched,False,16.856287002563477,7.0
+2022,11,Kj Hamler,KJ Hamler,kjhamler,WR,1.0,1.0,observed,False,False,historical_opponent_only,False,7.616875,
+2022,12,Ezekiel Elliott,Ezekiel Elliott,ezekielelliott,RB,45.0,45.0,observed,False,True,historical_forecast_matched,False,12.82514762878418,43.0
+2022,12,Devin Singletary,Devin Singletary,devinsingletary,RB,22.0,22.0,observed,False,True,historical_forecast_matched,False,10.720586776733398,15.0
+2022,12,Clyde Edwards Helaire,Clyde Edwards-Helaire,clydeedwardshelaire,RB,46.0,46.0,observed,False,True,historical_forecast_matched,False,11.347236633300781,13.0
+2022,12,Justin Herbert,Justin Herbert,justinherbert,QB,29.0,29.0,observed,False,True,historical_forecast_matched,False,18.280183792114258,28.0
+2022,12,George Kittle,George Kittle,georgekittle,TE,17.0,17.0,observed,False,True,historical_forecast_matched,False,11.241249084472656,16.0
+2022,12,Adam Thielen,Adam Thielen,adamthielen,WR,20.0,20.0,observed,False,True,historical_forecast_matched,False,10.604836463928223,13.0
+2022,12,Irv Smith,Irv Smith,irvsmith,TE,3.0,3.0,observed,False,False,historical_opponent_only,False,8.6225,
+2022,12,Allen Lazard,Allen Lazard,allenlazard,WR,25.0,25.0,observed,False,True,historical_forecast_matched,False,8.974535942077637,3.0
+2022,12,Kareem Hunt,Kareem Hunt,kareemhunt,RB,27.0,27.0,observed,False,True,historical_forecast_matched,False,9.3473482131958,11.0
+2022,12,Russell Wilson,Russell Wilson,russellwilson,QB,3.0,3.0,observed,False,True,historical_forecast_matched,False,17.49730682373047,12.0
+2022,12,George Pickens,George Pickens,georgepickens,WR,3.0,3.0,observed,False,True,historical_forecast_matched,False,6.64237642288208,2.0
+2023,1,Jahmyr Gibbs,"Jahmyr Gibbs Det, RB",jahmyrgibbs,RB,58.0,58.0,observed,False,True,historical_forecast_matched,False,14.314676284790039,55.0
+2023,1,Justin Fields,"Justin Fields Chi, QB",justinfields,QB,20.0,20.0,observed,False,True,historical_forecast_matched,False,17.640615463256836,18.0
+2023,1,Bijan Robinson,"Bijan Robinson Atl, RB",bijanrobinson,RB,100.0,100.0,observed,False,True,historical_forecast_matched,False,16.009550094604492,91.0
+2023,1,Drake London,"Drake London Atl, WR",drakelondon,WR,24.0,24.0,observed,False,True,historical_forecast_matched,False,11.381492614746094,15.0
+2023,1,Pat Freiermuth,"Pat Freiermuth Pit, TE",patfreiermuth,TE,5.0,5.0,observed,False,True,historical_forecast_matched,False,8.498730659484863,1.0
+2023,1,George Pickens,"George Pickens Pit, WR",georgepickens,WR,19.0,19.0,observed,False,True,historical_forecast_matched,False,9.547531127929688,10.0
+2023,1,Treylon Burks,"Treylon Burks Ten, WR",treylonburks,WR,4.0,4.0,observed,False,True,historical_forecast_matched,False,8.991888046264648,3.0
+2023,1,Kenneth Gainwell,"Kenneth Gainwell Phi, RB",kennethgainwell,RB,3.0,3.0,observed,False,True,historical_forecast_matched,False,7.828167915344238,2.0
+2023,1,Rashaad Penny,"Rashaad Penny Phi, RB",rashaadpenny,RB,2.0,2.0,observed,False,True,historical_forecast_matched,False,8.760053634643555,5.0
+2023,1,Tyler Allgeier,"Tyler Allgeier Atl, RB",tylerallgeier,RB,3.0,3.0,observed,False,True,historical_forecast_matched,False,7.4214959144592285,1.0
+2023,1,Jameson Williams,"Jameson Williams Det, WR",jamesonwilliams,WR,2.0,2.0,observed,False,True,historical_forecast_matched,False,9.337803840637207,1.0
+2023,2,Tyreek Hill,"Tyreek Hill Mia, WR",tyreekhill,WR,88.0,88.0,observed,False,True,historical_forecast_matched,False,14.583205223083496,86.0
+2023,2,Calvin Ridley,"Calvin Ridley Jax, WR",calvinridley,WR,41.0,41.0,observed,False,True,historical_forecast_matched,False,10.837173461914062,39.0
+2023,2,Dameon Pierce,"Dameon Pierce Hou, RB",dameonpierce,RB,31.0,31.0,observed,False,True,historical_forecast_matched,False,10.876877784729004,32.0
+2023,2,Kirk Cousins,"Kirk Cousins Min, QB",kirkcousins,QB,2.0,2.0,observed,False,True,historical_forecast_matched,False,16.716381072998047,2.0
+2023,2,Alvin Kamara,"Alvin Kamara NO, RB",alvinkamara,RB,27.0,27.0,observed,False,True,historical_forecast_matched,False,10.115866661071777,27.0
+2023,2,Odell Beckham,"Odell Beckham Jr. Bal, WR",odellbeckham,WR,5.0,5.0,observed,False,False,historical_opponent_only,False,9.014375,
+2023,2,Dj Moore,"DJ Moore Chi, WR",djmoore,WR,28.0,28.0,observed,False,True,historical_forecast_matched,False,10.237059593200684,20.0
+2023,2,Michael Thomas,"Michael Thomas NO, WR",michaelthomas,WR,8.0,8.0,observed,False,True,historical_forecast_matched,False,9.349759101867676,6.0
+2023,2,Dalton Schultz,"Dalton Schultz Hou, TE",daltonschultz,TE,1.0,1.0,observed,False,True,historical_forecast_matched,False,7.380171298980713,1.0
+2023,2,Adam Thielen,"Adam Thielen Car, WR",adamthielen,WR,1.0,1.0,observed,False,True,historical_forecast_matched,False,8.487951278686523,1.0
+2023,2,Jared Goff,"Jared Goff Det, QB",jaredgoff,QB,1.0,1.0,observed,False,True,historical_forecast_matched,False,15.847884178161621,1.0
+2023,3,Chris Olave,"Chris Olave NO, WR",chrisolave,WR,65.0,65.0,observed,False,True,historical_forecast_matched,False,12.541829109191895,51.0
+2023,3,Justin Herbert,"Justin Herbert LAC, QB",justinherbert,QB,25.0,25.0,observed,False,True,historical_forecast_matched,False,18.56707763671875,18.0
+2023,3,Aaron Jones,"Aaron Jones GB, RB",aaronjones,RB,65.0,65.0,observed,False,True,historical_forecast_matched,False,10.746862411499023,46.0
+2023,3,Dalvin Cook,"Dalvin Cook NYJ, RB",dalvincook,RB,22.0,22.0,observed,False,True,historical_forecast_matched,False,9.564289093017578,20.0
+2023,3,Isiah Pacheco,"Isiah Pacheco KC, RB",isiahpacheco,RB,17.0,17.0,observed,False,True,historical_forecast_matched,False,9.50496768951416,18.0
+2023,3,Evan Engram,"Evan Engram Jax, TE",evanengram,TE,3.0,3.0,observed,False,True,historical_forecast_matched,False,8.600553512573242,3.0
+2023,3,Kadarius Toney,"Kadarius Toney KC, WR",kadariustoney,WR,3.0,3.0,observed,False,True,historical_forecast_matched,False,8.696453094482422,1.0
+2023,3,Marvin Mims,"Marvin Mims Jr. Den, WR",marvinmims,WR,1.0,1.0,observed,False,True,historical_forecast_matched,False,8.152356147766113,1.0
+2023,3,Romeo Doubs,"Romeo Doubs GB, WR",romeodoubs,WR,1.0,1.0,observed,False,True,historical_forecast_matched,False,8.60872745513916,1.0
+2023,3,Kyren Williams,"Kyren Williams LAR, RB",kyrenwilliams,RB,1.0,1.0,observed,False,True,historical_forecast_matched,False,7.331315994262695,1.0
+2023,3,Curtis Samuel,"Curtis Samuel Wsh, WR",curtissamuel,WR,1.0,1.0,observed,False,True,historical_forecast_matched,False,7.972531318664551,1.0
+2023,4,Mike Evans,"Mike Evans TB, WR",mikeevans,WR,22.0,22.0,observed,False,True,historical_forecast_matched,False,9.987582206726074,19.0
+2023,4,Deshaun Watson,"Deshaun Watson Cle, QB",deshaunwatson,QB,2.0,2.0,observed,False,True,historical_forecast_matched,False,17.285459518432617,4.0
+2023,4,Keenan Allen,"Keenan Allen LAC, WR",keenanallen,WR,37.0,37.0,observed,False,True,historical_forecast_matched,False,11.227598190307617,36.0
+2023,4,Tyler Lockett,"Tyler Lockett Sea, WR",tylerlockett,WR,19.0,19.0,observed,False,True,historical_forecast_matched,False,9.684220314025879,16.0
+2023,4,Darren Waller,"Darren Waller NYG, TE",darrenwaller,TE,26.0,26.0,observed,False,True,historical_forecast_matched,False,8.03610610961914,12.0
+2023,4,Alexander Mattison,"Alexander Mattison Min, RB",alexandermattison,RB,40.0,40.0,observed,False,True,historical_forecast_matched,False,10.026390075683594,27.0
+2023,4,Jerry Jeudy,"Jerry Jeudy Den, WR",jerryjeudy,WR,8.0,8.0,observed,False,True,historical_forecast_matched,False,10.568398475646973,15.0
+2023,4,Tank Bigsby,"Tank Bigsby Jax, RB",tankbigsby,RB,4.0,4.0,observed,False,True,historical_forecast_matched,False,7.076086521148682,9.0
+2023,4,Nico Collins,"Nico Collins Hou, WR",nicocollins,WR,2.0,2.0,observed,False,True,historical_forecast_matched,False,8.42072582244873,1.0
+2023,4,Khalil Herbert,"Khalil Herbert Chi, RB",khalilherbert,RB,17.0,17.0,observed,False,True,historical_forecast_matched,False,9.579507827758789,15.0
+2023,4,Samaje Perine,"Samaje Perine Den, RB",samajeperine,RB,7.0,7.0,observed,False,True,historical_forecast_matched,False,8.426929473876953,6.0
+2023,5,Derrick Henry,"Derrick Henry Ten, RB",derrickhenry,RB,91.0,91.0,observed,False,True,historical_forecast_matched,False,13.279657363891602,79.0
+2023,5,Tee Higgins,"Tee Higgins Cin, WR",teehiggins,WR,44.0,44.0,observed,False,True,historical_forecast_matched,False,11.64272403717041,48.0
+2023,5,Lamar Jackson,"Lamar Jackson Bal, QB",lamarjackson,QB,32.0,32.0,observed,False,True,historical_forecast_matched,False,18.1859073638916,33.0
+2023,5,David Montgomery,"David Montgomery Det, RB",davidmontgomery,RB,16.0,16.0,observed,False,True,historical_forecast_matched,False,9.76021957397461,18.0
+2023,5,Dallas Goedert,"Dallas Goedert Phi, TE",dallasgoedert,TE,6.0,6.0,observed,False,True,historical_forecast_matched,False,8.287275314331055,8.0
+2023,5,Brian Robinson,"Brian Robinson Jr. Wsh, RB",brianrobinson,RB,12.0,12.0,observed,False,True,historical_forecast_matched,False,8.960616111755371,11.0
+2023,5,Dj Chark,"DJ Chark Jr. Car, WR",djchark,WR,2.0,2.0,observed,False,True,historical_forecast_matched,False,8.241056442260742,1.0
+2023,5,Gabriel Davis,"Gabe Davis Buf, WR",gabrieldavis,WR,5.0,5.0,observed,False,True,historical_forecast_matched,False,8.82518196105957,2.0
+2023,5,Jamaal Williams,"Jamaal Williams NO, RB",jamaalwilliams,RB,4.0,4.0,observed,False,True,historical_forecast_matched,False,8.597014427185059,7.0
+2023,5,Gus Edwards,"Gus Edwards Bal, RB",gusedwards,RB,2.0,2.0,observed,False,True,historical_forecast_matched,False,8.003003120422363,1.0
+2023,5,Daniel Jones,"Daniel Jones NYG, QB",danieljones,QB,1.0,1.0,observed,False,True,historical_forecast_matched,False,16.666793823242188,1.0
+2023,6,Jonathan Taylor,"Jonathan Taylor Ind, RB",jonathantaylor,RB,78.0,78.0,observed,False,True,historical_forecast_matched,False,13.10558795928955,61.0
+2023,6,Deandre Hopkins,"DeAndre Hopkins Ten, WR",deandrehopkins,WR,41.0,41.0,observed,False,True,historical_forecast_matched,False,10.746818542480469,29.0
+2023,6,Chris Godwin,"Chris Godwin TB, WR",chrisgodwin,WR,20.0,20.0,observed,False,True,historical_forecast_matched,False,11.012168884277344,25.0
+2023,6,James Cook,"James Cook Buf, RB",jamescook,RB,30.0,30.0,observed,False,True,historical_forecast_matched,False,10.549459457397461,22.0
+2023,6,Marquise Brown,"Marquise Brown Ari, WR",marquisebrown,WR,7.0,7.0,observed,False,True,historical_forecast_matched,False,9.791513442993164,11.0
+2023,6,Antonio Gibson,"Antonio Gibson Wsh, RB",antoniogibson,RB,7.0,7.0,observed,False,True,historical_forecast_matched,False,9.320935249328613,8.0
+2023,6,Jeff Wilson,"Jeff Wilson Jr. Mia, RB",jeffwilson,RB,3.0,3.0,observed,False,True,historical_forecast_matched,False,7.931286811828613,2.0
+2023,6,Tyler Boyd,"Tyler Boyd Cin, WR",tylerboyd,WR,3.0,3.0,observed,False,True,historical_forecast_matched,False,8.111490249633789,1.0
+2023,6,Parris Campbell,"Parris Campbell NYG, WR",parriscampbell,WR,1.0,1.0,observed,False,True,historical_forecast_matched,False,7.996496200561523,1.0
+2023,6,Allen Lazard,"Allen Lazard NYJ, WR",allenlazard,WR,1.0,1.0,observed,False,True,historical_forecast_matched,False,8.512755393981934,1.0
+2023,6,Devante Parker,"DeVante Parker NE, WR",devanteparker,WR,1.0,1.0,observed,False,True,historical_forecast_matched,False,7.850924968719482,1.0
+2023,7,Austin Ekeler,"Austin Ekeler LAC, RB",austinekeler,RB,99.0,99.0,observed,False,True,historical_forecast_matched,False,14.939591407775879,98.0
+2023,7,Joe Mixon,"Joe Mixon Cin, RB",joemixon,RB,66.0,66.0,observed,False,True,historical_forecast_matched,False,11.853934288024902,53.0
+2023,7,Jaxon Smith Njigba,"Jaxon Smith-Njigba Sea, WR",jaxonsmithnjigba,WR,24.0,24.0,observed,False,True,historical_forecast_matched,False,10.535658836364746,13.0
+2023,7,Brandon Aiyuk,"Brandon Aiyuk SF, WR",brandonaiyuk,WR,14.0,14.0,observed,False,True,historical_forecast_matched,False,9.112099647521973,15.0
+2023,7,Juju Smith Schuster,"JuJu Smith-Schuster NE, WR",jujusmithschuster,WR,5.0,5.0,observed,False,True,historical_forecast_matched,False,8.481281280517578,4.0
+2023,7,Cole Kmet,"Cole Kmet Chi, TE",colekmet,TE,1.0,1.0,observed,False,True,historical_forecast_matched,False,7.386777877807617,1.0
+2023,7,Jakobi Meyers,"Jakobi Meyers LV, WR",jakobimeyers,WR,2.0,2.0,observed,False,True,historical_forecast_matched,False,8.848697662353516,3.0
+2023,7,Rondale Moore,"Rondale Moore Ari, WR",rondalemoore,WR,2.0,2.0,observed,False,True,historical_forecast_matched,False,8.884749412536621,1.0
+2023,7,Jalin Hyatt,"Jalin Hyatt NYG, WR",jalinhyatt,WR,2.0,2.0,observed,False,True,historical_forecast_matched,False,8.24759292602539,2.0
+2023,7,Devin Singletary,"Devin Singletary Hou, RB",devinsingletary,RB,1.0,1.0,observed,False,True,historical_forecast_matched,False,8.417492866516113,1.0
+2023,7,Tyjae Spears,"Tyjae Spears Ten, RB",tyjaespears,RB,1.0,1.0,observed,False,True,historical_forecast_matched,False,7.242363929748535,2.0
+2023,8,Josh Jacobs,"Josh Jacobs LV, RB",joshjacobs,RB,69.0,69.0,observed,False,True,historical_forecast_matched,False,13.218626022338867,64.0
+2023,8,Dk Metcalf,"DK Metcalf Sea, WR",dkmetcalf,WR,52.0,52.0,observed,False,True,historical_forecast_matched,False,11.905801773071289,51.0
+2023,8,Christian Watson,"Christian Watson GB, WR",christianwatson,WR,28.0,28.0,observed,False,True,historical_forecast_matched,False,10.768820762634277,29.0
+2023,8,Deebo Samuel,"Deebo Samuel SF, WR",deebosamuel,WR,44.0,44.0,observed,False,True,historical_forecast_matched,False,11.213665962219238,38.0
+2023,8,Tua Tagovailoa,"Tua Tagovailoa Mia, QB",tuatagovailoa,QB,15.0,15.0,observed,False,True,historical_forecast_matched,False,15.845318794250488,1.0
+2023,8,Aaron Rodgers,"Aaron Rodgers NYJ, QB",aaronrodgers,QB,4.0,4.0,observed,False,True,historical_forecast_matched,False,17.180652618408203,1.0
+2023,8,David Njoku,"David Njoku Cle, TE",davidnjoku,TE,6.0,6.0,observed,False,True,historical_forecast_matched,False,8.287044525146484,1.0
+2023,8,Miles Sanders,"Miles Sanders Car, RB",milessanders,RB,29.0,29.0,observed,False,True,historical_forecast_matched,False,10.379416465759277,28.0
+2023,8,Roschon Johnson,"Roschon Johnson Chi, RB",roschonjohnson,RB,1.0,1.0,observed,False,True,historical_forecast_matched,False,7.277883529663086,8.0
+2023,8,Michael Gallup,"Michael Gallup Dal, WR",michaelgallup,WR,1.0,1.0,observed,False,True,historical_forecast_matched,False,7.920121669769287,1.0
+2023,9,Travis Etienne,"Travis Etienne Jr. Jax, RB",travisetienne,RB,69.0,69.0,observed,False,True,historical_forecast_matched,False,11.9462251663208,49.0
+2023,9,Dak Prescott,"Dak Prescott Dal, QB",dakprescott,QB,6.0,6.0,observed,False,True,historical_forecast_matched,False,16.456096649169922,2.0
+2023,9,Mark Andrews,"Mark Andrews Bal, TE",markandrews,TE,43.0,43.0,observed,False,True,historical_forecast_matched,False,11.049697875976562,32.0
+2023,9,Mike Williams,"Mike Williams LAC, WR",mikewilliams,WR,17.0,17.0,observed,False,True,historical_forecast_matched,False,9.462048530578613,18.0
+2023,9,Brandin Cooks,"Brandin Cooks Dal, WR",brandincooks,WR,11.0,11.0,observed,False,True,historical_forecast_matched,False,9.083133697509766,8.0
+2023,9,Courtland Sutton,"Courtland Sutton Den, WR",courtlandsutton,WR,9.0,9.0,observed,False,True,historical_forecast_matched,False,8.89570426940918,8.0
+2023,9,Christian Kirk,"Christian Kirk Jax, WR",christiankirk,WR,15.0,15.0,observed,False,True,historical_forecast_matched,False,9.871798515319824,13.0
+2023,9,Ezekiel Elliott,"Ezekiel Elliott NE, RB",ezekielelliott,RB,7.0,7.0,observed,False,True,historical_forecast_matched,False,8.591774940490723,7.0
+2023,9,Elijah Moore,"Elijah Moore Cle, WR",elijahmoore,WR,4.0,4.0,observed,False,True,historical_forecast_matched,False,8.472122192382812,2.0
+2023,9,Darnell Mooney,"Darnell Mooney Chi, WR",darnellmooney,WR,2.0,2.0,observed,False,True,historical_forecast_matched,False,8.007694244384766,1.0
+2023,9,Damien Harris,"Damien Harris Buf, RB",damienharris,RB,1.0,1.0,observed,False,True,historical_forecast_matched,False,8.36984634399414,2.0
+2023,10,Christian Mccaffrey,"Christian McCaffrey SF, RB",christianmccaffrey,RB,105.0,105.0,observed,False,True,historical_forecast_matched,False,16.125547409057617,99.0
+2023,10,Diontae Johnson,"Diontae Johnson Pit, WR",diontaejohnson,WR,24.0,24.0,observed,False,True,historical_forecast_matched,False,10.41161823272705,23.0
+2023,10,Joe Burrow,"Joe Burrow Cin, QB",joeburrow,QB,15.0,15.0,observed,False,True,historical_forecast_matched,False,17.743188858032227,33.0
+2023,10,George Kittle,"George Kittle SF, TE",georgekittle,TE,35.0,35.0,observed,False,True,historical_forecast_matched,False,9.628485679626465,11.0
+2023,10,Terry Mclaurin,"Terry McLaurin Wsh, WR",terrymclaurin,WR,25.0,25.0,observed,False,True,historical_forecast_matched,False,10.29248046875,20.0
+2023,10,Michael Pittman,"Michael Pittman Jr. Ind, WR",michaelpittman,WR,10.0,10.0,observed,False,True,historical_forecast_matched,False,9.711225509643555,11.0
+2023,10,Jaylen Warren,"Jaylen Warren Pit, RB",jaylenwarren,RB,2.0,2.0,observed,False,True,historical_forecast_matched,False,8.095122337341309,3.0
+2023,10,Matthew Stafford,"Matthew Stafford LAR, QB",matthewstafford,QB,1.0,1.0,observed,False,True,historical_forecast_matched,False,15.127779960632324,1.0
+2023,10,Devon Achane,"De'Von Achane Mia, RB",devonachane,RB,2.0,2.0,observed,False,True,historical_forecast_matched,False,9.86878776550293,9.0
+2023,10,Sam Laporta,"Sam LaPorta Det, TE",samlaporta,TE,1.0,1.0,observed,False,True,historical_forecast_matched,False,6.561712741851807,2.0
+2023,10,Elijah Mitchell,"Elijah Mitchell SF, RB",elijahmitchell,RB,1.0,1.0,observed,False,False,historical_opponent_only,False,7.288125,
+2023,11,Davante Adams,"Davante Adams LV, WR",davanteadams,WR,95.0,95.0,observed,False,True,historical_forecast_matched,False,14.709924697875977,73.0
+2023,11,Najee Harris,"Najee Harris Pit, RB",najeeharris,RB,66.0,66.0,observed,False,True,historical_forecast_matched,False,12.210555076599121,52.0
+2023,11,Trevor Lawrence,"Trevor Lawrence Jax, QB",trevorlawrence,QB,6.0,6.0,observed,False,True,historical_forecast_matched,False,16.885629653930664,9.0
+2023,11,Rachaad White,"Rachaad White TB, RB",rachaadwhite,RB,35.0,35.0,observed,False,True,historical_forecast_matched,False,10.650429725646973,30.0
+2023,11,Kyle Pitts,"Kyle Pitts Atl, TE",kylepitts,TE,14.0,14.0,observed,False,True,historical_forecast_matched,False,8.825201034545898,8.0
+2023,11,Jahan Dotson,"Jahan Dotson Wsh, WR",jahandotson,WR,12.0,12.0,observed,False,True,historical_forecast_matched,False,9.06180477142334,6.0
+2023,11,Skyy Moore,"Skyy Moore KC, WR",skyymoore,WR,12.0,12.0,observed,False,True,historical_forecast_matched,False,8.301566123962402,4.0
+2023,11,Jerick Mckinnon,"Jerick McKinnon KC, RB",jerickmckinnon,RB,1.0,1.0,observed,False,True,historical_forecast_matched,False,8.866061210632324,7.0
+2023,11,Quentin Johnston,"Quentin Johnston LAC, WR",quentinjohnston,WR,5.0,5.0,observed,False,True,historical_forecast_matched,False,9.249512672424316,6.0
+2023,11,Deuce Vaughn,"Deuce Vaughn Dal, RB",deucevaughn,RB,1.0,1.0,observed,False,True,historical_forecast_matched,False,6.028816223144531,2.0
+2023,11,Tyler Higbee,"Tyler Higbee LAR, TE",tylerhigbee,TE,1.0,1.0,observed,False,True,historical_forecast_matched,False,7.2814555168151855,1.0
+2023,11,Mecole Hardman,"Mecole Hardman Jr. NYJ, WR",mecolehardman,WR,1.0,1.0,observed,False,False,historical_opponent_only,False,7.009375,
+2023,12,Josh Allen,"Josh Allen Buf, QB",joshallen,QB,50.0,50.0,observed,False,True,historical_forecast_matched,False,20.420818328857422,48.0
+2023,12,Stefon Diggs,"Stefon Diggs Buf, WR",stefondiggs,WR,84.0,84.0,observed,False,True,historical_forecast_matched,False,14.646162033081055,74.0
+2023,12,Breece Hall,"Breece Hall NYJ, RB",breecehall,RB,34.0,34.0,observed,False,True,historical_forecast_matched,False,11.854406356811523,35.0
+2023,12,Tj Hockenson,"T.J. Hockenson Min, TE",tjhockenson,TE,21.0,21.0,observed,False,True,historical_forecast_matched,False,9.349761009216309,18.0
+2023,12,Dandre Swift,"D'Andre Swift Phi, RB",dandreswift,RB,22.0,22.0,observed,False,True,historical_forecast_matched,False,10.620529174804688,16.0
+2023,12,Aj Dillon,"AJ Dillon GB, RB",ajdillon,RB,11.0,11.0,observed,False,True,historical_forecast_matched,False,8.58859920501709,10.0
+2023,12,Jordan Addison,"Jordan Addison Min, WR",jordanaddison,WR,16.0,16.0,observed,False,True,historical_forecast_matched,False,10.722601890563965,11.0
+2023,12,Cam Akers,"Cam Akers LAR, RB",camakers,RB,27.0,27.0,observed,False,True,historical_forecast_matched,False,10.583456039428711,24.0
+2023,12,Zay Flowers,"Zay Flowers Bal, WR",zayflowers,WR,14.0,14.0,observed,False,True,historical_forecast_matched,False,9.925578117370605,7.0
+2023,12,Dalton Kincaid,"Dalton Kincaid Buf, TE",daltonkincaid,TE,5.0,5.0,observed,False,True,historical_forecast_matched,False,6.433394432067871,2.0
+2023,12,Zach Charbonnet,"Zach Charbonnet Sea, RB",zachcharbonnet,RB,6.0,6.0,observed,False,True,historical_forecast_matched,False,9.514792442321777,11.0
+2023,12,Anthony Richardson,"Anthony Richardson Ind, QB",anthonyrichardson,QB,5.0,5.0,observed,False,True,historical_forecast_matched,False,12.099981307983398,2.0
+2023,12,Zay Jones,"Zay Jones Jax, WR",zayjones,WR,1.0,1.0,observed,False,True,historical_forecast_matched,False,8.569656372070312,1.0
+2023,-1,Missing Skill Slot 1,,__missing_skill_slot_1__,UNK,1.0,,synthetic_contract_fill_one,True,False,synthetic_contract_fill,True,0.0,
+2024,1,Bijan Robinson,"Bijan Robinson Atl, RB",bijanrobinson,RB,96.0,96.0,observed,False,True,historical_forecast_matched,False,17.520583333333335,103.0
+2024,1,Malik Nabers,"Malik Nabers NYG, WR",maliknabers,WR,40.0,40.0,observed,False,True,historical_forecast_matched,False,13.924666666666667,52.0
+2024,1,Jaylen Waddle,"Jaylen Waddle Mia, WR",jaylenwaddle,WR,40.0,40.0,observed,False,True,historical_forecast_matched,False,12.310375,32.0
+2024,1,Nathaniel Dell,"Tank Dell Hou, WR",nathanieldell,WR,21.0,21.0,observed,False,True,historical_forecast_matched,False,11.734125,20.0
+2024,1,Khalil Shakir,"Khalil Shakir Buf, WR",khalilshakir,WR,4.0,4.0,observed,False,True,historical_forecast_matched,False,7.997625,2.0
+2024,1,Bucky Irving,"Bucky Irving TB, RB",buckyirving,RB,2.0,2.0,observed,False,True,historical_forecast_matched,False,6.8992125,2.0
+2024,1,Chase Brown,"Chase Brown Cin, RB",chasebrown,RB,9.0,9.0,observed,False,True,historical_forecast_matched,False,10.006166666666667,8.0
+2024,1,Caleb Williams,"Caleb Williams Chi, QB",calebwilliams,QB,3.0,3.0,observed,False,True,historical_forecast_matched,False,18.441000000000003,4.0
+2024,1,Romeo Doubs,"Romeo Doubs GB, WR",romeodoubs,WR,2.0,2.0,observed,False,True,historical_forecast_matched,False,8.020375000000001,2.0
+2024,1,Dontayvion Wicks,"Dontayvion Wicks GB, WR",dontayvionwicks,WR,1.0,1.0,observed,False,True,historical_forecast_matched,False,7.5045,1.0
+2024,1,Trevor Lawrence,"Trevor Lawrence Jax, QB",trevorlawrence,QB,1.0,1.0,observed,False,True,historical_forecast_matched,False,16.29925,1.0
+2024,2,Marvin Harrison,"Marvin Harrison Jr. Ari, WR",marvinharrison,WR,63.0,63.0,observed,False,True,historical_forecast_matched,False,15.606116666666667,69.0
+2024,2,Justin Jefferson,"Justin Jefferson Min, WR",justinjefferson,WR,74.0,74.0,observed,False,True,historical_forecast_matched,False,16.4255,86.0
+2024,2,Isiah Pacheco,"Isiah Pacheco KC, RB",isiahpacheco,RB,61.0,61.0,observed,False,True,historical_forecast_matched,False,13.2395,74.0
+2024,2,James Cook,"James Cook Buf, RB",jamescook,RB,44.0,44.0,observed,False,True,historical_forecast_matched,False,12.807166666666667,53.0
+2024,2,George Kittle,"George Kittle SF, TE",georgekittle,TE,16.0,16.0,observed,False,True,historical_forecast_matched,False,10.215499999999999,15.0
+2024,2,Christian Watson,"Christian Watson GB, WR",christianwatson,WR,13.0,13.0,observed,False,True,historical_forecast_matched,False,9.490124999999999,9.0
+2024,2,Rome Odunze,"Rome Odunze Chi, WR",romeodunze,WR,13.0,13.0,observed,False,True,historical_forecast_matched,False,10.680266666666668,11.0
+2024,2,Pat Freiermuth,"Pat Freiermuth Pit, TE",patfreiermuth,TE,2.0,2.0,observed,False,True,historical_forecast_matched,False,7.2475,1.0
+2024,2,Matthew Stafford,"Matthew Stafford LAR, QB",matthewstafford,QB,1.0,1.0,observed,False,False,historical_opponent_only,False,16.7,
+2024,2,Ty Chandler,"Ty Chandler Min, RB",tychandler,RB,1.0,1.0,observed,False,True,historical_forecast_matched,False,7.461166666666666,1.0
+2024,2,Rico Dowdle,"Rico Dowdle Dal, RB",ricodowdle,RB,2.0,2.0,observed,False,True,historical_forecast_matched,False,7.921333333333333,1.0
+2024,2,Jayden Daniels,"Jayden Daniels Wsh, QB",jaydendaniels,QB,3.0,3.0,observed,False,True,historical_forecast_matched,False,18.184,5.0
+2024,2,Tyler Allgeier,"Tyler Allgeier Atl, RB",tylerallgeier,RB,2.0,2.0,observed,False,True,historical_forecast_matched,False,7.202083333333333,1.0
+2024,3,Aj Brown,"A.J. Brown Phi, WR",ajbrown,WR,66.0,66.0,observed,False,True,historical_forecast_matched,False,15.593,82.0
+2024,3,Cooper Kupp,"Cooper Kupp LAR, WR",cooperkupp,WR,62.0,62.0,observed,False,True,historical_forecast_matched,False,12.66025,37.0
+2024,3,Zamir White,"Zamir White LV, RB",zamirwhite,RB,21.0,21.0,observed,False,True,historical_forecast_matched,False,10.591916666666668,25.0
+2024,3,Brock Bowers,"Brock Bowers LV, TE",brockbowers,TE,11.0,11.0,observed,False,True,historical_forecast_matched,False,9.138,6.0
+2024,3,Tony Pollard,"Tony Pollard Ten, RB",tonypollard,RB,18.0,18.0,observed,False,True,historical_forecast_matched,False,9.478666666666667,17.0
+2024,3,Adonai Mitchell,"Adonai Mitchell Ind, WR",adonaimitchell,WR,2.0,2.0,observed,False,True,historical_forecast_matched,False,8.434816666666666,2.0
+2024,3,Terry Mclaurin,"Terry McLaurin Wsh, WR",terrymclaurin,WR,21.0,21.0,observed,False,True,historical_forecast_matched,False,9.8805,15.0
+2024,3,Deandre Hopkins,"DeAndre Hopkins Ten, WR",deandrehopkins,WR,9.0,9.0,observed,False,True,historical_forecast_matched,False,8.561,5.0
+2024,3,Brock Purdy,"Brock Purdy SF, QB",brockpurdy,QB,3.0,3.0,observed,False,True,historical_forecast_matched,False,16.75225,3.0
+2024,3,Jameson Williams,"Jameson Williams Det, WR",jamesonwilliams,WR,7.0,7.0,observed,False,True,historical_forecast_matched,False,8.125625,4.0
+2024,3,Kirk Cousins,"Kirk Cousins Atl, QB",kirkcousins,QB,1.0,1.0,observed,False,True,historical_forecast_matched,False,16.09975,1.0
+2024,4,Ceedee Lamb,"CeeDee Lamb Dal, WR",ceedeelamb,WR,88.0,88.0,observed,False,True,historical_forecast_matched,False,17.668374999999997,97.0
+2024,4,Chris Olave,"Chris Olave NO, WR",chrisolave,WR,47.0,47.0,observed,False,True,historical_forecast_matched,False,13.276,60.0
+2024,4,Puka Nacua,"Puka Nacua LAR, WR",pukanacua,WR,57.0,57.0,observed,False,True,historical_forecast_matched,False,14.88075,75.0
+2024,4,Rachaad White,"Rachaad White TB, RB",rachaadwhite,RB,40.0,40.0,observed,False,True,historical_forecast_matched,False,13.369500000000002,60.0
+2024,4,Dak Prescott,"Dak Prescott Dal, QB",dakprescott,QB,7.0,7.0,observed,False,True,historical_forecast_matched,False,19.018500000000003,13.0
+2024,4,David Njoku,"David Njoku Cle, TE",davidnjoku,TE,10.0,10.0,observed,False,True,historical_forecast_matched,False,8.179,4.0
+2024,4,Devin Singletary,"Devin Singletary NYG, RB",devinsingletary,RB,16.0,16.0,observed,False,True,historical_forecast_matched,False,9.296833333333334,13.0
+2024,4,Dallas Goedert,"Dallas Goedert Phi, TE",dallasgoedert,TE,1.0,1.0,observed,False,True,historical_forecast_matched,False,7.5969999999999995,2.0
+2024,4,Chuba Hubbard,"Chuba Hubbard Car, RB",chubahubbard,RB,3.0,3.0,observed,False,True,historical_forecast_matched,False,7.940166666666666,2.0
+2024,4,Skyy Moore,"Skyy Moore KC, WR",skyymoore,WR,2.0,2.0,observed,False,True,historical_forecast_matched,False,3.3200000000000003,2.0
+2024,5,Devon Achane,"De'Von Achane Mia, RB",devonachane,RB,72.0,72.0,observed,False,True,historical_forecast_matched,False,13.614416666666665,51.0
+2024,5,Anthony Richardson,"Anthony Richardson Ind, QB",anthonyrichardson,QB,17.0,17.0,observed,False,True,historical_forecast_matched,False,19.668,15.0
+2024,5,Amari Cooper,"Amari Cooper Cle, WR",amaricooper,WR,20.0,20.0,observed,False,True,historical_forecast_matched,False,10.728375,22.0
+2024,5,Dj Moore,"DJ Moore Chi, WR",djmoore,WR,30.0,30.0,observed,False,True,historical_forecast_matched,False,11.745000000000001,40.0
+2024,5,Aaron Jones,"Aaron Jones Min, RB",aaronjones,RB,32.0,32.0,observed,False,True,historical_forecast_matched,False,10.229333333333333,26.0
+2024,5,Brian Robinson,"Brian Robinson Jr. Wsh, RB",brianrobinson,RB,20.0,20.0,observed,False,True,historical_forecast_matched,False,10.0235,18.0
+2024,5,Ladd Mcconkey,"Ladd McConkey LAC, WR",laddmcconkey,WR,9.0,9.0,observed,False,True,historical_forecast_matched,False,9.928983333333333,9.0
+2024,5,Jordan Love,"Jordan Love GB, QB",jordanlove,QB,6.0,6.0,observed,False,True,historical_forecast_matched,False,16.151,5.0
+2024,5,Najee Harris,"Najee Harris Pit, RB",najeeharris,RB,28.0,28.0,observed,False,True,historical_forecast_matched,False,11.231250000000001,22.0
+2024,5,Taysom Hill,"Taysom Hill NO, TE",taysomhill,TE,1.0,1.0,observed,False,False,historical_opponent_only,False,6.0425,
+2024,5,Dalton Schultz,"Dalton Schultz Hou, TE",daltonschultz,TE,1.0,1.0,observed,False,True,historical_forecast_matched,False,7.359,1.0
+2024,6,Josh Allen,"Josh Allen Buf, QB",joshallen,QB,36.0,36.0,observed,False,True,historical_forecast_matched,False,22.5275,38.0
+2024,6,Drake London,"Drake London Atl, WR",drakelondon,WR,49.0,49.0,observed,False,True,historical_forecast_matched,False,12.902124999999998,53.0
+2024,6,Dk Metcalf,"DK Metcalf Sea, WR",dkmetcalf,WR,48.0,48.0,observed,False,True,historical_forecast_matched,False,12.28525,42.0
+2024,6,Josh Jacobs,"Josh Jacobs GB, RB",joshjacobs,RB,47.0,47.0,observed,False,True,historical_forecast_matched,False,12.012500000000001,49.0
+2024,6,D'Andre Swift,"D'Andre Swift Chi, RB",dandreswift,RB,32.0,32.0,observed,False,True,historical_forecast_matched,False,10.001583333333333,25.0
+2024,6,Devonta Smith,"DeVonta Smith Phi, WR",devontasmith,WR,40.0,40.0,observed,False,True,historical_forecast_matched,False,12.64125,34.0
+2024,6,Mark Andrews,"Mark Andrews Bal, TE",markandrews,TE,28.0,28.0,observed,False,True,historical_forecast_matched,False,10.872,21.0
+2024,6,Austin Ekeler,"Austin Ekeler Wsh, RB",austinekeler,RB,7.0,7.0,observed,False,True,historical_forecast_matched,False,8.951833333333333,12.0
+2024,6,Jordan Addison,"Jordan Addison Min, WR",jordanaddison,WR,5.0,5.0,observed,False,True,historical_forecast_matched,False,10.13875,8.0
+2024,6,Curtis Samuel,"Curtis Samuel Buf, WR",curtissamuel,WR,2.0,2.0,observed,False,True,historical_forecast_matched,False,7.145250000000001,1.0
+2024,6,Antonio Gibson,"Antonio Gibson NE, RB",antoniogibson,RB,1.0,1.0,observed,False,True,historical_forecast_matched,False,6.961500000000001,1.0
+2024,6,Darnell Mooney,"Darnell Mooney Atl, WR",darnellmooney,WR,1.0,1.0,observed,False,True,historical_forecast_matched,False,6.989000000000001,1.0
+2024,6,Justin Herbert,"Justin Herbert LAC, QB",justinherbert,QB,1.0,1.0,observed,False,True,historical_forecast_matched,False,16.466749999999998,1.0
+2024,7,Christian Mccaffrey,"Christian McCaffrey SF, RB",christianmccaffrey,RB,108.0,108.0,observed,False,True,historical_forecast_matched,False,18.787916666666664,112.0
+2024,7,Alvin Kamara,"Alvin Kamara NO, RB",alvinkamara,RB,46.0,46.0,observed,False,True,historical_forecast_matched,False,11.645916666666666,55.0
+2024,7,Travis Kelce,"Travis Kelce KC, TE",traviskelce,TE,46.0,46.0,observed,False,True,historical_forecast_matched,False,11.914,37.0
+2024,7,Jalen Hurts,"Jalen Hurts Phi, QB",jalenhurts,QB,27.0,27.0,observed,False,True,historical_forecast_matched,False,22.695999999999998,38.0
+2024,7,Zack Moss,"Zack Moss Cin, RB",zackmoss,RB,14.0,14.0,observed,False,True,historical_forecast_matched,False,8.565583333333334,10.0
+2024,7,Jakobi Meyers,"Jakobi Meyers LV, WR",jakobimeyers,WR,3.0,3.0,observed,False,True,historical_forecast_matched,False,7.88725,3.0
+2024,7,Jerome Ford,"Jerome Ford Cle, RB",jeromeford,RB,14.0,14.0,observed,False,True,historical_forecast_matched,False,8.509166666666667,5.0
+2024,7,Tj Hockenson,"T.J. Hockenson Min, TE",tjhockenson,TE,1.0,1.0,observed,False,True,historical_forecast_matched,False,7.964499999999999,2.0
+2024,7,Xavier Legette,"Xavier Legette Car, WR",xavierlegette,WR,1.0,1.0,observed,False,True,historical_forecast_matched,False,8.293566666666667,2.0
+2024,7,Marshawn Lloyd,"MarShawn Lloyd GB, RB",marshawnlloyd,RB,1.0,1.0,observed,False,True,historical_forecast_matched,False,7.0734125,1.0
+2024,7,Jaleel Mclaughlin,"Jaleel McLaughlin Den, RB",jaleelmclaughlin,RB,1.0,1.0,observed,False,True,historical_forecast_matched,False,6.942666666666667,1.0
+2024,8,Saquon Barkley,"Saquon Barkley Phi, RB",saquonbarkley,RB,97.0,97.0,observed,False,True,historical_forecast_matched,False,14.439999999999998,89.0
+2024,8,Jaylen Wright,"Jaylen Wright Mia, RB",jaylenwright,RB,1.0,1.0,observed,False,False,historical_opponent_only,False,3.28,
+2024,8,Davante Adams,"Davante Adams LV, WR",davanteadams,WR,39.0,39.0,observed,False,True,historical_forecast_matched,False,13.198625,59.0
+2024,8,Trey Benson,"Trey Benson Ari, RB",treybenson,RB,9.0,9.0,observed,False,True,historical_forecast_matched,False,8.002537499999999,4.0
+2024,8,Stefon Diggs,"Stefon Diggs Hou, WR",stefondiggs,WR,37.0,37.0,observed,False,True,historical_forecast_matched,False,11.794625,35.0
+2024,8,Evan Engram,"Evan Engram Jax, TE",evanengram,TE,9.0,9.0,observed,False,True,historical_forecast_matched,False,8.219,16.0
+2024,8,Diontae Johnson,"Diontae Johnson Car, WR",diontaejohnson,WR,8.0,8.0,observed,False,True,historical_forecast_matched,False,9.541625,12.0
+2024,8,Aaron Rodgers,"Aaron Rodgers NYJ, QB",aaronrodgers,QB,3.0,3.0,observed,False,True,historical_forecast_matched,False,15.528500000000001,1.0
+2024,8,Jayden Reed,"Jayden Reed GB, WR",jaydenreed,WR,8.0,8.0,observed,False,True,historical_forecast_matched,False,10.262125000000001,12.0
+2024,8,Jonathon Brooks,"Jonathon Brooks Car, RB",jonathonbrooks,RB,3.0,3.0,observed,False,True,historical_forecast_matched,False,9.75983625,16.0
+2024,8,Adam Thielen,"Adam Thielen Car, WR",adamthielen,WR,2.0,2.0,observed,False,True,historical_forecast_matched,False,7.336749999999999,1.0
+2024,9,Rashee Rice,"Rashee Rice KC, WR",rasheerice,WR,26.0,26.0,observed,False,True,historical_forecast_matched,False,12.04475,16.0
+2024,9,Joe Mixon,"Joe Mixon Hou, RB",joemixon,RB,52.0,52.0,observed,False,True,historical_forecast_matched,False,11.90975,52.0
+2024,9,Jaxon Smith Njigba,"Jaxon Smith-Njigba Sea, WR",jaxonsmithnjigba,WR,17.0,17.0,observed,False,True,historical_forecast_matched,False,9.991625,11.0
+2024,9,Chris Godwin,"Chris Godwin TB, WR",chrisgodwin,WR,10.0,10.0,observed,False,True,historical_forecast_matched,False,10.061125,18.0
+2024,9,Kyler Murray,"Kyler Murray Ari, QB",kylermurray,QB,13.0,13.0,observed,False,True,historical_forecast_matched,False,18.235750000000003,7.0
+2024,9,Tee Higgins,"Tee Higgins Cin, WR",teehiggins,WR,40.0,40.0,observed,False,True,historical_forecast_matched,False,11.551625000000001,25.0
+2024,9,Jake Ferguson,"Jake Ferguson Dal, TE",jakeferguson,TE,8.0,8.0,observed,False,True,historical_forecast_matched,False,8.666,6.0
+2024,9,Zach Charbonnet,"Zach Charbonnet Sea, RB",zachcharbonnet,RB,3.0,3.0,observed,False,True,historical_forecast_matched,False,7.713583333333333,1.0
+2024,9,Jerry Jeudy,"Jerry Jeudy Cle, WR",jerryjeudy,WR,3.0,3.0,observed,False,True,historical_forecast_matched,False,8.08175,1.0
+2024,9,Miles Sanders,"Miles Sanders Car, RB",milessanders,RB,1.0,1.0,observed,False,False,historical_opponent_only,False,4.225,
+2024,9,Khalil Herbert,"Khalil Herbert Chi, RB",khalilherbert,RB,1.0,1.0,observed,False,True,historical_forecast_matched,False,6.933916666666666,1.0
+2024,10,Tyreek Hill,"Tyreek Hill Mia, WR",tyreekhill,WR,104.0,104.0,observed,False,True,historical_forecast_matched,False,17.386625,95.0
+2024,10,Patrick Mahomes,"Patrick Mahomes KC, QB",patrickmahomes,QB,33.0,33.0,observed,False,True,historical_forecast_matched,False,20.3765,27.0
+2024,10,Derrick Henry,"Derrick Henry Bal, RB",derrickhenry,RB,78.0,78.0,observed,False,True,historical_forecast_matched,False,13.927166666666666,67.0
+2024,10,Ezekiel Elliott,"Ezekiel Elliott Dal, RB",ezekielelliott,RB,8.0,8.0,observed,False,True,historical_forecast_matched,False,8.858166666666667,9.0
+2024,10,Xavier Worthy,"Xavier Worthy KC, WR",xavierworthy,WR,26.0,26.0,observed,False,True,historical_forecast_matched,False,11.040216666666666,12.0
+2024,10,Jk Dobbins,"J.K. Dobbins LAC, RB",jkdobbins,RB,7.0,7.0,observed,False,True,historical_forecast_matched,False,7.7145,2.0
+2024,10,Marquise Brown,"Marquise Brown KC, WR",marquisebrown,WR,2.0,2.0,observed,False,True,historical_forecast_matched,False,7.936875,4.0
+2024,10,Justice Hill,"Justice Hill Bal, RB",justicehill,RB,4.0,4.0,observed,False,False,historical_opponent_only,False,4.705625,
+2024,10,Brian Thomas,"Brian Thomas Jr. Jax, WR",brianthomas,WR,3.0,3.0,observed,False,True,historical_forecast_matched,False,10.273216666666668,8.0
+2024,10,Rashid Shaheed,"Rashid Shaheed NO, WR",rashidshaheed,WR,1.0,1.0,observed,False,True,historical_forecast_matched,False,7.78675,1.0
+2024,10,Brandin Cooks,"Brandin Cooks Dal, WR",brandincooks,WR,1.0,1.0,observed,False,True,historical_forecast_matched,False,7.5275,1.0
+2024,11,Tyjae Spears,"Tyjae Spears Ten, RB",tyjaespears,RB,25.0,25.0,observed,False,True,historical_forecast_matched,False,10.245166666666668,13.0
+2024,11,Jonathan Taylor,"Jonathan Taylor Ind, RB",jonathantaylor,RB,102.0,102.0,observed,False,True,historical_forecast_matched,False,14.97775,91.0
+2024,11,David Montgomery,"David Montgomery Det, RB",davidmontgomery,RB,37.0,37.0,observed,False,True,historical_forecast_matched,False,10.74425,24.0
+2024,11,Cj Stroud,"C.J. Stroud Hou, QB",cjstroud,QB,21.0,21.0,observed,False,True,historical_forecast_matched,False,18.291000000000004,18.0
+2024,11,Deebo Samuel,"Deebo Samuel Sr. SF, WR",deebosamuel,WR,55.0,55.0,observed,False,True,historical_forecast_matched,False,13.21125,45.0
+2024,11,Keenan Allen,"Keenan Allen Chi, WR",keenanallen,WR,19.0,19.0,observed,False,True,historical_forecast_matched,False,9.91025,15.0
+2024,11,Christian Kirk,"Christian Kirk Jax, WR",christiankirk,WR,11.0,11.0,observed,False,True,historical_forecast_matched,False,9.992750000000001,14.0
+2024,11,Kyle Pitts,"Kyle Pitts Atl, TE",kylepitts,TE,10.0,10.0,observed,False,True,historical_forecast_matched,False,9.9415,12.0
+2024,11,Courtland Sutton,"Courtland Sutton Den, WR",courtlandsutton,WR,4.0,4.0,observed,False,True,historical_forecast_matched,False,8.51375,6.0
+2024,11,Gus Edwards,"Gus Edwards LAC, RB",gusedwards,RB,7.0,7.0,observed,False,True,historical_forecast_matched,False,8.41375,8.0
+2024,11,Joshua Palmer,"Joshua Palmer LAC, WR",joshuapalmer,WR,2.0,2.0,observed,False,True,historical_forecast_matched,False,7.946875,1.0
+2024,11,Mike Williams,"Mike Williams NYJ, WR",mikewilliams,WR,1.0,1.0,observed,False,True,historical_forecast_matched,False,7.222250000000001,1.0
+2024,11,Cole Kmet,"Cole Kmet Chi, TE",colekmet,TE,2.0,2.0,observed,False,True,historical_forecast_matched,False,6.041,1.0
+2024,12,Lamar Jackson,"Lamar Jackson Bal, QB",lamarjackson,QB,39.0,39.0,observed,False,True,historical_forecast_matched,False,20.46675,22.0
+2024,12,Mike Evans,"Mike Evans TB, WR",mikeevans,WR,44.0,44.0,observed,False,True,historical_forecast_matched,False,12.683875,53.0
+2024,12,Zay Flowers,"Zay Flowers Bal, WR",zayflowers,WR,25.0,25.0,observed,False,True,historical_forecast_matched,False,11.903,27.0
+2024,12,Joe Burrow,"Joe Burrow Cin, QB",joeburrow,QB,17.0,17.0,observed,False,True,historical_forecast_matched,False,18.8525,13.0
+2024,12,Calvin Ridley,"Calvin Ridley Ten, WR",calvinridley,WR,28.0,28.0,observed,False,True,historical_forecast_matched,False,10.614374999999999,21.0
+2024,12,Keon Coleman,"Keon Coleman Buf, WR",keoncoleman,WR,11.0,11.0,observed,False,True,historical_forecast_matched,False,10.19975,12.0
+2024,12,Javonte Williams,"Javonte Williams Den, RB",javontewilliams,RB,17.0,17.0,observed,False,True,historical_forecast_matched,False,10.057749999999999,17.0
+2024,12,Nick Chubb,"Nick Chubb Cle, RB",nickchubb,RB,10.0,10.0,observed,False,True,historical_forecast_matched,False,8.709,7.0
+2024,12,Blake Corum,"Blake Corum LAR, RB",blakecorum,RB,9.0,9.0,observed,False,True,historical_forecast_matched,False,7.4621,6.0
+2024,12,Jaylen Warren,"Jaylen Warren Pit, RB",jaylenwarren,RB,11.0,11.0,observed,False,True,historical_forecast_matched,False,9.566833333333333,15.0
+2024,12,Tyler Lockett,"Tyler Lockett Sea, WR",tylerlockett,WR,2.0,2.0,observed,False,True,historical_forecast_matched,False,7.722624999999999,2.0
+2024,-1,Missing Skill Slot 1,,__missing_skill_slot_1__,UNK,1.0,,synthetic_contract_fill_one,True,False,synthetic_contract_fill,True,0.0,
+2025,1,Ceedee Lamb,"CeeDee Lamb Dal, WR",ceedeelamb,WR,82.0,82.0,observed,False,True,historical_forecast_matched,False,16.49225,91.0
+2025,1,Malik Nabers,"Malik Nabers NYG, WR",maliknabers,WR,73.0,73.0,observed,False,True,historical_forecast_matched,False,16.02675,80.0
+2025,1,Emeka Egbuka,"Emeka Egbuka TB, WR",emekaegbuka,WR,27.0,27.0,observed,False,True,historical_forecast_matched,False,12.24345,13.0
+2025,1,Tet Mcmillan,"Tetairoa McMillan Car, WR",tetmcmillan,WR,25.0,25.0,observed,False,True,historical_forecast_matched,False,12.363487500000002,24.0
+2025,1,Rj Harvey,"RJ Harvey Den, RB",rjharvey,RB,29.0,29.0,observed,False,True,historical_forecast_matched,False,12.545966666666668,27.0
+2025,1,Ricky Pearsall,"Ricky Pearsall SF, WR",rickypearsall,WR,16.0,16.0,observed,False,True,historical_forecast_matched,False,11.0277,12.0
+2025,1,Tyler Warren,"Tyler Warren Ind, TE",tylerwarren,TE,8.0,8.0,observed,False,True,historical_forecast_matched,False,10.2264,5.0
+2025,1,Bhayshul Tuten,"Bhayshul Tuten Jax, RB",bhayshultuten,RB,1.0,1.0,observed,False,True,historical_forecast_matched,False,7.440633333333333,2.0
+2025,1,Ray Davis,"Ray Davis Buf, RB",raydavis,RB,2.0,2.0,observed,False,True,historical_forecast_matched,False,6.881,2.0
+2025,1,Drake Maye,"Drake Maye NE, QB",drakemaye,QB,1.0,1.0,observed,False,True,historical_forecast_matched,False,14.78925,2.0
+2025,1,Ollie Gordon,"Ollie Gordon II Mia, RB",olliegordon,RB,1.0,1.0,observed,False,False,historical_opponent_only,False,3.311875,
+2025,2,Bijan Robinson,"Bijan Robinson Atl, RB",bijanrobinson,RB,103.0,103.0,observed,False,True,historical_forecast_matched,False,18.786,110.0
+2025,2,Saquon Barkley,"Saquon Barkley Phi, RB",saquonbarkley,RB,109.0,109.0,observed,False,True,historical_forecast_matched,False,17.972,104.0
+2025,2,Jameson Williams,"Jameson Williams Det, WR",jamesonwilliams,WR,21.0,21.0,observed,False,True,historical_forecast_matched,False,10.42975,23.0
+2025,2,Matthew Golden,"Matthew Golden GB, WR",matthewgolden,WR,30.0,30.0,observed,False,True,historical_forecast_matched,False,10.9345,13.0
+2025,2,Michael Pittman,"Michael Pittman Jr. Ind, WR",michaelpittman,WR,8.0,8.0,observed,False,True,historical_forecast_matched,False,9.1885,8.0
+2025,2,Deebo Samuel,"Deebo Samuel Wsh, WR",deebosamuel,WR,7.0,7.0,observed,False,True,historical_forecast_matched,False,9.88975,12.0
+2025,2,Kyle Pitts,"Kyle Pitts Sr. Atl, TE",kylepitts,TE,4.0,4.0,observed,False,True,historical_forecast_matched,False,7.282999999999999,2.0
+2025,2,Jaydon Blue,"Jaydon Blue Dal, RB",jaydonblue,RB,6.0,6.0,observed,False,True,historical_forecast_matched,False,8.048266666666667,2.0
+2025,2,Dak Prescott,"Dak Prescott Dal, QB",dakprescott,QB,3.0,3.0,observed,False,True,historical_forecast_matched,False,16.688499999999998,3.0
+2025,2,Marvin Mims,"Marvin Mims Jr. Den, WR",marvinmims,WR,4.0,4.0,observed,False,True,historical_forecast_matched,False,7.8955,2.0
+2025,2,Brian Robinson,"Brian Robinson Jr. SF, RB",brianrobinson,RB,1.0,1.0,observed,False,True,historical_forecast_matched,False,6.831375,4.0
+2025,2,Elic Ayomanor,"Elic Ayomanor Ten, WR",elicayomanor,WR,1.0,1.0,observed,False,False,historical_opponent_only,False,4.9625,
+2025,2,Tyler Allgeier,"Tyler Allgeier Atl, RB",tylerallgeier,RB,1.0,1.0,observed,False,True,historical_forecast_matched,False,6.382875,2.0
+2025,3,Ashton Jeanty,"Ashton Jeanty LV, RB",ashtonjeanty,RB,100.0,100.0,observed,False,True,historical_forecast_matched,False,17.2194,88.0
+2025,3,Xavier Worthy,"Xavier Worthy KC, WR",xavierworthy,WR,28.0,28.0,observed,False,True,historical_forecast_matched,False,12.38925,31.0
+2025,3,Travis Hunter,"Travis Hunter Jax, WR",travishunter,WR,27.0,27.0,observed,False,True,historical_forecast_matched,False,11.9375,19.0
+2025,3,Mike Evans,"Mike Evans TB, WR",mikeevans,WR,31.0,31.0,observed,False,True,historical_forecast_matched,False,12.33175,38.0
+2025,3,George Pickens,"George Pickens Dal, WR",georgepickens,WR,29.0,29.0,observed,False,True,historical_forecast_matched,False,11.83896,22.0
+2025,3,Joe Mixon,"Joe Mixon Hou, RB",joemixon,RB,12.0,12.0,observed,False,True,historical_forecast_matched,False,9.951,13.0
+2025,3,Brock Purdy,"Brock Purdy SF, QB",brockpurdy,QB,4.0,4.0,observed,False,True,historical_forecast_matched,False,16.8915,3.0
+2025,3,Cam Skattebo,"Cam Skattebo NYG, RB",camskattebo,RB,8.0,8.0,observed,False,True,historical_forecast_matched,False,8.64225,7.0
+2025,3,Josh Downs,"Josh Downs Ind, WR",joshdowns,WR,2.0,2.0,observed,False,True,historical_forecast_matched,False,8.8205,6.0
+2025,3,Keenan Allen,"Keenan Allen LAC, WR",keenanallen,WR,2.0,2.0,observed,False,True,historical_forecast_matched,False,8.01175,2.0
+2025,3,Brandon Aiyuk,"Brandon Aiyuk SF, WR",brandonaiyuk,WR,2.0,2.0,observed,False,True,historical_forecast_matched,False,7.2575,2.0
+2025,4,David Njoku,"David Njoku Cle, TE",davidnjoku,TE,8.0,8.0,observed,False,True,historical_forecast_matched,False,8.014,5.0
+2025,4,Marvin Harrison,"Marvin Harrison Jr. Ari, WR",marvinharrison,WR,36.0,36.0,observed,False,True,historical_forecast_matched,False,12.70475,37.0
+2025,4,Dk Metcalf,"DK Metcalf Pit, WR",dkmetcalf,WR,41.0,41.0,observed,False,True,historical_forecast_matched,False,11.701,31.0
+2025,4,Baker Mayfield,"Baker Mayfield TB, QB",bakermayfield,QB,11.0,11.0,observed,False,True,historical_forecast_matched,False,16.9985,10.0
+2025,4,Alvin Kamara,"Alvin Kamara NO, RB",alvinkamara,RB,52.0,52.0,observed,False,True,historical_forecast_matched,False,12.9615,46.0
+2025,4,Devonta Smith,"DeVonta Smith Phi, WR",devontasmith,WR,25.0,25.0,observed,False,True,historical_forecast_matched,False,11.5935,24.0
+2025,4,Dj Moore,"DJ Moore Chi, WR",djmoore,WR,26.0,26.0,observed,False,True,historical_forecast_matched,False,11.444,31.0
+2025,4,Aaron Jones,"Aaron Jones Sr. Min, RB",aaronjones,RB,23.0,23.0,observed,False,True,historical_forecast_matched,False,10.839375,25.0
+2025,4,Isiah Pacheco,"Isiah Pacheco KC, RB",isiahpacheco,RB,26.0,26.0,observed,False,True,historical_forecast_matched,False,10.738125,23.0
+2025,4,Dallas Goedert,"Dallas Goedert Phi, TE",dallasgoedert,TE,2.0,2.0,observed,False,True,historical_forecast_matched,False,7.4695,2.0
+2025,4,Kyler Murray,"Kyler Murray Ari, QB",kylermurray,QB,3.0,3.0,observed,False,True,historical_forecast_matched,False,17.245,5.0
+2025,5,Treveyon Henderson,"TreVeyon Henderson NE, RB",treveyonhenderson,RB,43.0,43.0,observed,False,True,historical_forecast_matched,False,13.47857,42.0
+2025,5,Amon Ra St Brown,"Amon-Ra St. Brown Det, WR",amonrastbrown,WR,83.0,83.0,observed,False,True,historical_forecast_matched,False,15.42325,79.0
+2025,5,Jayden Daniels,"Jayden Daniels Wsh, QB",jaydendaniels,QB,37.0,37.0,observed,False,True,historical_forecast_matched,False,21.133,36.0
+2025,5,Omarion Hampton,"Omarion Hampton LAC, RB",omarionhampton,RB,57.0,57.0,observed,False,True,historical_forecast_matched,False,14.8052,54.0
+2025,5,Kaleb Johnson,"Kaleb Johnson Pit, RB",kalebjohnson,RB,11.0,11.0,observed,False,True,historical_forecast_matched,False,11.119216666666668,21.0
+2025,5,Jk Dobbins,"J.K. Dobbins Den, RB",jkdobbins,RB,5.0,5.0,observed,False,True,historical_forecast_matched,False,8.217500000000001,9.0
+2025,5,Jacory Croskey Merritt,"Jacory Croskey-Merritt Wsh, RB",jacorycroskeymerritt,RB,19.0,19.0,observed,False,True,historical_forecast_matched,False,9.781783333333331,7.0
+2025,5,Jakobi Meyers,"Jakobi Meyers LV, WR",jakobimeyers,WR,14.0,14.0,observed,False,True,historical_forecast_matched,False,9.98925,14.0
+2025,5,Mark Andrews,"Mark Andrews Bal, TE",markandrews,TE,4.0,4.0,observed,False,True,historical_forecast_matched,False,9.454,7.0
+2025,5,Braelon Allen,"Braelon Allen NYJ, RB",braelonallen,RB,1.0,1.0,observed,False,True,historical_forecast_matched,False,6.977125,2.0
+2025,5,Colston Loveland,"Colston Loveland Chi, TE",colstonloveland,TE,3.0,3.0,observed,False,True,historical_forecast_matched,False,8.062,3.0
+2025,5,Joshua Palmer,"Joshua Palmer Buf, WR",joshuapalmer,WR,1.0,1.0,observed,False,True,historical_forecast_matched,False,6.62,2.0
+2025,6,Josh Allen,"Josh Allen Buf, QB",joshallen,QB,46.0,46.0,observed,False,True,historical_forecast_matched,False,22.0425,46.0
+2025,6,Josh Jacobs,"Josh Jacobs GB, RB",joshjacobs,RB,57.0,57.0,observed,False,True,historical_forecast_matched,False,15.362125,57.0
+2025,6,George Kittle,"George Kittle SF, TE",georgekittle,TE,40.0,40.0,observed,False,True,historical_forecast_matched,False,11.686,35.0
+2025,6,Terry Mclaurin,"Terry McLaurin Wsh, WR",terrymclaurin,WR,36.0,36.0,observed,False,True,historical_forecast_matched,False,11.836,39.0
+2025,6,Tee Higgins,"Tee Higgins Cin, WR",teehiggins,WR,69.0,69.0,observed,False,True,historical_forecast_matched,False,12.925,52.0
+2025,6,Tony Pollard,"Tony Pollard Ten, RB",tonypollard,RB,27.0,27.0,observed,False,True,historical_forecast_matched,False,10.965,25.0
+2025,6,Keon Coleman,"Keon Coleman Buf, WR",keoncoleman,WR,5.0,5.0,observed,False,True,historical_forecast_matched,False,8.7505,6.0
+2025,6,Chris Godwin,"Chris Godwin TB, WR",chrisgodwin,WR,7.0,7.0,observed,False,True,historical_forecast_matched,False,8.745999999999999,11.0
+2025,6,Jordan Mason,"Jordan Mason Min, RB",jordanmason,RB,7.0,7.0,observed,False,True,historical_forecast_matched,False,8.676625000000001,10.0
+2025,6,Jake Ferguson,"Jake Ferguson Dal, TE",jakeferguson,TE,1.0,1.0,observed,False,True,historical_forecast_matched,False,7.35,2.0
+2025,6,Cedric Tillman,"Cedric Tillman Cle, WR",cedrictillman,WR,1.0,1.0,observed,False,True,historical_forecast_matched,False,7.27275,2.0
+2025,6,Dylan Sampson,"Dylan Sampson Cle, RB",dylansampson,RB,1.0,1.0,observed,False,True,historical_forecast_matched,False,7.999249999999999,2.0
+2025,6,Najee Harris,"Najee Harris LAC, RB",najeeharris,RB,1.0,1.0,observed,False,True,historical_forecast_matched,False,7.204625,2.0
+2025,7,Lamar Jackson,"Lamar Jackson Bal, QB",lamarjackson,QB,41.0,41.0,observed,False,True,historical_forecast_matched,False,21.48975,42.0
+2025,7,Justin Jefferson,"Justin Jefferson Min, WR",justinjefferson,WR,91.0,91.0,observed,False,True,historical_forecast_matched,False,16.7485,92.0
+2025,7,James Conner,"James Conner Ari, RB",jamesconner,RB,32.0,32.0,observed,False,True,historical_forecast_matched,False,12.677,40.0
+2025,7,Trevor Lawrence,"Trevor Lawrence Jax, QB",trevorlawrence,QB,2.0,2.0,observed,False,True,historical_forecast_matched,False,15.755,2.0
+2025,7,Garrett Wilson,"Garrett Wilson NYJ, WR",garrettwilson,WR,27.0,27.0,observed,False,True,historical_forecast_matched,False,12.618,43.0
+2025,7,Sam Laporta,"Sam LaPorta Det, TE",samlaporta,TE,14.0,14.0,observed,False,True,historical_forecast_matched,False,10.051,17.0
+2025,7,Quinshon Judkins,"Quinshon Judkins Cle, RB",quinshonjudkins,RB,20.0,20.0,observed,False,True,historical_forecast_matched,False,7.602824999999999,7.0
+2025,7,Jaylen Warren,"Jaylen Warren Pit, RB",jaylenwarren,RB,12.0,12.0,observed,False,True,historical_forecast_matched,False,9.515875,16.0
+2025,7,David Montgomery,"David Montgomery Det, RB",davidmontgomery,RB,32.0,32.0,observed,False,True,historical_forecast_matched,False,10.878,27.0
+2025,7,Tyrone Tracy,"Tyrone Tracy Jr. NYG, RB",tyronetracy,RB,12.0,12.0,observed,False,True,historical_forecast_matched,False,10.74725,18.0
+2025,7,Cooper Kupp,"Cooper Kupp Sea, WR",cooperkupp,WR,10.0,10.0,observed,False,True,historical_forecast_matched,False,9.25575,9.0
+2025,7,Jayden Higgins,"Jayden Higgins Hou, WR",jaydenhiggins,WR,4.0,4.0,observed,False,True,historical_forecast_matched,False,8.863125,4.0
+2025,7,Jerome Ford,"Jerome Ford Cle, RB",jeromeford,RB,1.0,1.0,observed,False,True,historical_forecast_matched,False,7.434625,2.0
+2025,8,Aj Brown,"A.J. Brown Phi, WR",ajbrown,WR,56.0,56.0,observed,False,True,historical_forecast_matched,False,13.90175,65.0
+2025,8,Drake London,"Drake London Atl, WR",drakelondon,WR,62.0,62.0,observed,False,True,historical_forecast_matched,False,13.79475,67.0
+2025,8,Jonathan Taylor,"Jonathan Taylor Ind, RB",jonathantaylor,RB,94.0,94.0,observed,False,True,historical_forecast_matched,False,15.420625,74.0
+2025,8,Bo Nix,"Bo Nix Den, QB",bonix,QB,5.0,5.0,observed,False,True,historical_forecast_matched,False,16.63025,2.0
+2025,8,Rhamondre Stevenson,"Rhamondre Stevenson NE, RB",rhamondrestevenson,RB,6.0,6.0,observed,False,True,historical_forecast_matched,False,8.39775,6.0
+2025,8,Javonte Williams,"Javonte Williams Dal, RB",javontewilliams,RB,7.0,7.0,observed,False,True,historical_forecast_matched,False,8.330874999999999,7.0
+2025,8,Tyjae Spears,"Tyjae Spears Ten, RB",tyjaespears,RB,3.0,3.0,observed,False,True,historical_forecast_matched,False,7.373,3.0
+2025,8,Darren Waller,"Darren Waller Mia, TE",darrenwaller,TE,1.0,1.0,observed,False,False,historical_opponent_only,False,7.078125,
+2025,8,Nick Chubb,"Nick Chubb Hou, RB",nickchubb,RB,1.0,1.0,observed,False,True,historical_forecast_matched,False,7.1373750000000005,2.0
+2025,8,Adam Thielen,"Adam Thielen Car, WR",adamthielen,WR,1.0,1.0,observed,False,True,historical_forecast_matched,False,7.3775,2.0
+2025,8,Xavier Legette,"Xavier Legette Car, WR",xavierlegette,WR,1.0,1.0,observed,False,True,historical_forecast_matched,False,7.302,2.0
+2025,9,Patrick Mahomes,"Patrick Mahomes KC, QB",patrickmahomes,QB,22.0,22.0,observed,False,True,historical_forecast_matched,False,18.9565,14.0
+2025,9,Breece Hall,"Breece Hall NYJ, RB",breecehall,RB,43.0,43.0,observed,False,True,historical_forecast_matched,False,12.578125,42.0
+2025,9,Trey Mcbride,"Trey McBride Ari, TE",treymcbride,TE,32.0,32.0,observed,False,True,historical_forecast_matched,False,11.236,48.0
+2025,9,Zay Flowers,"Zay Flowers Bal, WR",zayflowers,WR,20.0,20.0,observed,False,True,historical_forecast_matched,False,11.352,23.0
+2025,9,D'Andre Swift,"D'Andre Swift Chi, RB",dandreswift,RB,39.0,39.0,observed,False,True,historical_forecast_matched,False,11.626125000000002,32.0
+2025,9,Jaylen Waddle,"Jaylen Waddle Mia, WR",jaylenwaddle,WR,19.0,19.0,observed,False,True,historical_forecast_matched,False,10.8525,20.0
+2025,9,Rome Odunze,"Rome Odunze Chi, WR",romeodunze,WR,13.0,13.0,observed,False,True,historical_forecast_matched,False,10.43625,17.0
+2025,9,Jordan Addison,"Jordan Addison Min, WR",jordanaddison,WR,12.0,12.0,observed,False,True,historical_forecast_matched,False,9.83825,11.0
+2025,9,Jauan Jennings,"Jauan Jennings SF, WR",jauanjennings,WR,3.0,3.0,observed,False,True,historical_forecast_matched,False,9.05175,9.0
+2025,9,Zach Charbonnet,"Zach Charbonnet Sea, RB",zachcharbonnet,RB,7.0,7.0,observed,False,True,historical_forecast_matched,False,8.136,6.0
+2025,9,Rachaad White,"Rachaad White TB, RB",rachaadwhite,RB,1.0,1.0,observed,False,True,historical_forecast_matched,False,7.167125,2.0
+2025,10,Ja'Marr Chase,"Ja'Marr Chase Cin, WR",jamarrchase,WR,106.0,106.0,observed,False,True,historical_forecast_matched,False,18.45425,103.0
+2025,10,Jalen Hurts,"Jalen Hurts Phi, QB",jalenhurts,QB,37.0,37.0,observed,False,True,historical_forecast_matched,False,21.6865,33.0
+2025,10,Chris Olave,"Chris Olave NO, WR",chrisolave,WR,12.0,12.0,observed,False,True,historical_forecast_matched,False,10.18325,15.0
+2025,10,Austin Ekeler,"Austin Ekeler Wsh, RB",austinekeler,RB,9.0,9.0,observed,False,True,historical_forecast_matched,False,7.941999999999999,5.0
+2025,10,Justice Hill,"Justice Hill Bal, RB",justicehill,RB,1.0,1.0,observed,False,False,historical_opponent_only,False,4.9025,
+2025,10,Evan Engram,"Evan Engram Den, TE",evanengram,TE,3.0,3.0,observed,False,True,historical_forecast_matched,False,7.5975,6.0
+2025,10,Khalil Shakir,"Khalil Shakir Buf, WR",khalilshakir,WR,7.0,7.0,observed,False,True,historical_forecast_matched,False,8.781500000000001,8.0
+2025,10,Travis Etienne,"Travis Etienne Jr. Jax, RB",travisetienne,RB,10.0,10.0,observed,False,True,historical_forecast_matched,False,8.345749999999999,8.0
+2025,10,Tank Bigsby,"Tank Bigsby Jax, RB",tankbigsby,RB,9.0,9.0,observed,False,True,historical_forecast_matched,False,7.941375,5.0
+2025,10,Tory Horton,"Tory Horton Sea, WR",toryhorton,WR,1.0,1.0,observed,False,False,historical_opponent_only,False,4.82875,
+2025,10,Dont'E Thornton,"Dont'e Thornton Jr. LV, WR",dontethornton,WR,1.0,1.0,observed,False,False,historical_opponent_only,False,5.87,
+2025,11,Tyreek Hill,"Tyreek Hill Mia, WR",tyreekhill,WR,51.0,51.0,observed,False,True,historical_forecast_matched,False,13.32475,50.0
+2025,11,Devon Achane,"De'Von Achane Mia, RB",devonachane,RB,98.0,98.0,observed,False,True,historical_forecast_matched,False,16.51175,83.0
+2025,11,Kenneth Walker,"Kenneth Walker III Sea, RB",kennethwalker,RB,53.0,53.0,observed,False,True,historical_forecast_matched,False,13.060125,45.0
+2025,11,Calvin Ridley,"Calvin Ridley Ten, WR",calvinridley,WR,43.0,43.0,observed,False,True,historical_forecast_matched,False,10.85925,23.0
+2025,11,Travis Kelce,"Travis Kelce KC, TE",traviskelce,TE,11.0,11.0,observed,False,True,historical_forecast_matched,False,9.718,11.0
+2025,11,Caleb Williams,"Caleb Williams Chi, QB",calebwilliams,QB,1.0,1.0,observed,False,True,historical_forecast_matched,False,15.957249999999998,2.0
+2025,11,Jayden Reed,"Jayden Reed GB, WR",jaydenreed,WR,4.0,4.0,observed,False,True,historical_forecast_matched,False,9.0965,7.0
+2025,11,Dalton Kincaid,"Dalton Kincaid Buf, TE",daltonkincaid,TE,1.0,1.0,observed,False,True,historical_forecast_matched,False,7.6675,2.0
+2025,11,Rashid Shaheed,"Rashid Shaheed NO, WR",rashidshaheed,WR,2.0,2.0,observed,False,True,historical_forecast_matched,False,8.2315,3.0
+2025,11,Will Shipley,"Will Shipley Phi, RB",willshipley,RB,1.0,1.0,observed,False,False,historical_opponent_only,False,3.415625,
+2025,11,Justin Fields,"Justin Fields NYJ, QB",justinfields,QB,1.0,1.0,observed,False,True,historical_forecast_matched,False,17.682000000000002,2.0
+2025,12,Jahmyr Gibbs,"Jahmyr Gibbs Det, RB",jahmyrgibbs,RB,106.0,106.0,observed,False,True,historical_forecast_matched,False,18.349625,105.0
+2025,12,Puka Nacua,"Puka Nacua LAR, WR",pukanacua,WR,65.0,65.0,observed,False,True,historical_forecast_matched,False,15.67625,78.0
+2025,12,Joe Burrow,"Joe Burrow Cin, QB",joeburrow,QB,36.0,36.0,observed,False,True,historical_forecast_matched,False,19.17275,28.0
+2025,12,James Cook,"James Cook Buf, RB",jamescook,RB,57.0,57.0,observed,False,True,historical_forecast_matched,False,13.103,53.0
+2025,12,Rashee Rice,"Rashee Rice KC, WR",rasheerice,WR,16.0,16.0,observed,False,True,historical_forecast_matched,False,10.608,25.0
+2025,12,Tj Hockenson,"T.J. Hockenson Min, TE",tjhockenson,TE,10.0,10.0,observed,False,True,historical_forecast_matched,False,8.621500000000001,12.0
+2025,12,Darnell Mooney,"Darnell Mooney Atl, WR",darnellmooney,WR,2.0,2.0,observed,False,True,historical_forecast_matched,False,8.081,3.0
+2025,12,Tucker Kraft,"Tucker Kraft GB, TE",tuckerkraft,TE,1.0,1.0,observed,False,True,historical_forecast_matched,False,8.1945,2.0
+2025,12,Justin Herbert,"Justin Herbert LAC, QB",justinherbert,QB,1.0,1.0,observed,False,True,historical_forecast_matched,False,15.50725,2.0
+2025,12,Jordan Love,"Jordan Love GB, QB",jordanlove,QB,1.0,1.0,observed,False,True,historical_forecast_matched,False,15.075,2.0
+2025,12,Jared Goff,"Jared Goff Det, QB",jaredgoff,QB,1.0,1.0,observed,False,True,historical_forecast_matched,False,16.305,2.0
+2025,12,Jj Mccarthy,"J.J. McCarthy Min, QB",jjmccarthy,QB,1.0,1.0,observed,False,True,historical_forecast_matched,False,15.9705,2.0
+2025,12,Trey Benson,"Trey Benson Ari, RB",treybenson,RB,1.0,1.0,observed,False,True,historical_forecast_matched,False,6.992125,2.0

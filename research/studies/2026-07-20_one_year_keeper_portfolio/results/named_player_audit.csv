@@ -1,0 +1,19 @@
+year,policy,player,bench_rosters_candidate,predicted_best_rosters_candidate,realized_hit_rosters_candidate,bench_rosters_control,predicted_best_rosters_control,realized_hit_rosters_control,bench_rosters_effect,predicted_best_rosters_effect,realized_hit_rosters_effect
+2022,best1_lex0,Rachaad White,80.0,2.0,80.0,31.0,5.0,31.0,49,-3,49
+2022,best1_lex0,Kenneth Walker,152.0,34.0,152.0,108.0,63.0,108.0,44,-29,44
+2022,best1_lex2,Rachaad White,81.0,2.0,81.0,31.0,5.0,31.0,50,-3,50
+2022,best1_lex2,Kenneth Walker,153.0,31.0,153.0,108.0,63.0,108.0,45,-32,45
+2023,best1_lex0,Devon Achane,129.0,126.0,129.0,81.0,81.0,81.0,48,45,48
+2023,best1_lex0,Zay Flowers,73.0,22.0,73.0,68.0,42.0,68.0,5,-20,5
+2023,best1_lex2,Devon Achane,140.0,137.0,140.0,81.0,81.0,81.0,59,56,59
+2023,best1_lex2,Zay Flowers,73.0,23.0,73.0,68.0,42.0,68.0,5,-19,5
+2024,best1_lex0,Chase Brown,117.0,21.0,117.0,86.0,77.0,86.0,31,-56,31
+2024,best1_lex0,Bucky Irving,27.0,3.0,27.0,3.0,3.0,3.0,24,0,24
+2024,best1_lex2,Chase Brown,117.0,23.0,117.0,86.0,77.0,86.0,31,-54,31
+2024,best1_lex2,Bucky Irving,25.0,1.0,25.0,3.0,3.0,3.0,22,-2,22
+2025,best1_lex0,Rachaad White,8.0,0.0,0.0,,,,8,0,0
+2025,best1_lex0,Cam Skattebo,39.0,1.0,0.0,39.0,19.0,0.0,0,-18,0
+2025,best1_lex0,Zay Flowers,6.0,0.0,0.0,6.0,1.0,0.0,0,-1,0
+2025,best1_lex2,Rachaad White,9.0,0.0,0.0,,,,9,0,0
+2025,best1_lex2,Zay Flowers,6.0,0.0,0.0,6.0,1.0,0.0,0,-1,0
+2025,best1_lex2,Cam Skattebo,37.0,1.0,0.0,39.0,19.0,0.0,-2,-18,0

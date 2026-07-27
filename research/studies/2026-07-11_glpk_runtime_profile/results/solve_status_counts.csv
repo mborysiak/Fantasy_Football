@@ -1,0 +1,7 @@
+scope,branch,status,calls
+nomination,buy,LP relaxation is primal infeasible,99
+nomination,buy,optimal,1601
+nomination,open,optimal,100
+nomination,pass,optimal,1700
+target,target,optimal,25
+target,target_contribution,optimal,650

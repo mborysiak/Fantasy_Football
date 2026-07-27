@@ -1,0 +1,57 @@
+{
+  "all_year_model_to_actual_spend_gap": {
+    "0.6": 29.764659499767422,
+    "0.7": 29.601279890975356,
+    "0.8": 29.619368452527524,
+    "0.9": 29.951493656554224
+  },
+  "development_model_to_actual_spend_gap": {
+    "0.6": 29.301912977260745,
+    "0.7": 29.158835398270288,
+    "0.8": 29.0909292542998,
+    "0.9": 29.14820831535816
+  },
+  "manifest_validation_all_true": true,
+  "raw_rows": 4000,
+  "reported_rows_recomputed_exactly": true,
+  "trial_half_directions": [
+    {
+      "forecast_ev_nonincreasing": true,
+      "half": "first",
+      "heldout_probability_increases": true,
+      "mean_actual_overage_decreases": true
+    },
+    {
+      "forecast_ev_nonincreasing": true,
+      "half": "second",
+      "heldout_probability_increases": true,
+      "mean_actual_overage_decreases": true
+    }
+  ],
+  "year_level_directions": {
+    "2022": {
+      "actual_feasibility_nonmonotonic": false,
+      "forecast_ev_nonincreasing": true,
+      "heldout_probability_increases": true,
+      "mean_actual_overage_decreases": true
+    },
+    "2023": {
+      "actual_feasibility_nonmonotonic": true,
+      "forecast_ev_nonincreasing": true,
+      "heldout_probability_increases": true,
+      "mean_actual_overage_decreases": true
+    },
+    "2024": {
+      "actual_feasibility_nonmonotonic": false,
+      "forecast_ev_nonincreasing": true,
+      "heldout_probability_increases": true,
+      "mean_actual_overage_decreases": true
+    },
+    "2025": {
+      "actual_feasibility_nonmonotonic": true,
+      "forecast_ev_nonincreasing": true,
+      "heldout_probability_increases": true,
+      "mean_actual_overage_decreases": true
+    }
+  }
+}

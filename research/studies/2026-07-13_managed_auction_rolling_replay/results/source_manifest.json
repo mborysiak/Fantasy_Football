@@ -1,0 +1,318 @@
+{
+  "config": {
+    "context_draws": 5,
+    "contexts": 250,
+    "no_refinement": false,
+    "output_dir": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-13_managed_auction_rolling_replay\\results",
+    "projection_draws": 1000,
+    "salary_calibration_draws": 2000,
+    "salary_draws": 5000,
+    "seed": 20260713,
+    "trials": 250,
+    "years": [
+      2022,
+      2023,
+      2024,
+      2025
+    ]
+  },
+  "current_outcome_sources": {
+    "feature_rows": 5298,
+    "raw_weekly_db": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Daily_Fantasy_Data\\Databases\\FastR_Beta.sqlite3",
+    "raw_weekly_rows": 81453,
+    "raw_weekly_sha256": "255627586c23a9395992a71ee06f7729d3a40b04ac5a84798a26b67a3432b368",
+    "simulation_db": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\Data\\Databases\\Simulation.sqlite3",
+    "simulation_db_sha256": "00cef44361ddfa2c124554f95433de7b8099a42a2955b146509ebf5f2c68f85d"
+  },
+  "method_boundary": {
+    "construction_template_max_season": "origin_year - 1",
+    "current_nomination_replay": false,
+    "reason": "nomination order and auction-state logs are unavailable",
+    "target_outcome_source": "raw FastR_Beta weeks 1-16"
+  },
+  "origins": {
+    "2022": {
+      "blob_sha": "de7068a79353237f6df5f34d619dc799069aada1",
+      "bytes": 26619904,
+      "commit": "fea8ab4845dd0c5efb26292cb59007c865a3a003",
+      "commit_meta": "2022-08-27T17:25:04-07:00|running nv",
+      "forecast_draws": 1000,
+      "forecast_players": 274,
+      "keeper_count": 20,
+      "keeper_spend": 690.0,
+      "path": "Data/Databases/Simulation.sqlite3",
+      "position_counts": {
+        "QB": 33,
+        "RB": 87,
+        "TE": 46,
+        "WR": 108
+      },
+      "prior_empirical_waiver_baseline": {
+        "QB": 23.0,
+        "RB": 8.9,
+        "TE": 8.2,
+        "WR": 9.9
+      },
+      "prior_salary_residual_rows": 215,
+      "projected_waiver_baseline": {
+        "QB": 14.8,
+        "RB": 7.3,
+        "TE": 6.9,
+        "WR": 8.0
+      },
+      "projection_distribution": "frozen_1000_draw_matrix_divided_by_16",
+      "projection_table": "Versionbeta_2022",
+      "realized_waiver_diagnostic": {
+        "QB": 14.699999809265137,
+        "RB": 6.699999809265137,
+        "TE": 6.699999809265137,
+        "WR": 7.699999809265137
+      },
+      "remaining_market_budget": 2886.0,
+      "remaining_market_slots": 136,
+      "repo": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football",
+      "runtime_seconds": 151.91150370000105,
+      "salary_distribution": "prior_only_nearest_salary_residuals",
+      "salary_matches_to_forecast": 129,
+      "salary_missing_fallback": 145,
+      "salary_rows": 134,
+      "salary_table": "Salaries",
+      "sha256": "fcd831eff12b08ac3e406fdbbb2914155313dc442de4edd3b62c2828454572e3",
+      "source_type": "git_blob",
+      "top_n_players": [
+        "Christian Mccaffrey",
+        "Derrick Henry",
+        "Najee Harris",
+        "Dalvin Cook",
+        "Davante Adams",
+        "Joe Mixon",
+        "Alvin Kamara",
+        "Aaron Jones",
+        "Tyreek Hill",
+        "Mike Evans",
+        "Keenan Allen",
+        "Tee Higgins"
+      ],
+      "variant_runtime_seconds": 131.83373850000498,
+      "year": 2022
+    },
+    "2023": {
+      "bytes": 33554432,
+      "forecast_draws": 1000,
+      "forecast_players": 303,
+      "keeper_count": 21,
+      "keeper_spend": 871.0,
+      "last_write_time": 1693245177.0,
+      "path": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\Data\\Databases\\DB_Versioning\\Simulation__2023_08_28_52.sqlite3",
+      "position_counts": {
+        "QB": 45,
+        "RB": 85,
+        "TE": 51,
+        "WR": 122
+      },
+      "prior_empirical_waiver_baseline": {
+        "QB": 20.9,
+        "RB": 8.4,
+        "TE": 7.8,
+        "WR": 9.4
+      },
+      "prior_salary_residual_rows": 0,
+      "projected_waiver_baseline": {
+        "QB": 15.1,
+        "RB": 7.7,
+        "TE": 6.5,
+        "WR": 8.2
+      },
+      "projection_distribution": "frozen_1000_draw_matrix_divided_by_16",
+      "projection_table": "Versionbeta_2023",
+      "realized_waiver_diagnostic": {
+        "QB": 12.5,
+        "RB": 12.899999618530273,
+        "TE": 8.699999809265137,
+        "WR": 9.899999618530273
+      },
+      "remaining_market_budget": 2705.0,
+      "remaining_market_slots": 135,
+      "runtime_seconds": 246.21540220000315,
+      "salary_distribution": "frozen_legacy_truncated_normal",
+      "salary_matches_to_forecast": 166,
+      "salary_missing_fallback": 137,
+      "salary_rows": 167,
+      "salary_table": "Salaries",
+      "sha256": "22a08e75f967226a71d787439d84e61fe302c862d5f69843c8a27c921478ec4f",
+      "source_type": "local_db_version",
+      "top_n_players": [
+        "Christian Mccaffrey",
+        "Austin Ekeler",
+        "Bijan Robinson",
+        "Tyreek Hill",
+        "Derrick Henry",
+        "Stefon Diggs",
+        "Davante Adams",
+        "Josh Jacobs",
+        "Jonathan Taylor",
+        "Jahmyr Gibbs",
+        "Joe Mixon",
+        "Najee Harris"
+      ],
+      "variant_runtime_seconds": 223.8431333999979,
+      "year": 2023
+    },
+    "2024": {
+      "bytes": 4096000,
+      "forecast_draws": 1000,
+      "forecast_players": 246,
+      "keeper_count": 18,
+      "keeper_spend": 563.0,
+      "last_write_time": 1724676488.0,
+      "path": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\Data\\Databases\\DB_Versioning\\Simulation__2024_08_26_48.sqlite3",
+      "position_counts": {
+        "QB": 24,
+        "RB": 60,
+        "TE": 24,
+        "WR": 138
+      },
+      "prior_empirical_waiver_baseline": {
+        "QB": 19.2,
+        "RB": 9.3,
+        "TE": 8.0,
+        "WR": 9.5
+      },
+      "prior_salary_residual_rows": 0,
+      "projected_waiver_baseline": {
+        "QB": 16.3,
+        "RB": 7.3,
+        "TE": 6.4,
+        "WR": 5.8
+      },
+      "projection_distribution": "frozen_legacy_truncated_normal",
+      "projection_table": "Final_Predictions",
+      "realized_waiver_diagnostic": {
+        "QB": 17.299999237060547,
+        "RB": 7.800000190734863,
+        "TE": 6.699999809265137,
+        "WR": 7.599999904632568
+      },
+      "remaining_market_budget": 3013.0,
+      "remaining_market_slots": 138,
+      "runtime_seconds": 156.42698519999976,
+      "salary_distribution": "frozen_legacy_truncated_normal",
+      "salary_matches_to_forecast": 178,
+      "salary_missing_fallback": 68,
+      "salary_rows": 189,
+      "salary_table": "Salaries_Pred",
+      "sha256": "5d8a0f22c98ce04f901b093cd62d7aaf8d9002a355dc8c44824f4289e5083c56",
+      "source_type": "local_db_version",
+      "top_n_players": [
+        "Christian Mccaffrey",
+        "Bijan Robinson",
+        "Ceedee Lamb",
+        "Tyreek Hill",
+        "Jonathan Taylor",
+        "Saquon Barkley",
+        "Justin Jefferson",
+        "Aj Brown",
+        "Puka Nacua",
+        "Isiah Pacheco",
+        "Marvin Harrison",
+        "Derrick Henry"
+      ],
+      "variant_runtime_seconds": 135.17329159999645,
+      "year": 2024
+    },
+    "2025": {
+      "bytes": 4096000,
+      "forecast_draws": 1000,
+      "forecast_players": 180,
+      "keeper_count": 15,
+      "keeper_spend": 407.0,
+      "last_write_time": 1756065309.0,
+      "path": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\Data\\Databases\\DB_Versioning\\Simulation__2025_08_24_55.sqlite3",
+      "position_counts": {
+        "QB": 24,
+        "RB": 60,
+        "TE": 24,
+        "WR": 72
+      },
+      "prior_empirical_waiver_baseline": {
+        "QB": 18.9,
+        "RB": 9.0,
+        "TE": 7.8,
+        "WR": 9.1
+      },
+      "prior_salary_residual_rows": 0,
+      "projected_waiver_baseline": {
+        "QB": 14.8,
+        "RB": 6.7,
+        "TE": 6.3,
+        "WR": 7.2
+      },
+      "projection_distribution": "frozen_legacy_truncated_normal",
+      "projection_table": "Final_Predictions",
+      "realized_waiver_diagnostic": {
+        "QB": 19.399999618530273,
+        "RB": 8.800000190734863,
+        "TE": 8.699999809265137,
+        "WR": 8.5
+      },
+      "remaining_market_budget": 3169.0,
+      "remaining_market_slots": 141,
+      "runtime_seconds": 157.32763810000324,
+      "salary_distribution": "frozen_legacy_truncated_normal",
+      "salary_matches_to_forecast": 165,
+      "salary_missing_fallback": 15,
+      "salary_rows": 175,
+      "salary_table": "Salaries_Pred",
+      "sha256": "16581a3d6e537859b3dca8dd5e49f5a375c3bfb0b95449b7d2e522d2ba87c629",
+      "source_type": "local_db_version",
+      "top_n_players": [
+        "Bijan Robinson",
+        "Jahmyr Gibbs",
+        "Saquon Barkley",
+        "Ja'Marr Chase",
+        "Justin Jefferson",
+        "Ceedee Lamb",
+        "Ashton Jeanty",
+        "Devon Achane",
+        "Malik Nabers",
+        "Amon Ra St Brown",
+        "Puka Nacua",
+        "Jonathan Taylor"
+      ],
+      "variant_runtime_seconds": 138.09420430000318,
+      "year": 2025
+    }
+  },
+  "output_rows": {
+    "current_profile_effects_across_years.csv": 4,
+    "current_profile_effects_by_year.csv": 16,
+    "factorial_marginal_effects_across_years.csv": 4,
+    "factorial_marginal_effects_by_year.csv": 16,
+    "hindsight_oracle_rosters.csv": 4,
+    "join_audit.csv": 1003,
+    "paired_current_profile_effects.csv": 4000,
+    "paired_factorial_marginal_effects.csv": 32000,
+    "roster_trials.csv": 16000,
+    "salary_calibration_by_year.csv": 8,
+    "salary_calibration_players.csv": 1036,
+    "template_pool_audit.csv": 1003,
+    "variant_summary_across_years.csv": 16,
+    "variant_summary_by_year.csv": 64,
+    "waiver_baselines.csv": 104
+  },
+  "runtime_seconds": 717.1880853999974,
+  "simulation_helper": {
+    "git_head": "317f3792c32ab4749fb32286361e079c80043180",
+    "path": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football_App\\app\\zSim_Helper.py",
+    "sha256": "e92cc305b92363cff01ad991c6102d2053874fb1d00588794ec7d8efcaa9ad92"
+  },
+  "study": "2026-07-13_managed_auction_rolling_replay",
+  "validation": {
+    "all_forecast_spend_within_cap": true,
+    "all_rosters_size_13": true,
+    "all_solves_optimal": true,
+    "all_template_donors_pre_origin": true,
+    "all_top_n_constraints_satisfied": true,
+    "expected_trial_rows": 16000
+  }
+}

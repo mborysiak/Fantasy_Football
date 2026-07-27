@@ -1,0 +1,31 @@
+{
+  "max_template_season": 2025,
+  "target_rows": 1620,
+  "prediction_rows": 58320,
+  "method_count": 36,
+  "baseline_method": "recommended",
+  "recency_half_life": 12.0,
+  "development_end": 2022,
+  "development_winner": "all_weights__w005",
+  "development_improvement": 0.002121527163015613,
+  "minimum_development_improvement": 0.001,
+  "winner_guardrail_pass": true,
+  "temporal_composite_delta": 0.0002729755564090386,
+  "max_temporal_position_composite_delta": 0.004629463537084044,
+  "max_temporal_position_metric_delta": 0.011016656640552513,
+  "temporal_position_guardrail_pass": false,
+  "recent_nested_wins": 1,
+  "minimum_recent_nested_wins": 2,
+  "qualifying_method_count": 0,
+  "promote_weight_change": false,
+  "recommended_method": "recommended",
+  "bootstrap_methods": [
+    "all_weights__w005",
+    "all_weights__w001",
+    "all_weights__w012",
+    "all_weights__w025",
+    "all_weights__w038"
+  ],
+  "future_donor_rows": 0,
+  "runtime_seconds": 125.40977889999976
+}

@@ -1,0 +1,71 @@
+{
+  "seed": 20260719,
+  "cases": {
+    "empty_roster": {
+      "old": {
+        "label": "old behavior",
+        "max_swaps": 1,
+        "trials": 16,
+        "elapsed_seconds": 0.9312141000409611,
+        "milliseconds_per_trial": 58.200881252560066,
+        "refine_seconds": 0.10467889998108149,
+        "refine_share": 0.11241120594767305,
+        "accepted_swaps_total": 15,
+        "accepted_swaps_mean": 0.9375,
+        "accepted_swaps_max": 1,
+        "zero_swap_trials": 1,
+        "contribution_seconds": 0.4543508000206202,
+        "contribution_calls": 16
+      },
+      "converged": {
+        "label": "converged behavior",
+        "max_swaps": 12,
+        "trials": 16,
+        "elapsed_seconds": 1.1307806000113487,
+        "milliseconds_per_trial": 70.6737875007093,
+        "refine_seconds": 0.37642740015871823,
+        "refine_share": 0.3328916326959804,
+        "accepted_swaps_total": 47,
+        "accepted_swaps_mean": 2.9375,
+        "accepted_swaps_max": 5,
+        "zero_swap_trials": 1,
+        "contribution_seconds": 0.3970145999919623,
+        "contribution_calls": 16
+      },
+      "runtime_ratio": 1.2143078589140879
+    },
+    "mid_draft_roster": {
+      "old": {
+        "label": "old behavior",
+        "max_swaps": 1,
+        "trials": 16,
+        "elapsed_seconds": 0.6302977000013925,
+        "milliseconds_per_trial": 39.39360625008703,
+        "refine_seconds": 0.08764539996627718,
+        "refine_share": 0.13905397396513353,
+        "accepted_swaps_total": 14,
+        "accepted_swaps_mean": 0.875,
+        "accepted_swaps_max": 1,
+        "zero_swap_trials": 2,
+        "contribution_seconds": 0.1874840998207219,
+        "contribution_calls": 16
+      },
+      "converged": {
+        "label": "converged behavior",
+        "max_swaps": 12,
+        "trials": 16,
+        "elapsed_seconds": 0.7543827000190504,
+        "milliseconds_per_trial": 47.14891875119065,
+        "refine_seconds": 0.2696804998558946,
+        "refine_share": 0.3574850004501487,
+        "accepted_swaps_total": 40,
+        "accepted_swaps_mean": 2.5,
+        "accepted_swaps_max": 4,
+        "zero_swap_trials": 2,
+        "contribution_seconds": 0.14096260000951588,
+        "contribution_calls": 16
+      },
+      "runtime_ratio": 1.1968672898812478
+    }
+  }
+}

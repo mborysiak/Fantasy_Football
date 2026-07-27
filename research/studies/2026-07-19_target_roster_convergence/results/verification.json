@@ -1,0 +1,90 @@
+{
+  "old": {
+    "label": "old behavior",
+    "max_swaps": 1,
+    "seed": 20260719,
+    "requested_trials": 64,
+    "completed_trials": 64,
+    "elapsed_seconds": 5.081343600002583,
+    "accepted_swaps_mean": 1.0,
+    "accepted_swaps_max": 1,
+    "hit_cap_count": 64,
+    "season_ev": 1700.1000537872314,
+    "season_p10": 1511.084228515625,
+    "season_p90": 1875.3396728515625,
+    "salary_spend": 293.065107615578,
+    "top_players": [
+      {
+        "player": "Jaxon Smith Njigba",
+        "SelectionCounts": 79.7,
+        "ExpectedRosterGain": 41.48162269592285
+      },
+      {
+        "player": "Chase Brown",
+        "SelectionCounts": 51.6,
+        "ExpectedRosterGain": 25.96106719970703
+      },
+      {
+        "player": "Cam Skattebo",
+        "SelectionCounts": 53.1,
+        "ExpectedRosterGain": 24.1290283203125
+      },
+      {
+        "player": "Javonte Williams",
+        "SelectionCounts": 71.89999999999999,
+        "ExpectedRosterGain": 20.123886108398438
+      },
+      {
+        "player": "Christian Mccaffrey",
+        "SelectionCounts": 45.300000000000004,
+        "ExpectedRosterGain": 14.593475341796875
+      }
+    ]
+  },
+  "converged": {
+    "label": "converged behavior",
+    "max_swaps": 12,
+    "seed": 20260719,
+    "requested_trials": 64,
+    "completed_trials": 64,
+    "elapsed_seconds": 11.664039700001013,
+    "accepted_swaps_mean": 3.78125,
+    "accepted_swaps_max": 9,
+    "hit_cap_count": 0,
+    "season_ev": 1742.1355934143066,
+    "season_p10": 1577.2038452148438,
+    "season_p90": 1930.1945678710938,
+    "salary_spend": 296.4590073299879,
+    "top_players": [
+      {
+        "player": "Jaxon Smith Njigba",
+        "SelectionCounts": 92.2,
+        "ExpectedRosterGain": 45.21525955200195
+      },
+      {
+        "player": "Chase Brown",
+        "SelectionCounts": 73.4,
+        "ExpectedRosterGain": 33.16755294799805
+      },
+      {
+        "player": "Cam Skattebo",
+        "SelectionCounts": 60.9,
+        "ExpectedRosterGain": 27.13678550720215
+      },
+      {
+        "player": "Javonte Williams",
+        "SelectionCounts": 85.9,
+        "ExpectedRosterGain": 19.52235221862793
+      },
+      {
+        "player": "Christian Mccaffrey",
+        "SelectionCounts": 68.8,
+        "ExpectedRosterGain": 17.713077545166016
+      }
+    ]
+  },
+  "season_ev_change": 42.035539627075195,
+  "season_p10_change": 66.1196166992188,
+  "season_p90_change": 54.85489501953134,
+  "runtime_ratio": 2.29546368405299
+}

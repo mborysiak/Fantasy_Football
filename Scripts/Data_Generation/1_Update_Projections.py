@@ -22,7 +22,6 @@ dm = DataManage(db_path)
 
 import pandas as pd
 import requests
-from bs4 import BeautifulSoup
 from zData_Functions import *
 pd.options.mode.chained_assignment = None
 import numpy as np
@@ -73,49 +72,24 @@ def clean_adp(data_adp, year_val):
     return df_adp
 
 def pull_fantasypros_adp(year_val):
-    base_url = "https://www.fantasypros.com/nfl/adp/half-point-ppr-overall.php"
-    urls = [
-        f"{base_url}?year={year_val}&export=csv",
-        f"{base_url}?year={year_val}&type=csv",
-        f"{base_url}?year={year_val}&csv=1",
-        f"{base_url}?export=csv",
-    ]
+    # FantasyPros put ADP tables behind a login fence (July 2026), so scraping only
+    # returns 5 rows. Instead, log in and click Export CSV on
+    # https://www.fantasypros.com/nfl/adp/half-point-ppr-overall.php, then run this
+    # to move the file from Downloads. Note: the best ball ADP page exports the same
+    # filename, so download and process one at a time.
+    fname = f'FantasyPros_{year_val}_Overall_ADP_Rankings.csv'
+    df = move_download_to_folder(root_path, 'FantasyPros_ADP', fname, year_val)
 
-    table = None
-    for url in urls:
-        response = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=30)
-        response.raise_for_status()
+    player_col = [c for c in df.columns if c.startswith('Player')][0]
+    player_team = df[player_col].apply(split_fantasypros_best_ball_player)
 
-        soup = BeautifulSoup(response.text, 'html.parser')
-        table = soup.find('table', id='data')
-        if table is not None:
-            break
+    df = df.assign(player=player_team.player)
+    df = df.rename(columns={'POS': 'pos', 'AVG': 'pick'})
 
-    if table is None:
-        raise ValueError("FantasyPros ADP table was not found in the page response")
+    if df.player.isna().all():
+        raise ValueError(f"No players parsed from {fname}; check the export format")
 
-    rows = []
-    for row in table.select('tbody tr'):
-        cells = row.find_all('td')
-        if len(cells) < 4:
-            continue
-
-        player_link = cells[1].select_one('.player-name')
-        if player_link is not None:
-            player = player_link.get('fp-player-name') or player_link.get_text(' ', strip=True)
-        else:
-            player = cells[1].get_text(' ', strip=True)
-
-        rows.append({
-            'player': player,
-            'pos': cells[2].get_text(strip=True),
-            'pick': cells[3].get_text(strip=True)
-        })
-
-    if not rows:
-        raise ValueError("FantasyPros ADP table was found, but it did not contain player rows")
-
-    return pd.DataFrame(rows)
+    return df[['player', 'pos', 'pick']]
 
 def pull_draftkings_best_ball_adp():
     url = "https://www.occupyfantasyapi.com/best_ball/adps?site=draftkings&contest=all"
@@ -485,7 +459,10 @@ def pull_fantasy_data(fname, set_year):
 
 
 def format_ffa(df, table_name, set_year):
-    df = df.dropna(subset=['player']).drop(['Unnamed: 0'], axis=1)
+    df = df.dropna(subset=['player'])
+    try: df = df.drop(['Unnamed: 0'], axis=1)
+    except: pass
+
     df.player = df.player.apply(dc.name_clean)
     df.loc[df.position=='DST', 'player'] = df.loc[df.position=='DST', 'team']
 
@@ -585,12 +562,9 @@ dm.write_to_db(dk, DB_NAME, 'ADP_Averages', 'append')
 #%%
 
 df = move_download_to_folder(root_path, 'FantasyPros_Best_Ball', f'FantasyPros_{YEAR}_Overall_ADP_Rankings.csv', YEAR)
-df
 
-#%%
-
-if 'Player (Team / Bye)' in df.columns:
-    df = df.rename(columns={'Player (Team / Bye)': 'Player'})
+if 'Player (Bye)' in df.columns:
+    df = df.rename(columns={'Player (Bye)': 'Player'})
     player_team = df.Player.apply(split_fantasypros_best_ball_player)
     df = pd.concat([df.drop(columns=['Player']), player_team], axis=1)
 elif 'Team' in df.columns:
@@ -648,6 +622,7 @@ dm.write_to_db(df, DB_NAME, 'FantasyData', 'append')
 df = move_download_to_folder(root_path, 'FFA', f'projections_{YEAR}_wk0.csv', YEAR)
 df = format_ffa(df, 'Projections', YEAR)
 df = df[~df.team.isnull()].reset_index(drop=True)
+df = df.drop(['ffa_bye_week', 'ffa_age', 'ffa_experience'], axis=1, errors='ignore')
 
 dm.delete_from_db(DB_NAME, 'FFA_Projections', f"year={YEAR}", create_backup=False)
 dm.write_to_db(df, DB_NAME, 'FFA_Projections', 'append')
@@ -916,36 +891,6 @@ df.player = df.player.apply(dc.name_clean)
 dm.delete_from_db(DB_NAME, 'FFF_Projections', f"year={YEAR}", create_backup=False)
 dm.write_to_db(df, DB_NAME, 'FFF_Projections', 'append')
 
-#%%
-
-fff_name = [f for f in os.listdir("/Users/borys/Downloads/") if '4for4' in f and 'rank' in f][0]
-df = move_download_to_folder(root_path, '4for4', fff_name, YEAR)
-
-cols = {
-'Rank': 'fff_total_rank',
-'Player': 'player',
-'Team': 'team',
-'Position': 'pos',
-'RV': 'rv',
-'FF Pts': 'ff_pts',
-'ADP ( Average )': 'avg_total_rank',
-'ADP (Underdog)': 'underdog_total_rank',
-'ADP (CBS)': 'cbs_total_rank',
-'ADP (ESPN)': 'espn_total_rank',
-'ADP (FFPC)': 'ffpc_total_rank',
-'ADP (BB10s)': 'bb10s_total_rank',
-'ADP (NFL)': 'nfl_total_rank',
-'ADP (Y!)': 'yahoo_total_rank',
-'ADP (Superflex)': 'superflex_total_rank'
-}
-
-df = df.rename(columns=cols)
-df = df[cols.values()]
-df.player = df.player.apply(dc.name_clean)
-df = df.assign(year=YEAR)
-
-dm.delete_from_db(DB_NAME, 'FFF_Ranks', f"year={YEAR}", create_backup=False)
-dm.write_to_db(df, DB_NAME, 'FFF_Ranks', 'append')
 
 #%%
 # create full positional list to loop through

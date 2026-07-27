@@ -753,6 +753,38 @@ def unpack_stack_results(results):
 RESID_ALPHAS = (0.05, 0.10, 0.25, 0.75, 0.90, 0.95)
 
 
+def eligible_empirical_resid_donors(
+    validation_rows,
+    forecast_origin,
+    origin_col='season',
+    outcome_horizon=0,
+    pred_col='pred_fp_per_game',
+    actual_col='y_act',
+):
+    """Return residual rows whose outcomes predate a forecast origin.
+
+    ``current`` projection rows have a zero-season outcome horizon, while
+    ``next`` rows have a one-season horizon. The latter therefore require an
+    extra gap: an origin-t next-year outcome is not known when an origin-t+1
+    preseason forecast is made.
+    """
+    required = [origin_col, pred_col, actual_col]
+    missing = [col for col in required if col not in validation_rows.columns]
+    if missing:
+        raise ValueError(
+            f'Empirical residual donors are missing columns: {missing}'
+        )
+
+    donors = validation_rows.dropna(subset=required).copy()
+    donors['resid_target_season'] = (
+        pd.to_numeric(donors[origin_col]) + int(outcome_horizon)
+    )
+    donors = donors[
+        donors.resid_target_season.lt(int(forecast_origin))
+    ].copy()
+    return donors
+
+
 def create_final_val_df(X_stack_player, y_stack, best_val_reg, all_alphas=None):
     df_val_final = pd.concat([X_stack_player[['player', 'year']],
                               pd.Series(best_val_reg.mean(axis=1), name='pred_fp_per_game')], axis=1)
@@ -869,6 +901,158 @@ def apply_empirical_resid_quantiles(
     bucket_table['bootstrap_iters'] = n_iter
 
     return out, bucket_table.reset_index()
+
+
+def cross_fit_empirical_resid_quantiles(
+    validation_rows,
+    origin_col='season',
+    outcome_horizon=0,
+    as_of_year=None,
+    alphas=RESID_ALPHAS,
+    pred_col='pred_fp_per_game',
+    actual_col='y_act',
+    min_training_rows=30,
+    n_bins=None,
+    min_n=75,
+    min_bins=2,
+    max_bins=None,
+    smooth=True,
+    bootstrap_iters=50,
+    bootstrap_frac=1.0,
+    bootstrap_replace=True,
+    random_state=42,
+):
+    """Attach strict-prior-origin empirical residual quantiles to OOS rows.
+
+    This helper is intended for one homogeneous validation slice, such as one
+    position/dataset/experience/current-next model emitted by ``s2_RunAll``.
+    Point predictions are already out of sample. For every target origin, its
+    residual distribution is fitted only from validation outcomes known before
+    that target origin, so the target row and its contemporaries cannot
+    calibrate their own intervals. A one-season horizon therefore creates a
+    one-season embargo between donor outcomes and the target origin.
+
+    Rows without enough earlier donors retain null residual quantiles and
+    explicit unavailable provenance rather than borrowing future outcomes.
+    """
+    output = validation_rows.copy()
+    q_cols = [f'pred_resid_{int(round(alpha * 100))}' for alpha in alphas]
+    for col in q_cols:
+        output[col] = np.nan
+    output['resid_training_rows'] = 0
+    output['resid_training_through_origin'] = np.nan
+    output['resid_training_through_season'] = np.nan
+    output['resid_calibration_mode'] = 'strict_prior_season_empirical_ppg_bucket'
+    output['resid_calibration_available'] = 0
+    output['resid_calibration_date_modified'] = (
+        pd.Timestamp.now().strftime('%m-%d-%Y %H:%M')
+    )
+
+    required = [origin_col, pred_col, actual_col]
+    missing = [col for col in required if col not in output.columns]
+    if missing:
+        raise ValueError(
+            f'Cross-fitted residual calibration is missing columns: {missing}'
+        )
+
+    output['resid_target_season'] = (
+        pd.to_numeric(output[origin_col]) + int(outcome_horizon)
+    )
+    output['resid_target_available'] = output[actual_col].notna().astype(int)
+    if as_of_year is not None:
+        output['resid_target_available'] = (
+            output.resid_target_available.eq(1)
+            & output.resid_target_season.lt(int(as_of_year))
+        ).astype(int)
+
+    valid_donors = output[
+        output.resid_target_available.eq(1)
+    ].dropna(subset=required).copy()
+    valid_targets = output.dropna(subset=[origin_col, pred_col]).copy()
+    audit_rows = []
+    for target_origin in sorted(valid_targets[origin_col].unique()):
+        target_idx = valid_targets.index[
+            valid_targets[origin_col].eq(target_origin)
+        ]
+        donors = valid_donors[
+            valid_donors.resid_target_season.lt(target_origin)
+        ].copy()
+        donor_count = int(len(donors))
+        donor_origin_through = (
+            int(donors[origin_col].max()) if donor_count else np.nan
+        )
+        donor_season_through = (
+            int(donors.resid_target_season.max()) if donor_count else np.nan
+        )
+        available = donor_count >= int(min_training_rows)
+
+        output.loc[target_idx, 'resid_training_rows'] = donor_count
+        output.loc[
+            target_idx,
+            'resid_training_through_origin',
+        ] = donor_origin_through
+        output.loc[
+            target_idx,
+            'resid_training_through_season',
+        ] = donor_season_through
+
+        if available:
+            calibrated, _ = apply_empirical_resid_quantiles(
+                donors,
+                output.loc[target_idx].copy(),
+                alphas=alphas,
+                pred_col=pred_col,
+                actual_col=actual_col,
+                n_bins=n_bins,
+                min_n=min_n,
+                min_bins=min_bins,
+                max_bins=max_bins,
+                smooth=smooth,
+                bootstrap_iters=bootstrap_iters,
+                bootstrap_frac=bootstrap_frac,
+                bootstrap_replace=bootstrap_replace,
+                random_state=int(random_state) + int(target_origin) * 1009,
+            )
+            output.loc[target_idx, q_cols] = calibrated[q_cols].to_numpy()
+            output.loc[target_idx, 'resid_calibration_available'] = 1
+
+        audit_rows.append({
+            'target_origin': int(target_origin),
+            'target_season': int(target_origin) + int(outcome_horizon),
+            'target_rows': int(len(target_idx)),
+            'target_actual_rows': int(
+                output.loc[target_idx, 'resid_target_available'].sum()
+            ),
+            'resid_training_rows': donor_count,
+            'resid_training_through_origin': donor_origin_through,
+            'resid_training_through_season': donor_season_through,
+            'resid_calibration_available': int(available),
+        })
+
+    output['resid_training_rows'] = (
+        output.resid_training_rows.fillna(0).astype(int)
+    )
+    output['resid_calibration_available'] = (
+        output.resid_calibration_available.fillna(0).astype(int)
+    )
+
+    calibrated = output.resid_calibration_available.eq(1)
+    if calibrated.any():
+        quantiles = output.loc[calibrated, q_cols].to_numpy(dtype=float)
+        if not np.isfinite(quantiles).all():
+            raise ValueError('A calibrated validation residual quantile is non-finite.')
+        if not (np.diff(quantiles, axis=1) >= -1e-10).all():
+            raise ValueError('Validation residual quantiles are not monotone.')
+        invalid_cutoff = (
+            output.loc[calibrated, 'resid_training_through_season']
+            >= output.loc[calibrated, origin_col]
+        )
+        if invalid_cutoff.any():
+            raise ValueError(
+                'A validation residual calibration used its target or a future season.'
+            )
+
+    return output, pd.DataFrame(audit_rows)
 
 
 def create_output(output_start, predictions, predictions_upside=None, predictions_top=None, predictions_quantile=None):

@@ -1,0 +1,11 @@
+{
+  "paired_observed_rows_reproduced": true,
+  "one_v2_only_observed_row_confirmed": true,
+  "overall_accuracy_metrics_reproduced": true,
+  "prior_v1_candidate_surface_reproduced": true,
+  "all_v2_candidate_prices_present": true,
+  "prior_v1_roster_spending_reproduced": true,
+  "repricing_gap_identity_reproduced": true,
+  "paired_frontier_cells_reproduced": true,
+  "frontier_period_summaries_reproduced": true
+}

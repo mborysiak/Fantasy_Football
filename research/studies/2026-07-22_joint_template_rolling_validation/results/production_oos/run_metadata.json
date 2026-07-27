@@ -1,0 +1,27 @@
+{
+  "origin_start": 2017,
+  "core_origin_start": 2017,
+  "recent_origin_start": 2020,
+  "max_season": 2025,
+  "target_counts": {
+    "QB": 24,
+    "RB": 60,
+    "WR": 72,
+    "TE": 24
+  },
+  "target_rows": 1620,
+  "prediction_rows": 8100,
+  "methods": [
+    "adaptive_full_centered",
+    "adaptive_full_uncentered",
+    "uniform_full_centered",
+    "legacy_2x_centered",
+    "adaptive_projection_centered"
+  ],
+  "target_forecast_source": "Final_Validations_Resid beta model_spec_asof_year=2026 data_oos=1",
+  "donor_forecast_source": "production Weekly_Outcome_Templates historical_pred_fp_per_game",
+  "forecast_rows": 2766,
+  "target_template_rows": 2696,
+  "runtime_seconds": 37.35705890000099,
+  "future_donor_rows": 0
+}

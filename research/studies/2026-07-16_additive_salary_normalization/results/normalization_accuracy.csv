@@ -1,0 +1,3 @@
+period,normalization,player_years,mean_actual_minus_prediction,mae,rmse
+all_years,proportional_floor,527,-0.37925117965759,4.362624277258136,6.220804951035474
+all_years,additive_floor,527,-0.39061532553844963,4.292673140069029,6.127685903790532

@@ -1,0 +1,32 @@
+{
+  "contribution_calls": 50,
+  "candidate_evaluations": 650,
+  "mean_selected_candidates": 13.0,
+  "mean_unique_contexts_per_trial": 4.84,
+  "context_cache_checks": 3146,
+  "context_cache_hits": 1208,
+  "context_cache_misses": 1938,
+  "context_cache_hit_rate": 0.38397965670692946,
+  "score_calls": 634,
+  "unique_trial_roster_scores": 634,
+  "reusable_score_calls": 0,
+  "reusable_score_rate": 0.0,
+  "buy_score_calls": 317,
+  "unique_buy_roster_scores": 317,
+  "reusable_buy_score_rate": 0.0,
+  "pass_score_calls": 317,
+  "unique_pass_roster_scores": 317,
+  "reusable_pass_score_rate": 0.0,
+  "completed_candidate_contributions": 650,
+  "prediction_shape": [
+    166,
+    1003
+  ],
+  "prediction_bytes": 1348211,
+  "candidate_dataframe_copy_bytes": 876337150,
+  "solve_status_counts": {
+    "contribution|glpk_buy|optimal": 650,
+    "contribution|glpk_pass|optimal": 650,
+    "outer|glpk_outer|optimal": 50
+  }
+}

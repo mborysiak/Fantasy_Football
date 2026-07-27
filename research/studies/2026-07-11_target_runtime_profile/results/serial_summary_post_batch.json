@@ -1,0 +1,28 @@
+{
+  "baseline": {
+    "iterations": 50,
+    "elapsed_seconds": 3.3066676999987976,
+    "trials_per_second": 15.12096301664004,
+    "result_rows": 30,
+    "top_player": "Rj Harvey",
+    "top_expected_roster_gain": 8.59535888671875,
+    "managed_trials": 50,
+    "season_ev": 1589.3019067382813
+  },
+  "instrumented": {
+    "iterations": 50,
+    "elapsed_seconds": 3.336822299999767,
+    "trials_per_second": 14.984316066217698,
+    "result_rows": 30,
+    "top_player": "Rj Harvey",
+    "top_expected_roster_gain": 8.59535888671875,
+    "managed_trials": 50,
+    "season_ev": 1589.3019067382813
+  },
+  "equivalence": {
+    "columns_equal": true,
+    "max_numeric_difference": 0.0,
+    "nonnumeric_equal": true,
+    "values_equal": true
+  }
+}

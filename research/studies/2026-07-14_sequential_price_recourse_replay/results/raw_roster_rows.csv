@@ -1,0 +1,719 @@
+year,source_line,roster_block_id,roster_row,raw_player,player,nfl_team,embedded_pos,actual_salary,replay_price,price_source,salary_missing_filled_one,is_keeper,player_key,pos,position_source,raw_source_sha256
+2022,2,1,1,Josh Allen,Josh Allen,,,41.0,41.0,observed,False,False,joshallen,QB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,3,1,2,Kyle Pitts,Kyle Pitts,,,38.0,38.0,observed,False,False,kylepitts,TE,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,4,1,3,Diontae Johnson,Diontae Johnson,,,35.0,35.0,observed,False,False,diontaejohnson,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,5,1,4,DeAndre Hopkins,Deandre Hopkins,,,13.0,13.0,observed,False,False,deandrehopkins,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,6,1,5,Christian Kirk,Christian Kirk,,,11.0,11.0,observed,False,False,christiankirk,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,7,1,6,Rashod Bateman,Rashod Bateman,,,21.0,21.0,observed,False,False,rashodbateman,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,8,1,7,Antonio Gibson,Antonio Gibson,,,27.0,27.0,observed,False,False,antoniogibson,RB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,9,1,8,DeVonta Smith,Devonta Smith,,,11.0,11.0,observed,False,False,devontasmith,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,10,1,9,AJ Dillon,Aj Dillon,,,36.0,36.0,observed,False,False,ajdillon,RB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,11,1,10,Dameon Pierce,Dameon Pierce,,,34.0,34.0,observed,False,False,dameonpierce,RB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,12,1,11,Rhamondre Stevenson,Rhamondre Stevenson,,,25.0,25.0,observed,False,False,rhamondrestevenson,RB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,13,1,12,DJ Chark,Dj Chark,,,1.0,1.0,observed,False,False,djchark,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,14,1,13,Mike Davis,Mike Davis,,,2.0,2.0,observed,False,False,mikedavis,RB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,15,1,14,Matt Prater,Matt Prater,,,1.0,1.0,observed,False,False,mattprater,K,2022_explicit_kicker,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,18,2,1,J.K. Dobbins,Jk Dobbins,,,12.0,12.0,observed,False,True,jkdobbins,RB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,19,2,2,Austin Ekeler,Austin Ekeler,,,65.0,65.0,observed,False,True,austinekeler,RB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,20,2,3,Najee Harris,Najee Harris,,,92.0,92.0,observed,False,False,najeeharris,RB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,21,2,4,Jerry Jeudy,Jerry Jeudy,,,29.0,29.0,observed,False,False,jerryjeudy,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,22,2,5,Brandin Cooks,Brandin Cooks,,,35.0,35.0,observed,False,False,brandincooks,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,23,2,6,Tony Pollard,Tony Pollard,,,26.0,26.0,observed,False,False,tonypollard,RB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,24,2,7,Cole Kmet,Cole Kmet,,,1.0,1.0,observed,False,False,colekmet,TE,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,25,2,8,Derek Carr,Derek Carr,,,1.0,1.0,observed,False,False,derekcarr,QB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,26,2,9,"Colts D/ST Ind, D/ST",Colts D/St,IND,D/ST,1.0,1.0,observed,False,False,coltsdst,D/ST,espn_suffix,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,27,2,10,Michael Carter,Michael Carter,,,7.0,7.0,observed,False,False,michaelcarter,RB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,28,2,11,Alexander Mattison,Alexander Mattison,,,6.0,6.0,observed,False,False,alexandermattison,RB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,29,2,12,Isaiah McKenzie,Isaiah Mckenzie,,,1.0,1.0,observed,False,False,isaiahmckenzie,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,30,2,13,Michael Gallup,Michael Gallup,,,3.0,3.0,observed,False,False,michaelgallup,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,31,2,14,Tyler Bass,Tyler Bass,,,1.0,1.0,observed,False,False,tylerbass,K,2022_explicit_kicker,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,32,2,15,Wan'Dale Robinson,Wan'Dale Robinson,,,,1.0,imputed_blank_one,True,False,wandalerobinson,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,35,3,1,Ja'Marr Chase,Ja'Marr Chase,,,27.0,27.0,observed,False,True,jamarrchase,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,36,3,2,D'Andre Swift,D'Andre Swift,,,45.0,45.0,observed,False,True,dandreswift,RB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,37,3,3,Jaylen Waddle,Jaylen Waddle,,,38.0,38.0,observed,False,False,jaylenwaddle,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,38,3,4,Dalvin Cook,Dalvin Cook,,,96.0,96.0,observed,False,False,dalvincook,RB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,39,3,5,Tee Higgins,Tee Higgins,,,49.0,49.0,observed,False,False,teehiggins,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,40,3,6,JuJu Smith-Schuster,Juju Smith Schuster,,,22.0,22.0,observed,False,False,jujusmithschuster,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,41,3,7,Tom Brady,Tom Brady,,,7.0,7.0,observed,False,False,tombrady,QB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,42,3,8,T.J. Hockenson,Tj Hockenson,,,5.0,5.0,observed,False,False,tjhockenson,TE,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,43,3,9,Jakobi Meyers,Jakobi Meyers,,,3.0,3.0,observed,False,False,jakobimeyers,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,44,3,10,Marvin Jones,Marvin Jones,,,2.0,2.0,observed,False,False,marvinjones,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,45,3,11,"Ravens D/ST Bal, D/ST",Ravens D/St,BAL,D/ST,1.0,1.0,observed,False,False,ravensdst,D/ST,espn_suffix,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,46,3,12,Cade York,Cade York,,,2.0,2.0,observed,False,False,cadeyork,K,2022_explicit_kicker,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,47,3,13,Russell Gage,Russell Gage,,,1.0,1.0,observed,False,False,russellgage,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,48,3,14,Van Jefferson,Van Jefferson,,,1.0,1.0,observed,False,False,vanjefferson,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,49,3,15,Robbie Anderson,Robbie Anderson,,,,1.0,imputed_blank_one,True,False,robbieanderson,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,52,4,1,Nick Chubb,Nick Chubb,,,81.0,81.0,observed,False,False,nickchubb,RB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,53,4,2,Lamar Jackson,Lamar Jackson,,,22.0,22.0,observed,False,False,lamarjackson,QB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,54,4,3,Dalton Schultz,Dalton Schultz,,,19.0,19.0,observed,False,False,daltonschultz,TE,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,55,4,4,Amari Cooper,Amari Cooper,,,10.0,10.0,observed,False,False,amaricooper,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,56,4,5,Mike Williams,Mike Williams,,,37.0,37.0,observed,False,False,mikewilliams,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,57,4,6,Darnell Mooney,Darnell Mooney,,,18.0,18.0,observed,False,False,darnellmooney,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,58,4,7,Miles Sanders,Miles Sanders,,,20.0,20.0,observed,False,False,milessanders,RB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,59,4,8,Damien Harris,Damien Harris,,,27.0,27.0,observed,False,False,damienharris,RB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,60,4,9,Tyler Lockett,Tyler Lockett,,,9.0,9.0,observed,False,False,tylerlockett,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,61,4,10,Elijah Moore,Elijah Moore,,,20.0,20.0,observed,False,False,elijahmoore,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,62,4,11,Cordarrelle Patterson,Cordarrelle Patterson,,,12.0,12.0,observed,False,False,cordarrellepatterson,RB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,63,4,12,"Packers D/ST GB, D/ST",Packers D/St,GB,D/ST,1.0,1.0,observed,False,False,packersdst,D/ST,espn_suffix,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,64,4,13,James Cook,James Cook,,,14.0,14.0,observed,False,False,jamescook,RB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,65,4,14,Hunter Henry,Hunter Henry,,,1.0,1.0,observed,False,False,hunterhenry,TE,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,66,4,15,Brandon McManus,Brandon Mcmanus,,,,1.0,imputed_blank_one,True,False,brandonmcmanus,K,2022_explicit_kicker,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,69,5,1,Javonte Williams,Javonte Williams,,,41.0,41.0,observed,False,True,javontewilliams,RB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,70,5,2,Amon-Ra St. Brown,Amon Ra St Brown,,,11.0,11.0,observed,False,True,amonrastbrown,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,71,5,3,Christian McCaffrey,Christian Mccaffrey,,,111.0,111.0,observed,False,False,christianmccaffrey,RB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,72,5,4,DK Metcalf,Dk Metcalf,,,21.0,21.0,observed,False,False,dkmetcalf,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,73,5,5,A.J. Brown,Aj Brown,,,45.0,45.0,observed,False,False,ajbrown,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,74,5,6,Mike Evans,Mike Evans,,,57.0,57.0,observed,False,False,mikeevans,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,75,5,7,Aaron Rodgers,Aaron Rodgers,,,2.0,2.0,observed,False,False,aaronrodgers,QB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,76,5,8,Zach Ertz,Zach Ertz,,,3.0,3.0,observed,False,False,zachertz,TE,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,77,5,9,Trey Lance,Trey Lance,,,3.0,3.0,observed,False,False,treylance,QB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,78,5,10,"49ers D/ST SF, D/ST",49Ers D/St,SF,D/ST,1.0,1.0,observed,False,False,49ersdst,D/ST,espn_suffix,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,79,5,11,Kenneth Gainwell,Kenneth Gainwell,,,1.0,1.0,observed,False,False,kennethgainwell,RB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,80,5,12,Nick Folk,Nick Folk,,,1.0,1.0,observed,False,False,nickfolk,K,2022_explicit_kicker,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,81,5,13,Darrell Henderson,Darrell Henderson,,,1.0,1.0,observed,False,False,darrellhenderson,RB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,82,5,14,Jamaal Williams,Jamaal Williams,,,1.0,1.0,observed,False,False,jamaalwilliams,RB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,83,5,15,Joshua Palmer,Joshua Palmer,,,,1.0,imputed_blank_one,True,False,joshuapalmer,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,86,6,1,Stefon Diggs,Stefon Diggs,,,42.0,42.0,observed,False,True,stefondiggs,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,87,6,2,Jonathan Taylor,Jonathan Taylor,,,76.0,76.0,observed,False,True,jonathantaylor,RB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,88,6,3,Travis Kelce,Travis Kelce,,,55.0,55.0,observed,False,False,traviskelce,TE,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,89,6,4,Michael Thomas,Michael Thomas,,,19.0,19.0,observed,False,False,michaelthomas,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,90,6,5,Patrick Mahomes,Patrick Mahomes,,,29.0,29.0,observed,False,False,patrickmahomes,QB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,91,6,6,Chris Olave,Chris Olave,,,16.0,16.0,observed,False,False,chrisolave,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,92,6,7,Breece Hall,Breece Hall,,,54.0,54.0,observed,False,False,breecehall,RB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,93,6,8,Christian Watson,Christian Watson,,,1.0,1.0,observed,False,False,christianwatson,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,94,6,9,Jahan Dotson,Jahan Dotson,,,2.0,2.0,observed,False,False,jahandotson,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,95,6,10,David Bell,David Bell,,,1.0,1.0,observed,False,False,davidbell,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,96,6,11,Alec Pierce,Alec Pierce,,,1.0,1.0,observed,False,False,alecpierce,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,97,6,12,"Rams D/ST LAR, D/ST",Rams D/St,LAR,D/ST,1.0,1.0,observed,False,False,ramsdst,D/ST,espn_suffix,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,98,6,13,Tyrion Davis-Price,Tyrion Davis Price,,,1.0,1.0,observed,False,False,tyriondavisprice,RB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,99,6,14,Greg Joseph,Greg Joseph,,,1.0,1.0,observed,False,False,gregjoseph,K,2022_explicit_kicker,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,100,6,15,J.D. McKissic,Jd Mckissic,,,,1.0,imputed_blank_one,True,False,jdmckissic,RB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,103,7,1,Terry McLaurin,Terry Mclaurin,,,46.0,46.0,observed,False,True,terrymclaurin,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,104,7,2,CeeDee Lamb,Ceedee Lamb,,,39.0,39.0,observed,False,True,ceedeelamb,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,105,7,3,Derrick Henry,Derrick Henry,,,87.0,87.0,observed,False,False,derrickhenry,RB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,106,7,4,Travis Etienne,Travis Etienne,,,56.0,56.0,observed,False,False,travisetienne,RB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,107,7,5,Elijah Mitchell,Elijah Mitchell,,,39.0,39.0,observed,False,False,elijahmitchell,RB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,108,7,6,Jalen Hurts,Jalen Hurts,,,12.0,12.0,observed,False,False,jalenhurts,QB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,109,7,7,Dawson Knox,Dawson Knox,,,2.0,2.0,observed,False,False,dawsonknox,TE,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,110,7,8,"Buccaneers D/ST TB, D/ST",Buccaneers D/St,TB,D/ST,1.0,1.0,observed,False,False,buccaneersdst,D/ST,espn_suffix,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,111,7,9,Treylon Burks,Treylon Burks,,,5.0,5.0,observed,False,False,treylonburks,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,112,7,10,Julio Jones,Julio Jones,,,2.0,2.0,observed,False,False,juliojones,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,113,7,11,Evan McPherson,Evan Mcpherson,,,2.0,2.0,observed,False,False,evanmcpherson,K,2022_explicit_kicker,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,114,7,12,Rondale Moore,Rondale Moore,,,1.0,1.0,observed,False,False,rondalemoore,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,115,7,13,Romeo Doubs,Romeo Doubs,,,1.0,1.0,observed,False,False,romeodoubs,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,116,7,14,Brian Robinson,Brian Robinson,,,3.0,3.0,observed,False,False,brianrobinson,RB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,117,7,15,Nico Collins,Nico Collins,,,,1.0,imputed_blank_one,True,False,nicocollins,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,120,8,1,James Conner,James Conner,,,13.0,13.0,observed,False,True,jamesconner,RB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,121,8,2,David Montgomery,David Montgomery,,,39.0,39.0,observed,False,True,davidmontgomery,RB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,122,8,3,Mark Andrews,Mark Andrews,,,50.0,50.0,observed,False,False,markandrews,TE,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,123,8,4,Garrett Wilson,Garrett Wilson,,,9.0,9.0,observed,False,False,garrettwilson,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,124,8,5,Josh Jacobs,Josh Jacobs,,,37.0,37.0,observed,False,False,joshjacobs,RB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,125,8,6,Tyreek Hill,Tyreek Hill,,,58.0,58.0,observed,False,False,tyreekhill,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,126,8,7,Keenan Allen,Keenan Allen,,,53.0,53.0,observed,False,False,keenanallen,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,127,8,8,Drake London,Drake London,,,12.0,12.0,observed,False,False,drakelondon,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,128,8,9,Kyler Murray,Kyler Murray,,,12.0,12.0,observed,False,False,kylermurray,QB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,129,8,10,Brandon Aiyuk,Brandon Aiyuk,,,5.0,5.0,observed,False,False,brandonaiyuk,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,130,8,11,Robert Woods,Robert Woods,,,2.0,2.0,observed,False,False,robertwoods,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,131,8,12,Marquez Valdes-Scantling,Marquez Valdes Scantling,,,7.0,7.0,observed,False,False,marquezvaldesscantling,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,132,8,13,Matt Gay,Matt Gay,,,1.0,1.0,observed,False,False,mattgay,K,2022_explicit_kicker,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,133,8,14,"Chargers D/ST LAC, D/ST",Chargers D/St,LAC,D/ST,1.0,1.0,observed,False,False,chargersdst,D/ST,espn_suffix,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,134,8,15,Khalil Herbert,Khalil Herbert,,,,1.0,imputed_blank_one,True,False,khalilherbert,RB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,137,9,1,Saquon Barkley,Saquon Barkley,,,71.0,71.0,observed,False,True,saquonbarkley,RB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,138,9,2,Cam Akers,Cam Akers,,,11.0,11.0,observed,False,True,camakers,RB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,139,9,3,Chris Godwin,Chris Godwin,,,27.0,27.0,observed,False,False,chrisgodwin,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,140,9,4,DJ Moore,Dj Moore,,,48.0,48.0,observed,False,False,djmoore,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,141,9,5,Darren Waller,Darren Waller,,,26.0,26.0,observed,False,False,darrenwaller,TE,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,142,9,6,Michael Pittman,Michael Pittman,,,52.0,52.0,observed,False,False,michaelpittman,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,143,9,7,Dak Prescott,Dak Prescott,,,6.0,6.0,observed,False,False,dakprescott,QB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,144,9,8,Chase Claypool,Chase Claypool,,,2.0,2.0,observed,False,False,chaseclaypool,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,145,9,9,Tyler Boyd,Tyler Boyd,,,4.0,4.0,observed,False,False,tylerboyd,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,146,9,10,Skyy Moore,Skyy Moore,,,4.0,4.0,observed,False,False,skyymoore,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,147,9,11,Melvin Gordon,Melvin Gordon,,,22.0,22.0,observed,False,False,melvingordon,RB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,148,9,12,"Saints D/ST NO, D/ST",Saints D/St,NO,D/ST,2.0,2.0,observed,False,False,saintsdst,D/ST,espn_suffix,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,149,9,13,James Robinson,James Robinson,,,6.0,6.0,observed,False,False,jamesrobinson,RB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,150,9,14,Kenneth Walker,Kenneth Walker,,,17.0,17.0,observed,False,False,kennethwalker,RB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,151,9,15,Harrison Butker,Harrison Butker,,,,1.0,imputed_blank_one,True,False,harrisonbutker,K,2022_explicit_kicker,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,154,10,1,Cooper Kupp,Cooper Kupp,,,50.0,50.0,observed,False,True,cooperkupp,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,155,10,2,Allen Robinson,Allen Robinson,,,11.0,11.0,observed,False,True,allenrobinson,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,156,10,3,Alvin Kamara,Alvin Kamara,,,85.0,85.0,observed,False,False,alvinkamara,RB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,157,10,4,Joe Mixon,Joe Mixon,,,96.0,96.0,observed,False,False,joemixon,RB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,158,10,5,Kirk Cousins,Kirk Cousins,,,2.0,2.0,observed,False,False,kirkcousins,QB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,159,10,6,Hunter Renfrow,Hunter Renfrow,,,16.0,16.0,observed,False,False,hunterrenfrow,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,160,10,7,Pat Freiermuth,Pat Freiermuth,,,4.0,4.0,observed,False,False,patfreiermuth,TE,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,161,10,8,Chase Edmonds,Chase Edmonds,,,23.0,23.0,observed,False,False,chaseedmonds,RB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,162,10,9,Kadarius Toney,Kadarius Toney,,,5.0,5.0,observed,False,False,kadariustoney,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,163,10,10,Eagles,Eagles,,,1.0,1.0,observed,False,False,eagles,D/ST,name_defense,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,164,10,11,Daniel Carlson,Daniel Carlson,,,1.0,1.0,observed,False,False,danielcarlson,K,2022_explicit_kicker,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,165,10,12,Jalen Tolbert,Jalen Tolbert,,,1.0,1.0,observed,False,False,jalentolbert,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,166,10,13,Mecole Hardman,Mecole Hardman,,,2.0,2.0,observed,False,False,mecolehardman,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,167,10,14,Jameson Williams,Jameson Williams,,,1.0,1.0,observed,False,False,jamesonwilliams,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,168,10,15,Raheem Mostert,Raheem Mostert,,,,1.0,imputed_blank_one,True,False,raheemmostert,RB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,171,11,1,Justin Jefferson,Justin Jefferson,,,29.0,29.0,observed,False,True,justinjefferson,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,172,11,2,Leonard Fournette,Leonard Fournette,,,25.0,25.0,observed,False,True,leonardfournette,RB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,173,11,3,Gabe Davis,Gabriel Davis,,,21.0,21.0,observed,False,False,gabrieldavis,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,174,11,4,Aaron Jones,Aaron Jones,,,67.0,67.0,observed,False,False,aaronjones,RB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,175,11,5,Davante Adams,Davante Adams,,,88.0,88.0,observed,False,False,davanteadams,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,176,11,6,Marquise Brown,Marquise Brown,,,20.0,20.0,observed,False,False,marquisebrown,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,177,11,7,Joe Burrow,Joe Burrow,,,12.0,12.0,observed,False,False,joeburrow,QB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,178,11,8,Dallas Goedert,Dallas Goedert,,,5.0,5.0,observed,False,False,dallasgoedert,TE,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,179,11,9,Rashaad Penny,Rashaad Penny,,,27.0,27.0,observed,False,False,rashaadpenny,RB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,180,11,10,"Steelers D/ST Pit, D/ST",Steelers D/St,PIT,D/ST,1.0,1.0,observed,False,False,steelersdst,D/ST,espn_suffix,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,181,11,11,Nyheim Hines,Nyheim Hines,,,1.0,1.0,observed,False,False,nyheimhines,RB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,182,11,12,Kenny Golladay,Kenny Golladay,,,1.0,1.0,observed,False,False,kennygolladay,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,183,11,13,Matthew Stafford,Matthew Stafford,,,1.0,1.0,observed,False,False,matthewstafford,QB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,184,11,14,KJ Hamler,Kj Hamler,,,1.0,1.0,observed,False,False,kjhamler,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,185,11,15,Chris Boswell,Chris Boswell,,,,1.0,imputed_blank_one,True,False,chrisboswell,K,2022_explicit_kicker,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,188,12,1,Courtland Sutton,Courtland Sutton,,,22.0,22.0,observed,False,True,courtlandsutton,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,189,12,2,Deebo Samuel,Deebo Samuel,,,15.0,15.0,observed,False,True,deebosamuel,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,190,12,3,Ezekiel Elliott,Ezekiel Elliott,,,45.0,45.0,observed,False,False,ezekielelliott,RB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,191,12,4,Devin Singletary,Devin Singletary,,,22.0,22.0,observed,False,False,devinsingletary,RB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,192,12,5,Clyde Edwards-Helaire,Clyde Edwards Helaire,,,46.0,46.0,observed,False,False,clydeedwardshelaire,RB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,193,12,6,Justin Herbert,Justin Herbert,,,29.0,29.0,observed,False,False,justinherbert,QB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,194,12,7,George Kittle,George Kittle,,,17.0,17.0,observed,False,False,georgekittle,TE,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,195,12,8,Adam Thielen,Adam Thielen,,,20.0,20.0,observed,False,False,adamthielen,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,196,12,9,Irv Smith,Irv Smith,,,3.0,3.0,observed,False,False,irvsmith,TE,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,197,12,10,Allen Lazard,Allen Lazard,,,25.0,25.0,observed,False,False,allenlazard,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,198,12,11,Kareem Hunt,Kareem Hunt,,,27.0,27.0,observed,False,False,kareemhunt,RB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,199,12,12,Justin Tucker,Justin Tucker,,,8.0,8.0,observed,False,False,justintucker,K,2022_explicit_kicker,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,200,12,13,"Bills D/ST Buf, D/ST",Bills D/St,BUF,D/ST,5.0,5.0,observed,False,False,billsdst,D/ST,espn_suffix,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,201,12,14,Russell Wilson,Russell Wilson,,,3.0,3.0,observed,False,False,russellwilson,QB,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2022,202,12,15,George Pickens,George Pickens,,,3.0,3.0,observed,False,False,georgepickens,WR,frozen_skill_lookup,8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2
+2023,2,1,1,"Rhamondre Stevenson NE, RB",Rhamondre Stevenson,NE,RB,35.0,35.0,observed,False,True,rhamondrestevenson,RB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,3,1,2,"DeVonta Smith Phi, WR",Devonta Smith,PHI,WR,21.0,21.0,observed,False,True,devontasmith,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,4,1,3,"Jahmyr Gibbs Det, RB",Jahmyr Gibbs,DET,RB,58.0,58.0,observed,False,False,jahmyrgibbs,RB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,5,1,4,"Justin Fields Chi, QB",Justin Fields,CHI,QB,20.0,20.0,observed,False,False,justinfields,QB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,6,1,5,"Bijan Robinson Atl, RB",Bijan Robinson,ATL,RB,100.0,100.0,observed,False,False,bijanrobinson,RB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,7,1,6,"Drake London Atl, WR",Drake London,ATL,WR,24.0,24.0,observed,False,False,drakelondon,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,8,1,7,"Pat Freiermuth Pit, TE",Pat Freiermuth,PIT,TE,5.0,5.0,observed,False,False,patfreiermuth,TE,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,9,1,8,"George Pickens Pit, WR",George Pickens,PIT,WR,19.0,19.0,observed,False,False,georgepickens,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,10,1,9,"Cowboys D/ST Dal, D/ST",Cowboys D/St,DAL,D/ST,3.0,3.0,observed,False,False,cowboysdst,D/ST,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,11,1,10,"Jason Myers Sea, K",Jason Myers,SEA,K,1.0,1.0,observed,False,False,jasonmyers,K,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,12,1,11,"Treylon Burks Ten, WR",Treylon Burks,TEN,WR,4.0,4.0,observed,False,False,treylonburks,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,13,1,12,"Kenneth Gainwell Phi, RB",Kenneth Gainwell,PHI,RB,3.0,3.0,observed,False,False,kennethgainwell,RB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,14,1,13,"Rashaad Penny Phi, RB",Rashaad Penny,PHI,RB,2.0,2.0,observed,False,False,rashaadpenny,RB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,15,1,14,"Tyler Allgeier Atl, RB",Tyler Allgeier,ATL,RB,3.0,3.0,observed,False,False,tylerallgeier,RB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,16,1,15,"Jameson Williams Det, WR",Jameson Williams,DET,WR,2.0,2.0,observed,False,False,jamesonwilliams,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,19,2,1,"J.K. Dobbins Bal, RB",Jk Dobbins,BAL,RB,27.0,27.0,observed,False,True,jkdobbins,RB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,20,2,2,"Tony Pollard Dal, RB",Tony Pollard,DAL,RB,36.0,36.0,observed,False,True,tonypollard,RB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,21,2,3,"Tyreek Hill Mia, WR",Tyreek Hill,MIA,WR,88.0,88.0,observed,False,False,tyreekhill,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,22,2,4,"Calvin Ridley Jax, WR",Calvin Ridley,JAX,WR,41.0,41.0,observed,False,False,calvinridley,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,23,2,5,"Dameon Pierce Hou, RB",Dameon Pierce,HOU,RB,31.0,31.0,observed,False,False,dameonpierce,RB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,24,2,6,"Kirk Cousins Min, QB",Kirk Cousins,MIN,QB,2.0,2.0,observed,False,False,kirkcousins,QB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,25,2,7,"Alvin Kamara NO, RB",Alvin Kamara,NO,RB,27.0,27.0,observed,False,False,alvinkamara,RB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,26,2,8,"Bills D/ST Buf, D/ST",Bills D/St,BUF,D/ST,2.0,2.0,observed,False,False,billsdst,D/ST,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,27,2,9,"Odell Beckham Jr. Bal, WR",Odell Beckham,BAL,WR,5.0,5.0,observed,False,False,odellbeckham,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,28,2,10,"DJ Moore Chi, WR",Dj Moore,CHI,WR,28.0,28.0,observed,False,False,djmoore,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,29,2,11,"Evan McPherson Cin, K",Evan Mcpherson,CIN,K,2.0,2.0,observed,False,False,evanmcpherson,K,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,30,2,12,"Michael Thomas NO, WR",Michael Thomas,NO,WR,8.0,8.0,observed,False,False,michaelthomas,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,31,2,13,"Dalton Schultz Hou, TE",Dalton Schultz,HOU,TE,1.0,1.0,observed,False,False,daltonschultz,TE,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,32,2,14,"Adam Thielen Car, WR",Adam Thielen,CAR,WR,1.0,1.0,observed,False,False,adamthielen,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,33,2,15,"Jared Goff Det, QB",Jared Goff,DET,QB,1.0,1.0,observed,False,False,jaredgoff,QB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,36,3,1,"Jaylen Waddle Mia, WR",Jaylen Waddle,MIA,WR,48.0,48.0,observed,False,True,jaylenwaddle,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,37,3,2,"Ja'Marr Chase Cin, WR",Ja'Marr Chase,CIN,WR,42.0,42.0,observed,False,True,jamarrchase,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,38,3,3,"Chris Olave NO, WR",Chris Olave,NO,WR,65.0,65.0,observed,False,False,chrisolave,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,39,3,4,"Justin Herbert LAC, QB",Justin Herbert,LAC,QB,25.0,25.0,observed,False,False,justinherbert,QB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,40,3,5,"Aaron Jones GB, RB",Aaron Jones,GB,RB,65.0,65.0,observed,False,False,aaronjones,RB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,41,3,6,"Dalvin Cook NYJ, RB",Dalvin Cook,NYJ,RB,22.0,22.0,observed,False,False,dalvincook,RB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,42,3,7,"Justin Tucker Bal, K",Justin Tucker,BAL,K,2.0,2.0,observed,False,False,justintucker,K,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,43,3,8,"Isiah Pacheco KC, RB",Isiah Pacheco,KC,RB,17.0,17.0,observed,False,False,isiahpacheco,RB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,44,3,9,"Evan Engram Jax, TE",Evan Engram,JAX,TE,3.0,3.0,observed,False,False,evanengram,TE,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,45,3,10,"Eagles D/ST Phi, D/ST",Eagles D/St,PHI,D/ST,4.0,4.0,observed,False,False,eaglesdst,D/ST,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,46,3,11,"Kadarius Toney KC, WR",Kadarius Toney,KC,WR,3.0,3.0,observed,False,False,kadariustoney,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,47,3,12,"Marvin Mims Jr. Den, WR",Marvin Mims,DEN,WR,1.0,1.0,observed,False,False,marvinmims,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,48,3,13,"Romeo Doubs GB, WR",Romeo Doubs,GB,WR,1.0,1.0,observed,False,False,romeodoubs,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,49,3,14,"Kyren Williams LAR, RB",Kyren Williams,LAR,RB,1.0,1.0,observed,False,False,kyrenwilliams,RB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,50,3,15,"Curtis Samuel Wsh, WR",Curtis Samuel,WSH,WR,1.0,1.0,observed,False,False,curtissamuel,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,53,4,1,"Amari Cooper Cle, WR",Amari Cooper,CLE,WR,20.0,20.0,observed,False,True,amaricooper,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,54,4,2,"Nick Chubb Cle, RB",Nick Chubb,CLE,RB,91.0,91.0,observed,False,True,nickchubb,RB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,55,4,3,"Mike Evans TB, WR",Mike Evans,TB,WR,22.0,22.0,observed,False,False,mikeevans,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,56,4,4,"Deshaun Watson Cle, QB",Deshaun Watson,CLE,QB,2.0,2.0,observed,False,False,deshaunwatson,QB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,57,4,5,"Keenan Allen LAC, WR",Keenan Allen,LAC,WR,37.0,37.0,observed,False,False,keenanallen,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,58,4,6,"Tyler Lockett Sea, WR",Tyler Lockett,SEA,WR,19.0,19.0,observed,False,False,tylerlockett,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,59,4,7,"Darren Waller NYG, TE",Darren Waller,NYG,TE,26.0,26.0,observed,False,False,darrenwaller,TE,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,60,4,8,"Alexander Mattison Min, RB",Alexander Mattison,MIN,RB,40.0,40.0,observed,False,False,alexandermattison,RB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,61,4,9,"Jerry Jeudy Den, WR",Jerry Jeudy,DEN,WR,8.0,8.0,observed,False,False,jerryjeudy,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,62,4,10,"Tank Bigsby Jax, RB",Tank Bigsby,JAX,RB,4.0,4.0,observed,False,False,tankbigsby,RB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,63,4,11,"Nico Collins Hou, WR",Nico Collins,HOU,WR,2.0,2.0,observed,False,False,nicocollins,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,64,4,12,"Khalil Herbert Chi, RB",Khalil Herbert,CHI,RB,17.0,17.0,observed,False,False,khalilherbert,RB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,65,4,13,"Samaje Perine Den, RB",Samaje Perine,DEN,RB,7.0,7.0,observed,False,False,samajeperine,RB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,66,4,14,"Tyler Bass Buf, K",Tyler Bass,BUF,K,2.0,2.0,observed,False,False,tylerbass,K,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,67,4,15,"Browns D/ST Cle, D/ST",Browns D/St,CLE,D/ST,1.0,1.0,observed,False,False,brownsdst,D/ST,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,70,5,1,"A.J. Brown Phi, WR",Aj Brown,PHI,WR,55.0,55.0,observed,False,True,ajbrown,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,71,5,2,"Amon-Ra St. Brown Det, WR",Amon Ra St Brown,DET,WR,26.0,26.0,observed,False,True,amonrastbrown,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,72,5,3,"Derrick Henry Ten, RB",Derrick Henry,TEN,RB,91.0,91.0,observed,False,False,derrickhenry,RB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,73,5,4,"Tee Higgins Cin, WR",Tee Higgins,CIN,WR,44.0,44.0,observed,False,False,teehiggins,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,74,5,5,"Lamar Jackson Bal, QB",Lamar Jackson,BAL,QB,32.0,32.0,observed,False,False,lamarjackson,QB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,75,5,6,"David Montgomery Det, RB",David Montgomery,DET,RB,16.0,16.0,observed,False,False,davidmontgomery,RB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,76,5,7,"Dallas Goedert Phi, TE",Dallas Goedert,PHI,TE,6.0,6.0,observed,False,False,dallasgoedert,TE,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,77,5,8,"Brian Robinson Jr. Wsh, RB",Brian Robinson,WSH,RB,12.0,12.0,observed,False,False,brianrobinson,RB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,78,5,9,"Daniel Carlson LV, K",Daniel Carlson,LV,K,2.0,2.0,observed,False,False,danielcarlson,K,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,79,5,10,"DJ Chark Jr. Car, WR",Dj Chark,CAR,WR,2.0,2.0,observed,False,False,djchark,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,80,5,11,"Gabe Davis Buf, WR",Gabriel Davis,BUF,WR,5.0,5.0,observed,False,False,gabrieldavis,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,81,5,12,"Jets D/ST NYJ, D/ST",Jets D/St,NYJ,D/ST,1.0,1.0,observed,False,False,jetsdst,D/ST,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,82,5,13,"Jamaal Williams NO, RB",Jamaal Williams,NO,RB,4.0,4.0,observed,False,False,jamaalwilliams,RB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,83,5,14,"Gus Edwards Bal, RB",Gus Edwards,BAL,RB,2.0,2.0,observed,False,False,gusedwards,RB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,84,5,15,"Daniel Jones NYG, QB",Daniel Jones,NYG,QB,1.0,1.0,observed,False,False,danieljones,QB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,87,6,1,"Travis Kelce KC, TE",Travis Kelce,KC,TE,65.0,65.0,observed,False,True,traviskelce,TE,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,88,6,2,"Patrick Mahomes KC, QB",Patrick Mahomes,KC,QB,39.0,39.0,observed,False,True,patrickmahomes,QB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,89,6,3,"Jonathan Taylor Ind, RB",Jonathan Taylor,IND,RB,78.0,78.0,observed,False,False,jonathantaylor,RB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,90,6,4,"DeAndre Hopkins Ten, WR",Deandre Hopkins,TEN,WR,41.0,41.0,observed,False,False,deandrehopkins,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,91,6,5,"Chris Godwin TB, WR",Chris Godwin,TB,WR,20.0,20.0,observed,False,False,chrisgodwin,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,92,6,6,"James Cook Buf, RB",James Cook,BUF,RB,30.0,30.0,observed,False,False,jamescook,RB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,93,6,7,"Marquise Brown Ari, WR",Marquise Brown,ARI,WR,7.0,7.0,observed,False,False,marquisebrown,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,94,6,8,"Antonio Gibson Wsh, RB",Antonio Gibson,WSH,RB,7.0,7.0,observed,False,False,antoniogibson,RB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,95,6,9,"Jeff Wilson Jr. Mia, RB",Jeff Wilson,MIA,RB,3.0,3.0,observed,False,False,jeffwilson,RB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,96,6,10,"Graham Gano NYG, K",Graham Gano,NYG,K,2.0,2.0,observed,False,False,grahamgano,K,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,97,6,11,"Tyler Boyd Cin, WR",Tyler Boyd,CIN,WR,3.0,3.0,observed,False,False,tylerboyd,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,98,6,12,"Steelers D/ST Pit, D/ST",Steelers D/St,PIT,D/ST,2.0,2.0,observed,False,False,steelersdst,D/ST,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,99,6,13,"Parris Campbell NYG, WR",Parris Campbell,NYG,WR,1.0,1.0,observed,False,False,parriscampbell,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,100,6,14,"Allen Lazard NYJ, WR",Allen Lazard,NYJ,WR,1.0,1.0,observed,False,False,allenlazard,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,101,6,15,"DeVante Parker NE, WR",Devante Parker,NE,WR,1.0,1.0,observed,False,False,devanteparker,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,104,7,1,"Jalen Hurts Phi, QB",Jalen Hurts,PHI,QB,22.0,22.0,observed,False,True,jalenhurts,QB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,105,7,2,"CeeDee Lamb Dal, WR",Ceedee Lamb,DAL,WR,59.0,59.0,observed,False,True,ceedeelamb,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,106,7,3,"Austin Ekeler LAC, RB",Austin Ekeler,LAC,RB,99.0,99.0,observed,False,False,austinekeler,RB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,107,7,4,"Joe Mixon Cin, RB",Joe Mixon,CIN,RB,66.0,66.0,observed,False,False,joemixon,RB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,108,7,5,"Jaxon Smith-Njigba Sea, WR",Jaxon Smith Njigba,SEA,WR,24.0,24.0,observed,False,False,jaxonsmithnjigba,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,109,7,6,"Brandon Aiyuk SF, WR",Brandon Aiyuk,SF,WR,14.0,14.0,observed,False,False,brandonaiyuk,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,110,7,7,"JuJu Smith-Schuster NE, WR",Juju Smith Schuster,NE,WR,5.0,5.0,observed,False,False,jujusmithschuster,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,111,7,8,"Cole Kmet Chi, TE",Cole Kmet,CHI,TE,1.0,1.0,observed,False,False,colekmet,TE,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,112,7,9,"Jakobi Meyers LV, WR",Jakobi Meyers,LV,WR,2.0,2.0,observed,False,False,jakobimeyers,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,113,7,10,"Rondale Moore Ari, WR",Rondale Moore,ARI,WR,2.0,2.0,observed,False,False,rondalemoore,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,114,7,11,"Packers D/ST GB, D/ST",Packers D/St,GB,D/ST,1.0,1.0,observed,False,False,packersdst,D/ST,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,115,7,12,"Matt Gay Ind, K",Matt Gay,IND,K,1.0,1.0,observed,False,False,mattgay,K,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,116,7,13,"Jalin Hyatt NYG, WR",Jalin Hyatt,NYG,WR,2.0,2.0,observed,False,False,jalinhyatt,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,117,7,14,"Devin Singletary Hou, RB",Devin Singletary,HOU,RB,1.0,1.0,observed,False,False,devinsingletary,RB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,118,7,15,"Tyjae Spears Ten, RB",Tyjae Spears,TEN,RB,1.0,1.0,observed,False,False,tyjaespears,RB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,121,8,1,"James Conner Ari, RB",James Conner,ARI,RB,28.0,28.0,observed,False,True,jamesconner,RB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,122,8,2,"Garrett Wilson NYJ, WR",Garrett Wilson,NYJ,WR,19.0,19.0,observed,False,True,garrettwilson,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,123,8,3,"Josh Jacobs LV, RB",Josh Jacobs,LV,RB,69.0,69.0,observed,False,False,joshjacobs,RB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,124,8,4,"DK Metcalf Sea, WR",Dk Metcalf,SEA,WR,52.0,52.0,observed,False,False,dkmetcalf,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,125,8,5,"Christian Watson GB, WR",Christian Watson,GB,WR,28.0,28.0,observed,False,False,christianwatson,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,126,8,6,"Deebo Samuel SF, WR",Deebo Samuel,SF,WR,44.0,44.0,observed,False,False,deebosamuel,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,127,8,7,"Tua Tagovailoa Mia, QB",Tua Tagovailoa,MIA,QB,15.0,15.0,observed,False,False,tuatagovailoa,QB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,128,8,8,"Aaron Rodgers NYJ, QB",Aaron Rodgers,NYJ,QB,4.0,4.0,observed,False,False,aaronrodgers,QB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,129,8,9,"David Njoku Cle, TE",David Njoku,CLE,TE,6.0,6.0,observed,False,False,davidnjoku,TE,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,130,8,10,"Miles Sanders Car, RB",Miles Sanders,CAR,RB,29.0,29.0,observed,False,False,milessanders,RB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,131,8,11,"Dolphins D/ST Mia, D/ST",Dolphins D/St,MIA,D/ST,1.0,1.0,observed,False,False,dolphinsdst,D/ST,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,132,8,12,"Cameron Dicker LAC, K",Cameron Dicker,LAC,K,1.0,1.0,observed,False,False,camerondicker,K,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,133,8,13,"Harrison Butker KC, K",Harrison Butker,KC,K,2.0,2.0,observed,False,False,harrisonbutker,K,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,134,8,14,"Roschon Johnson Chi, RB",Roschon Johnson,CHI,RB,1.0,1.0,observed,False,False,roschonjohnson,RB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,135,8,15,"Michael Gallup Dal, WR",Michael Gallup,DAL,WR,1.0,1.0,observed,False,False,michaelgallup,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,138,9,1,"Saquon Barkley NYG, RB",Saquon Barkley,NYG,RB,86.0,86.0,observed,False,True,saquonbarkley,RB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,139,9,2,"Kenneth Walker III Sea, RB",Kenneth Walker,SEA,RB,27.0,27.0,observed,False,True,kennethwalker,RB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,140,9,3,"Travis Etienne Jr. Jax, RB",Travis Etienne,JAX,RB,69.0,69.0,observed,False,False,travisetienne,RB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,141,9,4,"Dak Prescott Dal, QB",Dak Prescott,DAL,QB,6.0,6.0,observed,False,False,dakprescott,QB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,142,9,5,"Mark Andrews Bal, TE",Mark Andrews,BAL,TE,43.0,43.0,observed,False,False,markandrews,TE,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,143,9,6,"Mike Williams LAC, WR",Mike Williams,LAC,WR,17.0,17.0,observed,False,False,mikewilliams,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,144,9,7,"Brandin Cooks Dal, WR",Brandin Cooks,DAL,WR,11.0,11.0,observed,False,False,brandincooks,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,145,9,8,"Courtland Sutton Den, WR",Courtland Sutton,DEN,WR,9.0,9.0,observed,False,False,courtlandsutton,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,146,9,9,"Christian Kirk Jax, WR",Christian Kirk,JAX,WR,15.0,15.0,observed,False,False,christiankirk,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,147,9,10,"Ezekiel Elliott NE, RB",Ezekiel Elliott,NE,RB,7.0,7.0,observed,False,False,ezekielelliott,RB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,148,9,11,"Ravens D/ST Bal, D/ST",Ravens D/St,BAL,D/ST,2.0,2.0,observed,False,False,ravensdst,D/ST,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,149,9,12,"Elijah Moore Cle, WR",Elijah Moore,CLE,WR,4.0,4.0,observed,False,False,elijahmoore,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,150,9,13,"Darnell Mooney Chi, WR",Darnell Mooney,CHI,WR,2.0,2.0,observed,False,False,darnellmooney,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,151,9,14,"Greg Zuerlein NYJ, K",Greg Zuerlein,NYJ,K,1.0,1.0,observed,False,False,gregzuerlein,K,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,152,9,15,"Damien Harris Buf, RB",Damien Harris,BUF,RB,1.0,1.0,observed,False,False,damienharris,RB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,155,10,1,"Javonte Williams Den, RB",Javonte Williams,DEN,RB,11.0,11.0,observed,False,True,javontewilliams,RB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,156,10,2,"Cooper Kupp LAR, WR",Cooper Kupp,LAR,WR,65.0,65.0,observed,False,True,cooperkupp,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,157,10,3,"Christian McCaffrey SF, RB",Christian Mccaffrey,SF,RB,105.0,105.0,observed,False,False,christianmccaffrey,RB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,158,10,4,"Diontae Johnson Pit, WR",Diontae Johnson,PIT,WR,24.0,24.0,observed,False,False,diontaejohnson,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,159,10,5,"Joe Burrow Cin, QB",Joe Burrow,CIN,QB,15.0,15.0,observed,False,False,joeburrow,QB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,160,10,6,"George Kittle SF, TE",George Kittle,SF,TE,35.0,35.0,observed,False,False,georgekittle,TE,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,161,10,7,"Terry McLaurin Wsh, WR",Terry Mclaurin,WSH,WR,25.0,25.0,observed,False,False,terrymclaurin,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,162,10,8,"Michael Pittman Jr. Ind, WR",Michael Pittman,IND,WR,10.0,10.0,observed,False,False,michaelpittman,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,163,10,9,"Patriots D/ST NE, D/ST",Patriots D/St,NE,D/ST,1.0,1.0,observed,False,False,patriotsdst,D/ST,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,164,10,10,"Jake Elliott Phi, K",Jake Elliott,PHI,K,1.0,1.0,observed,False,False,jakeelliott,K,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,165,10,11,"Jaylen Warren Pit, RB",Jaylen Warren,PIT,RB,2.0,2.0,observed,False,False,jaylenwarren,RB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,166,10,12,"Matthew Stafford LAR, QB",Matthew Stafford,LAR,QB,1.0,1.0,observed,False,False,matthewstafford,QB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,167,10,13,"De'Von Achane Mia, RB",Devon Achane,MIA,RB,2.0,2.0,observed,False,False,devonachane,RB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,168,10,14,"Sam LaPorta Det, TE",Sam Laporta,DET,TE,1.0,1.0,observed,False,False,samlaporta,TE,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,169,10,15,"Elijah Mitchell SF, RB",Elijah Mitchell,SF,RB,1.0,1.0,observed,False,False,elijahmitchell,RB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,172,11,1,"Justin Jefferson Min, WR",Justin Jefferson,MIN,WR,49.0,49.0,observed,False,True,justinjefferson,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,173,11,2,"Davante Adams LV, WR",Davante Adams,LV,WR,95.0,95.0,observed,False,False,davanteadams,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,174,11,3,"Najee Harris Pit, RB",Najee Harris,PIT,RB,66.0,66.0,observed,False,False,najeeharris,RB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,175,11,4,"Trevor Lawrence Jax, QB",Trevor Lawrence,JAX,QB,6.0,6.0,observed,False,False,trevorlawrence,QB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,176,11,5,"Rachaad White TB, RB",Rachaad White,TB,RB,35.0,35.0,observed,False,False,rachaadwhite,RB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,177,11,6,"Kyle Pitts Atl, TE",Kyle Pitts,ATL,TE,14.0,14.0,observed,False,False,kylepitts,TE,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,178,11,7,"Jahan Dotson Wsh, WR",Jahan Dotson,WSH,WR,12.0,12.0,observed,False,False,jahandotson,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,179,11,8,"Skyy Moore KC, WR",Skyy Moore,KC,WR,12.0,12.0,observed,False,False,skyymoore,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,180,11,9,"Jerick McKinnon KC, RB",Jerick Mckinnon,KC,RB,1.0,1.0,observed,False,False,jerickmckinnon,RB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,181,11,10,"Quentin Johnston LAC, WR",Quentin Johnston,LAC,WR,5.0,5.0,observed,False,False,quentinjohnston,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,182,11,11,"Younghoe Koo Atl, K",Younghoe Koo,ATL,K,1.0,1.0,observed,False,False,younghoekoo,K,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,183,11,12,"Colts D/ST Ind, D/ST",Colts D/St,IND,D/ST,1.0,1.0,observed,False,False,coltsdst,D/ST,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,184,11,13,"Deuce Vaughn Dal, RB",Deuce Vaughn,DAL,RB,1.0,1.0,observed,False,False,deucevaughn,RB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,185,11,14,"Tyler Higbee LAR, TE",Tyler Higbee,LAR,TE,1.0,1.0,observed,False,False,tylerhigbee,TE,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,186,11,15,"Mecole Hardman Jr. NYJ, WR",Mecole Hardman,NYJ,WR,1.0,1.0,observed,False,False,mecolehardman,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,189,12,1,"Josh Allen Buf, QB",Josh Allen,BUF,QB,50.0,50.0,observed,False,False,joshallen,QB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,190,12,2,"Stefon Diggs Buf, WR",Stefon Diggs,BUF,WR,84.0,84.0,observed,False,False,stefondiggs,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,191,12,3,"Breece Hall NYJ, RB",Breece Hall,NYJ,RB,34.0,34.0,observed,False,False,breecehall,RB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,192,12,4,"49ers D/ST SF, D/ST",49Ers D/St,SF,D/ST,2.0,2.0,observed,False,False,49ersdst,D/ST,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,193,12,5,"T.J. Hockenson Min, TE",Tj Hockenson,MIN,TE,21.0,21.0,observed,False,False,tjhockenson,TE,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,194,12,6,"D'Andre Swift Phi, RB",D'Andre Swift,PHI,RB,22.0,22.0,observed,False,False,dandreswift,RB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,195,12,7,"AJ Dillon GB, RB",Aj Dillon,GB,RB,11.0,11.0,observed,False,False,ajdillon,RB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,196,12,8,"Jordan Addison Min, WR",Jordan Addison,MIN,WR,16.0,16.0,observed,False,False,jordanaddison,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,197,12,9,"Cam Akers LAR, RB",Cam Akers,LAR,RB,27.0,27.0,observed,False,False,camakers,RB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,198,12,10,"Zay Flowers Bal, WR",Zay Flowers,BAL,WR,14.0,14.0,observed,False,False,zayflowers,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,199,12,11,"Brett Maher Den, K",Brett Maher,DEN,K,2.0,2.0,observed,False,False,brettmaher,K,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,200,12,12,"Dalton Kincaid Buf, TE",Dalton Kincaid,BUF,TE,5.0,5.0,observed,False,False,daltonkincaid,TE,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,201,12,13,"Zach Charbonnet Sea, RB",Zach Charbonnet,SEA,RB,6.0,6.0,observed,False,False,zachcharbonnet,RB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,202,12,14,"Anthony Richardson Ind, QB",Anthony Richardson,IND,QB,5.0,5.0,observed,False,False,anthonyrichardson,QB,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2023,203,12,15,"Zay Jones Jax, WR",Zay Jones,JAX,WR,1.0,1.0,observed,False,False,zayjones,WR,espn_suffix,5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2
+2024,2,1,1,"Jahmyr Gibbs Det, RB",Jahmyr Gibbs,DET,RB,68.0,68.0,observed,False,True,jahmyrgibbs,RB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,3,1,2,"Trey McBride Ari, TE",Trey Mcbride,ARI,TE,11.0,11.0,observed,False,True,treymcbride,TE,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,4,1,3,"Bijan Robinson Atl, RB",Bijan Robinson,ATL,RB,96.0,96.0,observed,False,False,bijanrobinson,RB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,5,1,4,"Malik Nabers NYG, WR",Malik Nabers,NYG,WR,40.0,40.0,observed,False,False,maliknabers,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,6,1,5,"Jaylen Waddle Mia, WR",Jaylen Waddle,MIA,WR,40.0,40.0,observed,False,False,jaylenwaddle,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,7,1,6,"Tank Dell Hou, WR",Nathaniel Dell,HOU,WR,21.0,21.0,observed,False,False,nathanieldell,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,8,1,7,"Khalil Shakir Buf, WR",Khalil Shakir,BUF,WR,4.0,4.0,observed,False,False,khalilshakir,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,9,1,8,"Bucky Irving TB, RB",Bucky Irving,TB,RB,2.0,2.0,observed,False,False,buckyirving,RB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,10,1,9,"Chase Brown Cin, RB",Chase Brown,CIN,RB,9.0,9.0,observed,False,False,chasebrown,RB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,11,1,10,"Brandon Aubrey Dal, K",Brandon Aubrey,DAL,K,1.0,1.0,observed,False,False,brandonaubrey,K,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,12,1,11,"Caleb Williams Chi, QB",Caleb Williams,CHI,QB,3.0,3.0,observed,False,False,calebwilliams,QB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,13,1,12,"Romeo Doubs GB, WR",Romeo Doubs,GB,WR,2.0,2.0,observed,False,False,romeodoubs,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,14,1,13,"Dontayvion Wicks GB, WR",Dontayvion Wicks,GB,WR,1.0,1.0,observed,False,False,dontayvionwicks,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,15,1,14,"Trevor Lawrence Jax, QB",Trevor Lawrence,JAX,QB,1.0,1.0,observed,False,False,trevorlawrence,QB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,16,1,15,"Seahawks D/ST Sea, D/ST",Seahawks D/St,SEA,D/ST,1.0,1.0,observed,False,False,seahawksdst,D/ST,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,19,2,1,"Marvin Harrison Jr. Ari, WR",Marvin Harrison,ARI,WR,63.0,63.0,observed,False,False,marvinharrison,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,20,2,2,"Justin Jefferson Min, WR",Justin Jefferson,MIN,WR,74.0,74.0,observed,False,False,justinjefferson,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,21,2,3,"Isiah Pacheco KC, RB",Isiah Pacheco,KC,RB,61.0,61.0,observed,False,False,isiahpacheco,RB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,22,2,4,"James Cook Buf, RB",James Cook,BUF,RB,44.0,44.0,observed,False,False,jamescook,RB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,23,2,5,"George Kittle SF, TE",George Kittle,SF,TE,16.0,16.0,observed,False,False,georgekittle,TE,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,24,2,6,"Christian Watson GB, WR",Christian Watson,GB,WR,13.0,13.0,observed,False,False,christianwatson,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,25,2,7,"Rome Odunze Chi, WR",Rome Odunze,CHI,WR,13.0,13.0,observed,False,False,romeodunze,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,26,2,8,"Evan McPherson Cin, K",Evan Mcpherson,CIN,K,2.0,2.0,observed,False,False,evanmcpherson,K,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,27,2,9,"Pat Freiermuth Pit, TE",Pat Freiermuth,PIT,TE,2.0,2.0,observed,False,False,patfreiermuth,TE,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,28,2,10,"Jets D/ST NYJ, D/ST",Jets D/St,NYJ,D/ST,2.0,2.0,observed,False,False,jetsdst,D/ST,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,29,2,11,"Matthew Stafford LAR, QB",Matthew Stafford,LAR,QB,1.0,1.0,observed,False,False,matthewstafford,QB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,30,2,12,"Ty Chandler Min, RB",Ty Chandler,MIN,RB,1.0,1.0,observed,False,False,tychandler,RB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,31,2,13,"Rico Dowdle Dal, RB",Rico Dowdle,DAL,RB,2.0,2.0,observed,False,False,ricodowdle,RB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,32,2,14,"Jayden Daniels Wsh, QB",Jayden Daniels,WSH,QB,3.0,3.0,observed,False,False,jaydendaniels,QB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,33,2,15,"Tyler Allgeier Atl, RB",Tyler Allgeier,ATL,RB,2.0,2.0,observed,False,False,tylerallgeier,RB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,36,3,1,"Kyren Williams LAR, RB",Kyren Williams,LAR,RB,11.0,11.0,observed,False,True,kyrenwilliams,RB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,37,3,2,"Ja'Marr Chase Cin, WR",Ja'Marr Chase,CIN,WR,62.0,62.0,observed,False,True,jamarrchase,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,38,3,3,"A.J. Brown Phi, WR",Aj Brown,PHI,WR,66.0,66.0,observed,False,False,ajbrown,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,39,3,4,"Cooper Kupp LAR, WR",Cooper Kupp,LAR,WR,62.0,62.0,observed,False,False,cooperkupp,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,40,3,5,"Zamir White LV, RB",Zamir White,LV,RB,21.0,21.0,observed,False,False,zamirwhite,RB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,41,3,6,"Brock Bowers LV, TE",Brock Bowers,LV,TE,11.0,11.0,observed,False,False,brockbowers,TE,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,42,3,7,"Tony Pollard Ten, RB",Tony Pollard,TEN,RB,18.0,18.0,observed,False,False,tonypollard,RB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,43,3,8,"Jake Elliott Phi, K",Jake Elliott,PHI,K,1.0,1.0,observed,False,False,jakeelliott,K,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,44,3,9,"Adonai Mitchell Ind, WR",Adonai Mitchell,IND,WR,2.0,2.0,observed,False,False,adonaimitchell,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,45,3,10,"Terry McLaurin Wsh, WR",Terry Mclaurin,WSH,WR,21.0,21.0,observed,False,False,terrymclaurin,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,46,3,11,"DeAndre Hopkins Ten, WR",Deandre Hopkins,TEN,WR,9.0,9.0,observed,False,False,deandrehopkins,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,47,3,12,"49ers D/ST SF, D/ST",49Ers D/St,SF,D/ST,5.0,5.0,observed,False,False,49ersdst,D/ST,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,48,3,13,"Brock Purdy SF, QB",Brock Purdy,SF,QB,3.0,3.0,observed,False,False,brockpurdy,QB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,49,3,14,"Jameson Williams Det, WR",Jameson Williams,DET,WR,7.0,7.0,observed,False,False,jamesonwilliams,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,50,3,15,"Kirk Cousins Atl, QB",Kirk Cousins,ATL,QB,1.0,1.0,observed,False,False,kirkcousins,QB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,53,4,1,"Raheem Mostert Mia, RB",Raheem Mostert,MIA,RB,13.0,13.0,observed,False,True,raheemmostert,RB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,54,4,2,"Nico Collins Hou, WR",Nico Collins,HOU,WR,12.0,12.0,observed,False,True,nicocollins,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,55,4,3,"CeeDee Lamb Dal, WR",Ceedee Lamb,DAL,WR,88.0,88.0,observed,False,False,ceedeelamb,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,56,4,4,"Chris Olave NO, WR",Chris Olave,NO,WR,47.0,47.0,observed,False,False,chrisolave,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,57,4,5,"Puka Nacua LAR, WR",Puka Nacua,LAR,WR,57.0,57.0,observed,False,False,pukanacua,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,58,4,6,"Rachaad White TB, RB",Rachaad White,TB,RB,40.0,40.0,observed,False,False,rachaadwhite,RB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,59,4,7,"Dak Prescott Dal, QB",Dak Prescott,DAL,QB,7.0,7.0,observed,False,False,dakprescott,QB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,60,4,8,"David Njoku Cle, TE",David Njoku,CLE,TE,10.0,10.0,observed,False,False,davidnjoku,TE,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,61,4,9,"Devin Singletary NYG, RB",Devin Singletary,NYG,RB,16.0,16.0,observed,False,False,devinsingletary,RB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,62,4,10,"Dallas Goedert Phi, TE",Dallas Goedert,PHI,TE,1.0,1.0,observed,False,False,dallasgoedert,TE,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,63,4,11,"Dustin Hopkins Cle, K",Dustin Hopkins,CLE,K,1.0,1.0,observed,False,False,dustinhopkins,K,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,64,4,12,"Chuba Hubbard Car, RB",Chuba Hubbard,CAR,RB,3.0,3.0,observed,False,False,chubahubbard,RB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,65,4,13,"Skyy Moore KC, WR",Skyy Moore,KC,WR,2.0,2.0,observed,False,False,skyymoore,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,66,4,14,"Saints D/ST NO, D/ST",Saints D/St,NO,D/ST,1.0,1.0,observed,False,False,saintsdst,D/ST,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,70,5,1,"Rhamondre Stevenson NE, RB",Rhamondre Stevenson,NE,RB,11.0,11.0,observed,False,True,rhamondrestevenson,RB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,71,5,2,"Amon-Ra St. Brown Det, WR",Amon Ra St Brown,DET,WR,46.0,46.0,observed,False,True,amonrastbrown,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,72,5,3,"De'Von Achane Mia, RB",Devon Achane,MIA,RB,72.0,72.0,observed,False,False,devonachane,RB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,73,5,4,"Anthony Richardson Ind, QB",Anthony Richardson,IND,QB,17.0,17.0,observed,False,False,anthonyrichardson,QB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,74,5,5,"Amari Cooper Cle, WR",Amari Cooper,CLE,WR,20.0,20.0,observed,False,False,amaricooper,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,75,5,6,"DJ Moore Chi, WR",Dj Moore,CHI,WR,30.0,30.0,observed,False,False,djmoore,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,76,5,7,"Justin Tucker Bal, K",Justin Tucker,BAL,K,3.0,3.0,observed,False,False,justintucker,K,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,77,5,8,"Aaron Jones Min, RB",Aaron Jones,MIN,RB,32.0,32.0,observed,False,False,aaronjones,RB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,78,5,9,"Brian Robinson Jr. Wsh, RB",Brian Robinson,WSH,RB,20.0,20.0,observed,False,False,brianrobinson,RB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,79,5,10,"Ladd McConkey LAC, WR",Ladd Mcconkey,LAC,WR,9.0,9.0,observed,False,False,laddmcconkey,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,80,5,11,"Ravens D/ST Bal, D/ST",Ravens D/St,BAL,D/ST,4.0,4.0,observed,False,False,ravensdst,D/ST,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,81,5,12,"Jordan Love GB, QB",Jordan Love,GB,QB,6.0,6.0,observed,False,False,jordanlove,QB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,82,5,13,"Najee Harris Pit, RB",Najee Harris,PIT,RB,28.0,28.0,observed,False,False,najeeharris,RB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,83,5,14,"Taysom Hill NO, TE",Taysom Hill,NO,TE,1.0,1.0,observed,False,False,taysomhill,TE,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,84,5,15,"Dalton Schultz Hou, TE",Dalton Schultz,HOU,TE,1.0,1.0,observed,False,False,daltonschultz,TE,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,87,6,1,"Josh Allen Buf, QB",Josh Allen,BUF,QB,36.0,36.0,observed,False,False,joshallen,QB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,88,6,2,"Drake London Atl, WR",Drake London,ATL,WR,49.0,49.0,observed,False,False,drakelondon,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,89,6,3,"DK Metcalf Sea, WR",Dk Metcalf,SEA,WR,48.0,48.0,observed,False,False,dkmetcalf,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,90,6,4,"Josh Jacobs GB, RB",Josh Jacobs,GB,RB,47.0,47.0,observed,False,False,joshjacobs,RB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,91,6,5,"D'Andre Swift Chi, RB",D'Andre Swift,CHI,RB,32.0,32.0,observed,False,False,dandreswift,RB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,92,6,6,"DeVonta Smith Phi, WR",Devonta Smith,PHI,WR,40.0,40.0,observed,False,False,devontasmith,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,93,6,7,"Mark Andrews Bal, TE",Mark Andrews,BAL,TE,28.0,28.0,observed,False,False,markandrews,TE,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,94,6,8,"Austin Ekeler Wsh, RB",Austin Ekeler,WSH,RB,7.0,7.0,observed,False,False,austinekeler,RB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,95,6,9,"Jordan Addison Min, WR",Jordan Addison,MIN,WR,5.0,5.0,observed,False,False,jordanaddison,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,96,6,10,"Ka'imi Fairbairn Hou, K",Ka'Imi Fairbairn,HOU,K,2.0,2.0,observed,False,False,kaimifairbairn,K,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,97,6,11,"Curtis Samuel Buf, WR",Curtis Samuel,BUF,WR,2.0,2.0,observed,False,False,curtissamuel,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,98,6,12,"Lions D/ST Det, D/ST",Lions D/St,DET,D/ST,1.0,1.0,observed,False,False,lionsdst,D/ST,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,99,6,13,"Antonio Gibson NE, RB",Antonio Gibson,NE,RB,1.0,1.0,observed,False,False,antoniogibson,RB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,100,6,14,"Darnell Mooney Atl, WR",Darnell Mooney,ATL,WR,1.0,1.0,observed,False,False,darnellmooney,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,101,6,15,"Justin Herbert LAC, QB",Justin Herbert,LAC,QB,1.0,1.0,observed,False,False,justinherbert,QB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,104,7,1,"George Pickens Pit, WR",George Pickens,PIT,WR,12.0,12.0,observed,False,True,georgepickens,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,105,7,2,"Brandon Aiyuk SF, WR",Brandon Aiyuk,SF,WR,24.0,24.0,observed,False,True,brandonaiyuk,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,106,7,3,"Christian McCaffrey SF, RB",Christian Mccaffrey,SF,RB,108.0,108.0,observed,False,False,christianmccaffrey,RB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,107,7,4,"Alvin Kamara NO, RB",Alvin Kamara,NO,RB,46.0,46.0,observed,False,False,alvinkamara,RB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,108,7,5,"Travis Kelce KC, TE",Travis Kelce,KC,TE,46.0,46.0,observed,False,False,traviskelce,TE,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,109,7,6,"Jalen Hurts Phi, QB",Jalen Hurts,PHI,QB,27.0,27.0,observed,False,False,jalenhurts,QB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,110,7,7,"Zack Moss Cin, RB",Zack Moss,CIN,RB,14.0,14.0,observed,False,False,zackmoss,RB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,111,7,8,"Jakobi Meyers LV, WR",Jakobi Meyers,LV,WR,3.0,3.0,observed,False,False,jakobimeyers,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,112,7,9,"Jerome Ford Cle, RB",Jerome Ford,CLE,RB,14.0,14.0,observed,False,False,jeromeford,RB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,113,7,10,"T.J. Hockenson Min, TE",Tj Hockenson,MIN,TE,1.0,1.0,observed,False,False,tjhockenson,TE,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,114,7,11,"Xavier Legette Car, WR",Xavier Legette,CAR,WR,1.0,1.0,observed,False,False,xavierlegette,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,115,7,12,"MarShawn Lloyd GB, RB",Marshawn Lloyd,GB,RB,1.0,1.0,observed,False,False,marshawnlloyd,RB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,116,7,13,"Jaleel McLaughlin Den, RB",Jaleel Mclaughlin,DEN,RB,1.0,1.0,observed,False,False,jaleelmclaughlin,RB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,117,7,14,"Eagles D/ST Phi, D/ST",Eagles D/St,PHI,D/ST,1.0,1.0,observed,False,False,eaglesdst,D/ST,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,118,7,15,"Matt Gay Ind, K",Matt Gay,IND,K,1.0,1.0,observed,False,False,mattgay,K,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,121,8,1,"James Conner Ari, RB",James Conner,ARI,RB,48.0,48.0,observed,False,True,jamesconner,RB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,122,8,2,"Garrett Wilson NYJ, WR",Garrett Wilson,NYJ,WR,34.0,34.0,observed,False,True,garrettwilson,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,123,8,3,"Saquon Barkley Phi, RB",Saquon Barkley,PHI,RB,97.0,97.0,observed,False,False,saquonbarkley,RB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,124,8,4,"Jaylen Wright Mia, RB",Jaylen Wright,MIA,RB,1.0,1.0,observed,False,False,jaylenwright,RB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,125,8,5,"Davante Adams LV, WR",Davante Adams,LV,WR,39.0,39.0,observed,False,False,davanteadams,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,126,8,6,"Trey Benson Ari, RB",Trey Benson,ARI,RB,9.0,9.0,observed,False,False,treybenson,RB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,127,8,7,"Stefon Diggs Hou, WR",Stefon Diggs,HOU,WR,37.0,37.0,observed,False,False,stefondiggs,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,128,8,8,"Cameron Dicker LAC, K",Cameron Dicker,LAC,K,1.0,1.0,observed,False,False,camerondicker,K,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,129,8,9,"Evan Engram Jax, TE",Evan Engram,JAX,TE,9.0,9.0,observed,False,False,evanengram,TE,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,130,8,10,"Diontae Johnson Car, WR",Diontae Johnson,CAR,WR,8.0,8.0,observed,False,False,diontaejohnson,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,131,8,11,"Aaron Rodgers NYJ, QB",Aaron Rodgers,NYJ,QB,3.0,3.0,observed,False,False,aaronrodgers,QB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,132,8,12,"Jayden Reed GB, WR",Jayden Reed,GB,WR,8.0,8.0,observed,False,False,jaydenreed,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,133,8,13,"Jonathon Brooks Car, RB",Jonathon Brooks,CAR,RB,3.0,3.0,observed,False,False,jonathonbrooks,RB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,134,8,14,"Dolphins D/ST Mia, D/ST",Dolphins D/St,MIA,D/ST,1.0,1.0,observed,False,False,dolphinsdst,D/ST,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,135,8,15,"Adam Thielen Car, WR",Adam Thielen,CAR,WR,2.0,2.0,observed,False,False,adamthielen,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,138,9,1,"Travis Etienne Jr. Jax, RB",Travis Etienne,JAX,RB,79.0,79.0,observed,False,True,travisetienne,RB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,139,9,2,"Kenneth Walker III Sea, RB",Kenneth Walker,SEA,RB,42.0,42.0,observed,False,True,kennethwalker,RB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,140,9,3,"Rashee Rice KC, WR",Rashee Rice,KC,WR,26.0,26.0,observed,False,False,rasheerice,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,141,9,4,"Joe Mixon Hou, RB",Joe Mixon,HOU,RB,52.0,52.0,observed,False,False,joemixon,RB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,142,9,5,"Jaxon Smith-Njigba Sea, WR",Jaxon Smith Njigba,SEA,WR,17.0,17.0,observed,False,False,jaxonsmithnjigba,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,143,9,6,"Chris Godwin TB, WR",Chris Godwin,TB,WR,10.0,10.0,observed,False,False,chrisgodwin,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,144,9,7,"Kyler Murray Ari, QB",Kyler Murray,ARI,QB,13.0,13.0,observed,False,False,kylermurray,QB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,145,9,8,"Tee Higgins Cin, WR",Tee Higgins,CIN,WR,40.0,40.0,observed,False,False,teehiggins,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,146,9,9,"Jake Ferguson Dal, TE",Jake Ferguson,DAL,TE,8.0,8.0,observed,False,False,jakeferguson,TE,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,147,9,10,"Browns D/ST Cle, D/ST",Browns D/St,CLE,D/ST,3.0,3.0,observed,False,False,brownsdst,D/ST,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,148,9,11,"Younghoe Koo Atl, K",Younghoe Koo,ATL,K,2.0,2.0,observed,False,False,younghoekoo,K,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,149,9,12,"Zach Charbonnet Sea, RB",Zach Charbonnet,SEA,RB,3.0,3.0,observed,False,False,zachcharbonnet,RB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,150,9,13,"Jerry Jeudy Cle, WR",Jerry Jeudy,CLE,WR,3.0,3.0,observed,False,False,jerryjeudy,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,151,9,14,"Miles Sanders Car, RB",Miles Sanders,CAR,RB,1.0,1.0,observed,False,False,milessanders,RB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,152,9,15,"Khalil Herbert Chi, RB",Khalil Herbert,CHI,RB,1.0,1.0,observed,False,False,khalilherbert,RB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,155,10,1,"Sam LaPorta Det, TE",Sam Laporta,DET,TE,11.0,11.0,observed,False,True,samlaporta,TE,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,156,10,2,"Michael Pittman Jr. Ind, WR",Michael Pittman,IND,WR,20.0,20.0,observed,False,True,michaelpittman,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,157,10,3,"Tyreek Hill Mia, WR",Tyreek Hill,MIA,WR,104.0,104.0,observed,False,False,tyreekhill,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,158,10,4,"Patrick Mahomes KC, QB",Patrick Mahomes,KC,QB,33.0,33.0,observed,False,False,patrickmahomes,QB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,159,10,5,"Derrick Henry Bal, RB",Derrick Henry,BAL,RB,78.0,78.0,observed,False,False,derrickhenry,RB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,160,10,6,"Ezekiel Elliott Dal, RB",Ezekiel Elliott,DAL,RB,8.0,8.0,observed,False,False,ezekielelliott,RB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,161,10,7,"Xavier Worthy KC, WR",Xavier Worthy,KC,WR,26.0,26.0,observed,False,False,xavierworthy,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,162,10,8,"J.K. Dobbins LAC, RB",Jk Dobbins,LAC,RB,7.0,7.0,observed,False,False,jkdobbins,RB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,163,10,9,"Marquise Brown KC, WR",Marquise Brown,KC,WR,2.0,2.0,observed,False,False,marquisebrown,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,164,10,10,"Justice Hill Bal, RB",Justice Hill,BAL,RB,4.0,4.0,observed,False,False,justicehill,RB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,165,10,11,"Brian Thomas Jr. Jax, WR",Brian Thomas,JAX,WR,3.0,3.0,observed,False,False,brianthomas,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,166,10,12,"Greg Zuerlein NYJ, K",Greg Zuerlein,NYJ,K,1.0,1.0,observed,False,False,gregzuerlein,K,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,167,10,13,"Bears D/ST Chi, D/ST",Bears D/St,CHI,D/ST,1.0,1.0,observed,False,False,bearsdst,D/ST,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,168,10,14,"Rashid Shaheed NO, WR",Rashid Shaheed,NO,WR,1.0,1.0,observed,False,False,rashidshaheed,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,169,10,15,"Brandin Cooks Dal, WR",Brandin Cooks,DAL,WR,1.0,1.0,observed,False,False,brandincooks,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,172,11,1,"Tyjae Spears Ten, RB",Tyjae Spears,TEN,RB,25.0,25.0,observed,False,False,tyjaespears,RB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,173,11,2,"Jonathan Taylor Ind, RB",Jonathan Taylor,IND,RB,102.0,102.0,observed,False,False,jonathantaylor,RB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,174,11,3,"David Montgomery Det, RB",David Montgomery,DET,RB,37.0,37.0,observed,False,False,davidmontgomery,RB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,175,11,4,"C.J. Stroud Hou, QB",Cj Stroud,HOU,QB,21.0,21.0,observed,False,False,cjstroud,QB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,176,11,5,"Deebo Samuel Sr. SF, WR",Deebo Samuel,SF,WR,55.0,55.0,observed,False,False,deebosamuel,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,177,11,6,"Keenan Allen Chi, WR",Keenan Allen,CHI,WR,19.0,19.0,observed,False,False,keenanallen,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,178,11,7,"Christian Kirk Jax, WR",Christian Kirk,JAX,WR,11.0,11.0,observed,False,False,christiankirk,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,179,11,8,"Kyle Pitts Atl, TE",Kyle Pitts,ATL,TE,10.0,10.0,observed,False,False,kylepitts,TE,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,180,11,9,"Courtland Sutton Den, WR",Courtland Sutton,DEN,WR,4.0,4.0,observed,False,False,courtlandsutton,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,181,11,10,"Steelers D/ST Pit, D/ST",Steelers D/St,PIT,D/ST,2.0,2.0,observed,False,False,steelersdst,D/ST,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,182,11,11,"Gus Edwards LAC, RB",Gus Edwards,LAC,RB,7.0,7.0,observed,False,False,gusedwards,RB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,183,11,12,"Joshua Palmer LAC, WR",Joshua Palmer,LAC,WR,2.0,2.0,observed,False,False,joshuapalmer,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,184,11,13,"Mike Williams NYJ, WR",Mike Williams,NYJ,WR,1.0,1.0,observed,False,False,mikewilliams,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,185,11,14,"Jake Moody SF, K",Jake Moody,SF,K,1.0,1.0,observed,False,False,jakemoody,K,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,186,11,15,"Cole Kmet Chi, TE",Cole Kmet,CHI,TE,2.0,2.0,observed,False,False,colekmet,TE,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,189,12,1,"Breece Hall NYJ, RB",Breece Hall,NYJ,RB,44.0,44.0,observed,False,True,breecehall,RB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,190,12,2,"Dalton Kincaid Buf, TE",Dalton Kincaid,BUF,TE,15.0,15.0,observed,False,True,daltonkincaid,TE,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,191,12,3,"Lamar Jackson Bal, QB",Lamar Jackson,BAL,QB,39.0,39.0,observed,False,False,lamarjackson,QB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,192,12,4,"Mike Evans TB, WR",Mike Evans,TB,WR,44.0,44.0,observed,False,False,mikeevans,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,193,12,5,"Harrison Butker KC, K",Harrison Butker,KC,K,2.0,2.0,observed,False,False,harrisonbutker,K,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,194,12,6,"Zay Flowers Bal, WR",Zay Flowers,BAL,WR,25.0,25.0,observed,False,False,zayflowers,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,195,12,7,"Joe Burrow Cin, QB",Joe Burrow,CIN,QB,17.0,17.0,observed,False,False,joeburrow,QB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,196,12,8,"Calvin Ridley Ten, WR",Calvin Ridley,TEN,WR,28.0,28.0,observed,False,False,calvinridley,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,197,12,9,"Keon Coleman Buf, WR",Keon Coleman,BUF,WR,11.0,11.0,observed,False,False,keoncoleman,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,198,12,10,"Javonte Williams Den, RB",Javonte Williams,DEN,RB,17.0,17.0,observed,False,False,javontewilliams,RB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,199,12,11,"Nick Chubb Cle, RB",Nick Chubb,CLE,RB,10.0,10.0,observed,False,False,nickchubb,RB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,200,12,12,"Blake Corum LAR, RB",Blake Corum,LAR,RB,9.0,9.0,observed,False,False,blakecorum,RB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,201,12,13,"Jaylen Warren Pit, RB",Jaylen Warren,PIT,RB,11.0,11.0,observed,False,False,jaylenwarren,RB,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,202,12,14,"Tyler Lockett Sea, WR",Tyler Lockett,SEA,WR,2.0,2.0,observed,False,False,tylerlockett,WR,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2024,203,12,15,"Cowboys D/ST Dal, D/ST",Cowboys D/St,DAL,D/ST,3.0,3.0,observed,False,False,cowboysdst,D/ST,espn_suffix,94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3
+2025,2,1,1,"Bucky Irving TB, RB",Bucky Irving,TB,RB,12.0,12.0,observed,False,True,buckyirving,RB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,3,1,2,"Chase Brown Cin, RB",Chase Brown,CIN,RB,19.0,19.0,observed,False,True,chasebrown,RB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,4,1,3,"CeeDee Lamb Dal, WR",Ceedee Lamb,DAL,WR,82.0,82.0,observed,False,False,ceedeelamb,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,5,1,4,"Malik Nabers NYG, WR",Malik Nabers,NYG,WR,73.0,73.0,observed,False,False,maliknabers,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,6,1,5,"Emeka Egbuka TB, WR",Emeka Egbuka,TB,WR,27.0,27.0,observed,False,False,emekaegbuka,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,7,1,6,"Tetairoa McMillan Car, WR",Tet Mcmillan,CAR,WR,25.0,25.0,observed,False,False,tetmcmillan,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,8,1,7,"RJ Harvey Den, RB",Rj Harvey,DEN,RB,29.0,29.0,observed,False,False,rjharvey,RB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,9,1,8,"Ricky Pearsall SF, WR",Ricky Pearsall,SF,WR,16.0,16.0,observed,False,False,rickypearsall,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,10,1,9,"Tyler Warren Ind, TE",Tyler Warren,IND,TE,8.0,8.0,observed,False,False,tylerwarren,TE,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,11,1,10,"Seahawks D/ST Sea, D/ST",Seahawks D/St,SEA,D/ST,1.0,1.0,observed,False,False,seahawksdst,D/ST,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,12,1,11,"Bhayshul Tuten Jax, RB",Bhayshul Tuten,JAX,RB,1.0,1.0,observed,False,False,bhayshultuten,RB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,13,1,12,"Ray Davis Buf, RB",Ray Davis,BUF,RB,2.0,2.0,observed,False,False,raydavis,RB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,14,1,13,"Drake Maye NE, QB",Drake Maye,NE,QB,1.0,1.0,observed,False,False,drakemaye,QB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,15,1,14,"Ollie Gordon II Mia, RB",Ollie Gordon,MIA,RB,1.0,1.0,observed,False,False,olliegordon,RB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,16,1,15,"Matt Gay Wsh, K",Matt Gay,WSH,K,,1.0,imputed_blank_one,True,False,mattgay,K,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,19,2,1,"Bijan Robinson Atl, RB",Bijan Robinson,ATL,RB,103.0,103.0,observed,False,False,bijanrobinson,RB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,20,2,2,"Saquon Barkley Phi, RB",Saquon Barkley,PHI,RB,109.0,109.0,observed,False,False,saquonbarkley,RB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,21,2,3,"Jameson Williams Det, WR",Jameson Williams,DET,WR,21.0,21.0,observed,False,False,jamesonwilliams,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,22,2,4,"Matthew Golden GB, WR",Matthew Golden,GB,WR,30.0,30.0,observed,False,False,matthewgolden,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,23,2,5,"Michael Pittman Jr. Ind, WR",Michael Pittman,IND,WR,8.0,8.0,observed,False,False,michaelpittman,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,24,2,6,"Deebo Samuel Wsh, WR",Deebo Samuel,WSH,WR,7.0,7.0,observed,False,False,deebosamuel,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,25,2,7,"Kyle Pitts Sr. Atl, TE",Kyle Pitts,ATL,TE,4.0,4.0,observed,False,False,kylepitts,TE,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,26,2,8,"Jaydon Blue Dal, RB",Jaydon Blue,DAL,RB,6.0,6.0,observed,False,False,jaydonblue,RB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,27,2,9,"Dak Prescott Dal, QB",Dak Prescott,DAL,QB,3.0,3.0,observed,False,False,dakprescott,QB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,28,2,10,"Marvin Mims Jr. Den, WR",Marvin Mims,DEN,WR,4.0,4.0,observed,False,False,marvinmims,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,29,2,11,"Vikings D/ST Min, D/ST",Vikings D/St,MIN,D/ST,1.0,1.0,observed,False,False,vikingsdst,D/ST,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,30,2,12,"Brian Robinson Jr. SF, RB",Brian Robinson,SF,RB,1.0,1.0,observed,False,False,brianrobinson,RB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,31,2,13,"Ka'imi Fairbairn Hou, K",Ka'Imi Fairbairn,HOU,K,1.0,1.0,observed,False,False,kaimifairbairn,K,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,32,2,14,"Elic Ayomanor Ten, WR",Elic Ayomanor,TEN,WR,1.0,1.0,observed,False,False,elicayomanor,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,33,2,15,"Tyler Allgeier Atl, RB",Tyler Allgeier,ATL,RB,1.0,1.0,observed,False,False,tylerallgeier,RB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,36,3,1,"Kyren Williams LAR, RB",Kyren Williams,LAR,RB,26.0,26.0,observed,False,True,kyrenwilliams,RB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,37,3,2,"Brock Bowers LV, TE",Brock Bowers,LV,TE,21.0,21.0,observed,False,True,brockbowers,TE,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,38,3,3,"Brandon Aubrey Dal, K",Brandon Aubrey,DAL,K,4.0,4.0,observed,False,False,brandonaubrey,K,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,39,3,4,"Ashton Jeanty LV, RB",Ashton Jeanty,LV,RB,100.0,100.0,observed,False,False,ashtonjeanty,RB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,40,3,5,"Xavier Worthy KC, WR",Xavier Worthy,KC,WR,28.0,28.0,observed,False,False,xavierworthy,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,41,3,6,"Travis Hunter Jax, WR",Travis Hunter,JAX,WR,27.0,27.0,observed,False,False,travishunter,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,42,3,7,"Mike Evans TB, WR",Mike Evans,TB,WR,31.0,31.0,observed,False,False,mikeevans,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,43,3,8,"George Pickens Dal, WR",George Pickens,DAL,WR,29.0,29.0,observed,False,False,georgepickens,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,44,3,9,"Joe Mixon Hou, RB",Joe Mixon,HOU,RB,12.0,12.0,observed,False,False,joemixon,RB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,45,3,10,"Brock Purdy SF, QB",Brock Purdy,SF,QB,4.0,4.0,observed,False,False,brockpurdy,QB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,46,3,11,"Cam Skattebo NYG, RB",Cam Skattebo,NYG,RB,8.0,8.0,observed,False,False,camskattebo,RB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,47,3,12,"Josh Downs Ind, WR",Josh Downs,IND,WR,2.0,2.0,observed,False,False,joshdowns,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,48,3,13,"Eagles D/ST Phi, D/ST",Eagles D/St,PHI,D/ST,4.0,4.0,observed,False,False,eaglesdst,D/ST,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,49,3,14,"Keenan Allen LAC, WR",Keenan Allen,LAC,WR,2.0,2.0,observed,False,False,keenanallen,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,50,3,15,"Brandon Aiyuk SF, WR",Brandon Aiyuk,SF,WR,2.0,2.0,observed,False,False,brandonaiyuk,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,53,4,1,"Chuba Hubbard Car, RB",Chuba Hubbard,CAR,RB,13.0,13.0,observed,False,True,chubahubbard,RB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,54,4,2,"Nico Collins Hou, WR",Nico Collins,HOU,WR,27.0,27.0,observed,False,True,nicocollins,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,55,4,3,"David Njoku Cle, TE",David Njoku,CLE,TE,8.0,8.0,observed,False,False,davidnjoku,TE,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,56,4,4,"Marvin Harrison Jr. Ari, WR",Marvin Harrison,ARI,WR,36.0,36.0,observed,False,False,marvinharrison,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,57,4,5,"DK Metcalf Pit, WR",Dk Metcalf,PIT,WR,41.0,41.0,observed,False,False,dkmetcalf,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,58,4,6,"Baker Mayfield TB, QB",Baker Mayfield,TB,QB,11.0,11.0,observed,False,False,bakermayfield,QB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,59,4,7,"Alvin Kamara NO, RB",Alvin Kamara,NO,RB,52.0,52.0,observed,False,False,alvinkamara,RB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,60,4,8,"DeVonta Smith Phi, WR",Devonta Smith,PHI,WR,25.0,25.0,observed,False,False,devontasmith,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,61,4,9,"DJ Moore Chi, WR",Dj Moore,CHI,WR,26.0,26.0,observed,False,False,djmoore,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,62,4,10,"Aaron Jones Sr. Min, RB",Aaron Jones,MIN,RB,23.0,23.0,observed,False,False,aaronjones,RB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,63,4,11,"Isiah Pacheco KC, RB",Isiah Pacheco,KC,RB,26.0,26.0,observed,False,False,isiahpacheco,RB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,64,4,12,"Jake Bates Det, K",Jake Bates,DET,K,1.0,1.0,observed,False,False,jakebates,K,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,65,4,13,"Texans D/ST Hou, D/ST",Texans D/St,HOU,D/ST,1.0,1.0,observed,False,False,texansdst,D/ST,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,66,4,14,"Dallas Goedert Phi, TE",Dallas Goedert,PHI,TE,2.0,2.0,observed,False,False,dallasgoedert,TE,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,67,4,15,"Kyler Murray Ari, QB",Kyler Murray,ARI,QB,3.0,3.0,observed,False,False,kylermurray,QB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,70,5,1,"Ladd McConkey LAC, WR",Ladd Mcconkey,LAC,WR,19.0,19.0,observed,False,True,laddmcconkey,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,71,5,2,"TreVeyon Henderson NE, RB",Treveyon Henderson,NE,RB,43.0,43.0,observed,False,False,treveyonhenderson,RB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,72,5,3,"Amon-Ra St. Brown Det, WR",Amon Ra St Brown,DET,WR,83.0,83.0,observed,False,False,amonrastbrown,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,73,5,4,"Jayden Daniels Wsh, QB",Jayden Daniels,WSH,QB,37.0,37.0,observed,False,False,jaydendaniels,QB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,74,5,5,"Omarion Hampton LAC, RB",Omarion Hampton,LAC,RB,57.0,57.0,observed,False,False,omarionhampton,RB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,75,5,6,"Kaleb Johnson Pit, RB",Kaleb Johnson,PIT,RB,11.0,11.0,observed,False,False,kalebjohnson,RB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,76,5,7,"J.K. Dobbins Den, RB",Jk Dobbins,DEN,RB,5.0,5.0,observed,False,False,jkdobbins,RB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,77,5,8,"Jacory Croskey-Merritt Wsh, RB",Jacory Croskey Merritt,WSH,RB,19.0,19.0,observed,False,False,jacorycroskeymerritt,RB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,78,5,9,"Jakobi Meyers LV, WR",Jakobi Meyers,LV,WR,14.0,14.0,observed,False,False,jakobimeyers,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,79,5,10,"Mark Andrews Bal, TE",Mark Andrews,BAL,TE,4.0,4.0,observed,False,False,markandrews,TE,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,80,5,11,"Cameron Dicker LAC, K",Cameron Dicker,LAC,K,2.0,2.0,observed,False,False,camerondicker,K,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,81,5,12,"Ravens D/ST Bal, D/ST",Ravens D/St,BAL,D/ST,1.0,1.0,observed,False,False,ravensdst,D/ST,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,82,5,13,"Braelon Allen NYJ, RB",Braelon Allen,NYJ,RB,1.0,1.0,observed,False,False,braelonallen,RB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,83,5,14,"Colston Loveland Chi, TE",Colston Loveland,CHI,TE,3.0,3.0,observed,False,False,colstonloveland,TE,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,84,5,15,"Joshua Palmer Buf, WR",Joshua Palmer,BUF,WR,1.0,1.0,observed,False,False,joshuapalmer,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,87,6,1,"Josh Allen Buf, QB",Josh Allen,BUF,QB,46.0,46.0,observed,False,False,joshallen,QB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,88,6,2,"Josh Jacobs GB, RB",Josh Jacobs,GB,RB,57.0,57.0,observed,False,False,joshjacobs,RB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,89,6,3,"George Kittle SF, TE",George Kittle,SF,TE,40.0,40.0,observed,False,False,georgekittle,TE,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,90,6,4,"Terry McLaurin Wsh, WR",Terry Mclaurin,WSH,WR,36.0,36.0,observed,False,False,terrymclaurin,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,91,6,5,"Tee Higgins Cin, WR",Tee Higgins,CIN,WR,69.0,69.0,observed,False,False,teehiggins,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,92,6,6,"Tony Pollard Ten, RB",Tony Pollard,TEN,RB,27.0,27.0,observed,False,False,tonypollard,RB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,93,6,7,"Keon Coleman Buf, WR",Keon Coleman,BUF,WR,5.0,5.0,observed,False,False,keoncoleman,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,94,6,8,"Chris Godwin TB, WR",Chris Godwin,TB,WR,7.0,7.0,observed,False,False,chrisgodwin,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,95,6,9,"Jordan Mason Min, RB",Jordan Mason,MIN,RB,7.0,7.0,observed,False,False,jordanmason,RB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,96,6,10,"Jake Ferguson Dal, TE",Jake Ferguson,DAL,TE,1.0,1.0,observed,False,False,jakeferguson,TE,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,97,6,11,"Cedric Tillman Cle, WR",Cedric Tillman,CLE,WR,1.0,1.0,observed,False,False,cedrictillman,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,98,6,12,"Dylan Sampson Cle, RB",Dylan Sampson,CLE,RB,1.0,1.0,observed,False,False,dylansampson,RB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,99,6,13,"Younghoe Koo Atl, K",Younghoe Koo,ATL,K,1.0,1.0,observed,False,False,younghoekoo,K,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,100,6,14,"Chiefs D/ST KC, D/ST",Chiefs D/St,KC,D/ST,1.0,1.0,observed,False,False,chiefsdst,D/ST,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,101,6,15,"Najee Harris LAC, RB",Najee Harris,LAC,RB,1.0,1.0,observed,False,False,najeeharris,RB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,104,7,1,"Lamar Jackson Bal, QB",Lamar Jackson,BAL,QB,41.0,41.0,observed,False,False,lamarjackson,QB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,105,7,2,"Justin Jefferson Min, WR",Justin Jefferson,MIN,WR,91.0,91.0,observed,False,False,justinjefferson,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,106,7,3,"James Conner Ari, RB",James Conner,ARI,RB,32.0,32.0,observed,False,False,jamesconner,RB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,107,7,4,"Trevor Lawrence Jax, QB",Trevor Lawrence,JAX,QB,2.0,2.0,observed,False,False,trevorlawrence,QB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,108,7,5,"Garrett Wilson NYJ, WR",Garrett Wilson,NYJ,WR,27.0,27.0,observed,False,False,garrettwilson,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,109,7,6,"Sam LaPorta Det, TE",Sam Laporta,DET,TE,14.0,14.0,observed,False,False,samlaporta,TE,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,110,7,7,"Quinshon Judkins Cle, RB",Quinshon Judkins,CLE,RB,20.0,20.0,observed,False,False,quinshonjudkins,RB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,111,7,8,"Jaylen Warren Pit, RB",Jaylen Warren,PIT,RB,12.0,12.0,observed,False,False,jaylenwarren,RB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,112,7,9,"David Montgomery Det, RB",David Montgomery,DET,RB,32.0,32.0,observed,False,False,davidmontgomery,RB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,113,7,10,"Tyrone Tracy Jr. NYG, RB",Tyrone Tracy,NYG,RB,12.0,12.0,observed,False,False,tyronetracy,RB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,114,7,11,"Cam Little Jax, K",Cam Little,JAX,K,1.0,1.0,observed,False,False,camlittle,K,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,115,7,12,"Cooper Kupp Sea, WR",Cooper Kupp,SEA,WR,10.0,10.0,observed,False,False,cooperkupp,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,116,7,13,"Jayden Higgins Hou, WR",Jayden Higgins,HOU,WR,4.0,4.0,observed,False,False,jaydenhiggins,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,117,7,14,"Jerome Ford Cle, RB",Jerome Ford,CLE,RB,1.0,1.0,observed,False,False,jeromeford,RB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,118,7,15,"Cowboys D/ST Dal, D/ST",Cowboys D/St,DAL,D/ST,1.0,1.0,observed,False,False,cowboysdst,D/ST,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,121,8,1,"Davante Adams LAR, WR",Davante Adams,LAR,WR,49.0,49.0,observed,False,True,davanteadams,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,122,8,2,"Stefon Diggs NE, WR",Stefon Diggs,NE,WR,11.0,11.0,observed,False,True,stefondiggs,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,123,8,3,"A.J. Brown Phi, WR",Aj Brown,PHI,WR,56.0,56.0,observed,False,False,ajbrown,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,124,8,4,"Drake London Atl, WR",Drake London,ATL,WR,62.0,62.0,observed,False,False,drakelondon,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,125,8,5,"Jonathan Taylor Ind, RB",Jonathan Taylor,IND,RB,94.0,94.0,observed,False,False,jonathantaylor,RB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,126,8,6,"Bo Nix Den, QB",Bo Nix,DEN,QB,5.0,5.0,observed,False,False,bonix,QB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,127,8,7,"Rhamondre Stevenson NE, RB",Rhamondre Stevenson,NE,RB,6.0,6.0,observed,False,False,rhamondrestevenson,RB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,128,8,8,"Javonte Williams Dal, RB",Javonte Williams,DAL,RB,7.0,7.0,observed,False,False,javontewilliams,RB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,129,8,9,"Chase McLaughlin TB, K",Chase Mclaughlin,TB,K,2.0,2.0,observed,False,False,chasemclaughlin,K,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,130,8,10,"Tyjae Spears Ten, RB",Tyjae Spears,TEN,RB,3.0,3.0,observed,False,False,tyjaespears,RB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,131,8,11,"Darren Waller Mia, TE",Darren Waller,MIA,TE,1.0,1.0,observed,False,False,darrenwaller,TE,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,132,8,12,"Lions D/ST Det, D/ST",Lions D/St,DET,D/ST,1.0,1.0,observed,False,False,lionsdst,D/ST,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,133,8,13,"Nick Chubb Hou, RB",Nick Chubb,HOU,RB,1.0,1.0,observed,False,False,nickchubb,RB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,134,8,14,"Adam Thielen Car, WR",Adam Thielen,CAR,WR,1.0,1.0,observed,False,False,adamthielen,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,135,8,15,"Xavier Legette Car, WR",Xavier Legette,CAR,WR,1.0,1.0,observed,False,False,xavierlegette,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,138,9,1,"Christian McCaffrey SF, RB",Christian Mccaffrey,SF,RB,57.0,57.0,observed,False,True,christianmccaffrey,RB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,139,9,2,"Jaxon Smith-Njigba Sea, WR",Jaxon Smith Njigba,SEA,WR,27.0,27.0,observed,False,True,jaxonsmithnjigba,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,140,9,3,"Patrick Mahomes KC, QB",Patrick Mahomes,KC,QB,22.0,22.0,observed,False,False,patrickmahomes,QB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,141,9,4,"Breece Hall NYJ, RB",Breece Hall,NYJ,RB,43.0,43.0,observed,False,False,breecehall,RB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,142,9,5,"Trey McBride Ari, TE",Trey Mcbride,ARI,TE,32.0,32.0,observed,False,False,treymcbride,TE,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,143,9,6,"Zay Flowers Bal, WR",Zay Flowers,BAL,WR,20.0,20.0,observed,False,False,zayflowers,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,144,9,7,"D'Andre Swift Chi, RB",D'Andre Swift,CHI,RB,39.0,39.0,observed,False,False,dandreswift,RB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,145,9,8,"Jaylen Waddle Mia, WR",Jaylen Waddle,MIA,WR,19.0,19.0,observed,False,False,jaylenwaddle,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,146,9,9,"Rome Odunze Chi, WR",Rome Odunze,CHI,WR,13.0,13.0,observed,False,False,romeodunze,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,147,9,10,"Jordan Addison Min, WR",Jordan Addison,MIN,WR,12.0,12.0,observed,False,False,jordanaddison,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,148,9,11,"Broncos D/ST Den, D/ST",Broncos D/St,DEN,D/ST,2.0,2.0,observed,False,False,broncosdst,D/ST,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,149,9,12,"Jauan Jennings SF, WR",Jauan Jennings,SF,WR,3.0,3.0,observed,False,False,jauanjennings,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,150,9,13,"Zach Charbonnet Sea, RB",Zach Charbonnet,SEA,RB,7.0,7.0,observed,False,False,zachcharbonnet,RB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,151,9,14,"Rachaad White TB, RB",Rachaad White,TB,RB,1.0,1.0,observed,False,False,rachaadwhite,RB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,152,9,15,"Jake Elliott Phi, K",Jake Elliott,PHI,K,2.0,2.0,observed,False,False,jakeelliott,K,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,155,10,1,"Brian Thomas Jr. Jax, WR",Brian Thomas,JAX,WR,13.0,13.0,observed,False,True,brianthomas,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,156,10,2,"Derrick Henry Bal, RB",Derrick Henry,BAL,RB,88.0,88.0,observed,False,True,derrickhenry,RB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,157,10,3,"Ja'Marr Chase Cin, WR",Ja'Marr Chase,CIN,WR,106.0,106.0,observed,False,False,jamarrchase,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,158,10,4,"Jalen Hurts Phi, QB",Jalen Hurts,PHI,QB,37.0,37.0,observed,False,False,jalenhurts,QB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,159,10,5,"Chris Olave NO, WR",Chris Olave,NO,WR,12.0,12.0,observed,False,False,chrisolave,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,160,10,6,"Austin Ekeler Wsh, RB",Austin Ekeler,WSH,RB,9.0,9.0,observed,False,False,austinekeler,RB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,161,10,7,"Justice Hill Bal, RB",Justice Hill,BAL,RB,1.0,1.0,observed,False,False,justicehill,RB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,162,10,8,"Evan Engram Den, TE",Evan Engram,DEN,TE,3.0,3.0,observed,False,False,evanengram,TE,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,163,10,9,"Khalil Shakir Buf, WR",Khalil Shakir,BUF,WR,7.0,7.0,observed,False,False,khalilshakir,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,164,10,10,"Travis Etienne Jr. Jax, RB",Travis Etienne,JAX,RB,10.0,10.0,observed,False,False,travisetienne,RB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,165,10,11,"Tank Bigsby Jax, RB",Tank Bigsby,JAX,RB,9.0,9.0,observed,False,False,tankbigsby,RB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,166,10,12,"Steelers D/ST Pit, D/ST",Steelers D/St,PIT,D/ST,2.0,2.0,observed,False,False,steelersdst,D/ST,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,167,10,13,"Tory Horton Sea, WR",Tory Horton,SEA,WR,1.0,1.0,observed,False,False,toryhorton,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,168,10,14,"Dont'e Thornton Jr. LV, WR",Dont'E Thornton,LV,WR,1.0,1.0,observed,False,False,dontethornton,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,169,10,15,"Jason Sanders Mia, K",Jason Sanders,MIA,K,1.0,1.0,observed,False,False,jasonsanders,K,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,172,11,1,"Courtland Sutton Den, WR",Courtland Sutton,DEN,WR,14.0,14.0,observed,False,True,courtlandsutton,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,173,11,2,"Jerry Jeudy Cle, WR",Jerry Jeudy,CLE,WR,11.0,11.0,observed,False,True,jerryjeudy,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,174,11,3,"Tyreek Hill Mia, WR",Tyreek Hill,MIA,WR,51.0,51.0,observed,False,False,tyreekhill,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,175,11,4,"De'Von Achane Mia, RB",Devon Achane,MIA,RB,98.0,98.0,observed,False,False,devonachane,RB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,176,11,5,"Kenneth Walker III Sea, RB",Kenneth Walker,SEA,RB,53.0,53.0,observed,False,False,kennethwalker,RB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,177,11,6,"Calvin Ridley Ten, WR",Calvin Ridley,TEN,WR,43.0,43.0,observed,False,False,calvinridley,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,178,11,7,"Travis Kelce KC, TE",Travis Kelce,KC,TE,11.0,11.0,observed,False,False,traviskelce,TE,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,179,11,8,"Caleb Williams Chi, QB",Caleb Williams,CHI,QB,1.0,1.0,observed,False,False,calebwilliams,QB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,180,11,9,"Jayden Reed GB, WR",Jayden Reed,GB,WR,4.0,4.0,observed,False,False,jaydenreed,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,181,11,10,"Dalton Kincaid Buf, TE",Dalton Kincaid,BUF,TE,1.0,1.0,observed,False,False,daltonkincaid,TE,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,182,11,11,"Rashid Shaheed NO, WR",Rashid Shaheed,NO,WR,2.0,2.0,observed,False,False,rashidshaheed,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,183,11,12,"Will Shipley Phi, RB",Will Shipley,PHI,RB,1.0,1.0,observed,False,False,willshipley,RB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,184,11,13,"Bills D/ST Buf, D/ST",Bills D/St,BUF,D/ST,2.0,2.0,observed,False,False,billsdst,D/ST,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,185,11,14,"Chris Boswell Pit, K",Chris Boswell,PIT,K,2.0,2.0,observed,False,False,chrisboswell,K,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,186,11,15,"Justin Fields NYJ, QB",Justin Fields,NYJ,QB,1.0,1.0,observed,False,False,justinfields,QB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,189,12,1,"Jahmyr Gibbs Det, RB",Jahmyr Gibbs,DET,RB,106.0,106.0,observed,False,False,jahmyrgibbs,RB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,190,12,2,"Puka Nacua LAR, WR",Puka Nacua,LAR,WR,65.0,65.0,observed,False,False,pukanacua,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,191,12,3,"Joe Burrow Cin, QB",Joe Burrow,CIN,QB,36.0,36.0,observed,False,False,joeburrow,QB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,192,12,4,"James Cook Buf, RB",James Cook,BUF,RB,57.0,57.0,observed,False,False,jamescook,RB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,193,12,5,"Rashee Rice KC, WR",Rashee Rice,KC,WR,16.0,16.0,observed,False,False,rasheerice,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,194,12,6,"T.J. Hockenson Min, TE",Tj Hockenson,MIN,TE,10.0,10.0,observed,False,False,tjhockenson,TE,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,195,12,7,"Darnell Mooney Atl, WR",Darnell Mooney,ATL,WR,2.0,2.0,observed,False,False,darnellmooney,WR,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,196,12,8,"Tucker Kraft GB, TE",Tucker Kraft,GB,TE,1.0,1.0,observed,False,False,tuckerkraft,TE,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,197,12,9,"Justin Herbert LAC, QB",Justin Herbert,LAC,QB,1.0,1.0,observed,False,False,justinherbert,QB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,198,12,10,"Jordan Love GB, QB",Jordan Love,GB,QB,1.0,1.0,observed,False,False,jordanlove,QB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,199,12,11,"Jared Goff Det, QB",Jared Goff,DET,QB,1.0,1.0,observed,False,False,jaredgoff,QB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,200,12,12,"J.J. McCarthy Min, QB",Jj Mccarthy,MIN,QB,1.0,1.0,observed,False,False,jjmccarthy,QB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,201,12,13,"Trey Benson Ari, RB",Trey Benson,ARI,RB,1.0,1.0,observed,False,False,treybenson,RB,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,202,12,14,"Patriots D/ST NE, D/ST",Patriots D/St,NE,D/ST,1.0,1.0,observed,False,False,patriotsdst,D/ST,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418
+2025,203,12,15,"Tyler Bass Buf, K",Tyler Bass,BUF,K,1.0,1.0,observed,False,False,tylerbass,K,espn_suffix,c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418

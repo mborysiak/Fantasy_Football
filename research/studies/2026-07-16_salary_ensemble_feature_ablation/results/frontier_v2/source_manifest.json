@@ -1,0 +1,237 @@
+{
+  "chance_levels": [
+    0.6,
+    0.7,
+    0.8,
+    0.9
+  ],
+  "config": {
+    "construction_scenarios": 20,
+    "context_draws": 5,
+    "contexts": 250,
+    "evaluation_scenarios": 200,
+    "output_dir": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-16_salary_ensemble_feature_ablation\\results\\frontier_v2",
+    "projection_draws": 1000,
+    "salary_draws": 5000,
+    "seed": 20260714,
+    "trials": 250,
+    "years": [
+      2022,
+      2023,
+      2024,
+      2025
+    ]
+  },
+  "fixed_settings": {
+    "audit_salary_tolerance": 1e-06,
+    "bench_weight": 0.25,
+    "position_max": {
+      "QB": 1,
+      "RB": 7,
+      "TE": 2,
+      "WR": 7
+    },
+    "position_min": {
+      "QB": 1,
+      "RB": 2,
+      "TE": 1,
+      "WR": 2
+    },
+    "roster_refinement": false,
+    "salary_cap": 298.0,
+    "salary_draws_per_market": 5,
+    "solver_cap_margin": 0.01,
+    "top_n": true,
+    "waiver_source": "current_projected"
+  },
+  "origins": {
+    "2022": {
+      "blob_sha": "de7068a79353237f6df5f34d619dc799069aada1",
+      "bytes": 26619904,
+      "candidate_players": 255,
+      "commit": "fea8ab4845dd0c5efb26292cb59007c865a3a003",
+      "commit_meta": "2022-08-27T17:25:04-07:00|running nv",
+      "espn_fallback_matches": 0,
+      "forecast_draws": 1000,
+      "forecast_players": 274,
+      "keeper_count": 20,
+      "keeper_spend": 690.0,
+      "minimum_fallbacks": 35,
+      "normalized_market_scenarios": 1000,
+      "path": "Data/Databases/Simulation.sqlite3",
+      "point_market_total": 2886.0,
+      "position_counts": {
+        "QB": 33,
+        "RB": 87,
+        "TE": 46,
+        "WR": 108
+      },
+      "projection_distribution": "frozen_1000_draw_matrix_divided_by_16",
+      "projection_table": "Versionbeta_2022",
+      "remaining_budget": 2886.0,
+      "remaining_slots": 136,
+      "repo": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football",
+      "runtime_seconds": 80.59714850000455,
+      "salary_model_fallbacks": 35,
+      "salary_model_matches": 220,
+      "sha256": "fcd831eff12b08ac3e406fdbbb2914155313dc442de4edd3b62c2828454572e3",
+      "source_type": "git_blob",
+      "waiver_baseline": {
+        "QB": 15.1,
+        "RB": 7.8,
+        "TE": 6.2,
+        "WR": 8.1
+      },
+      "year": 2022
+    },
+    "2023": {
+      "bytes": 33554432,
+      "candidate_players": 282,
+      "espn_fallback_matches": 5,
+      "forecast_draws": 1000,
+      "forecast_players": 303,
+      "keeper_count": 21,
+      "keeper_spend": 871.0,
+      "last_write_time": 1693245177.0,
+      "minimum_fallbacks": 54,
+      "normalized_market_scenarios": 1000,
+      "path": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\Data\\Databases\\DB_Versioning\\Simulation__2023_08_28_52.sqlite3",
+      "point_market_total": 2704.999755859375,
+      "position_counts": {
+        "QB": 45,
+        "RB": 85,
+        "TE": 51,
+        "WR": 122
+      },
+      "projection_distribution": "frozen_1000_draw_matrix_divided_by_16",
+      "projection_table": "Versionbeta_2023",
+      "remaining_budget": 2705.0,
+      "remaining_slots": 135,
+      "runtime_seconds": 98.32822310000483,
+      "salary_model_fallbacks": 59,
+      "salary_model_matches": 223,
+      "sha256": "22a08e75f967226a71d787439d84e61fe302c862d5f69843c8a27c921478ec4f",
+      "source_type": "local_db_version",
+      "waiver_baseline": {
+        "QB": 15.0,
+        "RB": 8.4,
+        "TE": 5.8,
+        "WR": 8.2
+      },
+      "year": 2023
+    },
+    "2024": {
+      "bytes": 4096000,
+      "candidate_players": 228,
+      "espn_fallback_matches": 5,
+      "forecast_draws": 1000,
+      "forecast_players": 246,
+      "keeper_count": 18,
+      "keeper_spend": 563.0,
+      "last_write_time": 1724676488.0,
+      "minimum_fallbacks": 7,
+      "normalized_market_scenarios": 1000,
+      "path": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\Data\\Databases\\DB_Versioning\\Simulation__2024_08_26_48.sqlite3",
+      "point_market_total": 3013.0,
+      "position_counts": {
+        "QB": 24,
+        "RB": 60,
+        "TE": 24,
+        "WR": 138
+      },
+      "projection_distribution": "frozen_legacy_truncated_normal",
+      "projection_table": "Final_Predictions",
+      "remaining_budget": 3013.0,
+      "remaining_slots": 138,
+      "runtime_seconds": 88.13459129999683,
+      "salary_model_fallbacks": 12,
+      "salary_model_matches": 216,
+      "sha256": "5d8a0f22c98ce04f901b093cd62d7aaf8d9002a355dc8c44824f4289e5083c56",
+      "source_type": "local_db_version",
+      "waiver_baseline": {
+        "QB": 16.1,
+        "RB": 7.9,
+        "TE": 6.1,
+        "WR": 5.8
+      },
+      "year": 2024
+    },
+    "2025": {
+      "bytes": 4096000,
+      "candidate_players": 165,
+      "espn_fallback_matches": 4,
+      "forecast_draws": 1000,
+      "forecast_players": 180,
+      "keeper_count": 15,
+      "keeper_spend": 407.0,
+      "last_write_time": 1756065309.0,
+      "minimum_fallbacks": 1,
+      "normalized_market_scenarios": 1000,
+      "path": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\Data\\Databases\\DB_Versioning\\Simulation__2025_08_24_55.sqlite3",
+      "point_market_total": 3169.0,
+      "position_counts": {
+        "QB": 24,
+        "RB": 60,
+        "TE": 24,
+        "WR": 72
+      },
+      "projection_distribution": "frozen_legacy_truncated_normal",
+      "projection_table": "Final_Predictions",
+      "remaining_budget": 3169.0,
+      "remaining_slots": 141,
+      "runtime_seconds": 102.53962850000244,
+      "salary_model_fallbacks": 5,
+      "salary_model_matches": 160,
+      "sha256": "16581a3d6e537859b3dca8dd5e49f5a375c3bfb0b95449b7d2e522d2ba87c629",
+      "source_type": "local_db_version",
+      "waiver_baseline": {
+        "QB": 14.8,
+        "RB": 6.7,
+        "TE": 6.5,
+        "WR": 6.7
+      },
+      "year": 2025
+    }
+  },
+  "output_rows": {
+    "frontier_summary_by_year.csv": 16,
+    "frontier_summary_periods.csv": 4,
+    "paired_frontier_by_year.csv": 12,
+    "paired_frontier_effects.csv": 3000,
+    "paired_frontier_periods.csv": 3,
+    "roster_trials.csv": 4000,
+    "salary_surface_audit.csv": 930,
+    "template_pool_audit.csv": 1003
+  },
+  "runtime_seconds": 372.78176460000395,
+  "salary_identity": {
+    "data_rolling_origin": true,
+    "database": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\Data\\Databases\\Validations.sqlite3",
+    "database_sha256": "3bfd1f9ecde62f56e657d153dbcd14b7ed997da880d0afe27121160b3583aa3f",
+    "fresh_method_holdout": false,
+    "method_version": "current_locked_spec_v2_ensemble_features",
+    "model_spec_asof_year": 2026
+  },
+  "sources": {
+    "base_runner": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-13_managed_auction_rolling_replay\\run_replay.py",
+    "base_runner_sha256": "1475abcedfc140ad540b5d2cf9494196c3e12316bcf7b68da4e5d32a987d14f0",
+    "current_salary_runner": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-14_current_salary_buffer_replay\\run_replay.py",
+    "current_salary_runner_sha256": "d21e4288acf1101335322f5dfad48305cda24dc1c8cedbf6d2c762d9fa45facc",
+    "raw_weekly_database_sha256": "255627586c23a9395992a71ee06f7729d3a40b04ac5a84798a26b67a3432b368",
+    "runner": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-14_salary_chance_frontier\\run_replay.py",
+    "runner_sha256": "33ec399736c96c1d240645a572a2257bb5c95beb704034120aaebf2ebc4a3682",
+    "simulation_helper": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football_App\\app\\zSim_Helper.py",
+    "simulation_helper_sha256": "52e831d8b14f649ed073ce7e1160ec8fb2abf1fbaa485744195461accd43f0a9"
+  },
+  "study": "2026-07-14_salary_chance_frontier",
+  "validation": {
+    "all_cells_optimal": true,
+    "all_construction_chance_thresholds_satisfied": true,
+    "all_position_and_top_n_constraints_satisfied": true,
+    "all_rosters_size_13_unique": true,
+    "all_template_donors_pre_origin": true,
+    "expected_rows": 4000,
+    "historical_cap_flags_match_spend": true,
+    "unaffordable_points_excluded_from_policy_summary": true
+  }
+}

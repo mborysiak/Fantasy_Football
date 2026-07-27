@@ -1,0 +1,66 @@
+{
+  "max_template_season": 2025,
+  "target_rows": 1620,
+  "prediction_rows": 16200,
+  "methods": {
+    "production_baseline": {
+      "draft": false,
+      "support": false,
+      "recency_half_life": null
+    },
+    "draft_only": {
+      "draft": true,
+      "support": false,
+      "recency_half_life": null
+    },
+    "support_only": {
+      "draft": false,
+      "support": true,
+      "recency_half_life": null
+    },
+    "recency_hl8": {
+      "draft": false,
+      "support": false,
+      "recency_half_life": 8.0
+    },
+    "draft_support": {
+      "draft": true,
+      "support": true,
+      "recency_half_life": null
+    },
+    "draft_recency_hl8": {
+      "draft": true,
+      "support": false,
+      "recency_half_life": 8.0
+    },
+    "support_recency_hl8": {
+      "draft": false,
+      "support": true,
+      "recency_half_life": 8.0
+    },
+    "all_context_hl8": {
+      "draft": true,
+      "support": true,
+      "recency_half_life": 8.0
+    },
+    "recency_hl4": {
+      "draft": false,
+      "support": false,
+      "recency_half_life": 4.0
+    },
+    "recency_hl12": {
+      "draft": false,
+      "support": false,
+      "recency_half_life": 12.0
+    }
+  },
+  "primary_method": "all_context_hl8",
+  "baseline_method": "production_baseline",
+  "draft_base_weight": 0.75,
+  "draft_weight_half_life": 2.0,
+  "supporting_cast_weight": 0.35,
+  "primary_recency_half_life": 8.0,
+  "bootstrap_samples": 2000,
+  "future_donor_rows": 0,
+  "runtime_seconds": 60.63349890000245
+}

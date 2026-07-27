@@ -1,0 +1,46 @@
+{
+  "study": "2026-07-16_salary_ensemble_feature_ablation",
+  "methods": {
+    "v1": "current_locked_spec_v1",
+    "v2": "current_locked_spec_v2_ensemble_features"
+  },
+  "model_spec_asof_year": 2026,
+  "validation": {
+    "common_observed_player_years": 644,
+    "unmatched_observed_player_years": 1,
+    "v1_point_surface_max_abs_reconstruction_error": 6.2236220657041486e-06,
+    "candidate_player_origins": 930,
+    "recorded_actual_player_origins": 518,
+    "v1_salary_model_matches": 819,
+    "v2_salary_model_matches": 819,
+    "fixed_roster_rows": 4000,
+    "fixed_roster_slots": 52000,
+    "v1_roster_point_spend_max_abs_reconstruction_error": 8.140822785662749e-06,
+    "actual_roster_spend_max_abs_reconstruction_error": 0.0
+  },
+  "sources": {
+    "validation_database": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\Data\\Databases\\Validations.sqlite3",
+    "validation_database_sha256": "3bfd1f9ecde62f56e657d153dbcd14b7ed997da880d0afe27121160b3583aa3f",
+    "current_salary_runner": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-14_current_salary_buffer_replay\\run_replay.py",
+    "current_salary_runner_sha256": "d21e4288acf1101335322f5dfad48305cda24dc1c8cedbf6d2c762d9fa45facc",
+    "chance_rosters": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-14_salary_chance_frontier\\results\\roster_trials.csv",
+    "chance_rosters_sha256": "aa16ab92b50644a6e26fb4bfba6430f4ed74dcb24c17019df380214654b4086d",
+    "prior_candidate_diagnostic": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-14_selected_roster_salary_residuals\\results\\candidate_diagnostic.csv",
+    "prior_candidate_diagnostic_sha256": "184f0263468f898f9e9aa227aa645b8f1cdc1c46ba5554c3c7a9f8ec99eea4ca"
+  },
+  "outputs": {
+    "paired_validation_predictions.csv": 644,
+    "validation_coverage.csv": 9,
+    "unmatched_validation_rows.csv": 1,
+    "paired_accuracy_summary.csv": 18,
+    "grouped_paired_accuracy.csv": 29,
+    "residual_quantile_calibration.csv": 14,
+    "candidate_surface_v1_v2.csv": 930,
+    "candidate_accuracy_summary.csv": 14,
+    "value_tail_summary.csv": 70,
+    "prior_v1_selection_bucket_summary.csv": 10,
+    "point_salary_shift_summary.csv": 41,
+    "fixed_v1_rosters_repriced.csv": 4000,
+    "fixed_roster_repricing_summary.csv": 35
+  }
+}

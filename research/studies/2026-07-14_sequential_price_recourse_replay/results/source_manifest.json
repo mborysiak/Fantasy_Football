@@ -1,0 +1,590 @@
+{
+  "base_replay_manifest": {
+    "path": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-13_managed_auction_rolling_replay\\results\\source_manifest.json",
+    "sha256": "e5007ccc97f507fb89b7b3818c98abefc443437dcfe6c8364b5ea61ce64c3d75"
+  },
+  "config": {
+    "buffers": [
+      5.0,
+      10.0
+    ],
+    "checkpoint_dir": "research/studies/2026-07-14_sequential_price_recourse_replay/artifacts/local/full_checkpoints_pickle",
+    "context_draws": 5,
+    "contexts": 40,
+    "evaluation_contexts": 80,
+    "order_regimes": [
+      "tier_early",
+      "uniform",
+      "position_run",
+      "star_late"
+    ],
+    "output_dir": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-14_sequential_price_recourse_replay\\results",
+    "policy_modes": [
+      "strict",
+      "operational"
+    ],
+    "price_rules": [
+      "clearing",
+      "plus_one"
+    ],
+    "projection_draws": 1000,
+    "resume": true,
+    "salary_draws": 1000,
+    "seed": 20260714,
+    "skip_prefix_check": false,
+    "trial_indices": null,
+    "trials": 8,
+    "years": [
+      2022,
+      2023,
+      2024,
+      2025
+    ]
+  },
+  "current_outcome_sources": {
+    "raw_weekly_sha256": "255627586c23a9395992a71ee06f7729d3a40b04ac5a84798a26b67a3432b368",
+    "simulation_db_sha256": "00cef44361ddfa2c124554f95433de7b8099a42a2955b146509ebf5f2c68f85d"
+  },
+  "estimand": "paired $5-$10 receding-horizon policy result conditional on a fixed historical clearing-price tape, synthetic order regime, and price rule",
+  "method_boundary": {
+    "future_prices_visible_to_policy": false,
+    "historical_nomination_order_available": false,
+    "losing_bids_available": false,
+    "operational_policy": "nominal hierarchy then Top-N relaxation; never real-cap/position relaxation",
+    "opponent_response_modeled": false,
+    "personal_starting_roster": "empty; all league keepers unavailable",
+    "price_rules": {
+      "clearing": "optimistic first refusal at recorded winning price p",
+      "plus_one": "one-dollar outbid stress p+1; not an equilibrium price"
+    },
+    "runtime_generic_player_repair": false,
+    "salary_law": "frozen replay law; mostly legacy for 2023-2025",
+    "solver_cap_audit_tolerance": 0.001,
+    "strict_policy": "requested nominal guardrail and Top-N remain hard",
+    "target_outcomes_visible_before_completion": false
+  },
+  "origins": {
+    "2022": {
+      "blob_sha": "de7068a79353237f6df5f34d619dc799069aada1",
+      "bytes": 26619904,
+      "commit": "fea8ab4845dd0c5efb26292cb59007c865a3a003",
+      "commit_meta": "2022-08-27T17:25:04-07:00|running nv",
+      "forecast_draws": 1000,
+      "forecast_players": 274,
+      "path": "Data/Databases/Simulation.sqlite3",
+      "position_counts": {
+        "QB": 33,
+        "RB": 87,
+        "TE": 46,
+        "WR": 108
+      },
+      "prior_salary_residual_rows": 215,
+      "projected_waiver_baseline": {
+        "QB": 14.8,
+        "RB": 7.3,
+        "TE": 6.9,
+        "WR": 8.0
+      },
+      "projection_distribution": "frozen_1000_draw_matrix_divided_by_16",
+      "projection_table": "Versionbeta_2022",
+      "raw_roster_sha256": "8f21cb452d952d6e293da03b5b435988e8e7bd9518cf38830148f2330c7acff2",
+      "raw_roster_source": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\Data\\OtherData\\Salaries\\beta_2022_results.csv",
+      "raw_skill_keeper_count": 20,
+      "raw_skill_keeper_spend": 690.0,
+      "repo": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football",
+      "runtime_seconds": 389.68445450000036,
+      "salary_distribution": "prior_only_nearest_salary_residuals",
+      "salary_matches_to_forecast": 129,
+      "salary_missing_fallback": 145,
+      "salary_rows": 134,
+      "salary_table": "Salaries",
+      "sha256": "fcd831eff12b08ac3e406fdbbb2914155313dc442de4edd3b62c2828454572e3",
+      "source_type": "git_blob",
+      "tape_actionable_events": 125,
+      "tape_events": 136,
+      "year": 2022
+    },
+    "2023": {
+      "bytes": 33554432,
+      "forecast_draws": 1000,
+      "forecast_players": 303,
+      "last_write_time": 1693245177.0,
+      "path": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\Data\\Databases\\DB_Versioning\\Simulation__2023_08_28_52.sqlite3",
+      "position_counts": {
+        "QB": 45,
+        "RB": 85,
+        "TE": 51,
+        "WR": 122
+      },
+      "prior_salary_residual_rows": 0,
+      "projected_waiver_baseline": {
+        "QB": 15.1,
+        "RB": 7.7,
+        "TE": 6.5,
+        "WR": 8.2
+      },
+      "projection_distribution": "frozen_1000_draw_matrix_divided_by_16",
+      "projection_table": "Versionbeta_2023",
+      "raw_roster_sha256": "5f3aef24961b5b1d8224e6cb8419dc97b3fb638184f2524b023f1fe02b4236c2",
+      "raw_roster_source": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\Data\\OtherData\\Salaries\\beta_2023_results.csv",
+      "raw_skill_keeper_count": 21,
+      "raw_skill_keeper_spend": 871.0,
+      "runtime_seconds": 495.2118680000003,
+      "salary_distribution": "frozen_legacy_truncated_normal",
+      "salary_matches_to_forecast": 166,
+      "salary_missing_fallback": 137,
+      "salary_rows": 167,
+      "salary_table": "Salaries",
+      "sha256": "22a08e75f967226a71d787439d84e61fe302c862d5f69843c8a27c921478ec4f",
+      "source_type": "local_db_version",
+      "tape_actionable_events": 131,
+      "tape_events": 135,
+      "year": 2023
+    },
+    "2024": {
+      "bytes": 4096000,
+      "forecast_draws": 1000,
+      "forecast_players": 246,
+      "last_write_time": 1724676488.0,
+      "path": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\Data\\Databases\\DB_Versioning\\Simulation__2024_08_26_48.sqlite3",
+      "position_counts": {
+        "QB": 24,
+        "RB": 60,
+        "TE": 24,
+        "WR": 138
+      },
+      "prior_salary_residual_rows": 0,
+      "projected_waiver_baseline": {
+        "QB": 16.3,
+        "RB": 7.3,
+        "TE": 6.4,
+        "WR": 5.8
+      },
+      "projection_distribution": "frozen_legacy_truncated_normal",
+      "projection_table": "Final_Predictions",
+      "raw_roster_sha256": "94a6cb0a720176baa062f5abb59d5affcff5a8d68fc1125aff8b666a6a900ac3",
+      "raw_roster_source": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\Data\\OtherData\\Salaries\\beta_2024_results.csv",
+      "raw_skill_keeper_count": 18,
+      "raw_skill_keeper_spend": 563.0,
+      "runtime_seconds": 385.9116557999987,
+      "salary_distribution": "frozen_legacy_truncated_normal",
+      "salary_matches_to_forecast": 178,
+      "salary_missing_fallback": 68,
+      "salary_rows": 189,
+      "salary_table": "Salaries_Pred",
+      "sha256": "5d8a0f22c98ce04f901b093cd62d7aaf8d9002a355dc8c44824f4289e5083c56",
+      "source_type": "local_db_version",
+      "tape_actionable_events": 132,
+      "tape_events": 138,
+      "year": 2024
+    },
+    "2025": {
+      "bytes": 4096000,
+      "execution_mode": "isolated_order_trial_shards",
+      "forecast_draws": 1000,
+      "forecast_players": 180,
+      "last_write_time": 1756065309.0,
+      "path": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\Data\\Databases\\DB_Versioning\\Simulation__2025_08_24_55.sqlite3",
+      "position_counts": {
+        "QB": 24,
+        "RB": 60,
+        "TE": 24,
+        "WR": 72
+      },
+      "prior_salary_residual_rows": 0,
+      "projected_waiver_baseline": {
+        "QB": 14.8,
+        "RB": 6.7,
+        "TE": 6.3,
+        "WR": 7.2
+      },
+      "projection_distribution": "frozen_legacy_truncated_normal",
+      "projection_table": "Final_Predictions",
+      "raw_roster_sha256": "c64d611c6b4ce6210b2318969fbed3d36bc977cd50d978b202c380ac9a0f7418",
+      "raw_roster_source": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\Data\\OtherData\\Salaries\\beta_2025_results.csv",
+      "raw_skill_keeper_count": 15,
+      "raw_skill_keeper_spend": 407.0,
+      "runtime_seconds": 508.99687760000234,
+      "salary_distribution": "frozen_legacy_truncated_normal",
+      "salary_matches_to_forecast": 165,
+      "salary_missing_fallback": 15,
+      "salary_rows": 175,
+      "salary_table": "Salaries_Pred",
+      "sha256": "16581a3d6e537859b3dca8dd5e49f5a375c3bfb0b95449b7d2e522d2ba87c629",
+      "sharded_execution": {
+        "assembler": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-14_sequential_price_recourse_replay\\assemble_2025_trial_shards.py",
+        "assembler_sha256": "50341de95be8c6210bd7cc94d44f06eed0f58bb8ec991af6ef5f9c1f5083d2a5",
+        "full_trial_plan_preserved": true,
+        "method_change": false,
+        "prefix_validation_manifest": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-14_sequential_price_recourse_replay\\artifacts\\local\\2025_prefix_validation\\source_manifest.json",
+        "prefix_validation_manifest_sha256": "c2e32f5da6b79483ea2e7a70345daa2b454cb3b878e4d5e2f459bd80d9e1e854",
+        "reason": "intermittent native CVXOPT/GLPK process exits",
+        "shard_count": 32,
+        "shards": [
+          {
+            "events_sha256": "1ed20f2580533c4215283a526f96f31354c3f0ccfff4b66daf094c58b625d56e",
+            "manifest": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-14_sequential_price_recourse_replay\\artifacts\\local\\2025_trial_shards\\tier_early_trial0\\source_manifest.json",
+            "manifest_sha256": "69eec64cbb50c1b44d9db77f4bb18b2bb27292de243031dcef45fbf4389041b8",
+            "order_regime": "tier_early",
+            "paths_sha256": "f2b9b341bc57e6155dbee6b3ccfa31d0655b3c7ae2022486cfe0e69248e2d88b",
+            "runner_sha256": "402330174497882894b10bb3ea6c60a8643a8353046831330a313340c2e471e2",
+            "trial": 0
+          },
+          {
+            "events_sha256": "a672e3f1770998ba9424a75c6d30b0df7d183f614d901a1f15792aa751183772",
+            "manifest": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-14_sequential_price_recourse_replay\\artifacts\\local\\2025_trial_shards\\tier_early_trial1\\source_manifest.json",
+            "manifest_sha256": "0a15543b5f2d13ac13af86426cafa96036909b56d01661667af64caaef54e3d2",
+            "order_regime": "tier_early",
+            "paths_sha256": "60b79e09cd4450a7cde41b239b694c55138222e03b753ac7d43cb3687e21fbf6",
+            "runner_sha256": "402330174497882894b10bb3ea6c60a8643a8353046831330a313340c2e471e2",
+            "trial": 1
+          },
+          {
+            "events_sha256": "0cb9725886827f794d1d91fef72ebbbd2c29dea4f02d9eb23e691efbcaaec3c2",
+            "manifest": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-14_sequential_price_recourse_replay\\artifacts\\local\\2025_trial_shards\\tier_early_trial2\\source_manifest.json",
+            "manifest_sha256": "70b2d874e9fdf814eb44e3455dd2c9955fc0b1f49faf10939c3d11de30e67c86",
+            "order_regime": "tier_early",
+            "paths_sha256": "93566f795d4dc447b9a2867ae53c33324318ed56e2840bcff674a1d8704cbd89",
+            "runner_sha256": "402330174497882894b10bb3ea6c60a8643a8353046831330a313340c2e471e2",
+            "trial": 2
+          },
+          {
+            "events_sha256": "ab98714e572a92c443022199391cb8880d2566b9efb37e7f533923109a8b54f3",
+            "manifest": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-14_sequential_price_recourse_replay\\artifacts\\local\\2025_trial_shards\\tier_early_trial3\\source_manifest.json",
+            "manifest_sha256": "58d8147e2f94ff8b4b82bcaaae3dd2b6e90dc164e3d3a090adc3ac0287180c0c",
+            "order_regime": "tier_early",
+            "paths_sha256": "a207e5842bbcbc1f529d6b8a9e243ca806b9c96e5ae59d4850a7ad87a9fadcbf",
+            "runner_sha256": "402330174497882894b10bb3ea6c60a8643a8353046831330a313340c2e471e2",
+            "trial": 3
+          },
+          {
+            "events_sha256": "b4529ad6d356830711d3e07d61272050b174b4cce4d64bd70626e8d379e02760",
+            "manifest": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-14_sequential_price_recourse_replay\\artifacts\\local\\2025_trial_shards\\tier_early_trial4\\source_manifest.json",
+            "manifest_sha256": "ae0bae5a21edf44e2847dd7aa11ea4819eaeaaf87baeb73cfee512f2a77c28fb",
+            "order_regime": "tier_early",
+            "paths_sha256": "46e779a50b755e118ec769a5d5a2e397ca06dc96fd6e8981381cec9b6eb4eda8",
+            "runner_sha256": "402330174497882894b10bb3ea6c60a8643a8353046831330a313340c2e471e2",
+            "trial": 4
+          },
+          {
+            "events_sha256": "61e0bb7cf388f45b36571642a0c79f24593daec0a13c8adaf9b6f8d46645a80c",
+            "manifest": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-14_sequential_price_recourse_replay\\artifacts\\local\\2025_trial_shards\\tier_early_trial5\\source_manifest.json",
+            "manifest_sha256": "a72e183ce5081e16f63f1b58ce9d468a651b31f16538293e771adb5d61bc77ea",
+            "order_regime": "tier_early",
+            "paths_sha256": "89912b0e1c592328355c8e7bcf084a9189f05a15a8d505ccfd07e789a47bcc39",
+            "runner_sha256": "402330174497882894b10bb3ea6c60a8643a8353046831330a313340c2e471e2",
+            "trial": 5
+          },
+          {
+            "events_sha256": "b17cfdb749d4833d15e28f283594f8cd0b434086b3887a8b669dcc3bc5451472",
+            "manifest": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-14_sequential_price_recourse_replay\\artifacts\\local\\2025_trial_shards\\tier_early_trial6\\source_manifest.json",
+            "manifest_sha256": "7ec035af932f923d667e01a9f8197f90a3c14cb421cbc5823efdf68ab5b87f39",
+            "order_regime": "tier_early",
+            "paths_sha256": "071f859890bbaad3a66aabb44eca6cbae894e70978ee99b9463d3ee6fc85d801",
+            "runner_sha256": "402330174497882894b10bb3ea6c60a8643a8353046831330a313340c2e471e2",
+            "trial": 6
+          },
+          {
+            "events_sha256": "d616e137b5c764770deb6690aab0992b1e316507e52915e6f0f9e3c2b6fa0a79",
+            "manifest": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-14_sequential_price_recourse_replay\\artifacts\\local\\2025_trial_shards\\tier_early_trial7\\source_manifest.json",
+            "manifest_sha256": "a11010fd1f3989a01b25e0320c4a226d6aa8576321e0b77849794f5f2224c8e6",
+            "order_regime": "tier_early",
+            "paths_sha256": "9c2432693bd03c7a3798e0902e268082eb6ffc0f9d66c7ebca87b8246a2f6fab",
+            "runner_sha256": "402330174497882894b10bb3ea6c60a8643a8353046831330a313340c2e471e2",
+            "trial": 7
+          },
+          {
+            "events_sha256": "ededde7530a95262bd28d5addd2b2c30346c58cbef1a7a7dd5eb5459b96a44f7",
+            "manifest": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-14_sequential_price_recourse_replay\\artifacts\\local\\2025_trial_shards\\uniform_trial0\\source_manifest.json",
+            "manifest_sha256": "0750f1ed7117f1bad42c663ef2365ba1dd1ec2e7097e6865480217fa6d1d53a4",
+            "order_regime": "uniform",
+            "paths_sha256": "48d1278c734998d7e61401ca9cb230ef0f4629cbbbb70e96cb459c1230ef0684",
+            "runner_sha256": "402330174497882894b10bb3ea6c60a8643a8353046831330a313340c2e471e2",
+            "trial": 0
+          },
+          {
+            "events_sha256": "fcb4ed0cacb5215170d14b1d47cfce0fdd7ce87b4347ef8b8affdade5a5c1056",
+            "manifest": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-14_sequential_price_recourse_replay\\artifacts\\local\\2025_trial_shards\\uniform_trial1\\source_manifest.json",
+            "manifest_sha256": "10c5998c4b8ffaef32c6aa83892eecb326d218b34611fc5408dfc79b3f2968e4",
+            "order_regime": "uniform",
+            "paths_sha256": "3b3b92b5479908e81fc9ee1c2f7447dbdefd09e7dfcbc346f1b14f01fad73842",
+            "runner_sha256": "402330174497882894b10bb3ea6c60a8643a8353046831330a313340c2e471e2",
+            "trial": 1
+          },
+          {
+            "events_sha256": "74400f05e7c41e99e44157dd44b017cb24986c79fd1d12d31982f6ca133b36d1",
+            "manifest": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-14_sequential_price_recourse_replay\\artifacts\\local\\2025_trial_shards\\uniform_trial2\\source_manifest.json",
+            "manifest_sha256": "90e1f69d36861e743cd7cbde9dc99af4c8faeb4d8ef3b0c1057217564de667a1",
+            "order_regime": "uniform",
+            "paths_sha256": "acbea9384dda16d8ef694abb8d51de7e1124aded64c59309864760d2dddc7dce",
+            "runner_sha256": "402330174497882894b10bb3ea6c60a8643a8353046831330a313340c2e471e2",
+            "trial": 2
+          },
+          {
+            "events_sha256": "f8670a69292d3b50f01ca9ebb513d0c9948503a1ba2d80ba1c324491390f1c33",
+            "manifest": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-14_sequential_price_recourse_replay\\artifacts\\local\\2025_trial_shards\\uniform_trial3\\source_manifest.json",
+            "manifest_sha256": "11855568bbce4f36277947c820f392ac5d06b86c4ec013dc6e9e4e0c8bf7de63",
+            "order_regime": "uniform",
+            "paths_sha256": "6d2fe5a11417354681334d92a19900fe278c641452c13f34e03162f56a419913",
+            "runner_sha256": "402330174497882894b10bb3ea6c60a8643a8353046831330a313340c2e471e2",
+            "trial": 3
+          },
+          {
+            "events_sha256": "1472ade91cf9563bc3ce89a49bb077b3702ef2ef582bbe4fed0041338ff04b3d",
+            "manifest": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-14_sequential_price_recourse_replay\\artifacts\\local\\2025_trial_shards\\uniform_trial4\\source_manifest.json",
+            "manifest_sha256": "deaa145d10b16e32b0b205e858972533ea2d6d62073b4bc485f4d67d1508cad7",
+            "order_regime": "uniform",
+            "paths_sha256": "a3657ec50ad2dd3366b00c3125e43e2379b43e4f3cc87e30d0d3845f0714294f",
+            "runner_sha256": "402330174497882894b10bb3ea6c60a8643a8353046831330a313340c2e471e2",
+            "trial": 4
+          },
+          {
+            "events_sha256": "d5f46210154c9f7a122287e8173ef3347c0f628a949cc14175a5daa096f983d5",
+            "manifest": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-14_sequential_price_recourse_replay\\artifacts\\local\\2025_trial_shards\\uniform_trial5\\source_manifest.json",
+            "manifest_sha256": "1a6cd68341dcb1132be9aa7c3768b1d12dd7ef3c3e13b8ad40d2d875b02417d4",
+            "order_regime": "uniform",
+            "paths_sha256": "8f3fa224293be072ecbaf4aec88b1c882c6f6924d3c6498e820f348782ea4dcd",
+            "runner_sha256": "402330174497882894b10bb3ea6c60a8643a8353046831330a313340c2e471e2",
+            "trial": 5
+          },
+          {
+            "events_sha256": "534b5d497ac65fc34bab3785d7ce575e10e661ea4c9e0061081202d8d0627e03",
+            "manifest": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-14_sequential_price_recourse_replay\\artifacts\\local\\2025_trial_shards\\uniform_trial6\\source_manifest.json",
+            "manifest_sha256": "1577c84187be82c8fcb18a72c58b307a9763e33e18ffa3d54ef9b490ad2656d1",
+            "order_regime": "uniform",
+            "paths_sha256": "64a51e70bec143c4197bc160b4b6420fd2af8b0472a005c1a91ad2821c74c973",
+            "runner_sha256": "402330174497882894b10bb3ea6c60a8643a8353046831330a313340c2e471e2",
+            "trial": 6
+          },
+          {
+            "events_sha256": "ed60358cfb4a6727bc0030508633501d428c43fce33b1f10480cf26ca991158a",
+            "manifest": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-14_sequential_price_recourse_replay\\artifacts\\local\\2025_trial_shards\\uniform_trial7\\source_manifest.json",
+            "manifest_sha256": "c966812b01a7ba278696ad0b840c79b85a42867e57d3a5ca27375fba7f6cbb0c",
+            "order_regime": "uniform",
+            "paths_sha256": "8c27c4adc80164223cfe37c0328d209b4948159c1446c32acd0375d7384d4aaf",
+            "runner_sha256": "402330174497882894b10bb3ea6c60a8643a8353046831330a313340c2e471e2",
+            "trial": 7
+          },
+          {
+            "events_sha256": "8407f6ae7b450eb5c20b91f1f00b4589a203278c4d985603d3dd57e8d56f9d16",
+            "manifest": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-14_sequential_price_recourse_replay\\artifacts\\local\\2025_trial_shards\\position_run_trial0\\source_manifest.json",
+            "manifest_sha256": "5b54649d7030a27a9b71619859a7690ad7134d06dd2f8f4fdf6c8d10288baaef",
+            "order_regime": "position_run",
+            "paths_sha256": "050f0701a97d8e60c8ef917b9bb2ffad7c7c03e039efc9d23d1e6838af99d433",
+            "runner_sha256": "402330174497882894b10bb3ea6c60a8643a8353046831330a313340c2e471e2",
+            "trial": 0
+          },
+          {
+            "events_sha256": "95d925e3aee5990c3fda7089a4a9c036bc208c134b210ca83fa3cdf6be588df4",
+            "manifest": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-14_sequential_price_recourse_replay\\artifacts\\local\\2025_trial_shards\\position_run_trial1\\source_manifest.json",
+            "manifest_sha256": "de94860cc21f791dee62ec8afe55e1b0de048d43e974ea774460febe9312fef9",
+            "order_regime": "position_run",
+            "paths_sha256": "1a6b24e4c06c3407ddf2ebfd7bce36ed0b507da6f310653033022c04eee784c6",
+            "runner_sha256": "402330174497882894b10bb3ea6c60a8643a8353046831330a313340c2e471e2",
+            "trial": 1
+          },
+          {
+            "events_sha256": "1fb15fcace3113cf64cc47225c06a430445266bd46cc97b2dc79a5a928ad1d05",
+            "manifest": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-14_sequential_price_recourse_replay\\artifacts\\local\\2025_trial_shards\\position_run_trial2\\source_manifest.json",
+            "manifest_sha256": "37de484d535826d71f8f9a47e94fc6d67bca40783e76c92ed054d4d44e2d766d",
+            "order_regime": "position_run",
+            "paths_sha256": "0c8dfa5b49acbdb933cbe0fceae0d2d55d78336c53fb710f99daa23a9890b004",
+            "runner_sha256": "402330174497882894b10bb3ea6c60a8643a8353046831330a313340c2e471e2",
+            "trial": 2
+          },
+          {
+            "events_sha256": "97457f5db9bd558bd3229ab95d44ce8f9381c363eae1e63ce02492c3c4de1948",
+            "manifest": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-14_sequential_price_recourse_replay\\artifacts\\local\\2025_trial_shards\\position_run_trial3\\source_manifest.json",
+            "manifest_sha256": "cec32f956c7e41722945bd9e29256d6ae6996b40492f3715766dc0e18d5ce4d1",
+            "order_regime": "position_run",
+            "paths_sha256": "dd2e4e6fca3ad194e3534f5cc85ac0817762da1746e02b67988b9b49dc918f38",
+            "runner_sha256": "402330174497882894b10bb3ea6c60a8643a8353046831330a313340c2e471e2",
+            "trial": 3
+          },
+          {
+            "events_sha256": "98c4bc41985778019bc79b2eb09ea8acdf5e67f9ecbdc45f3ef5babb2580bb74",
+            "manifest": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-14_sequential_price_recourse_replay\\artifacts\\local\\2025_trial_shards\\position_run_trial4\\source_manifest.json",
+            "manifest_sha256": "49c7a2ceae3c21c0819cdfe9cb9be94095b948bed8a6faf2da7bb00c476d83b1",
+            "order_regime": "position_run",
+            "paths_sha256": "0a72e983a8c7c2b50c89a68b028911cb031192665cf4ba49b921e9d9c411cefe",
+            "runner_sha256": "402330174497882894b10bb3ea6c60a8643a8353046831330a313340c2e471e2",
+            "trial": 4
+          },
+          {
+            "events_sha256": "674e0155dfe66691e85777516e478b7308c6c5283a434ca693328223da344807",
+            "manifest": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-14_sequential_price_recourse_replay\\artifacts\\local\\2025_trial_shards\\position_run_trial5\\source_manifest.json",
+            "manifest_sha256": "77532e83c20ee9af4387e8077e46aa340f94ae2e84afbdab190832264f0ec19f",
+            "order_regime": "position_run",
+            "paths_sha256": "b7fac58675cd5883b230115bff8f355dcc90e36ec957d2d3858e573c28edebde",
+            "runner_sha256": "402330174497882894b10bb3ea6c60a8643a8353046831330a313340c2e471e2",
+            "trial": 5
+          },
+          {
+            "events_sha256": "cd73250ddba8ad715b810139f16895922c12d38432c1610fb36becb37fe2b4ad",
+            "manifest": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-14_sequential_price_recourse_replay\\artifacts\\local\\2025_trial_shards\\position_run_trial6\\source_manifest.json",
+            "manifest_sha256": "707774ba56d951e5ca745aa2f698bf660ecd36b8179236a19adba476c043a086",
+            "order_regime": "position_run",
+            "paths_sha256": "85ad3fc37c711fda90f08058a54a2a19c893d5266c75e1dedacc26eb063a599d",
+            "runner_sha256": "402330174497882894b10bb3ea6c60a8643a8353046831330a313340c2e471e2",
+            "trial": 6
+          },
+          {
+            "events_sha256": "73042706d0029c57ccb8b0087930a3fa8588fbcab177a22a13eb3ae2f9f524e4",
+            "manifest": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-14_sequential_price_recourse_replay\\artifacts\\local\\2025_trial_shards\\position_run_trial7\\source_manifest.json",
+            "manifest_sha256": "f980410704be4c6f942d3b93de91bf1892583a0f03112c86c485d9528b8f38e3",
+            "order_regime": "position_run",
+            "paths_sha256": "3e61cf9f4599faabefab5cd70a24c393cbfa71deeab64966739f513eac3f7519",
+            "runner_sha256": "402330174497882894b10bb3ea6c60a8643a8353046831330a313340c2e471e2",
+            "trial": 7
+          },
+          {
+            "events_sha256": "b4b897714e0bad5cd6aa61ac8b7c09dd30e4a9067968d63d52e979a01d74236a",
+            "manifest": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-14_sequential_price_recourse_replay\\artifacts\\local\\2025_trial_shards\\star_late_trial0\\source_manifest.json",
+            "manifest_sha256": "546472faf92182a8a2ff3a4e712e928d28adca2e3c35aeefc0942e97d04d8837",
+            "order_regime": "star_late",
+            "paths_sha256": "064521c393ebc41f32ae82873d16ebb8f53d67a13936b75ffa3ba50f006ff9a1",
+            "runner_sha256": "402330174497882894b10bb3ea6c60a8643a8353046831330a313340c2e471e2",
+            "trial": 0
+          },
+          {
+            "events_sha256": "3cc57df573ea52b44554361ce41d9137cb7ddeb7b79f9c80dd9a6ffd2ef53bb9",
+            "manifest": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-14_sequential_price_recourse_replay\\artifacts\\local\\2025_trial_shards\\star_late_trial1\\source_manifest.json",
+            "manifest_sha256": "da38187b6ad79654c1e56885a9544230756a2f9da6b74d1c74e278752ef2865b",
+            "order_regime": "star_late",
+            "paths_sha256": "c556f7d461f3c63eb1154ede6253969a549eae8fc7bcda73936445b904c593cd",
+            "runner_sha256": "402330174497882894b10bb3ea6c60a8643a8353046831330a313340c2e471e2",
+            "trial": 1
+          },
+          {
+            "events_sha256": "f799594433e467bf603543a71840276d8c7fb30e6ceeb6938a2e3558d8cd2daf",
+            "manifest": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-14_sequential_price_recourse_replay\\artifacts\\local\\2025_trial_shards\\star_late_trial2\\source_manifest.json",
+            "manifest_sha256": "222d8c6c45a306d8f0f4febbbec2cbfc91f3b2a3606dac90ea15a3e918bcc4a2",
+            "order_regime": "star_late",
+            "paths_sha256": "5849b8962db9711ac76d34185ced31b8f5496bed89a5c5ff4af2bf662d496eb5",
+            "runner_sha256": "402330174497882894b10bb3ea6c60a8643a8353046831330a313340c2e471e2",
+            "trial": 2
+          },
+          {
+            "events_sha256": "577459ac5e900114102cf15201ed62beedb8595fd2dbfa4d5562c701f3304753",
+            "manifest": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-14_sequential_price_recourse_replay\\artifacts\\local\\2025_trial_shards\\star_late_trial3\\source_manifest.json",
+            "manifest_sha256": "60702a46c8b441abc096dacb1311936f2913509ca28b30046d7b238ca053ec9f",
+            "order_regime": "star_late",
+            "paths_sha256": "7b6b6363ca423676fd0cf533ee134bebe1840beead923cf8e894f09de32dd70b",
+            "runner_sha256": "402330174497882894b10bb3ea6c60a8643a8353046831330a313340c2e471e2",
+            "trial": 3
+          },
+          {
+            "events_sha256": "b7fbb89e6788ecac000e02e07017e38e42399b238bbdff47043849024b11bf38",
+            "manifest": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-14_sequential_price_recourse_replay\\artifacts\\local\\2025_trial_shards\\star_late_trial4\\source_manifest.json",
+            "manifest_sha256": "e23dd7a32357a47cb946e76c287ed8328e2a07ec7e643931222b8ea26042070c",
+            "order_regime": "star_late",
+            "paths_sha256": "4d578ac55d2ba0e748778450c4f9dbeecb9c41dcba5f1d91fdbd85a8be8d71ad",
+            "runner_sha256": "402330174497882894b10bb3ea6c60a8643a8353046831330a313340c2e471e2",
+            "trial": 4
+          },
+          {
+            "events_sha256": "54297e159cac89bd1ff35d3c6f9696520505a03b05d2f7204a702ef46fb23db7",
+            "manifest": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-14_sequential_price_recourse_replay\\artifacts\\local\\2025_trial_shards\\star_late_trial5\\source_manifest.json",
+            "manifest_sha256": "9b4092b22f73121557360590e484537e7d7a22c8ae77e52d49da5e56684e1139",
+            "order_regime": "star_late",
+            "paths_sha256": "bde2102a224bd4afa43048a14f55d3d14a2fbc2acb4d9ab650fb14802ceedddb",
+            "runner_sha256": "402330174497882894b10bb3ea6c60a8643a8353046831330a313340c2e471e2",
+            "trial": 5
+          },
+          {
+            "events_sha256": "43ce76f96c54e64025d1fa9e2b3d5926e2d9edd6b8d90f0a08ffb1be14320cb0",
+            "manifest": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-14_sequential_price_recourse_replay\\artifacts\\local\\2025_trial_shards\\star_late_trial6\\source_manifest.json",
+            "manifest_sha256": "36982b78f4926f422270352e4e5d9cae11861d1afd5784bbfa59db73f2e086ec",
+            "order_regime": "star_late",
+            "paths_sha256": "574fe52baf759052de44b60d269a8d2ab7fc23d3b3e89c4e7aa332551e5d3e72",
+            "runner_sha256": "402330174497882894b10bb3ea6c60a8643a8353046831330a313340c2e471e2",
+            "trial": 6
+          },
+          {
+            "events_sha256": "0fb80554c2b85817da708a705e09df44b965b5fe0d7b47e65ab17095f91d32d4",
+            "manifest": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-14_sequential_price_recourse_replay\\artifacts\\local\\2025_trial_shards\\star_late_trial7\\source_manifest.json",
+            "manifest_sha256": "63c6e72a9d288a48627130b38bf0efabe3152546e1ad4bcb5a564c974ec85c4b",
+            "order_regime": "star_late",
+            "paths_sha256": "a3c0e2b20bea16facdca71029f9a4e7dfc61077a26031a549da18b63ff7e8006",
+            "runner_sha256": "11f7f8bf268bb3d9cc52001f116c8360c45376549f23886616e1fef4945cfed0",
+            "trial": 7
+          }
+        ]
+      },
+      "source_type": "local_db_version",
+      "tape_actionable_events": 134,
+      "tape_events": 141,
+      "year": 2025
+    }
+  },
+  "output_rows": {
+    "event_decisions.csv": 121170,
+    "failure_reasons.csv": 70,
+    "paired_buffer_paths.csv": 512,
+    "policy_paths.csv": 1024,
+    "price_tape_audit.csv": 4,
+    "price_tape_events.csv": 550,
+    "raw_owner_audit.csv": 48,
+    "raw_roster_rows.csv": 718,
+    "summary_2025_temporal_sensitivity.csv": 16,
+    "summary_by_year.csv": 64,
+    "summary_development.csv": 16,
+    "summary_split_half.csv": 32,
+    "template_pool_audit.csv": 1003
+  },
+  "resumed_checkpoints": {
+    "2022": {
+      "current_runner_sha256": "289df545aae1177b8cfa3de756b7e3ac87d5d9ea9910888ee6d835ae082e76a7",
+      "execution_control_compatible": true,
+      "runner_sha256": "330f62dd3a944e01bef6e68c95caf9b9a792b3e98c821378d12c721381f76722"
+    },
+    "2023": {
+      "current_runner_sha256": "289df545aae1177b8cfa3de756b7e3ac87d5d9ea9910888ee6d835ae082e76a7",
+      "execution_control_compatible": true,
+      "runner_sha256": "330f62dd3a944e01bef6e68c95caf9b9a792b3e98c821378d12c721381f76722"
+    },
+    "2024": {
+      "current_runner_sha256": "289df545aae1177b8cfa3de756b7e3ac87d5d9ea9910888ee6d835ae082e76a7",
+      "execution_control_compatible": true,
+      "runner_sha256": "330f62dd3a944e01bef6e68c95caf9b9a792b3e98c821378d12c721381f76722"
+    },
+    "2025": {
+      "current_runner_sha256": "289df545aae1177b8cfa3de756b7e3ac87d5d9ea9910888ee6d835ae082e76a7",
+      "execution_control_compatible": true,
+      "runner_sha256": "11f7f8bf268bb3d9cc52001f116c8360c45376549f23886616e1fef4945cfed0"
+    }
+  },
+  "runner_sha256": "289df545aae1177b8cfa3de756b7e3ac87d5d9ea9910888ee6d835ae082e76a7",
+  "runners": {
+    "base_runner": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-13_managed_auction_rolling_replay\\run_replay.py",
+    "base_runner_sha256": "1475abcedfc140ad540b5d2cf9494196c3e12316bcf7b68da4e5d32a987d14f0",
+    "buffer_runner": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-14_nominal_salary_buffer_replay\\run_buffer_replay.py",
+    "buffer_runner_sha256": "93689ad34f44e0fed94afc36ed83ccbf6e3dc1b9671e35c620ae48902679328a"
+  },
+  "runtime_seconds": 4.320315999997547,
+  "simulation_helper": {
+    "path": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football_App\\app\\zSim_Helper.py",
+    "sha256": "52e831d8b14f649ed073ce7e1160ec8fb2abf1fbaa485744195461accd43f0a9"
+  },
+  "study": "2026-07-14_sequential_price_recourse_replay",
+  "validation": {
+    "actual_paths": 1024,
+    "all_attempted_events_in_ledger": true,
+    "all_branch_nominal_spend_within_exported_stage": true,
+    "all_branch_sampled_spend_within_298": true,
+    "all_completed_paid_spend_within_298": true,
+    "all_template_donors_pre_origin": true,
+    "completed_paths": 821,
+    "completion_rate": 0.8017578125,
+    "expected_paths": 1024,
+    "generic_repair_paths": 0,
+    "incomplete_paths_not_target_scored": true,
+    "k_dst_excluded_from_tape": true,
+    "prefix_invariance": true,
+    "runtime_generic_repair_disabled": true,
+    "strict_paths_used_no_fallback": true,
+    "synthetic_contract_fill_paths": 0,
+    "top_n_relaxation_paths": 0,
+    "unique_path_cells": true
+  }
+}

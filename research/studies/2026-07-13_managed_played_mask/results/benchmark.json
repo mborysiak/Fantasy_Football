@@ -1,0 +1,37 @@
+{
+  "iterations": 100,
+  "seed": 20260711,
+  "legacy_score_threshold": {
+    "seconds": 13.782289800001308,
+    "seconds_by_order": [
+      12.458774800004903,
+      15.105804799997713
+    ],
+    "season_ev": 1678.2722216796874,
+    "top_player": "Chase Brown"
+  },
+  "played_mask": {
+    "seconds": 14.980921400001534,
+    "seconds_by_order": [
+      15.00174810000317,
+      14.9600946999999
+    ],
+    "season_ev": 1655.878759765625,
+    "top_player": "Chase Brown"
+  },
+  "played_minus_legacy_season_ev": -22.3934619140623,
+  "runtime_overhead_pct": 8.696897376226364,
+  "runtime_stability_check": {
+    "iterations_per_variant": 50,
+    "alternating_pairs": 4,
+    "overhead_pct_by_pair": [10.72, -0.79, -0.03, 0.66],
+    "median_overhead_pct": 0.32
+  },
+  "parallel_played_mask": {
+    "seconds": 5.921577099994465,
+    "season_ev": 1643.83818359375,
+    "top_player": "Chase Brown",
+    "workers_used": 2,
+    "blocks": 2
+  }
+}

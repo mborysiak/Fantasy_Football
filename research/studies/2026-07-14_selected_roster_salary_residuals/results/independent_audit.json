@@ -1,0 +1,16 @@
+{
+  "all_candidate_mean_scenario_shift": 0.22522321348182117,
+  "all_observed_mean_residual": -0.38803254478764493,
+  "all_year_chance_selected_residuals_positive": true,
+  "all_year_chance_selected_scenario_shifts_negative": true,
+  "candidate_player_origins": 930,
+  "recorded_actual_player_origins": 518,
+  "reported_core_cohorts_recomputed": true,
+  "roster_gap_decomposition_reconciles": true,
+  "roster_slot_weighted_mean_residual": 1.4274022778886215,
+  "roster_slot_weighted_mean_scenario_shift": -0.9214244033395379,
+  "runner_hash_matches_manifest": true,
+  "selected_slots": 52000,
+  "selected_slots_with_recorded_actual": 49920,
+  "unique_ever_selected_mean_residual": -0.39786973689727473
+}

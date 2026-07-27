@@ -1,0 +1,27 @@
+{
+  "study": "2026-07-16_salary_ensemble_feature_ablation",
+  "validation": {
+    "same_replay_config_except_output_directory": true,
+    "same_chance_levels_and_fixed_settings": true,
+    "same_frozen_forecast_and_keeper_origin_metadata": true,
+    "salary_method_is_only_intended_model_change": true,
+    "paired_frontier_cells": 4000,
+    "candidate_player_origins": 930,
+    "all_frontier_cells_optimal": true
+  },
+  "sources": {
+    "v1_manifest": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-14_salary_chance_frontier\\results\\source_manifest.json",
+    "v1_manifest_sha256": "f363b1895ffd72dc9404db8f57961f221122ba014f5cb49009351aeb83f89f41",
+    "v1_roster_trials_sha256": "aa16ab92b50644a6e26fb4bfba6430f4ed74dcb24c17019df380214654b4086d",
+    "v2_manifest": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-16_salary_ensemble_feature_ablation\\results\\frontier_v2\\source_manifest.json",
+    "v2_manifest_sha256": "1d9d24b9f499870f4e5ddea4c0c5e5b379744b7915cb5539509e1c97ff243695",
+    "v2_roster_trials_sha256": "f49532e7b9f5465e704213843efa11a1dfd141050ab5ba5bb899f752f0d24c40",
+    "wrapper": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-16_salary_ensemble_feature_ablation\\run_frontier_v2.py",
+    "wrapper_sha256": "d2259c9ef07d93157fdacd77bfdeb3eed24860764b69d1127af6d9e25b24f802"
+  },
+  "outputs": {
+    "frontier_paired_effects.csv": 4000,
+    "frontier_comparison_by_period.csv": 35,
+    "frontier_salary_surface_comparison.csv": 930
+  }
+}

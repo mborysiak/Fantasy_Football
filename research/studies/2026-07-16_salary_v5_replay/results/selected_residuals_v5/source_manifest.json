@@ -1,0 +1,50 @@
+{
+  "output_rows": {
+    "candidate_diagnostic.csv": 930,
+    "cohort_summary.csv": 40,
+    "high_projection_summary.csv": 4,
+    "roster_gap_decomposition_by_year_chance.csv": 16,
+    "roster_gap_decomposition_periods.csv": 8,
+    "selected_residual_by_position.csv": 4,
+    "selected_residual_by_price_tier.csv": 5,
+    "selected_residual_by_salary_center_source.csv": 2,
+    "selected_residual_by_value_quintile.csv": 5,
+    "selected_residual_by_year_chance.csv": 16,
+    "selected_residual_by_year_position.csv": 16,
+    "selection_frequency_summary.csv": 5,
+    "selection_residual_correlations.csv": 5,
+    "top_residual_contributors.csv": 60
+  },
+  "residual_definition": "recorded actual salary minus normalized point-predicted salary",
+  "scenario_center_definition": "mean of the exact 1,000 normalized five-draw salary markets minus normalized point salary",
+  "selection_weighting": {
+    "roster_slot": "selection count across 250 trials x 4 chance levels per origin",
+    "unique_player_origin": "one row per year/player"
+  },
+  "sources": {
+    "actual_salary_database": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\Data\\Databases\\Simulation.sqlite3",
+    "actual_salary_database_sha256": "e391ec3610d577423935e4d4a0f783d7dfdc950015cec07d1f9ea1263590beac",
+    "chance_rosters": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-16_salary_v5_replay\\results\\frontier_v5\\roster_trials.csv",
+    "chance_rosters_sha256": "4f1175f37b0d7defd7cc5ed06b5f65b955707895af317ba25a55f153b0d0fb3e",
+    "chance_salary_surface": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-16_salary_v5_replay\\results\\frontier_v5\\salary_surface_audit.csv",
+    "chance_salary_surface_sha256": "dd7a84802d4ffae0bfa14544ad6fa8d5f3f5baffd7142f7fa035997324a32df4",
+    "runner": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-14_selected_roster_salary_residuals\\run_diagnostic.py",
+    "runner_sha256": "f28ec9c1255fe77f3cfa9b47e570bd6c52cf8d0f36ba2829f13335bc06b56c80",
+    "simulation_helper": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football_App\\app\\zSim_Helper.py",
+    "simulation_helper_sha256": "52e831d8b14f649ed073ce7e1160ec8fb2abf1fbaa485744195461accd43f0a9"
+  },
+  "study": "2026-07-16_salary_v5_replay",
+  "validation": {
+    "actual_and_point_roster_spend_reproduced": true,
+    "all_52000_selected_slots_joined": true,
+    "auctionable_candidates_exclude_recorded_keepers": true,
+    "candidate_player_origins": 930,
+    "chance_rosters_complete": true,
+    "missing_actual_price_counts_reproduced": true,
+    "recorded_actual_player_origins": 518,
+    "selected_slot_actual_coverage": 0.9595961538461538,
+    "selected_slots": 52000,
+    "selected_slots_with_recorded_actual": 49899
+  },
+  "value_proxy": "within-year-position projection strength percentile minus predicted salary strength percentile"
+}

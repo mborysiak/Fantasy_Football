@@ -25,6 +25,8 @@ from s1_Stacking_Model import (
     create_output,
     create_final_val_df,
     apply_empirical_resid_quantiles,
+    cross_fit_empirical_resid_quantiles,
+    eligible_empirical_resid_donors,
     validation_compare_df,
     save_out_results,
     get_model_output,
@@ -60,73 +62,75 @@ set_optuna_logging()
 install_model_print_filter()
 
 VERBOSE = 1
-NUM_CORES = 8
+NUM_CORES = 4
 
 # Use config settings
 set_year = YEAR
 show_plot = True
 vers = LEAGUE
-predict_only = False
+predict_only = True
 
 runs = [
-        # ['RB', 'current', 'less_equal', 0, '', 'ProjOnly'],
-        # ['WR', 'current', 'less_equal', 0, '', 'ProjOnly'],
+        ['RB', 'current', 'less_equal', 0, '', 'ProjOnly'],
+        ['WR', 'current', 'less_equal', 0, '', 'ProjOnly'],
 
-        # ['RB', 'current', 'less_equal', 1, '', 'ProjOnly'],
-        # ['WR', 'current', 'less_equal', 1, '', 'ProjOnly'],
+        ['RB', 'current', 'less_equal', 1, '', 'ProjOnly'],
+        ['WR', 'current', 'less_equal', 1, '', 'ProjOnly'],
 
-        # ['RB', 'next', 'less_equal', 1, '', 'ProjOnly'],
-        # ['WR', 'next', 'less_equal', 1, '', 'ProjOnly'],
+        ['RB', 'next', 'less_equal', 1, '', 'ProjOnly'],
+        ['WR', 'next', 'less_equal', 1, '', 'ProjOnly'],
 
-        # ['WR', 'current', 'greater_equal', 0, '', 'ProjOnly'],
-        # ['WR', 'current', 'less_equal', 3, '', 'ProjOnly'],
-        # ['WR', 'current', 'greater_equal', 4, '', 'ProjOnly'],
+        ['WR', 'current', 'greater_equal', 0, '', 'ProjOnly'],
+        ['WR', 'current', 'less_equal', 3, '', 'ProjOnly'],
+        ['WR', 'current', 'greater_equal', 4, '', 'ProjOnly'],
 
-        # ['WR', 'next', 'greater_equal', 0, '', 'ProjOnly'],
-        # ['WR', 'next', 'less_equal', 3, '', 'ProjOnly'],
-        # ['WR', 'next', 'greater_equal', 4, '', 'ProjOnly'],
+        ['WR', 'next', 'greater_equal', 0, '', 'ProjOnly'],
+        ['WR', 'next', 'less_equal', 3, '', 'ProjOnly'],
+        ['WR', 'next', 'greater_equal', 4, '', 'ProjOnly'],
 
-        # ['WR', 'current', 'greater_equal', 0, '', 'Stats'],
-        # ['WR', 'current', 'less_equal', 3, '', 'Stats'],
-        # ['WR', 'current', 'greater_equal', 4, '', 'Stats'],
+        ['WR', 'current', 'greater_equal', 0, '', 'Stats'],
+        ['WR', 'current', 'less_equal', 3, '', 'Stats'],
+        ['WR', 'current', 'greater_equal', 4, '', 'Stats'],
 
-        # ['TE', 'current', 'greater_equal', 0, '', 'ProjOnly'],
-        # ['TE', 'current', 'greater_equal', 0, '', 'Stats'],
-        # ['TE', 'next', 'greater_equal', 0, '', 'ProjOnly'],
+        ['TE', 'current', 'greater_equal', 0, '', 'ProjOnly'],
+        ['TE', 'current', 'greater_equal', 0, '', 'Stats'],
+        ['TE', 'next', 'greater_equal', 0, '', 'ProjOnly'],
 
-        # ['QB', 'current', 'greater_equal', 0, '', 'ProjOnly'],
-        # ['QB', 'current', 'greater_equal', 0, 'rush', 'ProjOnly'],
-        # ['QB', 'current', 'greater_equal', 0, 'pass', 'ProjOnly'],
-        # ['QB', 'next', 'greater_equal', 0, '', 'ProjOnly'],
+        ['QB', 'current', 'greater_equal', 0, '', 'ProjOnly'],
+        ['QB', 'current', 'greater_equal', 0, 'rush', 'ProjOnly'],
+        ['QB', 'current', 'greater_equal', 0, 'pass', 'ProjOnly'],
+        ['QB', 'next', 'greater_equal', 0, '', 'ProjOnly'],
 
-        # ['QB', 'current', 'greater_equal', 0, '', 'Stats'],
-        # ['QB', 'current', 'greater_equal', 0, 'rush', 'Stats'],
-        # ['QB', 'current', 'greater_equal', 0, 'pass', 'Stats'],
+        ['QB', 'current', 'greater_equal', 0, '', 'Stats'],
+        ['QB', 'current', 'greater_equal', 0, 'rush', 'Stats'],
+        ['QB', 'current', 'greater_equal', 0, 'pass', 'Stats'],
 
-        # ['RB', 'current', 'greater_equal', 0, '', 'ProjOnly'],
-        # ['RB', 'current', 'less_equal', 3, '', 'ProjOnly'],
-        # ['RB', 'current', 'greater_equal', 4, '', 'ProjOnly'],
-        # ['RB', 'current', 'greater_equal', 0, 'rush', 'ProjOnly'],
-        # ['RB', 'current', 'greater_equal', 0, 'rec', 'ProjOnly'],
-        # ['RB', 'current', 'less_equal', 3, 'rush', 'ProjOnly'],
-        # ['RB', 'current', 'less_equal', 3, 'rec', 'ProjOnly'],
-        # ['RB', 'current', 'greater_equal', 4, 'rush', 'ProjOnly'],
-        # ['RB', 'current', 'greater_equal', 4, 'rec', 'ProjOnly'],
+        ['RB', 'current', 'greater_equal', 0, '', 'ProjOnly'],
+        ['RB', 'current', 'less_equal', 3, '', 'ProjOnly'],
+        ['RB', 'current', 'greater_equal', 4, '', 'ProjOnly'],
+        ['RB', 'current', 'greater_equal', 0, 'rush', 'ProjOnly'],
+        ['RB', 'current', 'greater_equal', 0, 'rec', 'ProjOnly'],
+        ['RB', 'current', 'less_equal', 3, 'rush', 'ProjOnly'],
+        ['RB', 'current', 'less_equal', 3, 'rec', 'ProjOnly'],
+        ['RB', 'current', 'greater_equal', 4, 'rush', 'ProjOnly'],
+        ['RB', 'current', 'greater_equal', 4, 'rec', 'ProjOnly'],
 
-        # ['RB', 'next', 'greater_equal', 0, '', 'ProjOnly'],
-        # ['RB', 'next', 'less_equal', 3, '', 'ProjOnly'],
-        # ['RB', 'next', 'greater_equal', 4, '', 'ProjOnly'],
+        ['RB', 'next', 'greater_equal', 0, '', 'ProjOnly'],
+        ['RB', 'next', 'less_equal', 3, '', 'ProjOnly'],
+        ['RB', 'next', 'greater_equal', 4, '', 'ProjOnly'],
 
-        # ['RB', 'current', 'greater_equal', 0, '', 'Stats'],
-        # ['RB', 'current', 'less_equal', 3, '', 'Stats'],
-        # ['RB', 'current', 'greater_equal', 4, '', 'Stats'],
-        # ['RB', 'current', 'greater_equal', 0, 'rush', 'Stats'],
-        # ['RB', 'current', 'greater_equal', 0, 'rec', 'Stats'],
-        # ['RB', 'current', 'less_equal', 3, 'rush', 'Stats'],
-        # ['RB', 'current', 'less_equal', 3, 'rec', 'Stats'],
+        ['RB', 'current', 'greater_equal', 0, '', 'Stats'],
+        ['RB', 'current', 'less_equal', 3, '', 'Stats'],
+        ['RB', 'current', 'greater_equal', 4, '', 'Stats'],
+        ['RB', 'current', 'greater_equal', 0, 'rush', 'Stats'],
+        ['RB', 'current', 'greater_equal', 0, 'rec', 'Stats'],
+        ['RB', 'current', 'less_equal', 3, 'rush', 'Stats'],
+        ['RB', 'current', 'less_equal', 3, 'rec', 'Stats'],
         ['RB', 'current', 'greater_equal', 4, 'rush', 'Stats'],
         ['RB', 'current', 'greater_equal', 4, 'rec', 'Stats'],
 ]
+
+print(f'Running league {LEAGUE} for year {YEAR}')
 
 #%%
 
@@ -173,7 +177,7 @@ for sp, cn, fd, ye, rp, dset in runs:
         # set up blank dictionaries for all metrics
         out_dict_reg, out_dict_quant = output_dict(), output_dict()
 
-        model_list = ['adp', 'lasso', 'lgbm', 'rf', 'gbm', 'gbmh', 'mlp', 'cb', 'huber', 'xgb', 'knn', 'ridge', 'bridge', 'enet']
+        model_list = ['adp', 'lasso', 'lgbm', 'rf', 'gbm', 'gbmh', 'mlp', 'cb', 'huber', 'xgb', 'ridge', 'bridge', 'enet']
         results = run_parallel(
             (delayed(get_model_output)
                 (m, df_train, 'reg', out_dict_reg, pos, set_pos, hp_algo, bayes_rand, i, optuna_timeout=optuna_timeout)
@@ -247,8 +251,15 @@ for sp, cn, fd, ye, rp, dset in runs:
 
     output = create_output(output_start, best_predictions)
     df_val_stack = create_final_val_df(X_stack_player, y_stack, best_val_reg)
-    output, __builtins__ = apply_empirical_resid_quantiles(
+    resid_outcome_horizon = int(current_or_next_year == 'next')
+    resid_donors = eligible_empirical_resid_donors(
         df_val_stack,
+        forecast_origin=set_year,
+        origin_col='year',
+        outcome_horizon=resid_outcome_horizon,
+    )
+    output, __builtins__ = apply_empirical_resid_quantiles(
+        resid_donors,
         output,
         alphas=RESID_ALPHAS,
         n_bins=None,
@@ -260,6 +271,20 @@ for sp, cn, fd, ye, rp, dset in runs:
     display(output.sort_values(by='pred_fp_per_game', ascending=False).iloc[:50])
     # save out final results
     val_compare = validation_compare_df(model_output_path, best_val_reg)
+    val_compare, val_resid_calibration_audit = cross_fit_empirical_resid_quantiles(
+        val_compare,
+        origin_col='season',
+        outcome_horizon=resid_outcome_horizon,
+        as_of_year=set_year,
+        alphas=RESID_ALPHAS,
+        min_training_rows=30,
+        n_bins=None,
+        min_n=50,
+        smooth=True,
+        bootstrap_iters=50,
+        bootstrap_replace=True,
+    )
+    display(val_resid_calibration_audit)
 
     # # save out final results
     save_out_results(val_compare, 'Validations', 'Model_Validations_Resid', vers, pos, set_year, set_pos, dataset, current_or_next_year)
@@ -269,7 +294,7 @@ for sp, cn, fd, ye, rp, dset in runs:
     gc.collect()
 
 
-    # %%
+     # %%
 
 
     # df = dm.read('''SELECT *

@@ -1,0 +1,14 @@
+{
+  "max_template_season": 2025,
+  "target_rows": 1620,
+  "prediction_rows": 48600,
+  "method_count": 30,
+  "baseline_method": "full",
+  "recency_half_life": 12.0,
+  "development_end": 2022,
+  "selected_method": "no_exp_interaction__r12",
+  "meta_selection_start": 2021,
+  "bootstrap_samples": 2000,
+  "future_donor_rows": 0,
+  "runtime_seconds": 106.24384330000021
+}

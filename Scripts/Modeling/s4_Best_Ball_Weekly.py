@@ -3,6 +3,7 @@ import os
 import hashlib
 import re
 import shutil
+import sqlite3
 import sys
 from pathlib import Path
 
@@ -29,10 +30,56 @@ WEEKS = list(range(1, WEEK_COUNT + 1))
 TEMPLATE_SEASON_MIN = 2008
 MIN_TEMPLATE_POOL_SIZE = 40
 MAX_TEMPLATE_POOL_SIZE = 80
-TEMPLATE_SAMPLE_TOP_TO_BOTTOM_RATIO = 2.
+TEMPLATE_KERNEL_BANDWIDTH = {
+    "QB": 0.55,
+    "RB": 0.45,
+    "WR": 0.35,
+    "TE": 0.40,
+}
+TEMPLATE_MIN_LOCAL_WEIGHT = 0.35
+TEMPLATE_LOCAL_DISTANCE_SCALE = 1.50
+TEMPLATE_MAX_SAMPLE_PROBABILITY = 0.05
+TEMPLATE_RECENCY_HALF_LIFE = 12.0
 PROJECTION_BUCKETS = 10
 POOL_RANDOM_SEED = 20260702
 VALIDATION_CURRENT_OR_NEXT_YEAR = "current"
+EXPERIENCE_SCALE_YEARS = 10.0
+PROJECTION_PPG_SCALE = 10.0
+MAX_PLAUSIBLE_TEMPLATE_EXPERIENCE = 25
+
+# Keep structurally non-transferable outcomes in the source/audit table while
+# preventing them from becoming generic football-performance templates.
+TEMPLATE_OUTCOME_EXCLUSIONS = {
+    ("Le'Veon Bell", "RB", 2018): "contract_holdout",
+}
+
+# Name-only historical sources contain a small number of overlapping NFL
+# careers. Team-aware draft matching resolves most of them; these traded-career
+# rows need an explicit identity anchor after their original draft team changed.
+EXPERIENCE_DRAFT_YEAR_OVERRIDES = {
+    ("Steve Smith", "WR", "CAR"): 2001,
+    ("Steve Smith", "WR", "BAL"): 2001,
+    ("Zach Miller", "TE", "LVR"): 2007,
+    ("Zach Miller", "TE", "SEA"): 2007,
+    ("Zach Miller", "TE", "JAX"): 2009,
+    ("Zach Miller", "TE", "CHI"): 2009,
+}
+TEAM_ALIASES = {
+    "ARI": "ARI",
+    "ARZ": "ARI",
+    "GB": "GNB",
+    "JAC": "JAX",
+    "KC": "KAN",
+    "LA": "LAR",
+    "LV": "LVR",
+    "NE": "NWE",
+    "NO": "NOR",
+    "OAK": "LVR",
+    "SD": "LAC",
+    "SF": "SFO",
+    "STL": "LAR",
+    "WSH": "WAS",
+}
 
 TEMPLATE_TABLE = "Best_Ball_Weekly_Templates"
 POOL_TABLE = "Best_Ball_Weekly_Template_Pools"
@@ -54,7 +101,6 @@ TEMPLATE_ID_LEAGUE_OFFSETS = {
 LOW_ACTIVE_GAME_THRESHOLD = 2
 HIGH_ZERO_TEMPLATE_POOL_SHARE = 0.10
 HIGH_LOW_ACTIVE_TEMPLATE_POOL_SHARE = 0.20
-EXCLUDE_ZERO_ACTIVE_NON_QB_POOL_TEMPLATES = True
 DEFAULT_ADP_PICK = 240
 ADP_AUDIT_HIGH_IMPACT_PPG_MIN = 3.0
 ADP_AUDIT_POS_RANK_LIMITS = {
@@ -70,6 +116,10 @@ PROJECTION_COMPONENT_COLS = [
     "avg_proj_pass_points",
     "qb_avg_proj_pass_points",
 ]
+PROJECTION_UNCERTAINTY_SOURCE_COLS = [
+    "std_proj_points",
+    "std_pos_rank",
+]
 MATCH_FILL_VALUE = 0.5
 QB_RANK_DISTANCE_ORDER = {
     "qb1": 0,
@@ -80,9 +130,12 @@ QB_RANK_DISTANCE_ORDER = {
 }
 COMMON_MATCH_FEATURE_WEIGHTS = {
     "match_projection_rank_pct": 2.5,
+    "match_projection_ppg_scaled": 1.5,
     "year_exp_scaled": 2.0,
-    "projection_x_exp": 1.0,
     "adp_rank_pct": 0.5,
+    "market_projection_gap": 0.75,
+    "projection_disagreement_frac": 0.75,
+    "rank_disagreement_scaled": 0.50,
 }
 POSITION_MATCH_FEATURE_WEIGHTS = {
     "QB": {
@@ -99,15 +152,25 @@ POSITION_MATCH_FEATURE_WEIGHTS = {
         "rec_share_of_own_points": 1.0,
         "rb_rush_share_of_room": 1.25,
         "rb_rec_share_of_room": 0.75,
+        "rb_combined_share_of_room": 1.0,
+        "rb_room_rank_scaled": 0.75,
+        "rb_gap_to_next_share": 0.75,
+        "rb_room_concentration": 0.50,
     },
     "WR": {
         "rec_proj_rank_pct": 1.0,
         "team_rec_share": 1.25,
+        "pass_catcher_rank_scaled": 0.75,
+        "pass_catcher_gap_to_next_share": 0.75,
+        "pass_catcher_room_concentration": 0.50,
         "team_qb_pass_proj_rank_pct": 0.5,
     },
     "TE": {
         "rec_proj_rank_pct": 1.0,
         "team_rec_share": 1.25,
+        "pass_catcher_rank_scaled": 0.75,
+        "pass_catcher_gap_to_next_share": 0.75,
+        "pass_catcher_room_concentration": 0.50,
         "team_qb_pass_proj_rank_pct": 0.5,
     },
 }
@@ -125,9 +188,13 @@ MATCH_FEATURE_COLS = sorted(
 )
 MATCH_OUTPUT_COLS = [
     "match_projection_rank_pct",
+    "match_projection_ppg_scaled",
     "year_exp_scaled",
     "projection_x_exp",
     "adp_rank_pct",
+    "market_projection_gap",
+    "projection_disagreement_frac",
+    "rank_disagreement_scaled",
     "rush_proj_rank_pct",
     "rec_proj_rank_pct",
     "pass_proj_rank_pct",
@@ -135,7 +202,14 @@ MATCH_OUTPUT_COLS = [
     "rec_share_of_own_points",
     "rb_rush_share_of_room",
     "rb_rec_share_of_room",
+    "rb_combined_share_of_room",
+    "rb_room_rank_scaled",
+    "rb_gap_to_next_share",
+    "rb_room_concentration",
     "team_rec_share",
+    "pass_catcher_rank_scaled",
+    "pass_catcher_gap_to_next_share",
+    "pass_catcher_room_concentration",
     "team_qb_proj_points",
     "qb_room_share",
     "team_qb1_proj_points",
@@ -143,7 +217,7 @@ MATCH_OUTPUT_COLS = [
     "qb1_over_qb2_gap_pct",
     "team_qb_pass_points",
     "team_qb_pass_proj_rank_pct",
-] + PROJECTION_COMPONENT_COLS
+] + PROJECTION_COMPONENT_COLS + PROJECTION_UNCERTAINTY_SOURCE_COLS
 
 
 #==========
@@ -167,6 +241,145 @@ def clean_player_names(df):
     df = df.copy()
     df["player"] = df["player"].apply(dc.name_clean)
     return df
+
+
+def canonical_team(team):
+    if pd.isna(team):
+        return None
+    team = str(team).strip().upper()
+    return TEAM_ALIASES.get(team, team)
+
+
+def load_uncapped_experience_reference():
+    drafts = dm.read(
+        """
+        SELECT player,
+               pos,
+               CAST(year AS INTEGER) draft_year,
+               team draft_team
+        FROM Draft_Positions
+        WHERE pos IN ('QB', 'RB', 'WR', 'TE')
+        """,
+        "Season_Stats_New",
+    )
+    drafts = clean_player_names(drafts)
+    drafts["draft_team_key"] = drafts["draft_team"].apply(canonical_team)
+    drafts = drafts.drop_duplicates(
+        ["player", "pos", "draft_year", "draft_team_key"]
+    )
+
+    debut_frames = []
+    for pos in POSITIONS:
+        debut = dm.read(
+            f"""
+            SELECT player,
+                   '{pos}' pos,
+                   MIN(CAST(season AS INTEGER)) debut_season
+            FROM {pos}_Stats
+            GROUP BY player
+            """,
+            "Season_Stats_New",
+        )
+        debut_frames.append(debut)
+    debuts = clean_player_names(pd.concat(debut_frames, ignore_index=True))
+    debuts = (
+        debuts.groupby(["player", "pos"], as_index=False)
+        .debut_season.min()
+    )
+    return drafts, debuts
+
+
+def attach_uncapped_template_experience(df, season_col):
+    """Replace capped model tenure with a collision-aware raw career year."""
+    output = df.reset_index(drop=True).copy()
+    output["source_year_exp"] = pd.to_numeric(
+        output.get("year_exp"), errors="coerce"
+    )
+    output["_experience_row_id"] = np.arange(len(output))
+    output["_experience_team_key"] = output.get(
+        "team", pd.Series(index=output.index, dtype=object)
+    ).apply(canonical_team)
+
+    drafts, debuts = load_uncapped_experience_reference()
+    candidates = output[
+        [
+            "_experience_row_id",
+            "player",
+            "pos",
+            season_col,
+            "_experience_team_key",
+        ]
+    ].merge(drafts, on=["player", "pos"], how="left")
+    candidates = candidates[
+        candidates.draft_year.le(candidates[season_col])
+    ].copy()
+    candidates["draft_team_match"] = (
+        candidates.draft_team_key.eq(candidates._experience_team_key)
+        & candidates.draft_team_key.notna()
+    )
+    chosen = (
+        candidates.sort_values(
+            ["_experience_row_id", "draft_team_match", "draft_year"],
+            ascending=[True, False, False],
+        )
+        .drop_duplicates("_experience_row_id", keep="first")
+        [["_experience_row_id", "draft_year", "draft_team_match"]]
+    )
+    output = output.merge(chosen, on="_experience_row_id", how="left")
+
+    override_keys = list(
+        zip(output.player, output.pos, output._experience_team_key)
+    )
+    override_year = pd.Series(
+        [EXPERIENCE_DRAFT_YEAR_OVERRIDES.get(key) for key in override_keys],
+        index=output.index,
+        dtype=float,
+    )
+    override_valid = override_year.notna() & override_year.le(output[season_col])
+    output.loc[override_valid, "draft_year"] = override_year.loc[override_valid]
+    output.loc[override_valid, "draft_team_match"] = True
+
+    output = output.merge(debuts, on=["player", "pos"], how="left")
+    origin_year = output.draft_year.fillna(output.debut_season)
+    reconstructed = pd.to_numeric(output[season_col], errors="coerce") - origin_year
+    reconstructed = reconstructed.where(reconstructed.ge(0))
+    implausible = reconstructed.gt(MAX_PLAUSIBLE_TEMPLATE_EXPERIENCE)
+    reconstructed = reconstructed.mask(implausible)
+
+    output["year_exp"] = reconstructed.combine_first(output.source_year_exp)
+    draft_team_match = output.draft_team_match.eq(True)
+    output["year_exp_source"] = np.select(
+        [
+            override_valid,
+            output.draft_year.notna() & draft_team_match,
+            output.draft_year.notna(),
+            output.debut_season.notna(),
+            output.source_year_exp.notna(),
+        ],
+        [
+            "draft_identity_override",
+            "draft_team_match",
+            "draft_name_match",
+            "debut_fallback",
+            "model_input_fallback",
+        ],
+        default="missing",
+    )
+    output.loc[implausible & output.source_year_exp.notna(), "year_exp_source"] = (
+        "implausible_reconstruction_model_fallback"
+    )
+    output["year_exp_uncapped_delta"] = (
+        output.year_exp - output.source_year_exp
+    )
+    return output.drop(
+        columns=[
+            "_experience_row_id",
+            "_experience_team_key",
+            "draft_year",
+            "draft_team_match",
+            "debut_season",
+        ]
+    )
 
 
 def add_missing_cols(df, cols, fill_value=0):
@@ -215,7 +428,7 @@ def calc_fp(df, pts_dict, output_col):
     return df
 
 
-def add_fantasy_points(df, pos):
+def add_fantasy_points(df, pos, filter_qb_workload=True):
     df = add_bonus_cols(df)
 
     df = calc_fp(df, get_scoring_dict("rush"), "fantasy_pts_rush")
@@ -226,7 +439,8 @@ def add_fantasy_points(df, pos):
 
         df = add_missing_cols(df, ["pass_qb_dropback_sum", "rush_rush_attempt_sum"])
         df["total_plays"] = df["pass_qb_dropback_sum"] + df["rush_rush_attempt_sum"]
-        df = df[df["total_plays"] > 15].reset_index(drop=True)
+        if filter_qb_workload:
+            df = df[df["total_plays"] > 15].reset_index(drop=True)
     else:
         df = calc_fp(df, get_scoring_dict("receiving"), "fantasy_pts_rec")
         df["fantasy_pts"] = df["fantasy_pts_rush"] + df["fantasy_pts_rec"]
@@ -339,6 +553,11 @@ def projection_select_cols(pos, year_alias, total_alias=None, avg_pick_alias=Non
         cols.append(f"avg_pick {avg_pick_alias}")
     cols.append("year_exp")
     cols.extend([col for col in PROJECTION_COMPONENT_COLS if col in available_cols])
+    cols.extend(
+        col
+        for col in PROJECTION_UNCERTAINTY_SOURCE_COLS
+        if col in available_cols
+    )
     return cols
 
 
@@ -348,6 +567,92 @@ def add_projection_component_cols(df):
         if col not in df.columns:
             df[col] = 0
         df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
+    return df
+
+
+def add_projection_uncertainty_cols(df, total_points_col, group_cols):
+    """Create scale-free disagreement features from preseason sources."""
+    df = df.copy()
+    for col in PROJECTION_UNCERTAINTY_SOURCE_COLS:
+        if col not in df.columns:
+            df[col] = np.nan
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    total_points = pd.to_numeric(df[total_points_col], errors="coerce").abs()
+    df["projection_disagreement_frac"] = safe_ratio(
+        df["std_proj_points"],
+        total_points,
+        fill_value=np.nan,
+    )
+    group_size = df.groupby(group_cols)["player"].transform("size").clip(lower=1)
+    df["rank_disagreement_scaled"] = (
+        df["std_pos_rank"] / group_size
+    ).clip(lower=0, upper=1)
+
+    for col in ["projection_disagreement_frac", "rank_disagreement_scaled"]:
+        group_median = df.groupby(group_cols)[col].transform("median")
+        df[col] = df[col].fillna(group_median).fillna(MATCH_FILL_VALUE)
+    return df
+
+
+def add_room_structure_features(
+    df,
+    mask,
+    team_group_cols,
+    value_col,
+    prefix,
+):
+    """Attach player share, within-room rank/gap, and room concentration."""
+    df = df.copy()
+    share_col = f"{prefix}_share_of_room"
+    rank_col = f"{prefix}_rank_scaled"
+    gap_col = f"{prefix}_gap_to_next_share"
+    concentration_col = f"{prefix}_room_concentration"
+    for col in [share_col, rank_col, gap_col, concentration_col]:
+        df[col] = 0.0
+
+    if not mask.any():
+        return df
+
+    room = df.loc[mask, team_group_cols].copy()
+    room["__value"] = pd.to_numeric(
+        df.loc[mask, value_col], errors="coerce"
+    ).fillna(0).clip(lower=0).to_numpy()
+    grouped = room.groupby(team_group_cols, sort=False)["__value"]
+    room["__total"] = grouped.transform("sum")
+    room["__share"] = safe_ratio(room["__value"], room["__total"])
+    room["__size"] = grouped.transform("size")
+    room["__rank"] = grouped.rank(method="min", ascending=False)
+    room["__rank_scaled"] = np.where(
+        room["__size"].gt(1),
+        (room["__rank"] - 1) / (room["__size"] - 1),
+        0.0,
+    )
+    room["__top"] = grouped.transform("max")
+    room["__second"] = grouped.transform(
+        lambda values: (
+            values.nlargest(2).iloc[-1]
+            if len(values) > 1 else 0.0
+        )
+    )
+    room["__competitor"] = np.where(
+        room["__value"].eq(room["__top"]),
+        room["__second"],
+        room["__top"],
+    )
+    room["__gap"] = (
+        room["__value"] - room["__competitor"]
+    ) / room["__total"].replace(0, np.nan)
+    room["__gap"] = room["__gap"].replace([np.inf, -np.inf], np.nan).fillna(0)
+    room["__share_sq"] = room["__share"] ** 2
+    room["__concentration"] = room.groupby(
+        team_group_cols, sort=False
+    )["__share_sq"].transform("sum")
+
+    df.loc[mask, share_col] = room["__share"].to_numpy()
+    df.loc[mask, rank_col] = room["__rank_scaled"].to_numpy()
+    df.loc[mask, gap_col] = room["__gap"].clip(-1, 1).to_numpy()
+    df.loc[mask, concentration_col] = room["__concentration"].to_numpy()
     return df
 
 
@@ -372,8 +677,15 @@ def add_group_rank_pct(df, value_col, group_cols, output_col, ascending=True):
     return df.drop(columns=[rank_col])
 
 
-def add_template_match_features(df, group_cols, rank_pct_col, total_points_col):
+def add_template_match_features(
+    df,
+    group_cols,
+    rank_pct_col,
+    total_points_col,
+    projection_ppg_col,
+):
     df = add_projection_component_cols(df)
+    df = add_projection_uncertainty_cols(df, total_points_col, group_cols)
     df = df.copy()
 
     df["match_projection_rank_pct"] = (
@@ -381,8 +693,14 @@ def add_template_match_features(df, group_cols, rank_pct_col, total_points_col):
     )
     df["year_exp_scaled"] = (
         pd.to_numeric(df["year_exp"], errors="coerce")
-        .clip(lower=0, upper=10)
-        .div(10)
+        .clip(lower=0)
+        .div(EXPERIENCE_SCALE_YEARS)
+        .fillna(MATCH_FILL_VALUE)
+    )
+    df["match_projection_ppg_scaled"] = (
+        pd.to_numeric(df[projection_ppg_col], errors="coerce")
+        .clip(lower=0)
+        .div(PROJECTION_PPG_SCALE)
         .fillna(MATCH_FILL_VALUE)
     )
     df["projection_x_exp"] = df["match_projection_rank_pct"] * df["year_exp_scaled"]
@@ -393,6 +711,9 @@ def add_template_match_features(df, group_cols, rank_pct_col, total_points_col):
         group_cols=group_cols,
         output_col="adp_rank_pct",
         ascending=False,
+    )
+    df["market_projection_gap"] = (
+        df["adp_rank_pct"] - df["match_projection_rank_pct"]
     )
     df = add_group_rank_pct(
         df,
@@ -448,11 +769,36 @@ def add_template_match_features(df, group_cols, rank_pct_col, total_points_col):
         df.loc[rb_mask, "team_rb_rec_points"],
     )
 
+    df["__rb_combined_points"] = (
+        df["avg_proj_rush_points"] + df["avg_proj_rec_points"]
+    )
+    df = add_room_structure_features(
+        df,
+        rb_mask,
+        team_group_cols,
+        "__rb_combined_points",
+        "rb_combined",
+    )
+    df = df.rename(
+        columns={
+            "rb_combined_rank_scaled": "rb_room_rank_scaled",
+            "rb_combined_gap_to_next_share": "rb_gap_to_next_share",
+            "rb_combined_room_concentration": "rb_room_concentration",
+        }
+    )
+
     pass_catcher_mask = df["pos"].isin(["WR", "TE"])
     df["team_rec_share"] = 0.0
     df.loc[pass_catcher_mask, "team_rec_share"] = safe_ratio(
         df.loc[pass_catcher_mask, "avg_proj_rec_points"],
         df.loc[pass_catcher_mask, "team_rec_points"],
+    )
+    df = add_room_structure_features(
+        df,
+        receiver_mask,
+        team_group_cols,
+        "avg_proj_rec_points",
+        "pass_catcher",
     )
 
     qb_mask = df["pos"].eq("QB") & df["team"].notnull()
@@ -526,7 +872,7 @@ def add_template_match_features(df, group_cols, rank_pct_col, total_points_col):
             df[col] = MATCH_FILL_VALUE
         df[col] = pd.to_numeric(df[col], errors="coerce").fillna(MATCH_FILL_VALUE)
 
-    return df
+    return df.drop(columns=["__rb_combined_points"], errors="ignore")
 
 
 def safe_pool_part(value):
@@ -559,6 +905,29 @@ def stable_seed(*parts):
     seed_text = "|".join(str(p) for p in parts)
     digest = hashlib.md5(seed_text.encode("utf-8")).hexdigest()
     return (int(digest[:8], 16) + POOL_RANDOM_SEED) % (2**32)
+
+
+def cap_probability_vector(probabilities, max_probability):
+    """Cap any one donor while preserving a normalized probability vector."""
+    probabilities = np.asarray(probabilities, dtype=float)
+    probabilities = probabilities / probabilities.sum()
+    if len(probabilities) * max_probability < 1 - 1e-12:
+        raise ValueError("Probability cap is too small for the number of donors.")
+
+    capped = probabilities.copy()
+    for _ in range(len(capped)):
+        over = capped > max_probability
+        if not over.any():
+            break
+        capped[over] = max_probability
+        under = ~over
+        remaining = 1.0 - capped[over].sum()
+        under_total = capped[under].sum()
+        if under_total <= 0:
+            capped[under] = remaining / under.sum()
+        else:
+            capped[under] *= remaining / under_total
+    return capped / capped.sum()
 
 
 def template_id_offset(league):
@@ -847,6 +1216,7 @@ def load_historical_projection_context(max_template_season):
         ["season", "pos", "player", "avg_proj_points"],
         ascending=[True, True, True, False],
     ).drop_duplicates(["season", "pos", "player"])
+    proj = attach_uncapped_template_experience(proj, season_col="season")
     proj = add_qb_team_rank_fields(
         proj,
         year_col="season",
@@ -880,6 +1250,7 @@ def load_historical_projection_context(max_template_season):
         group_cols=["season", "pos"],
         rank_pct_col="projection_rank_pct",
         total_points_col="avg_proj_points",
+        projection_ppg_col="historical_pred_fp_per_game",
     )
     return proj.reset_index(drop=True)
 
@@ -909,11 +1280,41 @@ def load_weekly_points(max_template_season):
         ]
 
         df_pos = clean_player_names(df_pos)
-        df_pos = add_fantasy_points(df_pos, pos)
-        df_pos["pos"] = pos
-        df_pos = (
-            df_pos.groupby(["player", "pos", "season", "week"], as_index=False)
+        played_pos = df_pos[["player", "season", "week"]].drop_duplicates().copy()
+        played_pos["pos"] = pos
+        played_pos["played_week"] = True
+
+        scored_pos = add_fantasy_points(
+            df_pos,
+            pos,
+            filter_qb_workload=False,
+        )
+        scored_pos["pos"] = pos
+        managed_pos = (
+            scored_pos.groupby(["player", "pos", "season", "week"], as_index=False)
             .agg({"fantasy_pts": "sum"})
+            .rename(columns={"fantasy_pts": "managed_fantasy_pts"})
+        )
+        if pos == "QB":
+            scored_pos = scored_pos[scored_pos["total_plays"] > 15]
+        scored_pos = (
+            scored_pos.groupby(["player", "pos", "season", "week"], as_index=False)
+            .agg({"fantasy_pts": "sum"})
+        )
+        # QB fantasy-point profiles intentionally retain the historical
+        # >15-play workload filter, but participation must be derived before
+        # that filter so short/injury-truncated appearances are not treated as
+        # freely replaceable absences by managed-season scoring.
+        df_pos = played_pos.merge(
+            managed_pos,
+            on=["player", "pos", "season", "week"],
+            how="left",
+            validate="one_to_one",
+        ).merge(
+            scored_pos,
+            on=["player", "pos", "season", "week"],
+            how="left",
+            validate="one_to_one",
         )
 
         weekly = pd.concat([weekly, df_pos], ignore_index=True)
@@ -937,6 +1338,9 @@ def build_weekly_templates(proj, weekly):
         "validation_ensemble_sources",
         "avg_pick",
         "year_exp",
+        "source_year_exp",
+        "year_exp_source",
+        "year_exp_uncapped_delta",
         "year_exp_bucket",
         "exp_bucket",
         "qb_team_rank",
@@ -956,23 +1360,52 @@ def build_weekly_templates(proj, weekly):
     )
 
     week_grid = pd.DataFrame({"week": WEEKS})
-    expanded = template_index[["template_id", "player", "pos", "season"]].merge(
+    expanded = template_index[
+        ["template_id", "player", "pos", "season", "historical_pred_fp_per_game"]
+    ].merge(
         week_grid, how="cross"
     )
 
+    weekly = weekly.copy()
+    if "played_week" not in weekly.columns:
+        # Backward-compatible fixture/legacy input: any scored source row is
+        # also evidence that the player participated.
+        weekly["played_week"] = weekly["fantasy_pts"].notna()
+    if "managed_fantasy_pts" not in weekly.columns:
+        weekly["managed_fantasy_pts"] = weekly["fantasy_pts"]
+    weekly_keys = ["player", "pos", "season", "week"]
+    duplicate_weekly = weekly.duplicated(weekly_keys, keep=False)
+    if duplicate_weekly.any():
+        preview = weekly.loc[duplicate_weekly, weekly_keys].head(10).to_dict("records")
+        raise ValueError(f"Weekly source rows are not unique by player-week: {preview}")
+
     expanded = expanded.merge(
         weekly,
-        on=["player", "pos", "season", "week"],
+        on=weekly_keys,
         how="left",
-        indicator=True,
+        validate="many_to_one",
     )
-    expanded["active_week"] = expanded["_merge"].eq("both")
+    expanded["active_week"] = expanded["fantasy_pts"].notna()
+    expanded["played_week"] = expanded["played_week"].eq(True)
+    active_without_played = expanded["active_week"] & ~expanded["played_week"]
+    if active_without_played.any():
+        preview = expanded.loc[active_without_played, weekly_keys].head(10).to_dict(
+            "records"
+        )
+        raise ValueError(
+            f"Weekly performance rows are missing played evidence: {preview}"
+        )
+    expanded["managed_fantasy_pts"] = expanded["managed_fantasy_pts"].combine_first(
+        expanded["fantasy_pts"]
+    )
     expanded["fantasy_pts"] = expanded["fantasy_pts"].fillna(0)
+    expanded["managed_fantasy_pts"] = expanded["managed_fantasy_pts"].fillna(0)
 
     season_stats = (
         expanded.groupby("template_id", as_index=False)
         .agg(
             active_games=("active_week", "sum"),
+            played_games=("played_week", "sum"),
             season_points=("fantasy_pts", "sum"),
         )
     )
@@ -992,6 +1425,16 @@ def build_weekly_templates(proj, weekly):
         expanded["fantasy_pts"] / expanded["active_ppg"],
         0,
     )
+    expanded["managed_profile_ppg"] = np.where(
+        expanded["active_ppg"] > 0,
+        expanded["active_ppg"],
+        expanded["historical_pred_fp_per_game"],
+    )
+    expanded["managed_week_profile"] = np.where(
+        expanded["managed_profile_ppg"] > 0,
+        expanded["managed_fantasy_pts"] / expanded["managed_profile_ppg"],
+        0,
+    )
 
     week_profiles = expanded.pivot_table(
         index="template_id",
@@ -1004,14 +1447,49 @@ def build_weekly_templates(proj, weekly):
     week_profiles.columns = [f"week_{w}" for w in WEEKS]
     week_profiles = week_profiles.reset_index()
 
+    managed_week_profiles = expanded.pivot_table(
+        index="template_id",
+        columns="week",
+        values="managed_week_profile",
+        aggfunc="sum",
+        fill_value=0,
+    )
+    managed_week_profiles = managed_week_profiles.reindex(columns=WEEKS, fill_value=0)
+    managed_week_profiles.columns = [f"managed_week_{w}" for w in WEEKS]
+    managed_week_profiles = managed_week_profiles.reset_index()
+
+    played_profiles = expanded.pivot_table(
+        index="template_id",
+        columns="week",
+        values="played_week",
+        aggfunc="max",
+        fill_value=False,
+    )
+    played_profiles = played_profiles.reindex(columns=WEEKS, fill_value=False)
+    played_profiles.columns = [f"played_week_{w}" for w in WEEKS]
+    played_profiles = played_profiles.astype(np.int8).reset_index()
+
     templates = (
         template_index.merge(season_stats, on="template_id", how="left")
         .merge(week_profiles, on="template_id", how="left")
+        .merge(managed_week_profiles, on="template_id", how="left")
+        .merge(played_profiles, on="template_id", how="left")
     )
     templates["active_ppg_resid"] = (
         templates["active_ppg"] - templates["historical_pred_fp_per_game"]
     )
     templates["profile_total"] = templates[[f"week_{w}" for w in WEEKS]].sum(axis=1)
+    templates["managed_profile_total"] = templates[
+        [f"managed_week_{w}" for w in WEEKS]
+    ].sum(axis=1)
+    exclusion_keys = zip(templates["player"], templates["pos"], templates["season"])
+    templates["template_exclusion_reason"] = [
+        TEMPLATE_OUTCOME_EXCLUSIONS.get(tuple(key), "")
+        for key in exclusion_keys
+    ]
+    templates["template_eligible"] = templates[
+        "template_exclusion_reason"
+    ].eq("").astype(np.int8)
 
     front_cols = [
         "league",
@@ -1029,6 +1507,9 @@ def build_weekly_templates(proj, weekly):
         "validation_ensemble_sources",
         "avg_pick",
         "year_exp",
+        "source_year_exp",
+        "year_exp_source",
+        "year_exp_uncapped_delta",
         "year_exp_bucket",
         "exp_bucket",
         "qb_team_rank",
@@ -1037,21 +1518,60 @@ def build_weekly_templates(proj, weekly):
         "projection_decile",
         "projection_tier",
         "active_games",
+        "played_games",
         "active_ppg",
         "active_ppg_resid",
         "season_points",
         "profile_total",
+        "managed_profile_total",
+        "template_eligible",
+        "template_exclusion_reason",
     ]
     match_cols = [
         col for col in MATCH_OUTPUT_COLS if col in templates.columns and col not in front_cols
     ]
-    return templates[front_cols + match_cols + [f"week_{w}" for w in WEEKS]]
+    week_cols = [f"week_{w}" for w in WEEKS]
+    managed_week_cols = [f"managed_week_{w}" for w in WEEKS]
+    played_cols = [f"played_week_{w}" for w in WEEKS]
+    played_values = templates[played_cols].to_numpy()
+    if np.any(pd.isna(played_values)):
+        raise ValueError("Weekly template played masks contain missing values.")
+    if not np.isin(played_values, [0, 1]).all():
+        raise ValueError("Weekly template played masks must contain only 0 or 1.")
+    played_games = played_values.sum(axis=1)
+    if not np.array_equal(
+        played_games.astype(int),
+        templates["played_games"].to_numpy(dtype=int),
+    ):
+        raise ValueError(
+            "Weekly template played-mask counts disagree with played_games."
+        )
+    active_values = templates["active_games"].to_numpy(dtype=int)
+    played_values_count = templates["played_games"].to_numpy(dtype=int)
+    if np.any(active_values > played_values_count):
+        raise ValueError("Weekly templates contain more active than played games.")
+    non_qb_mismatch = templates["pos"].ne("QB") & (
+        templates["active_games"] != templates["played_games"]
+    )
+    if non_qb_mismatch.any():
+        preview = ", ".join(templates.loc[non_qb_mismatch, "player"].head(10))
+        raise ValueError(
+            "Non-QB weekly templates disagree on active and played games: "
+            f"{preview}"
+        )
+    managed_values = templates[managed_week_cols].to_numpy(dtype=float)
+    if not np.isfinite(managed_values).all():
+        raise ValueError("Managed weekly template profiles contain non-finite values.")
+    return templates[
+        front_cols + match_cols + week_cols + managed_week_cols + played_cols
+    ]
 
 
 def select_player_template_pool(player_row, templates):
-    pos_templates = templates[templates["pos"] == player_row.pos].copy()
-    if EXCLUDE_ZERO_ACTIVE_NON_QB_POOL_TEMPLATES and player_row.pos != "QB":
-        pos_templates = pos_templates[pos_templates["active_games"].gt(0)].copy()
+    pos_templates = templates[
+        templates["pos"].eq(player_row.pos)
+        & templates["template_eligible"].eq(1)
+    ].copy()
 
     if len(pos_templates) == 0:
         raise ValueError(f"No eligible weekly templates found for position {player_row.pos}.")
@@ -1121,20 +1641,49 @@ def select_player_template_pool(player_row, templates):
     selected_count = min(MAX_TEMPLATE_POOL_SIZE, len(pos_templates))
     selected_templates = pos_templates.head(selected_count).copy()
     selected_templates["match_rank"] = np.arange(1, len(selected_templates) + 1)
-    distance_min = selected_templates["template_distance"].min()
-    distance_max = selected_templates["template_distance"].max()
-    distance_range = distance_max - distance_min
-    if distance_range > 0:
-        selected_templates["template_sample_weight"] = np.exp(
-            -np.log(TEMPLATE_SAMPLE_TOP_TO_BOTTOM_RATIO)
-            * (selected_templates["template_distance"] - distance_min)
-            / distance_range
-        )
-    else:
-        selected_templates["template_sample_weight"] = 1.0
-    selected_templates["template_sample_prob"] = (
+    distance_min = float(selected_templates["template_distance"].min())
+    bandwidth = TEMPLATE_KERNEL_BANDWIDTH[player_row.pos]
+    selected_templates["template_sample_weight"] = np.exp(
+        -(selected_templates["template_distance"] - distance_min) / bandwidth
+    )
+    local_prob = (
         selected_templates["template_sample_weight"]
         / selected_templates["template_sample_weight"].sum()
+    ).to_numpy(dtype=float)
+    local_weight_fraction = max(
+        TEMPLATE_MIN_LOCAL_WEIGHT,
+        np.exp(-distance_min / TEMPLATE_LOCAL_DISTANCE_SCALE),
+    )
+    local_weight_fraction = min(float(local_weight_fraction), 1.0)
+    uniform_prob = np.full(len(selected_templates), 1.0 / len(selected_templates))
+    sample_prob = (
+        local_weight_fraction * local_prob
+        + (1.0 - local_weight_fraction) * uniform_prob
+    )
+    selected_templates["template_sample_prob"] = cap_probability_vector(
+        sample_prob,
+        TEMPLATE_MAX_SAMPLE_PROBABILITY,
+    )
+    selected_templates["template_season_gap"] = (
+        int(player_row.year)
+        - pd.to_numeric(selected_templates["season"], errors="raise").astype(int)
+    )
+    if selected_templates["template_season_gap"].le(0).any():
+        raise ValueError(
+            "Weekly template pools must contain only seasons before the target year."
+        )
+    selected_templates["template_recency_multiplier"] = np.power(
+        0.5,
+        selected_templates["template_season_gap"]
+        / TEMPLATE_RECENCY_HALF_LIFE,
+    )
+    recency_prob = (
+        selected_templates["template_sample_prob"]
+        * selected_templates["template_recency_multiplier"]
+    )
+    selected_templates["template_sample_prob"] = cap_probability_vector(
+        recency_prob.to_numpy(dtype=float),
+        TEMPLATE_MAX_SAMPLE_PROBABILITY,
     )
 
     template_pool_key = player_row.template_pool_key
@@ -1159,6 +1708,9 @@ def select_player_template_pool(player_row, templates):
         "cell_distance",
         "template_distance",
         "template_sample_weight",
+        "season",
+        "template_season_gap",
+        "template_recency_multiplier",
         "template_sample_prob",
         "match_rank",
     ] + distance_cols
@@ -1199,6 +1751,9 @@ def select_player_template_pool(player_row, templates):
             "cell_distance",
             "template_distance",
             "template_sample_weight",
+            "season",
+            "template_season_gap",
+            "template_recency_multiplier",
             "template_sample_prob",
             "match_rank",
         ]
@@ -1234,7 +1789,34 @@ def select_player_template_pool(player_row, templates):
         "median_template_distance": float(selected_templates["template_distance"].median()),
         "mean_template_distance": float(selected_templates["template_distance"].mean()),
         "max_template_distance": float(selected_templates["template_distance"].max()),
-        "max_to_min_template_sample_weight_ratio": TEMPLATE_SAMPLE_TOP_TO_BOTTOM_RATIO,
+        "kernel_bandwidth": bandwidth,
+        "local_weight_fraction": local_weight_fraction,
+        "recency_half_life": TEMPLATE_RECENCY_HALF_LIFE,
+        "weighted_template_season_gap": float(
+            np.average(
+                selected_templates["template_season_gap"],
+                weights=selected_templates["template_sample_prob"],
+            )
+        ),
+        "weight_last3_seasons": float(
+            selected_templates.loc[
+                selected_templates["template_season_gap"].le(3),
+                "template_sample_prob",
+            ].sum()
+        ),
+        "weight_10plus_seasons": float(
+            selected_templates.loc[
+                selected_templates["template_season_gap"].ge(10),
+                "template_sample_prob",
+            ].sum()
+        ),
+        "effective_sample_size": float(
+            1.0 / np.square(selected_templates["template_sample_prob"]).sum()
+        ),
+        "max_to_min_template_sample_weight_ratio": float(
+            selected_templates["template_sample_prob"].max()
+            / selected_templates["template_sample_prob"].min()
+        ),
         "min_template_sample_prob": float(selected_templates["template_sample_prob"].min()),
         "max_template_sample_prob": float(selected_templates["template_sample_prob"].max()),
         "min_template_pool_size": MIN_TEMPLATE_POOL_SIZE,
@@ -1268,6 +1850,9 @@ def build_template_join_audit(templates):
             "season",
             "avg_pick",
             "year_exp",
+            "source_year_exp",
+            "year_exp_source",
+            "year_exp_uncapped_delta",
             "year_exp_bucket",
             "exp_bucket",
             "qb_team_rank",
@@ -1279,10 +1864,14 @@ def build_template_join_audit(templates):
             "projection_decile",
             "projection_tier",
             "active_games",
+            "played_games",
             "active_ppg",
             "active_ppg_resid",
             "season_points",
             "profile_total",
+            "managed_profile_total",
+            "template_eligible",
+            "template_exclusion_reason",
         ]
     ].copy()
 
@@ -1298,6 +1887,26 @@ def build_template_join_audit(templates):
     )
     audit["profile_total_abs_error"] = (audit["profile_total"] - audit["active_games"]).abs()
     audit["profile_total_mismatch"] = audit["profile_total_abs_error"].gt(0.01)
+    played_cols = [f"played_week_{w}" for w in WEEKS]
+    score_cols = [f"managed_week_{w}" for w in WEEKS]
+    played_values = templates[played_cols].to_numpy(dtype=np.int8)
+    score_values = templates[score_cols].to_numpy(dtype=float)
+    audit["played_mask_games"] = played_values.sum(axis=1)
+    audit["played_mask_abs_error"] = (
+        audit["played_mask_games"] - audit["played_games"]
+    ).abs()
+    audit["played_mask_mismatch"] = audit["played_mask_abs_error"].gt(0)
+    audit["played_only_games"] = audit["played_games"] - audit["active_games"]
+    audit["active_exceeds_played"] = audit["active_games"].gt(audit["played_games"])
+    audit["non_qb_played_active_mismatch"] = (
+        audit["pos"].ne("QB") & audit["played_only_games"].ne(0)
+    )
+    audit["played_zero_profile_weeks"] = (
+        (played_values == 1) & np.isclose(score_values, 0)
+    ).sum(axis=1)
+    audit["played_negative_profile_weeks"] = (
+        (played_values == 1) & (score_values < 0)
+    ).sum(axis=1)
 
     return audit.sort_values(
         ["zero_active_template", "high_value_low_active_template", "active_games", "historical_pred_fp_per_game"],
@@ -1540,7 +2149,7 @@ def build_player_pool_audit(player_map, pool_members, templates):
     ).reset_index(drop=True)
 
 
-def validate_weekly_template_audits(player_pool_audit):
+def validate_weekly_template_audits(player_pool_audit, template_audit=None):
     missing_pool = player_pool_audit[player_pool_audit["missing_template_pool"]]
     below_min_pool = player_pool_audit[player_pool_audit["template_pool_below_min"]]
 
@@ -1559,6 +2168,46 @@ def validate_weekly_template_audits(player_pool_audit):
             f"{len(below_min_pool)} current players have template pools below "
             f"{MIN_TEMPLATE_POOL_SIZE}: {preview}"
         )
+
+    if template_audit is not None:
+        excluded = template_audit[template_audit["template_eligible"].eq(0)]
+        expected_exclusions = {
+            key: reason
+            for key, reason in TEMPLATE_OUTCOME_EXCLUSIONS.items()
+            if key[2] <= template_audit["season"].max()
+        }
+        actual_exclusions = {
+            (row.player, row.pos, int(row.season)): row.template_exclusion_reason
+            for row in excluded.itertuples(index=False)
+        }
+        if actual_exclusions != expected_exclusions:
+            raise ValueError(
+                "Weekly template exclusions differ from the declared registry: "
+                f"expected={expected_exclusions}, actual={actual_exclusions}"
+            )
+        mask_mismatch = template_audit[template_audit["played_mask_mismatch"]]
+        if len(mask_mismatch) > 0:
+            preview = ", ".join(mask_mismatch.player.head(10))
+            raise ValueError(
+                f"{len(mask_mismatch)} weekly templates have played-mask "
+                f"counts that disagree with played_games: {preview}"
+            )
+        active_exceeds_played = template_audit[template_audit["active_exceeds_played"]]
+        if len(active_exceeds_played) > 0:
+            preview = ", ".join(active_exceeds_played.player.head(10))
+            raise ValueError(
+                f"{len(active_exceeds_played)} weekly templates have more active "
+                f"than played games: {preview}"
+            )
+        non_qb_mismatch = template_audit[
+            template_audit["non_qb_played_active_mismatch"]
+        ]
+        if len(non_qb_mismatch) > 0:
+            preview = ", ".join(non_qb_mismatch.player.head(10))
+            raise ValueError(
+                f"{len(non_qb_mismatch)} non-QB templates disagree on active and "
+                f"played games: {preview}"
+            )
 
 
 def load_current_player_context():
@@ -1620,6 +2269,29 @@ def load_current_player_context():
     current_context["avg_pick"] = current_context["model_input_avg_pick"].combine_first(
         current_context["adp_avg_pick"]
     )
+    current_context = attach_uncapped_template_experience(
+        current_context,
+        season_col="year",
+    )
+    current_context = add_exp_fields(current_context)
+    current_context["current_projection_ppg"] = (
+        pd.to_numeric(
+            current_context["current_avg_proj_points"], errors="coerce"
+        ) / WEEK_COUNT
+    )
+    current_context = add_projection_buckets(
+        current_context,
+        value_col="current_projection_ppg",
+        group_cols=["year", "pos"],
+        pct_col="context_projection_rank_pct",
+    )
+    current_context = add_template_match_features(
+        current_context,
+        group_cols=["year", "pos"],
+        rank_pct_col="context_projection_rank_pct",
+        total_points_col="current_avg_proj_points",
+        projection_ppg_col="current_projection_ppg",
+    )
     return current_context
 
 
@@ -1652,9 +2324,12 @@ def build_player_map_base():
         "avg_proj_points",
         "avg_pick",
         "year_exp",
+        "source_year_exp",
+        "year_exp_source",
+        "year_exp_uncapped_delta",
         "qb_team_rank",
         "qb_team_rank_bucket",
-    ] + PROJECTION_COMPONENT_COLS
+    ] + MATCH_OUTPUT_COLS
     context_cols = [col for col in context_cols if col in current_context.columns]
     player_map = preds.merge(
         current_context[context_cols],
@@ -1662,11 +2337,25 @@ def build_player_map_base():
         how="left",
     )
     player_map = add_exp_fields(player_map)
-    player_map = add_template_match_features(
-        player_map,
-        group_cols=["year", "version", "dataset", "pos"],
-        rank_pct_col="prediction_rank_pct",
-        total_points_col="current_avg_proj_points",
+    # Team workload structure is computed on the complete preseason universe
+    # before the final prediction table is pruned. Only projection-level fields
+    # are rebased to the final model here.
+    player_map["match_projection_rank_pct"] = player_map[
+        "prediction_rank_pct"
+    ]
+    player_map["match_projection_ppg_scaled"] = (
+        pd.to_numeric(player_map["pred_fp_per_game"], errors="coerce")
+        .clip(lower=0)
+        .div(PROJECTION_PPG_SCALE)
+        .fillna(MATCH_FILL_VALUE)
+    )
+    player_map["projection_x_exp"] = (
+        player_map["match_projection_rank_pct"]
+        * player_map["year_exp_scaled"]
+    )
+    player_map["market_projection_gap"] = (
+        player_map["adp_rank_pct"]
+        - player_map["match_projection_rank_pct"]
     )
     player_map["template_pool_key"] = player_map.apply(player_pool_key, axis=1)
 
@@ -1680,6 +2369,9 @@ def build_player_map_base():
         "current_avg_proj_points",
         "avg_pick",
         "year_exp",
+        "source_year_exp",
+        "year_exp_source",
+        "year_exp_uncapped_delta",
         "year_exp_bucket",
         "exp_bucket",
         "team",
@@ -1722,6 +2414,13 @@ def finalize_player_map(player_map, pool_summary):
         "median_template_distance",
         "mean_template_distance",
         "max_template_distance",
+        "kernel_bandwidth",
+        "local_weight_fraction",
+        "recency_half_life",
+        "weighted_template_season_gap",
+        "weight_last3_seasons",
+        "weight_10plus_seasons",
+        "effective_sample_size",
         "max_to_min_template_sample_weight_ratio",
         "min_template_sample_prob",
         "max_template_sample_prob",
@@ -1978,14 +2677,96 @@ def build_adp_audit(player_map):
 
 def copy_simulation_db_to_apps():
     src = Path(root_path) / "Data" / "Databases" / "Simulation.sqlite3"
-    app_dbs = [
-        Path("/Users/borys/OneDrive/Documents/Github/Fantasy_Football_App/app/Simulation.sqlite3"),
-        Path("/Users/borys/OneDrive/Documents/Github/Fantasy_Football_Snake/app/Simulation.sqlite3"),
+    generated_tables = [
+        TEMPLATE_TABLE,
+        POOL_TABLE,
+        POOL_SUMMARY_TABLE,
+        PLAYER_MAP_TABLE,
+        TEMPLATE_AUDIT_TABLE,
+        PLAYER_POOL_AUDIT_TABLE,
+        BUCKET_AUDIT_TABLE,
+        ADP_AUDIT_TABLE,
     ]
-    for dst in app_dbs:
-        if dst.parent.exists():
-            shutil.copyfile(src, dst)
-            print(f"Copied Simulation.sqlite3 to {dst}")
+    required_template_cols = (
+        [f"managed_week_{week}" for week in WEEKS]
+        + [f"played_week_{week}" for week in WEEKS]
+    )
+    with sqlite3.connect(src) as source_conn:
+        template_cols = {
+            row[1]
+            for row in source_conn.execute(
+                f'PRAGMA table_info("{TEMPLATE_TABLE}")'
+            )
+        }
+        missing_cols = sorted(set(required_template_cols) - template_cols)
+        if missing_cols:
+            print(
+                "Skipped app database export because the weekly-template schema "
+                f"is incomplete: {', '.join(missing_cols)}"
+            )
+            return
+        null_predicate = " OR ".join(
+            f'"{column}" IS NULL' for column in required_template_cols
+        )
+        incomplete_rows = source_conn.execute(
+            f'SELECT COUNT(*) FROM "{TEMPLATE_TABLE}" WHERE {null_predicate}'
+        ).fetchone()[0]
+        if incomplete_rows:
+            print(
+                "Skipped app database export because "
+                f"{incomplete_rows} retained template rows still have null "
+                "played/managed-week fields. Rebuild every retained league slice."
+            )
+            return
+
+    sibling_root = Path(root_path).resolve().parent
+    auction_dst = sibling_root / "Fantasy_Football_App" / "app" / "Simulation.sqlite3"
+    if not auction_dst.parent.exists():
+        auction_dst = Path(
+            "/Users/borys/OneDrive/Documents/Github/"
+            "Fantasy_Football_App/app/Simulation.sqlite3"
+        )
+    if auction_dst.parent.exists():
+        if not auction_dst.exists():
+            shutil.copyfile(src, auction_dst)
+            print(f"Copied Simulation.sqlite3 to {auction_dst}")
+        else:
+            with sqlite3.connect(auction_dst) as app_conn:
+                app_conn.execute("ATTACH DATABASE ? AS source_db", (str(src),))
+                app_conn.execute("BEGIN IMMEDIATE")
+                try:
+                    for table_name in generated_tables:
+                        create_sql = app_conn.execute(
+                            "SELECT sql FROM source_db.sqlite_master "
+                            "WHERE type='table' AND name=?",
+                            (table_name,),
+                        ).fetchone()[0]
+                        app_conn.execute(
+                            f'DROP TABLE IF EXISTS main."{table_name}"'
+                        )
+                        app_conn.execute(create_sql)
+                        app_conn.execute(
+                            f'INSERT INTO main."{table_name}" '
+                            f'SELECT * FROM source_db."{table_name}"'
+                        )
+                    app_conn.commit()
+                except Exception:
+                    app_conn.rollback()
+                    raise
+            print(
+                f"Synchronized {len(generated_tables)} generated best-ball "
+                f"tables to {auction_dst}"
+            )
+
+    snake_dst = sibling_root / "Fantasy_Football_Snake" / "app" / "Simulation.sqlite3"
+    if not snake_dst.parent.exists():
+        snake_dst = Path(
+            "/Users/borys/OneDrive/Documents/Github/"
+            "Fantasy_Football_Snake/app/Simulation.sqlite3"
+        )
+    if snake_dst.parent.exists():
+        shutil.copyfile(src, snake_dst)
+        print(f"Copied Simulation.sqlite3 to {snake_dst}")
 
 
 def main():
@@ -2006,7 +2787,7 @@ def main():
     player_map = finalize_player_map(player_map_base, pool_summary)
     player_pool_audit = build_player_pool_audit(player_map, pool_members, templates)
     adp_audit = build_adp_audit(player_map)
-    validate_weekly_template_audits(player_pool_audit)
+    validate_weekly_template_audits(player_pool_audit, template_audit)
 
     write_best_ball_tables(
         templates,
@@ -2024,6 +2805,42 @@ def main():
     print("\nTemplate count by position:")
     print(templates.groupby("pos").template_id.count())
 
+    print("\nUncapped historical template experience:")
+    print(
+        templates.groupby("pos", as_index=False).agg(
+            templates=("template_id", "count"),
+            min_year_exp=("year_exp", "min"),
+            max_year_exp=("year_exp", "max"),
+            above_ten=("year_exp", lambda values: int(values.gt(10).sum())),
+            mean_uncapped_delta=("year_exp_uncapped_delta", "mean"),
+        )
+    )
+    print("\nHistorical experience reconstruction sources:")
+    print(templates.groupby(["pos", "year_exp_source"]).template_id.count())
+
+    named_veterans = player_map[
+        player_map.player.isin(
+            ["Derrick Henry", "Alvin Kamara", "George Kittle", "Travis Kelce"]
+        )
+    ]
+    if len(named_veterans) > 0:
+        print("\nNamed current-player uncapped experience:")
+        print(
+            named_veterans[
+                [
+                    "player",
+                    "pos",
+                    "year_exp",
+                    "source_year_exp",
+                    "year_exp_source",
+                    "year_exp_uncapped_delta",
+                    "year_exp_scaled",
+                    "min_year_exp_bucket",
+                    "max_year_exp_bucket",
+                ]
+            ].sort_values(["pos", "player"])
+        )
+
     print("\nHistorical projection source:")
     print(templates.groupby(["pos", "historical_projection_source"]).template_id.count())
 
@@ -2035,6 +2852,7 @@ def main():
             zero_active_templates=("zero_active_template", "sum"),
             low_active_templates=("low_active_template", "sum"),
             high_value_low_active_templates=("high_value_low_active_template", "sum"),
+            played_only_games=("played_only_games", "sum"),
         )
     )
     template_summary["zero_active_share"] = (

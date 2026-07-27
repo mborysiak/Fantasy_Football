@@ -1,0 +1,2 @@
+iterations,elapsed_seconds,trials_per_second,result_rows,top_player,top_expected_roster_gain,managed_trials,season_ev,workers,blocks,requested_workers,repeat
+1000,14.44487979999758,69.22868267828491,30,Jalen Hurts,7.566757690429688,1000,1597.2351151123046,8,20,8,1

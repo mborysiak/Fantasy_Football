@@ -1,0 +1,6 @@
+target_season,training_start,training_end,training_target_rows,selected_method,selected_family,selected_multiplier,selected_development_loss,baseline_development_loss,selected_minus_baseline
+2021,2017,2020,720,all_weights__w001,all_weights,0.01,0.9966044599387366,1.0,-0.0033955400612634135
+2022,2017,2021,900,all_weights__w001,all_weights,0.01,0.9974936584043761,0.9999999999999999,-0.0025063415956237955
+2023,2017,2022,1080,all_weights__w005,all_weights,0.05,0.9978784728369844,1.0,-0.002121527163015613
+2024,2017,2023,1260,all_weights__w012,all_weights,0.125,0.9980972452940775,1.0,-0.0019027547059224936
+2025,2017,2024,1440,all_weights__w012,all_weights,0.125,0.9984039560285423,1.0,-0.001596043971457739

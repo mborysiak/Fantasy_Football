@@ -1,0 +1,7 @@
+{
+  "baseline_method": "current_locked_spec_v1",
+  "challenger_method": "current_locked_spec_v5_compact_salary_features",
+  "paired_frontier_cells": 4000,
+  "candidate_player_origins": 930,
+  "all_frontier_cells_optimal": true
+}

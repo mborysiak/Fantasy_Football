@@ -1,0 +1,13 @@
+feature,group
+budget_adjusted_source_salary,league_source_market
+avg_pick_log,broader_market
+ensemble_pred_ppg,projection_level
+ensemble_vs_price_gap,projection_price_disagreement
+ensemble_pred_resid_90,projection_upside
+pos_proj_points_share,role_share
+rb_pos_rush_share,position_specific_role
+year_exp,development
+is_rookie,development
+QB,position
+RB,position
+TE,position

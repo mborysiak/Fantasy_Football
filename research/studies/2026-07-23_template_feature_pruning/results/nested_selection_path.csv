@@ -1,0 +1,6 @@
+target_season,training_start,training_end,training_target_rows,selected_method,selected_variant,selected_uses_recency,selected_feature_count_total,selected_complexity_score,selected_development_loss
+2021,2017,2020,720,no_disagreement__r12,no_disagreement,1,51,51,0.9999918880801112
+2022,2017,2021,900,no_disagreement__r12,no_disagreement,1,51,51,0.9996649025187552
+2023,2017,2022,1080,no_exp_interaction__r12,no_exp_interaction,1,55,55,0.9987508333878433
+2024,2017,2023,1260,no_exp_interaction__r12,no_exp_interaction,1,55,55,0.9985026826916195
+2025,2017,2024,1440,no_exp_interaction__r12,no_exp_interaction,1,55,55,0.9986795905167638

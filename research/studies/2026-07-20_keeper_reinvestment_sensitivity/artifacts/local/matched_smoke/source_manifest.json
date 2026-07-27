@@ -1,0 +1,119 @@
+{
+  "config": {
+    "candidate_shortlist": 4,
+    "context_draws": 5,
+    "contexts": 250,
+    "output_dir": "research/studies/2026-07-20_keeper_reinvestment_sensitivity/artifacts/local/matched_smoke",
+    "projection_draws": 250,
+    "resume": false,
+    "salary_draws": 5000,
+    "seed": 20260720,
+    "trials": 1,
+    "years": [
+      2024
+    ]
+  },
+  "control_results": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-19_keeper_option_bonus\\results\\roster_trials.csv",
+  "control_results_sha256": "d0f2f9b63954b0ba337fd479fc638aa1c4645a3c24eadbbeb6432439f4065bc3",
+  "origins": {
+    "2024": {
+      "bytes": 4096000,
+      "current_projection_proxies": 22,
+      "current_waiver_baseline": {
+        "QB": 16.3,
+        "RB": 7.3,
+        "TE": 6.4,
+        "WR": 5.8
+      },
+      "forecast_draws": 250,
+      "forecast_players": 246,
+      "last_write_time": 1724676488.0,
+      "next_projection_source": "Model_Validations_Resid.next_noncomponent",
+      "path": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\Data\\Databases\\DB_Versioning\\Simulation__2024_08_26_48.sqlite3",
+      "player_residual_copula_rho": 0.25,
+      "position_counts": {
+        "QB": 24,
+        "RB": 60,
+        "TE": 24,
+        "WR": 138
+      },
+      "prior_salary_residual_rows": 0,
+      "projection_distribution": "frozen_legacy_truncated_normal",
+      "projection_table": "Final_Predictions",
+      "realized_future_horizons": [
+        1
+      ],
+      "realized_validation_targets": 544,
+      "remaining_market_budget": 3013.0,
+      "remaining_market_slots": 138,
+      "resid_training_through_origin": 2022,
+      "resid_training_through_season": 2023,
+      "runtime_seconds": 10.885770399999956,
+      "salary_distribution": "frozen_legacy_truncated_normal",
+      "salary_matches_to_forecast": 178,
+      "salary_missing_fallback": 68,
+      "salary_rows": 189,
+      "salary_table": "Salaries_Pred",
+      "sha256": "5d8a0f22c98ce04f901b093cd62d7aaf8d9002a355dc8c44824f4289e5083c56",
+      "source_type": "local_db_version",
+      "top_n_players": [
+        "Christian Mccaffrey",
+        "Bijan Robinson",
+        "Ceedee Lamb",
+        "Tyreek Hill",
+        "Jonathan Taylor",
+        "Saquon Barkley",
+        "Justin Jefferson",
+        "Aj Brown",
+        "Puka Nacua",
+        "Isiah Pacheco",
+        "Marvin Harrison",
+        "Derrick Henry"
+      ],
+      "validation_db": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\Data\\Databases\\Validations.sqlite3",
+      "validation_db_sha256": "78233a227427c7e5108d4f5a9b256e64737ad698f73889892612d43b663f7145",
+      "validation_matches": 206,
+      "validation_model_spec_asof_year": 2026,
+      "year": 2024
+    }
+  },
+  "policies": [
+    {
+      "max_forced_options": 0,
+      "name": "control"
+    },
+    {
+      "max_forced_options": 1,
+      "name": "reinvest_k1"
+    },
+    {
+      "max_forced_options": 2,
+      "name": "reinvest_k2"
+    },
+    {
+      "max_forced_options": 3,
+      "name": "reinvest_k3"
+    }
+  ],
+  "portfolio_runner": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-20_one_year_keeper_portfolio\\run_replay.py",
+  "portfolio_runner_sha256": "ec5299798b05f53aacc72a6d1b0e5f7802d54093a646b38e99ee45b9211296aa",
+  "runtime_seconds": 14.569725399999925,
+  "selection_contract": {
+    "construction_tolerance": 0.0,
+    "forced_options_must_remain_nominal_bench": true,
+    "full_roster_reoptimization": true,
+    "one_year_keeper_escalation": 10.0,
+    "portfolio_objective": "expected best surplus across nominal bench"
+  },
+  "study": "2026-07-20_keeper_reinvestment_sensitivity",
+  "verification": {
+    "all_benches_size_5": true,
+    "all_construction_no_loss": true,
+    "all_forecast_spend_within_cap": true,
+    "all_option_limits_respected": true,
+    "all_rosters_size_13": true,
+    "all_solves_optimal": true,
+    "all_starters_size_8": true,
+    "expected_rows": 4
+  }
+}

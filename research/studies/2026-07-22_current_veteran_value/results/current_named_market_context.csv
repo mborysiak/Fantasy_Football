@@ -1,0 +1,5 @@
+player,pos,raw_year_exp,capped_year_exp,threshold,pred_ppg,market_salary,projection_peer_salary,salary_vs_projection_peers,mean_peer_ppg_gap,projection_peers
+Alvin Kamara,RB,9.0,8.0,7.0,7.14799603378962,1.3128290884954446,2.2266101257050055,-0.9137810372095609,0.18267817421716365,Tyrone Tracy | Tyjae Spears | Woody Marks | Chris Rodriguez | Dylan Sampson
+Derrick Henry,RB,10.0,8.0,7.0,15.672351185934884,73.29930626301314,68.38520181394301,4.914104449070123,0.4852071399507061,Omarion Hampton | Devon Achane | James Cook | Jeremiyah Love | Chase Brown
+George Kittle,TE,9.0,9.0,8.0,8.857499999999998,5.1127441136393745,8.124732910070813,-3.0119887964314387,0.3876666666666665,Kyle Pitts | Harold Fannin | Tucker Kraft | Sam Laporta | Dalton Kincaid
+Travis Kelce,TE,13.0,10.0,8.0,8.571666666666665,5.0146084422294415,6.590223671883422,-1.5756152296539803,0.4111666666666659,Tucker Kraft | Kyle Pitts | Harold Fannin | Dalton Kincaid | Mark Andrews

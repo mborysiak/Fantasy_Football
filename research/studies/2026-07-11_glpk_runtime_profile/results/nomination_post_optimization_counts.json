@@ -1,0 +1,15 @@
+{
+  "solve_calls": 1802,
+  "score_calls": 894,
+  "solve_statuses": {
+    "optimal": 1754,
+    "LP relaxation is primal infeasible": 48
+  },
+  "prices": 18,
+  "paired_successes": 852,
+  "uncached_score_calls": 1704,
+  "score_calls_avoided": 810,
+  "score_cache_reduction_pct": 47.53521126760564,
+  "baseline_solve_calls_without_shortcut": 1850,
+  "pass_solves_avoided": 48
+}

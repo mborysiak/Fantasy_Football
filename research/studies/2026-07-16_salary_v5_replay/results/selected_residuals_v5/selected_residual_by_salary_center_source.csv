@@ -1,0 +1,3 @@
+salary_center_source,selected_slots,player_origins,mean_salary_residual,median_salary_residual,positive_residual_rate,mean_predicted_salary,mean_actual_salary,mean_scenario_center_shift,mean_actual_minus_scenario
+current_salary_model,47991,467,1.1696621355670858,0.12987760000000037,0.5046779604509178,24.618777363505654,25.788439499072744,-0.8159340507697533,1.9855961863368392
+espn_fallback,1908,9,5.783314935324948,0.0,0.4837526205450734,12.298446070964362,18.08176100628931,-0.5669253302140003,6.35024026553895
