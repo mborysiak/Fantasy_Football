@@ -1,0 +1,7 @@
+model_name,prediction_rows,mean_absolute_prediction_delta,max_absolute_prediction_delta
+direct_elastic_net_expanded,3701,2.1294867307558361e-16,3.552713678800501e-15
+direct_elastic_net_incumbent,3701,2.1481510616970402e-16,3.552713678800501e-15
+direct_lasso_expanded,3701,2.333744443903951e-16,3.552713678800501e-15
+direct_lasso_incumbent,3701,2.1324771484204488e-16,3.552713678800501e-15
+direct_ridge_expanded,3701,2.150794628409958e-16,3.552713678800501e-15
+direct_ridge_incumbent,3701,2.0665192214981426e-16,3.552713678800501e-15

@@ -1,0 +1,2 @@
+source_study,source_feature_run_id,current_feature_run_id,target_rows,target_keys_equal,actuals_equal,baselines_equal,folds_equal,incumbent_feature_names_equal,bridge_reason
+C:\Users\borys\OneDrive\Documents\GitHub\Fantasy_Football\research\studies\2026-07-28_v2_history_gap_features,milestone_3_20260728T230106Z_e1e5596c,milestone_3_20260728T234758Z_2c9fa135,3696,1,1,1,1,1,additive trajectory/adp mart columns; incumbent features and targets unchanged

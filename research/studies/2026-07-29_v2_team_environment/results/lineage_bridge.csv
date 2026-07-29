@@ -1,0 +1,2 @@
+source_study,source_feature_run_id,current_feature_run_id,target_rows,target_keys_equal,actuals_equal,baselines_equal,folds_equal,reference_feature_names_equal,bridge_reason
+C:\Users\borys\OneDrive\Documents\GitHub\Fantasy_Football\research\studies\2026-07-28_v2_projection_trajectory_adp,milestone_3_20260728T234758Z_2c9fa135,milestone_3_20260729T010945Z_7f8c8fd9,3696,1,1,1,1,1,additive team-environment mart columns; trajectory reference features and targets unchanged

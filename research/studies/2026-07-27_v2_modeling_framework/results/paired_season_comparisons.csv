@@ -1,0 +1,8 @@
+target_name,metric,model_name,comparison_model,mean_season_delta,median_season_delta,season_wins,season_count,bootstrap_95_low,bootstrap_95_high
+conditional_ppg,rmse,expert_consensus_hybrid,expert_team_game_consensus,-0.04890552633018815,0.0,1,9,-0.18885197249753757,0.042135393506973116
+conditional_ppg,rmse,direct_lgbm_shallow,consensus_recalibrated_ridge,-0.054253314902774435,-0.04186484395517853,9,9,-0.0827407973411656,-0.03527884380684629
+conditional_ppg,rmse,direct_lgbm_shallow,direct_ridge_full,-0.028543164307560924,-0.010175561126611221,6,9,-0.07587256936387343,0.014562510009263896
+conditional_ppg,rmse,direct_lgbm_shallow,residual_lgbm_shallow,-0.013285137794749947,0.01019799924494924,4,9,-0.06959997281053687,0.025444953928503742
+conditional_ppg,rmse,residual_ridge_full,residual_ridge_compact,-0.07929608068832329,-0.09732624566316073,7,9,-0.127796239999392,-0.024469197857331752
+participation,brier,participation_lgbm_shallow,participation_logistic_full,-0.013501788142698304,-0.007768748102502901,8,9,-0.02198509284123811,-0.005360474588074353
+participation,brier,participation_logistic_full,participation_logistic_compact,-0.001623848166300819,-0.0017966348879761979,7,9,-0.003985357397861024,0.0006617326204524007

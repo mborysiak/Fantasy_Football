@@ -1,6 +1,6 @@
 # Best-Ball Weekly Tables Contract
 
-Last updated: 2026-07-23
+Last updated: 2026-07-29
 
 ## Owner
 
@@ -21,12 +21,17 @@ weekly roster scoring.
 Historical player-season weekly profile rows.
 
 Important columns:
-- identity: `league`, `template_id`, `template_local_id`, `player`, `pos`,
-  `team`, `season`
+- identity: `league`, `template_id`, `template_local_id`, canonical
+  `player_key`, `player`, `pos`, `team`, `season`, and
+  `player_key_match_method`
 - projection context: `avg_proj_points`, `preseason_proj_ppg`,
   `historical_pred_fp_per_game`, `projection_rank_pct`,
   `projection_decile`, `projection_tier`, absolute projected PPG, projection
   disagreement, and market-vs-projection gap match fields
+- center audit: `legacy_historical_pred_fp_per_game`,
+  `v2_historical_pred_fp_per_game`, `v2_point_center_source`,
+  `v2_template_center_available`, `historical_center_policy`, and
+  `v2_recenter_promoted`
 - player context: `avg_pick`, uncapped `year_exp`, `source_year_exp`,
   `year_exp_source`, `year_exp_uncapped_delta`, `year_exp_bucket`, `exp_bucket`
 - workload context: projected role shares plus within-room rank, gap to the next
@@ -70,9 +75,14 @@ sampled more often, not hard selection of only the top match.
 Current prediction rows enriched with template-pool context.
 
 Important columns:
-- identity: `player`, `pos`, `year`, `version`, `dataset`, `team`
-- projection: `pred_fp_per_game`, residual quantile columns prefixed
-  `pred_resid_`
+- identity: canonical `player_key`, `player`, `pos`, `year`, `version`,
+  `dataset`, `team`, and `player_key_match_method`
+- projection: current `pred_fp_per_game`, conditional next-year
+  `pred_fp_per_game_ny`, `pred_appear_current`, `pred_appear_ny`, and residual
+  quantile columns prefixed `pred_resid_`
+- V2 provenance: current/next model version, scoring hash, handoff version,
+  projection/uncertainty sources, and
+  `independent_current_residual_draw_allowed`
 - context: `current_avg_proj_points`, `avg_pick`, uncapped `year_exp`,
   `source_year_exp`, `year_exp_source`, `year_exp_uncapped_delta`,
   `year_exp_bucket`, `exp_bucket`
@@ -91,6 +101,15 @@ Important columns:
 
 - Keep `template_pool_key` stable across `Player_Map`, `Template_Pools`, and
   app queries.
+- `player_key` is the permanent V2 identity for historical templates and
+  current player-map rows. It is required and non-null. Resolve it from the
+  governed V2 alias/career-window tables, prioritizing a unique confirmed
+  identity and using team only for true same-name collisions. Pre-play rookies
+  retain their stable provisional key. Never replace this contract with a
+  fuzzy display-name join.
+- `player_key_match_method` records the exact canonical resolution route.
+  Generated app exports must fail closed if either handoff table lacks
+  `player_key` or contains a null key.
 - Treat `template_id` as unique across league slices in a generated database.
   Use `template_local_id` only for within-league diagnostics.
 - Join template pools to templates with both `template_id` and league context
@@ -120,6 +139,13 @@ Important columns:
   outcome without injecting small-workload QB games into the best-ball profile.
 - Preserve `active_ppg_resid` as template active-game PPG minus historical
   predicted PPG.
+- Production donor residuals remain centered on the previously validated
+  historical OOS projection (`historical_center_policy =
+  legacy_validated_oos`). The strict-OOS V2 donor center is retained in
+  `v2_historical_pred_fp_per_game` for audit, but
+  `v2_recenter_promoted = 0`. A strict rolling replay on 2017-2025 rows found
+  that V2 recentering worsened PPG CRPS in both DK and beta; do not switch the
+  active center without clearing that replay again.
 - Keep structurally non-transferable outcomes in the template and audit tables,
   but set `template_eligible = 0` and record a declared reason. Le'Veon Bell's
   2018 contract holdout is currently the only exclusion. Ordinary zero-active
@@ -151,5 +177,14 @@ Important columns:
   centered `active_ppg_resid` and its `managed_week_*` trajectory. Apply both to
   the current calibrated point forecast; do not draw a second independent PPG
   residual or rescale the historical residual to the model-residual spread.
+- In the V2 production handoff, current residual quantiles are deliberately
+  zero, `independent_current_residual_draw_allowed = 0`, and
+  `current_uncertainty_source = joint_weekly_template_only`. Snake and auction
+  consumers must use the centered donor residual directly with the same donor
+  path; scaling it to the zeroed legacy spread collapses variance.
+- `pred_fp_per_game_ny` is conditional on a following-season appearance.
+  Consumers must draw its conditional residual and then apply a separate
+  Bernoulli draw from `pred_appear_ny`. A no-appearance draw has zero future
+  market/keeper value and must not be resurrected by a weekly residual.
 - Update this document when app-consumed columns are renamed, removed, or
   semantically changed.

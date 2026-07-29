@@ -1,0 +1,7 @@
+model_name,model_family,variant,raw_feature_count,selected_at_least_95pct,selected_at_least_80pct,selected_at_most_20pct,never_selected
+direct_elastic_net_expanded,elastic_net,expanded,47,19,25,9,1
+direct_elastic_net_incumbent,elastic_net,incumbent,35,15,19,4,0
+direct_lasso_expanded,lasso,expanded,47,18,21,15,1
+direct_lasso_incumbent,lasso,incumbent,35,13,19,7,1
+direct_ridge_expanded,ridge,expanded,47,43,43,4,0
+direct_ridge_incumbent,ridge,incumbent,35,32,32,3,0

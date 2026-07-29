@@ -1,6 +1,6 @@
 # Session Notes Landing
 
-Last updated: 2026-07-23
+Last updated: 2026-07-29
 
 ## Project Objective
 
@@ -10,6 +10,171 @@ template tables consumed by downstream draft apps.
 
 ## Current Focus
 
+- The V2 production handoff is active for 2026 DK (268 players) and beta (180).
+  Current `pred_fp_per_game` uses the locked league-specific V2 center; current
+  residual quantiles are zero and the joint matched donor supplies the only
+  PPG residual plus weekly/played path. Next-year `pred_fp_per_game_ny` is
+  conditional on appearing and `pred_appear_ny` supplies the separate
+  Bernoulli risk; the auction keeper path zeros future market value on no
+  appearance. Historical donor residuals retain the validated legacy OOS
+  centers. V2 donor centers remain diagnostic with
+  `v2_recenter_promoted = 0`: recentering worsened PPG CRPS by 0.0057 DK and
+  0.0051 beta, with both player-cluster intervals above zero. Final source,
+  auction, and Snake databases have 448 keyed current rows and 10,596 keyed
+  templates with no handoff mismatch.
+- Weekly template and current player-map tables now require canonical V2
+  `player_key` plus match provenance. Governed source aliases resolve first,
+  confirmed identities beat redundant provisional aliases, team disambiguates
+  true same-name collisions, and pre-play rookies retain stable provisional
+  keys. Coverage is 10,596/10,596 historical beta+DK templates and 448/448
+  current rows in the source, auction-app, and Snake databases. DK and beta V2
+  audits now join both historical and current league populations at 100%.
+- Beta has a separate rebuilt `Projection_V2_beta.sqlite3` lineage with exactly
+  the same 6,559 identities and 14,068 player-season keys as DK but independent
+  outcomes, provider scoring, consensus features, fits, and hyperparameters.
+  `v2_conditional_ppg_2026_candidate_beta_v1` scores 2.9109 RMSE versus 2.9759
+  for expert recalibration and wins 9/9 seasons. Participation LightGBM scores
+  0.1216 Brier. No secondary route or prior-only point calibration is promoted;
+  the DK no-history result does not clear beta stability. The beta fit publishes
+  751 shadow rows, 720 PPG centers, and 751 participation probabilities.
+- Projection V2 now has a versioned DK shadow lock:
+  `v2_conditional_ppg_2026_candidate_v1`. A complete-season, strictly-prior
+  2017-2025 replay scores 3.0941 RMSE versus 3.1793 for expert recalibration
+  and wins all nine seasons. The primary remains fixed pooled
+  Lasso/RF/LightGBM equal thirds with the five preseason trajectory fields;
+  participation remains pooled LightGBM at 0.1215 Brier. Point calibration is
+  rejected because all tested prior-only overlays worsen pooled RMSE.
+  The genuinely-no-history gap route clears the replay but adds only 0.0036
+  RMSE, so it remains a locked secondary component rather than a post-hoc blend.
+  Final fitting through 2025 publishes 751 unique 2026 shadow players, 720 PPG
+  centers, and 751 participation probabilities. The league-specific primary
+  centers now feed the production handoff for the app population. Canonical
+  weekly IDs remain mandatory; do not name-join or reuse a center across
+  leagues.
+- Projection V2 Milestone 4A is complete in shadow mode.
+  `Projection_V2.sqlite3` contains the reviewed 160-feature mart; its earlier
+  M4A model run is superseded because the projection-scoring lineage changed.
+  The clean feature manifests contain 31 residual, 19 participation, and 12
+  template challengers, plus a separate 12-feature legacy-inspired residual
+  research manifest, a separate 26-feature projection research manifest,
+  five preseason projection-trajectory fields, one logged-ADP transform, and
+  the 13-feature projection-anchored history-gap and 11-feature
+  team-environment families.
+  The original direct shallow LightGBM scored 3.144 RMSE and was only 0.055
+  ahead of position-aware consensus recalibration;
+  shallow LightGBM leads participation at 0.122 Brier versus 0.137 for full
+  logistic. KBest/PCA/agglomeration are rejected. A target audit changed 314
+  provisional duplicate/truncated aliases from false participation zeros to
+  `unresolved_identity` null labels. Production remains unchanged. Next fit the
+  retained finalists through 2025, publish 2026 shadow predictions, and connect
+  OOF model errors/participation to the joint weekly-template workflow without
+  drawing a second independent residual.
+- A 2026-07-28 fold-identical study tests the 12 legacy-inspired features:
+  projection versus experience peers, self-excluded same-position teammate ADP,
+  and team opportunity shares. No family materially improves Ridge or
+  LightGBM, all 12 together worsen both, and the exact old
+  projection-versus-experience difference is flat. A deterministic full-column
+  replay identifies and removes false tiny gains caused by LightGBM column
+  subsampling when unavailable features expand the matrix. The incumbent
+  31-feature manifest remains unchanged; the 12 constructions stay separately
+  governed for audit and future deeper-history retesting.
+- A second 2026-07-28 study adds V2 execution support for Lasso and Elastic Net
+  without expanding the default model surface. Incumbent Lasso scores 3.1656
+  RMSE versus 3.1747 for fold-identical Ridge while selecting a mean 23.6 of 35
+  raw inputs, but its nine-season interval crosses zero. Expanded Lasso scores
+  3.1615 but adds only a small, unstable gain and is weaker for rookies and
+  second-year players. Elastic Net is slightly weaker and chooses L1-heavy
+  penalties. Direct shallow LightGBM remains the leader; production and
+  manifests remain unchanged.
+- A third 2026-07-28 study standardizes every modeled provider point estimate
+  under DK raw-component scoring, imputes exactly one missing required
+  component only from at least two other providers, and never substitutes
+  provider-published totals or PPG. Provider-specific columns require three
+  prior projection seasons, so one-year FantasyPoints/FFF/FanDuel evidence and
+  two-year PFF evidence cannot receive learned weights. Ten rate/opportunity,
+  eight component-disagreement, and eight provider PPG additions remain in the
+  separate `residual_projection_challenger_v1` manifest. Deterministic
+  LightGBM improves from 3.1230 to 3.1145 with the provider family, but the
+  season interval crosses zero; FFToday supplies most of the exploratory point
+  estimate. Shape features are neutral and disagreement is harmful. None helps
+  rookies, so no challenger is promoted and the 31-feature incumbent remains
+  unchanged.
+- A final 2026-07-28 projection consensus ladder closes the broad
+  projection-only search. A causal nonnegative provider stack improves raw
+  realized team-game PPG by 0.0096 RMSE versus the configured median, but wins
+  only five of nine seasons, has an interval crossing zero, and worsens the
+  conditional-PPG model. Room disagreement and active-PPG alignment produce
+  only tiny projection-only point gains and do not improve the full model;
+  active fields have only 2024-2025 history. Projection-only consensus core is
+  nevertheless just 0.0097 RMSE behind the full model. A causal
+  position-by-history router improves the full-model point estimate by
+  0.0055-0.0097 RMSE across minimum-sample rules, but remains an unpromoted
+  finalist because every interval crosses zero. The stable recent route is
+  projection-only for limited-history QB/TE/WR and full LightGBM for
+  limited-history RB and all veterans.
+- A position-model follow-up fits the same projection-core and full LightGBM
+  as four QB/RB/WR/TE models and as three QB/RB/WR+TE role models. Four-way
+  splitting worsens projection core by 0.0425 RMSE and full by 0.0160.
+  Independent full QB/RB slices are only 0.003 better, while WR/TE lose
+  materially from smaller samples. The three-role full model is an overall tie
+  at 3.1231 versus 3.1230 and improves the 2023-2025 point estimate by 0.0233,
+  but that recent evidence spans only three seasons and reverses in 2024.
+  Pooled models remain primary; only the three-role full fit advances as an
+  unpromoted temporal-robustness finalist.
+- The requested QB-versus-all-skill split also ties rather than improves full
+  LightGBM (3.1237 versus 3.1230) and is worse in the recent window; its
+  projection-core version is 0.0058 worse. A position-family ladder then tests
+  experience peers, teammate ADP, role opportunity shares, and richer room
+  clarity across 16 prespecified QB/RB/WR/TE comparisons. None survives
+  false-discovery correction. QB room clarity is directionally best at
+  -0.0126 versus separate QB, while opportunity shares worsen QB/RB/WR mean
+  PPG. Rookie-QB room clarity, rookie-WR experience context, and young-TE
+  teammate ADP remain same-evidence template/distribution hypotheses, not
+  promoted point features.
+- A final pooled model-family check rejects KNN but advances random forest.
+  Scaled projection/full KNN worsen LightGBM RMSE by 0.1111/0.1964 and their
+  fixed blends also lose. Full RF is effectively tied with full LightGBM at
+  3.1242 versus 3.1230. Their prespecified untuned 50/50 average scores 3.1143,
+  a -0.0086 delta with interval `[-0.0182, +0.0005]`. The blend improves
+  QB/RB/WR and limited-history slices while TE is essentially flat. RF and the
+  equal blend advance as whole-season/calibration finalists; KNN does not.
+- A follow-up on the current 3,696-row lineage shows that the weaker standalone
+  full Lasso is meaningfully complementary to the tree models. Its error
+  correlation is 0.953 with RF and 0.962 with LightGBM versus 0.988 between
+  the trees. A fixed full Lasso/RF/LightGBM equal-third average scores 3.1000,
+  improves the RF/LightGBM average in all nine seasons, and has interval
+  `[-0.0225, -0.0075]`. A strictly prior-season-weighted Lasso/tree blend
+  confirms the result at 3.1027. Both advance to whole-season, calibration,
+  and joint-template validation; production is unchanged.
+- Projection-anchored history gaps now provide the governed alternative to
+  pooled-median historical PPG imputation. Missing prior-year, three-year, and
+  career PPG becomes a zero adjustment to the player's own current expert
+  baseline, with explicit availability, recency, and opportunity-game
+  reliability. All 3,696 OOF rows have complete gap fields. The representation
+  improves rookie and other no-career point estimates, but raw/shrunken Lasso
+  worsen overall by 0.0018/0.0027 RMSE; the raw equal-third blend improves only
+  0.0029, reverses in 2023-2025, and has interval
+  `[-0.0091, +0.0035]`. Keep the 31-feature incumbent primary and carry the
+  13 gap fields only as a sparse-history/router challenger.
+- A preseason-only projection-trajectory follow-up now compares this year's
+  consensus team-game PPG with the same player's exact prior-year and
+  recency-weighted prior-three-year projections. Exact one-year change alone
+  improves the equal-third Lasso/RF/LightGBM blend by only 0.0016 RMSE; the
+  three-year context improves 0.0041, and all five trajectory fields improve
+  0.0051 with a slight favorable 2023-2025 mean. `log1p(ADP)` improves Lasso
+  by 0.0319 but does not help the trees. The pooled-best combined blend scores
+  3.0930 versus 3.1001, but reverses slightly in 2023-2025 and weakens
+  missing-ADP/some sparse-history slices. Carry raw-ADP trajectory and
+  logged-ADP Lasso as unpromoted finalists; production is unchanged.
+- A compact team-environment follow-up separates QB1 passing/rushing yards and
+  TDs, QB1 rushing fantasy-point share, capped core-skill and self-excluded
+  supporting-cast strength, and non-duplicated team rushing/offensive TDs.
+  The full 11-feature family is flat globally. QB rushing share is the best
+  compact signal, improving the trajectory blend from 3.0949 to 3.0928 and
+  the 2023-2025 mean by 0.0089. It improves WR/TE by 0.0055/0.0068, is neutral
+  for RB, and worsens QB. A same-OOF WR/TE-only route scores 3.0916, wins seven
+  seasons, and has interval `[-0.0070, +0.0002]`. Carry that route only as a
+  whole-season/template finalist; the global point model remains unchanged.
 - Current active workstream: best-ball weekly template generation and Snake app
   integration.
 - An isolated NFFC Snake setup preview can be generated from the stable DK app

@@ -1,0 +1,10 @@
+{
+  "league": "dk",
+  "max_template_season": 2025,
+  "target_rows": 1620,
+  "prediction_rows": 12960,
+  "method_count": 8,
+  "baseline_method": "production",
+  "recency_half_life": 12.0,
+  "runtime_seconds": 59.39580320002278
+}

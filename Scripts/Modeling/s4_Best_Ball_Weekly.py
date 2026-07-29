@@ -12,11 +12,16 @@ import pandas as pd
 
 # Add Scripts directory to path to import config
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(str(Path(__file__).resolve().parents[2]))
 from config import YEAR, LEAGUE, PRED_VERSION, get_scoring_dict
 
 from ff.db_operations import DataManage
 from ff import general
 import ff.data_clean as dc
+
+from Scripts.V2.config import OUTPUT_DB_PATH as V2_IDENTITY_DB_PATH
+from Scripts.V2.production_handoff import V2_DATABASES
+from Scripts.V2.template_identity import attach_v2_player_keys
 
 
 #==========
@@ -1079,6 +1084,20 @@ def write_best_ball_tables(
         replace_table_slice(table_name, df, keep_existing)
 
 
+def attach_weekly_handoff_player_keys(templates, player_map):
+    templates = attach_v2_player_keys(
+        templates,
+        V2_IDENTITY_DB_PATH,
+        season_column="season",
+    )
+    player_map = attach_v2_player_keys(
+        player_map,
+        V2_IDENTITY_DB_PATH,
+        season_column="year",
+    )
+    return templates, player_map
+
+
 def get_daily_max_template_season():
     max_seasons = []
     for pos in POSITIONS:
@@ -1240,6 +1259,10 @@ def load_historical_projection_context(max_template_season):
         "validation_ensemble",
         "preseason_projection_fallback",
     )
+    proj = attach_locked_v2_historical_centers(
+        proj,
+        max_template_season=max_template_season,
+    )
     proj = add_projection_buckets(
         proj,
         value_col="historical_pred_fp_per_game",
@@ -1253,6 +1276,101 @@ def load_historical_projection_context(max_template_season):
         projection_ppg_col="historical_pred_fp_per_game",
     )
     return proj.reset_index(drop=True)
+
+
+def attach_locked_v2_historical_centers(
+    projections,
+    *,
+    max_template_season,
+):
+    """Attach strict-OOS V2 centers without replacing validated donor centers.
+
+    The 2026-07-29 rolling replay found that recentering the historical donor
+    residuals on V2 predictions degraded PPG CRPS in both supported leagues.
+    Keep those centers available for audit/research, but leave the production
+    donor residuals centered on the previously validated OOS projections.
+    """
+
+    projections = projections.copy()
+    projections["legacy_historical_pred_fp_per_game"] = projections[
+        "historical_pred_fp_per_game"
+    ]
+    projections["legacy_historical_projection_source"] = projections[
+        "historical_projection_source"
+    ]
+    projections["v2_point_center_source"] = pd.NA
+    projections["v2_template_center_available"] = 0
+    projections["historical_center_policy"] = "legacy_validated_oos"
+    projections["v2_recenter_promoted"] = 0
+    if LEAGUE not in V2_DATABASES:
+        projections["historical_projection_source"] = (
+            "legacy_non_v2_league"
+        )
+        return projections
+
+    v2_database = Path(V2_DATABASES[LEAGUE])
+    if not v2_database.exists():
+        raise FileNotFoundError(
+            f"Missing {LEAGUE} V2 projection database: {v2_database}"
+        )
+    projections = attach_v2_player_keys(
+        projections,
+        v2_database,
+        season_column="season",
+    )
+    with sqlite3.connect(v2_database) as connection:
+        centers = pd.read_sql_query(
+            """
+            SELECT player_key,
+                   CAST(season AS INTEGER) season,
+                   historical_pred_fp_per_game v2_historical_pred_fp_per_game,
+                   point_center_source v2_point_center_source,
+                   template_center_available
+            FROM locked_template_handoff
+            WHERE season <= ?
+            """,
+            connection,
+            params=(int(max_template_season),),
+        )
+    if centers.duplicated(["player_key", "season"]).any():
+        raise ValueError(
+            f"{LEAGUE} locked template handoff contains duplicate keys"
+        )
+    projections = projections.merge(
+        centers,
+        on=["player_key", "season"],
+        how="left",
+        validate="one_to_one",
+        suffixes=("", "_locked"),
+    )
+    if "v2_point_center_source_locked" in projections:
+        projections["v2_point_center_source"] = projections.pop(
+            "v2_point_center_source_locked"
+        )
+    v2_era = projections["season"].between(2017, max_template_season)
+    missing_v2 = (
+        v2_era
+        & projections["v2_historical_pred_fp_per_game"].isna()
+    )
+    if missing_v2.any():
+        preview = projections.loc[
+            missing_v2,
+            ["player", "pos", "season", "player_key"],
+        ].head(10)
+        raise ValueError(
+            f"{LEAGUE} historical V2 point-center coverage is incomplete: "
+            f"{preview.to_dict('records')}"
+        )
+    use_v2 = projections["v2_historical_pred_fp_per_game"].notna()
+    projections["v2_template_center_available"] = use_v2.astype(int)
+    projections.drop(
+        columns=[
+            "template_center_available",
+        ],
+        inplace=True,
+        errors="ignore",
+    )
+    return projections
 
 
 def load_weekly_points(max_template_season):
@@ -1327,6 +1445,8 @@ def load_weekly_points(max_template_season):
 def build_weekly_templates(proj, weekly):
     base_cols = [
         "player",
+        "player_key",
+        "player_key_match_method",
         "pos",
         "team",
         "season",
@@ -1335,6 +1455,13 @@ def build_weekly_templates(proj, weekly):
         "validation_pred_fp_per_game",
         "historical_pred_fp_per_game",
         "historical_projection_source",
+        "legacy_historical_pred_fp_per_game",
+        "legacy_historical_projection_source",
+        "v2_historical_pred_fp_per_game",
+        "v2_point_center_source",
+        "v2_template_center_available",
+        "historical_center_policy",
+        "v2_recenter_promoted",
         "validation_ensemble_sources",
         "avg_pick",
         "year_exp",
@@ -1504,6 +1631,13 @@ def build_weekly_templates(proj, weekly):
         "validation_pred_fp_per_game",
         "historical_pred_fp_per_game",
         "historical_projection_source",
+        "legacy_historical_pred_fp_per_game",
+        "legacy_historical_projection_source",
+        "v2_historical_pred_fp_per_game",
+        "v2_point_center_source",
+        "v2_template_center_available",
+        "historical_center_policy",
+        "v2_recenter_promoted",
         "validation_ensemble_sources",
         "avg_pick",
         "year_exp",
@@ -2095,6 +2229,18 @@ def build_player_pool_audit(player_map, pool_members, templates):
         "version",
         "dataset",
         "pred_fp_per_game",
+        "pred_fp_per_game_ny",
+        "pred_appear_current",
+        "pred_appear_ny",
+        "current_projection_model_version",
+        "next_projection_model_version",
+        "production_handoff_version",
+        "current_projection_source",
+        "current_uncertainty_source",
+        "independent_current_residual_draw_allowed",
+        "next_projection_source",
+        "next_uncertainty_source",
+        "v2_scoring_hash",
         "current_avg_proj_points",
         "avg_pick",
         "qb_team_rank",
@@ -2366,6 +2512,18 @@ def build_player_map_base():
         "version",
         "dataset",
         "pred_fp_per_game",
+        "pred_fp_per_game_ny",
+        "pred_appear_current",
+        "pred_appear_ny",
+        "current_projection_model_version",
+        "next_projection_model_version",
+        "production_handoff_version",
+        "current_projection_source",
+        "current_uncertainty_source",
+        "independent_current_residual_draw_allowed",
+        "next_projection_source",
+        "next_uncertainty_source",
+        "v2_scoring_hash",
         "current_avg_proj_points",
         "avg_pick",
         "year_exp",
@@ -2382,6 +2540,7 @@ def build_player_map_base():
         "projection_tier",
         "template_pool_key",
     ]
+    cols = [column for column in cols if column in player_map]
     cols = cols + [col for col in MATCH_OUTPUT_COLS if col in player_map.columns and col not in cols]
     resid_cols = [c for c in player_map.columns if c.startswith("pred_resid_")]
     return player_map[cols + resid_cols].sort_values(
@@ -2678,6 +2837,9 @@ def build_adp_audit(player_map):
 def copy_simulation_db_to_apps():
     src = Path(root_path) / "Data" / "Databases" / "Simulation.sqlite3"
     generated_tables = [
+        "Final_Predictions_Resid",
+        "V2_Production_Projection_Handoff",
+        "V2_Production_Projection_Audit",
         TEMPLATE_TABLE,
         POOL_TABLE,
         POOL_SUMMARY_TABLE,
@@ -2688,10 +2850,25 @@ def copy_simulation_db_to_apps():
         ADP_AUDIT_TABLE,
     ]
     required_template_cols = (
-        [f"managed_week_{week}" for week in WEEKS]
+        ["player_key"]
+        + [f"managed_week_{week}" for week in WEEKS]
         + [f"played_week_{week}" for week in WEEKS]
     )
     with sqlite3.connect(src) as source_conn:
+        source_tables = {
+            row[0]
+            for row in source_conn.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            )
+        }
+        missing_generated = sorted(
+            set(generated_tables) - source_tables
+        )
+        if missing_generated:
+            raise ValueError(
+                "Production app export is missing required generated tables: "
+                + ", ".join(missing_generated)
+            )
         template_cols = {
             row[1]
             for row in source_conn.execute(
@@ -2715,9 +2892,77 @@ def copy_simulation_db_to_apps():
             print(
                 "Skipped app database export because "
                 f"{incomplete_rows} retained template rows still have null "
-                "played/managed-week fields. Rebuild every retained league slice."
+                "canonical-key or played/managed-week fields. Rebuild every "
+                "retained league slice."
             )
             return
+        player_map_cols = {
+            row[1]
+            for row in source_conn.execute(
+                f'PRAGMA table_info("{PLAYER_MAP_TABLE}")'
+            )
+        }
+        if "player_key" not in player_map_cols:
+            print(
+                "Skipped app database export because the current player map "
+                "does not contain player_key."
+            )
+            return
+        missing_player_map_keys = source_conn.execute(
+            f'SELECT COUNT(*) FROM "{PLAYER_MAP_TABLE}" '
+            'WHERE "player_key" IS NULL'
+        ).fetchone()[0]
+        if missing_player_map_keys:
+            print(
+                "Skipped app database export because "
+                f"{missing_player_map_keys} current player-map rows have null "
+                "player_key."
+            )
+            return
+        final_prediction_cols = {
+            row[1]
+            for row in source_conn.execute(
+                'PRAGMA table_info("Final_Predictions_Resid")'
+            )
+        }
+        required_prediction_cols = {
+            "player_key",
+            "pred_appear_ny",
+            "current_uncertainty_source",
+            "independent_current_residual_draw_allowed",
+            "production_handoff_version",
+        }
+        missing_prediction_cols = sorted(
+            required_prediction_cols - final_prediction_cols
+        )
+        if missing_prediction_cols:
+            raise ValueError(
+                "Production projection handoff schema is incomplete: "
+                + ", ".join(missing_prediction_cols)
+            )
+        incomplete_projection_rows = source_conn.execute(
+            """
+            SELECT COUNT(*)
+            FROM Final_Predictions_Resid
+            WHERE year=?
+              AND dataset=?
+              AND version IN ('dk', 'beta')
+              AND (
+                    player_key IS NULL
+                 OR pred_fp_per_game IS NULL
+                 OR pred_fp_per_game_ny IS NULL
+                 OR pred_appear_ny IS NULL
+                 OR current_uncertainty_source != 'joint_weekly_template_only'
+                 OR independent_current_residual_draw_allowed != 0
+              )
+            """,
+            (YEAR, PRED_VERSION),
+        ).fetchone()[0]
+        if incomplete_projection_rows:
+            raise ValueError(
+                f"{incomplete_projection_rows} DK/beta projection rows violate "
+                "the V2 production handoff"
+            )
 
     sibling_root = Path(root_path).resolve().parent
     auction_dst = sibling_root / "Fantasy_Football_App" / "app" / "Simulation.sqlite3"
@@ -2785,6 +3030,10 @@ def main():
     bucket_audit = build_bucket_comparability_audit(proj, player_map_base)
     pool_members, pool_summary = build_pool_tables(templates, player_map_base)
     player_map = finalize_player_map(player_map_base, pool_summary)
+    templates, player_map = attach_weekly_handoff_player_keys(
+        templates,
+        player_map,
+    )
     player_pool_audit = build_player_pool_audit(player_map, pool_members, templates)
     adp_audit = build_adp_audit(player_map)
     validate_weekly_template_audits(player_pool_audit, template_audit)

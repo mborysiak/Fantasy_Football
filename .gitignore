@@ -160,3 +160,5 @@ Data/Databases/Model_Inputs.sqlite3
 Data/Databases/Model_Inputs.sqlite3
 Data/Databases/Model_Inputs.sqlite3
 Data/Databases/Model_Inputs.sqlite3
+Data/Databases/Projection_V2.sqlite3*
+Data/Databases/Projection_V2_*.sqlite3*

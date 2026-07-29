@@ -1,0 +1,9 @@
+method,ppg_weight,component_rank_weight,raw_component_weight,recency_half_life,total_match_weight,qb_feature_count,rb_feature_count,wr_feature_count,te_feature_count
+production,1.5,1.0,0.0,12.0,58.25,13,16,13,13
+ppg_w225,2.25,1.0,0.0,12.0,61.25,13,16,13,13
+ppg_w300,3.0,1.0,0.0,12.0,64.25,13,16,13,13
+component_rank_w150,1.5,1.5,0.0,12.0,61.25,13,16,13,13
+raw_component_w100,1.5,1.0,1.0,12.0,64.25,15,18,14,14
+ppg225_component_rank150,2.25,1.5,0.0,12.0,64.25,13,16,13,13
+ppg225_component_rank150_raw100,2.25,1.5,1.0,12.0,70.25,15,18,14,14
+ppg300_component_rank200_raw150,3.0,2.0,1.5,12.0,79.25,15,18,14,14

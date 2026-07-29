@@ -1,0 +1,11 @@
+{
+  "league": "beta",
+  "v2_db": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\Data\\Databases\\Projection_V2_beta.sqlite3",
+  "max_template_season": 2025,
+  "target_rows": 1620,
+  "prediction_rows": 11340,
+  "method_count": 7,
+  "baseline_method": "production_no_next",
+  "recency_half_life": 12.0,
+  "runtime_seconds": 48.10750610003015
+}

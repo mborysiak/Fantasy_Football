@@ -1,0 +1,14 @@
+feature,non_null_rows,missing_rows,zero_rows
+history_career_ppg_gap,3696,0,631
+history_prior_year_ppg_gap,3696,0,764
+history_prior_3year_ppg_gap,3696,0,635
+history_career_ppg_gap_shrunk,3696,0,631
+history_prior_year_ppg_gap_shrunk,3696,0,764
+history_prior_3year_ppg_gap_shrunk,3696,0,635
+history_career_opportunity_games_log,3696,0,631
+history_prior_year_opportunity_games_log,3696,0,762
+history_prior_3year_opportunity_games_log,3696,0,635
+history_prior_year_ppg_available,3696,0,762
+history_prior_3year_ppg_available,3696,0,635
+history_prior_year_residual_neutral,3696,0,833
+history_seasons_since_observed_neutral,3696,0,631
