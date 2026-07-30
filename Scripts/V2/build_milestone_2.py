@@ -34,6 +34,7 @@ from Scripts.V2.contracts import (
     publish_tables_atomic,
     read_existing_table,
     scoring_hash,
+    source_row_exclusion_policy_receipt,
     table_exists,
     utc_now,
 )
@@ -133,6 +134,7 @@ def _source_manifest(
                 "row_count": row_count,
             }
         )
+    rows.append(source_row_exclusion_policy_receipt(run_id))
     return align_columns(
         pd.DataFrame(rows),
         SOURCE_MANIFEST_COLUMNS,

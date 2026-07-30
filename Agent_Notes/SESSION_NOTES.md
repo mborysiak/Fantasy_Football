@@ -10,6 +10,43 @@ template tables consumed by downstream draft apps.
 
 ## Current Focus
 
+- A strict 2017-2025 QB target-decomposition study now compares identical
+  QB-only Lasso/RF/LightGBM models fit directly to total conditional PPG versus
+  fit separately to passing and rushing PPG. The component sum plus a
+  strictly-prior other-points adjustment worsens DK RMSE by 0.0414 and improves
+  beta by 0.0270, but both player-cluster intervals cross zero and 2023-2025
+  worsens in both leagues. Retain the direct total target; rookie-QB and beta
+  high-rush slice gains remain exploratory.
+- The V2 identity/scoring correction is active and fully replayed. DK and beta
+  now share exactly 6,655 identities, 55,914 aliases, and 13,909
+  player-season feature keys. Tetairoa McMillan keeps production key
+  `c16a5e67-fff0-57b9-838c-c8df91df7b9d`; Amon-Ra and Equanimeous St. Brown
+  truncations resolve to one confirmed identity each; returning players are
+  not split by a hard `last_season` bound. FantasyPros WR stored 2016/2020
+  snapshots are governed as effective 2018/2021 with complete provenance.
+  Beta standardized QB scores require sacks and disclose same-position donor
+  lineage. A policy-hashed quarantine now removes the 50 FFToday QB rows
+  stored as 2018 that match the provider's native 2019 vintage from every V2
+  identity, candidate, value, and feature path while preserving the raw source
+  and native 2019 rows. The latest durable evidence is
+  `research/studies/2026-07-29_v2_weekly_fftoday_correction/`.
+- Weekly template scoring is now explicitly league-bound. Each positional
+  scorer receives the requested league, the weekly frame carries a transient
+  scoring marker, and template construction rejects mixed or mismatched
+  markers before stamping the league and template-ID offset. Staged builds
+  require an explicit matching V2 database and disable app sync. This
+  supersedes the prior beta weekly slice, which was labeled beta after using
+  the default DK scoring dictionary. Realized yardage bonuses continue to
+  flow through weekly `active_ppg` and upside paths. The production rebuild has
+  5,120/5,298 paired PPG values and 5,147 paired weekly paths differing across
+  leagues. Beta has 2,657/2,696 V2 historical diagnostic centers; the 39
+  unavailable 2018 QB diagnostics retain an audited legacy active center and
+  exact quarantine-linked reason rather than importing DK or zero-sack values.
+  Corrected 1,620-target/league replays retain current match weights and keep
+  next-year fields out of the matcher: their small PPG gains do not survive the
+  joint contribution/played-games gates. The promoted V2/Simulation artifacts
+  match staging byte-for-byte; all 11 auction generated tables match source,
+  Snake equals source by SHA-256, and app-owned auction content is unchanged.
 - The V2 production handoff is active for 2026 DK (268 players) and beta (180).
   Current `pred_fp_per_game` uses the locked league-specific V2 center; current
   residual quantiles are zero and the joint matched donor supplies the only
@@ -30,30 +67,31 @@ template tables consumed by downstream draft apps.
   current rows in the source, auction-app, and Snake databases. DK and beta V2
   audits now join both historical and current league populations at 100%.
 - Beta has a separate rebuilt `Projection_V2_beta.sqlite3` lineage with exactly
-  the same 6,559 identities and 14,068 player-season keys as DK but independent
+  the same 6,655 identities and 13,909 player-season keys as DK but independent
   outcomes, provider scoring, consensus features, fits, and hyperparameters.
-  `v2_conditional_ppg_2026_candidate_beta_v1` scores 2.9109 RMSE versus 2.9759
-  for expert recalibration and wins 9/9 seasons. Participation LightGBM scores
-  0.1216 Brier. No secondary route or prior-only point calibration is promoted;
-  the DK no-history result does not clear beta stability. The beta fit publishes
-  751 shadow rows, 720 PPG centers, and 751 participation probabilities.
+  `v2_conditional_ppg_2026_candidate_beta_v1` scores 2.8845 RMSE versus 2.9600
+  for expert recalibration and wins 9/9 seasons. The no-history route remains
+  an unpromoted secondary diagnostic; its pre-quarantine exact metric is
+  superseded. Prior-only point calibration is rejected. The beta fit publishes
+  745 shadow rows, 673 PPG centers, and 745 participation probabilities.
 - Projection V2 now has a versioned DK shadow lock:
   `v2_conditional_ppg_2026_candidate_v1`. A complete-season, strictly-prior
-  2017-2025 replay scores 3.0941 RMSE versus 3.1793 for expert recalibration
+  2017-2025 replay scores 3.1078 RMSE versus 3.1951 for expert recalibration
   and wins all nine seasons. The primary remains fixed pooled
   Lasso/RF/LightGBM equal thirds with the five preseason trajectory fields;
-  participation remains pooled LightGBM at 0.1215 Brier. Point calibration is
-  rejected because all tested prior-only overlays worsen pooled RMSE.
-  The genuinely-no-history gap route clears the replay but adds only 0.0036
-  RMSE, so it remains a locked secondary component rather than a post-hoc blend.
-  Final fitting through 2025 publishes 751 unique 2026 shadow players, 720 PPG
-  centers, and 751 participation probabilities. The league-specific primary
+  participation remains pooled LightGBM. Point calibration is rejected because
+  all tested prior-only overlays worsen pooled RMSE. The genuinely-no-history
+  gap route remains a locked secondary component rather than a post-hoc blend;
+  its pre-quarantine exact metric is superseded.
+  Final fitting through 2025 publishes 745 unique 2026 shadow players, 715 PPG
+  centers, and 745 participation probabilities. The league-specific primary
   centers now feed the production handoff for the app population. Canonical
   weekly IDs remain mandatory; do not name-join or reuse a center across
   leagues.
 - Projection V2 Milestone 4A is complete in shadow mode.
   `Projection_V2.sqlite3` contains the reviewed 160-feature mart; its earlier
-  M4A model run is superseded because the projection-scoring lineage changed.
+  M4A model run and original 2026-07-29 lock evidence are superseded because
+  the identity, source-season, and beta provider-scoring lineage changed.
   The clean feature manifests contain 31 residual, 19 participation, and 12
   template challengers, plus a separate 12-feature legacy-inspired residual
   research manifest, a separate 26-feature projection research manifest,
@@ -63,12 +101,10 @@ template tables consumed by downstream draft apps.
   The original direct shallow LightGBM scored 3.144 RMSE and was only 0.055
   ahead of position-aware consensus recalibration;
   shallow LightGBM leads participation at 0.122 Brier versus 0.137 for full
-  logistic. KBest/PCA/agglomeration are rejected. A target audit changed 314
-  provisional duplicate/truncated aliases from false participation zeros to
-  `unresolved_identity` null labels. Production remains unchanged. Next fit the
-  retained finalists through 2025, publish 2026 shadow predictions, and connect
-  OOF model errors/participation to the joint weekly-template workflow without
-  drawing a second independent residual.
+  logistic. KBest/PCA/agglomeration are rejected. The corrected foundation has
+  now been fully relocked, recalibrated, replayed through the following season,
+  and republished. Current uncertainty still comes from exactly one joint
+  weekly donor residual/path; no independent second residual is allowed.
 - A 2026-07-28 fold-identical study tests the 12 legacy-inspired features:
   projection versus experience peers, self-excluded same-position teammate ADP,
   and team opportunity shares. No family materially improves Ridge or
@@ -86,10 +122,15 @@ template tables consumed by downstream draft apps.
   second-year players. Elastic Net is slightly weaker and chooses L1-heavy
   penalties. Direct shallow LightGBM remains the leader; production and
   manifests remain unchanged.
-- A third 2026-07-28 study standardizes every modeled provider point estimate
-  under DK raw-component scoring, imputes exactly one missing required
-  component only from at least two other providers, and never substitutes
-  provider-published totals or PPG. Provider-specific columns require three
+- Provider point estimates now carry the governed
+  `core_offensive_season_components_v1` estimand. It scores linear season-total
+  offense and never substitutes provider-published totals or PPG. Weekly
+  yardage bonuses and projected fumbles/two-point/return-TD components remain
+  outside that estimand. One missing component normally requires two
+  same-player/season/position donors; beta QB sacks are the sole one-donor
+  exception because FFToday is the only sack source in several historical
+  seasons. Every imputation records component, donor providers, and donor
+  count. Provider-specific columns require three
   prior projection seasons, so one-year FantasyPoints/FFF/FanDuel evidence and
   two-year PFF evidence cannot receive learned weights. Ten rate/opportunity,
   eight component-disagreement, and eight provider PPG additions remain in the

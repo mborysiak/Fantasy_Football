@@ -1,0 +1,9 @@
+scope,league,challenger,reference,challenger_metric,reference_metric,origins,wins
+locked_current,dk,conditional_ppg_primary_blend,expert_recalibrated,3.109207,3.1939,9,9
+locked_current,beta,conditional_ppg_primary_blend,expert_recalibrated,2.899285,2.9765,9,9
+locked_participation,dk,participation_lightgbm,participation_logistic,0.1223,0.1369,9,
+locked_participation,beta,participation_lightgbm,participation_logistic,0.1245,0.1375,9,
+next_year,dk,next_ppg_primary_blend,next_ppg_expert_carry_forward,3.91175,5.22967,8,8
+next_year,beta,next_ppg_primary_blend,next_ppg_expert_carry_forward,3.59022,4.42741,8,8
+next_participation,dk,next_participation_lightgbm,next_participation_logistic,0.16179,0.17338,8,8
+next_participation,beta,next_participation_lightgbm,next_participation_logistic,0.16561,0.17531,8,8

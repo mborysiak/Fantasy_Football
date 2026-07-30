@@ -1,0 +1,36 @@
+{
+  "study_date": "2026-07-29",
+  "completed_at": "2026-07-29",
+  "status": "complete",
+  "source_row_exclusion": {
+    "id": "fftoday_qb_stored_2018_2019_vintage_quarantine_v1",
+    "source_table": "FFToday_Projections",
+    "position": "QB",
+    "stored_season": 2018,
+    "excluded_rows": 50,
+    "native_2019_rows_retained": 50,
+    "reference": "https://www.fftoday.com/rankings/playerproj.php?Season=2019&PosID=10"
+  },
+  "dk": {
+    "foundation_run_id": "milestone_2_20260729T230614Z_3d2394b1",
+    "feature_run_id": "milestone_3_20260729T230720Z_5fa871c6",
+    "locked_model_run_id": "v2_locked_final_dk_20260729T231034Z_f51092e8",
+    "next_year_run_id": "v2_next_year_dk_20260729T232514Z_fe7461b4",
+    "weekly_build_id": null
+  },
+  "beta": {
+    "foundation_run_id": "milestone_2_20260729T230614Z_8bd4935b",
+    "feature_run_id": "milestone_3_20260729T230719Z_377f5be5",
+    "locked_model_run_id": "v2_locked_final_beta_20260729T231034Z_bffc016b",
+    "next_year_run_id": "v2_next_year_beta_20260729T232514Z_26b12447",
+    "weekly_build_id": null
+  },
+  "tests": {
+    "total_passed": 140,
+    "v2_passed": 118,
+    "weekly_modeling_passed": 22,
+    "warnings": 3,
+    "warning_scope": "unrelated pkg_resources deprecations"
+  },
+  "pending_final_insertions": []
+}

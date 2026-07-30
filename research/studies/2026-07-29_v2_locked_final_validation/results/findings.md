@@ -1,5 +1,10 @@
 # V2 Locked Final Validation Findings
 
+> Superseded data lineage: this replay used two mislabeled FantasyPros WR
+> seasons and the pre-correction identity/provider-scoring foundation. Retain
+> it as historical evidence only. The accepted corrective replay is documented
+> in `../../2026-07-29_v2_identity_scoring_revalidation/results/findings.md`.
+
 ## Decision
 
 Freeze `v2_conditional_ppg_2026_candidate_v1` as the 2026 **DK shadow**

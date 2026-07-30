@@ -55,6 +55,13 @@ Position-less market rows are retained only when they resolve to an existing
 identity and another source or the canonical identity supplies an eligible
 fantasy position.
 
+Rows matching `SOURCE_ROW_EXCLUSIONS` are partitioned before candidate
+aggregation. They remain in the raw source database but cannot contribute a
+`player_season_sources` record, establish a candidate, or influence the
+position/team consensus. In particular, the quarantined FFToday QB slice
+stored under 2018 is not shifted to 2019 because a native 2019 slice already
+exists. See `v2_identity_outcomes.md` for the governed rule.
+
 ## `player_season_spine`
 
 This table contains one row per `player_key, season, league`.
@@ -84,7 +91,7 @@ outcomes.
 
 | Column | Meaning |
 |---|---|
-| `preseason_source_season` | Must equal the projected `season` |
+| `preseason_source_season` | Governed effective source season; must equal the projected `season` |
 | `feature_cutoff_season` | Always `season - 1` for NFL-history features |
 | `foundation_run_id` | Exact Milestone 1 identity/outcome build used |
 | `run_id` | Milestone 2 build that published the row |
@@ -94,6 +101,11 @@ capture timestamps for every provider. Milestone 2 therefore guarantees
 season alignment and excludes NFL outcomes from candidate construction, but
 does not claim a common calendar-day cutoff. A later feature builder must
 version or exclude any source that cannot be shown to be preseason.
+`player_aliases.source_stored_season` retains the physical source label;
+candidate construction and all feature windows use the governed effective
+season. Known source-season corrections are applied before the spine is built.
+Configured source-row quarantines are applied even earlier, before either
+stored/effective-season matching or candidate collapse.
 
 ### Outcome and target fields
 
@@ -145,6 +157,11 @@ conditional model from fitting on extremely small samples.
    participation label.
 10. Source-family counts reconcile exactly to the long-form source table.
 11. Every published fantasy position is QB, RB, WR, or TE.
+12. Quarantined source rows cannot create or contribute to a candidate source
+    observation.
+13. The active foundation's `source_manifest` contains exactly one current
+    source-row-exclusion policy receipt; `--reuse-foundation` rejects a missing
+    or stale receipt.
 
 ## Downstream Feature Boundary
 

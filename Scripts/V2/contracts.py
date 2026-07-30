@@ -16,9 +16,20 @@ from typing import Mapping
 import pandas as pd
 
 from Scripts.config import get_scoring_dict
+from Scripts.V2.config import SOURCE_ROW_EXCLUSIONS, SOURCE_SEASON_OVERRIDES
 
 
 PLAYER_NAMESPACE = uuid.UUID("0da48215-bc2f-4e7e-a71e-ea3f7036f998")
+
+SOURCE_STORED_SEASON_COLUMN = "source_stored_season"
+SOURCE_SEASON_OVERRIDE_ID_COLUMN = "source_season_override_id"
+SOURCE_SEASON_OVERRIDE_REASON_COLUMN = "source_season_override_reason"
+SOURCE_SEASON_OVERRIDE_REFERENCE_COLUMN = "source_season_override_reference"
+SOURCE_ROW_EXCLUSION_ID_COLUMN = "source_row_exclusion_id"
+SOURCE_ROW_EXCLUSION_REASON_COLUMN = "source_row_exclusion_reason"
+SOURCE_ROW_EXCLUSION_REFERENCE_COLUMN = "source_row_exclusion_reference"
+SOURCE_ROW_EXCLUSION_POLICY_COMPONENT = "source_row_exclusion_policy"
+SOURCE_ROW_EXCLUSION_POLICY_NAME = "configured_source_row_exclusions"
 
 PLAYER_IDENTITY_COLUMNS = (
     "player_key",
@@ -53,6 +64,10 @@ PLAYER_ALIAS_COLUMNS = (
     "position",
     "team",
     "season",
+    SOURCE_STORED_SEASON_COLUMN,
+    SOURCE_SEASON_OVERRIDE_ID_COLUMN,
+    SOURCE_SEASON_OVERRIDE_REASON_COLUMN,
+    SOURCE_SEASON_OVERRIDE_REFERENCE_COLUMN,
     "draft_year",
     "match_method",
 )
@@ -176,6 +191,10 @@ PROJECTION_VALUE_COLUMNS = (
     "provider",
     "sources",
     "source_tables",
+    "source_stored_seasons",
+    "source_season_override_ids",
+    "source_season_override_reasons",
+    "source_season_override_references",
     "position",
     "team",
     *PROJECTION_VALUE_METRICS,
@@ -185,7 +204,11 @@ PROJECTION_VALUE_COLUMNS = (
     "configured_projected_points",
     "configured_points_complete",
     "configured_points_imputed_component_count",
+    "configured_points_imputed_components",
+    "configured_points_imputation_donor_providers",
+    "configured_points_imputation_donor_count",
     "provider_projected_points",
+    "provider_points_estimand",
     "points_method",
     "provider_points_per_team_game",
     "provider_points_per_projected_game",
@@ -265,6 +288,10 @@ FEATURE_SOURCE_AUDIT_COLUMNS = (
     "input_rows",
     "resolved_rows",
     "resolution_rate",
+    "excluded_rows",
+    "source_row_exclusion_ids",
+    "source_row_exclusion_reasons",
+    "source_row_exclusion_references",
     "run_id",
 )
 
@@ -488,6 +515,272 @@ def require_columns(
     missing = [column for column in required if column not in frame.columns]
     if missing:
         raise ValueError(f"{frame_name} is missing required columns: {missing}")
+
+
+def _validated_source_row_exclusions() -> tuple[dict[str, object], ...]:
+    """Return validated, non-overlapping source-row quarantine rules."""
+    required = {
+        "exclusion_id",
+        "source_table",
+        "position",
+        "stored_season",
+        "reason",
+        "reference",
+    }
+    rules: list[dict[str, object]] = []
+    ids: set[str] = set()
+    scopes: set[tuple[str, str, int]] = set()
+    for raw_rule in SOURCE_ROW_EXCLUSIONS:
+        missing = sorted(required.difference(raw_rule))
+        if missing:
+            raise ValueError(
+                f"Source-row exclusion is missing required fields: {missing}"
+            )
+        exclusion_id = str(raw_rule["exclusion_id"]).strip()
+        source_table = str(raw_rule["source_table"]).strip()
+        position = str(raw_rule["position"]).strip().upper()
+        stored_season = int(raw_rule["stored_season"])
+        reason = str(raw_rule["reason"]).strip()
+        reference = str(raw_rule["reference"]).strip()
+        scope = (
+            source_table,
+            position,
+            stored_season,
+        )
+        if not exclusion_id:
+            raise ValueError("Source-row exclusion IDs cannot be empty")
+        if exclusion_id in ids:
+            raise ValueError(f"Duplicate source-row exclusion ID: {exclusion_id}")
+        if scope in scopes:
+            raise ValueError(
+                "Duplicate source-row exclusion scope: "
+                f"{scope[0]}/{scope[1]}/{scope[2]}"
+            )
+        if not reason or not reference:
+            raise ValueError(
+                f"Source-row exclusion {exclusion_id} requires reason and reference"
+            )
+        ids.add(exclusion_id)
+        scopes.add(scope)
+        rules.append(
+            {
+                "exclusion_id": exclusion_id,
+                "source_table": source_table,
+                "position": position,
+                "stored_season": stored_season,
+                "reason": reason,
+                "reference": reference,
+            }
+        )
+    return tuple(rules)
+
+
+def source_row_exclusion_policy_hash() -> str:
+    """Return a stable fingerprint for the governed source-row exclusions."""
+    rules = sorted(
+        _validated_source_row_exclusions(),
+        key=lambda rule: str(rule["exclusion_id"]),
+    )
+    payload = json.dumps(rules, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def source_row_exclusion_policy_receipt(run_id: str) -> dict[str, object]:
+    """Return a source-manifest receipt for the active quarantine policy."""
+    rules = _validated_source_row_exclusions()
+    return {
+        "run_id": run_id,
+        "component": SOURCE_ROW_EXCLUSION_POLICY_COMPONENT,
+        "source_name": SOURCE_ROW_EXCLUSION_POLICY_NAME,
+        "source_uri": "python://Scripts.V2.config#SOURCE_ROW_EXCLUSIONS",
+        "source_sha256": source_row_exclusion_policy_hash(),
+        "row_count": len(rules),
+    }
+
+
+def partition_source_row_exclusions(
+    frame: pd.DataFrame,
+    frame_name: str,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Split governed quarantines from usable rows with audit provenance."""
+    require_columns(
+        frame,
+        ("source_table", "position", "season"),
+        frame_name,
+    )
+    output = frame.copy()
+    output["season"] = pd.to_numeric(
+        output["season"], errors="coerce"
+    ).astype("Int64")
+    if SOURCE_STORED_SEASON_COLUMN not in output:
+        output[SOURCE_STORED_SEASON_COLUMN] = output["season"]
+    else:
+        output[SOURCE_STORED_SEASON_COLUMN] = pd.to_numeric(
+            output[SOURCE_STORED_SEASON_COLUMN],
+            errors="coerce",
+        ).astype("Int64").fillna(output["season"])
+    for column in (
+        SOURCE_ROW_EXCLUSION_ID_COLUMN,
+        SOURCE_ROW_EXCLUSION_REASON_COLUMN,
+        SOURCE_ROW_EXCLUSION_REFERENCE_COLUMN,
+    ):
+        if column not in output:
+            output[column] = pd.Series(pd.NA, index=output.index, dtype="string")
+        else:
+            output[column] = output[column].astype("string")
+
+    source_tables = output["source_table"].astype("string")
+    positions = output["position"].astype("string").str.upper()
+    matched = pd.Series(False, index=output.index, dtype=bool)
+    for rule in _validated_source_row_exclusions():
+        rule_mask = (
+            source_tables.eq(str(rule["source_table"]))
+            & positions.eq(str(rule["position"]).upper())
+            & output[SOURCE_STORED_SEASON_COLUMN].eq(
+                int(rule["stored_season"])
+            )
+        ).fillna(False)
+        if not rule_mask.any():
+            continue
+        if (matched & rule_mask).any():
+            raise ValueError(
+                f"{frame_name} matches overlapping source-row exclusions"
+            )
+
+        expected_metadata = (
+            (SOURCE_ROW_EXCLUSION_ID_COLUMN, str(rule["exclusion_id"])),
+            (SOURCE_ROW_EXCLUSION_REASON_COLUMN, str(rule["reason"])),
+            (SOURCE_ROW_EXCLUSION_REFERENCE_COLUMN, str(rule["reference"])),
+        )
+        for column, expected in expected_metadata:
+            existing = set(
+                output.loc[rule_mask, column].dropna().astype(str)
+            )
+            if existing.difference({expected}):
+                raise ValueError(
+                    f"{frame_name} contains conflicting source-row exclusion "
+                    f"metadata for {rule['exclusion_id']}: {sorted(existing)}"
+                )
+            output.loc[rule_mask, column] = expected
+        matched |= rule_mask
+
+    included = output.loc[~matched].copy()
+    excluded = output.loc[matched].copy()
+    return included, excluded
+
+
+def apply_source_row_exclusions(
+    frame: pd.DataFrame,
+    frame_name: str,
+) -> pd.DataFrame:
+    """Drop every row covered by a governed source quarantine."""
+    included, _ = partition_source_row_exclusions(frame, frame_name)
+    return included
+
+
+def assert_no_source_row_exclusions(
+    frame: pd.DataFrame,
+    frame_name: str,
+) -> None:
+    """Fail closed if a governed quarantine reaches a downstream boundary."""
+    _, excluded = partition_source_row_exclusions(frame, frame_name)
+    if excluded.empty:
+        return
+    counts = (
+        excluded[SOURCE_ROW_EXCLUSION_ID_COLUMN]
+        .astype(str)
+        .value_counts()
+        .sort_index()
+    )
+    details = ", ".join(f"{key}={int(value)}" for key, value in counts.items())
+    raise ValueError(
+        f"{frame_name} contains governed source rows that must be "
+        f"quarantined: {details}"
+    )
+
+
+def apply_source_season_overrides(
+    frame: pd.DataFrame,
+    frame_name: str,
+) -> pd.DataFrame:
+    """Apply governed effective seasons while retaining source provenance."""
+    require_columns(
+        frame,
+        ("source_table", "position", "season"),
+        frame_name,
+    )
+    output = frame.copy()
+    output["season"] = pd.to_numeric(
+        output["season"], errors="coerce"
+    ).astype("Int64")
+    if SOURCE_STORED_SEASON_COLUMN not in output:
+        output[SOURCE_STORED_SEASON_COLUMN] = output["season"]
+    else:
+        output[SOURCE_STORED_SEASON_COLUMN] = pd.to_numeric(
+            output[SOURCE_STORED_SEASON_COLUMN],
+            errors="coerce",
+        ).astype("Int64")
+    for column in (
+        SOURCE_SEASON_OVERRIDE_ID_COLUMN,
+        SOURCE_SEASON_OVERRIDE_REASON_COLUMN,
+        SOURCE_SEASON_OVERRIDE_REFERENCE_COLUMN,
+    ):
+        if column not in output:
+            output[column] = pd.Series(pd.NA, index=output.index, dtype="string")
+
+    source_tables = output["source_table"].astype("string")
+    positions = output["position"].astype("string").str.upper()
+    for rule in SOURCE_SEASON_OVERRIDES:
+        table_position = source_tables.eq(str(rule["source_table"])) & positions.eq(
+            str(rule["position"]).upper()
+        )
+        override_rows = table_position & output[
+            SOURCE_STORED_SEASON_COLUMN
+        ].eq(int(rule["stored_season"]))
+        if not override_rows.any():
+            continue
+
+        existing_ids = set(
+            output.loc[
+                override_rows,
+                SOURCE_SEASON_OVERRIDE_ID_COLUMN,
+            ]
+            .dropna()
+            .astype(str)
+        )
+        if existing_ids.difference({str(rule["override_id"])}):
+            raise ValueError(
+                f"{frame_name} contains conflicting source-season override "
+                f"metadata for {rule['override_id']}: {sorted(existing_ids)}"
+            )
+
+        native_effective_rows = (
+            table_position
+            & output["season"].eq(int(rule["effective_season"]))
+            & ~override_rows
+        )
+        if native_effective_rows.any():
+            raise ValueError(
+                f"{frame_name} cannot apply {rule['override_id']}: "
+                f"{int(native_effective_rows.sum())} native "
+                f"{rule['position']} rows already exist for effective season "
+                f"{rule['effective_season']}"
+            )
+
+        output.loc[override_rows, "season"] = int(rule["effective_season"])
+        output.loc[
+            override_rows,
+            SOURCE_SEASON_OVERRIDE_ID_COLUMN,
+        ] = str(rule["override_id"])
+        output.loc[
+            override_rows,
+            SOURCE_SEASON_OVERRIDE_REASON_COLUMN,
+        ] = str(rule["reason"])
+        output.loc[
+            override_rows,
+            SOURCE_SEASON_OVERRIDE_REFERENCE_COLUMN,
+        ] = str(rule["reference"])
+    return output
 
 
 def align_columns(

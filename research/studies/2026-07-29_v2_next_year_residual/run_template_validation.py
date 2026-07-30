@@ -40,7 +40,6 @@ base = pruning.base
 builder = pruning.builder
 
 
-DEFAULT_V2_DB = REPO_ROOT / "Data" / "Databases" / "Projection_V2.sqlite3"
 DEFAULT_RESULTS = STUDY_DIR / "template_results"
 BASELINE_METHOD = "production_no_next"
 PERIODS = {
@@ -58,7 +57,7 @@ NEXT_FEATURES = (
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--league", default="dk")
-    parser.add_argument("--v2-db", type=Path, default=DEFAULT_V2_DB)
+    parser.add_argument("--v2-db", type=Path, default=None)
     parser.add_argument("--results-dir", type=Path, default=DEFAULT_RESULTS)
     return parser.parse_args()
 
@@ -310,7 +309,11 @@ Runtime: {runtime_seconds:.1f} seconds.
 def main() -> None:
     args = parse_args()
     league = str(args.league).lower()
-    v2_db = args.v2_db.resolve()
+    v2_db = (
+        Path(args.v2_db).resolve()
+        if args.v2_db is not None
+        else builder.resolve_v2_database(league=league)
+    )
     results_dir = args.results_dir.resolve()
     results_dir.mkdir(parents=True, exist_ok=True)
     started = time.perf_counter()
@@ -327,9 +330,16 @@ def main() -> None:
         f"Building {league} weekly templates through {max_season}",
         flush=True,
     )
-    projections = builder.load_historical_projection_context(max_season)
-    weekly = builder.load_weekly_points(max_season)
-    templates = builder.build_weekly_templates(projections, weekly)
+    projections = builder.load_historical_projection_context(
+        max_season,
+        v2_database=v2_db,
+    )
+    weekly = builder.load_weekly_points(max_season, league=league)
+    templates = builder.build_weekly_templates(
+        projections,
+        weekly,
+        league=league,
+    )
     templates = builder.attach_v2_player_keys(
         templates,
         v2_db,

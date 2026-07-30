@@ -43,6 +43,19 @@ season-aligned snapshots but not a common immutable capture timestamp for every
 provider. A source must therefore be known to represent preseason information;
 Milestone 3 does not claim a common calendar-day cutoff.
 
+Here, same-season means the governed effective source season. The physical
+stored label remains auditable. Known mislabeled snapshots are corrected
+before identity resolution, candidate windows, and value aggregation under
+the source-season ledger in `v2_identity_outcomes.md`.
+
+Known duplicate or invalid vintages use the separate
+`SOURCE_ROW_EXCLUSIONS` quarantine policy. Quarantine is applied to the
+physical stored season before any effective-season override or identity join.
+The raw source remains unchanged, but excluded rows cannot enter identity,
+candidate, normalized-value, feature, or template-key lineage. A foundation
+may be reused only when its source-manifest policy hash matches the current
+configured quarantine policy.
+
 Legacy `Rookie_RB_Stats` and `Rookie_WR_Stats` fields remain excluded. Rookie
 coverage comes from same-season expert/market evidence, canonical draft
 metadata, age/experience availability, and explicit no-history flags.
@@ -56,12 +69,30 @@ One row exists per `player_key, season, provider`.
 The table retains normalized passing, rushing, and receiving projections,
 provider totals, projected games, provider uncertainty, and provider-specific
 team/position-room context. Component projections are scored under the
-configured league rules when the position's required components are complete.
-If exactly one required component is absent, it is filled only when at least
-two other providers supply that same player-season component. Rows missing
-multiple required components remain unscored. Provider-published fantasy-point
-totals and PPG remain raw audit fields and are never substituted into
-configured scoring.
+configured league rules when the position's dominant required components are
+complete.
+
+The governed provider estimand is
+`core_offensive_season_components_v1`: linear season-total passing, rushing,
+and receiving points. Beta QB sacks are included because beta assigns them a
+nonzero coefficient. DK does not require sacks because its coefficient is
+zero. Weekly yardage bonuses are excluded because season totals cannot
+identify weekly threshold crossings. Projected fumbles, two-point conversions,
+and return TDs also remain excluded until their source quality and league
+coefficients are explicitly governed. Never infer a weekly bonus from a
+season-yardage total.
+
+If exactly one required component is absent, the default imputation requires
+at least two other providers for the same
+`player_key, season, position`. Beta QB sacks are the sole one-donor exception:
+FFToday is the only modeled sack source in several historical seasons, with
+PFF adding recent coverage. A donor from another position is never valid.
+Rows missing multiple required components, or beta QB rows with no valid sack
+donor, remain unscored. FantasyData's `fdta_sack` is a defensive statistic and
+is not a QB sack projection. Provider-published fantasy-point totals and PPG
+remain raw audit fields and are never substituted into configured scoring.
+The FFToday QB rows stored under 2018 are not valid sack donors: they match the
+provider's 2019 archive and are quarantined while the native 2019 rows remain.
 
 Important fields include:
 
@@ -70,12 +101,22 @@ Important fields include:
 | `configured_projected_points` | Points reconstructed from normalized components |
 | `configured_points_complete` | Required position components were available |
 | `configured_points_imputed_component_count` | Number of required components filled by the guarded cross-provider median policy |
+| `configured_points_imputed_components` | Name of the imputed required component |
+| `configured_points_imputation_donor_providers` | Sorted provider lineage used for the imputation |
+| `configured_points_imputation_donor_count` | Number of same-position donor rows |
 | `provider_projected_points` | Configured component score; null when the row cannot be standardized |
+| `provider_points_estimand` | Versioned season-component scoring estimand |
 | `points_method` | `configured_components`, `configured_components_imputed`, or `insufficient` |
 | `provider_points_per_team_game` | Season value divided by the 16/17-game team schedule |
 | `provider_points_per_projected_game` | Value divided by provider-projected games when available |
 | provider room fields | Same-provider team/position share, rank, gap, and HHI |
 | `sources`, `source_tables` | Exact contributing source lineage |
+| source-season provenance fields | Stored seasons plus override IDs, reasons, and archive references |
+
+`sources` and `source_tables` describe the original provider row.
+The imputation fields separately disclose its cross-provider dependencies.
+The scoring hash versions league coefficients; it does not replace the
+explicit provider-estimand version.
 
 Only QB, RB, WR, and TE rows survive canonical-position recovery. Kicker and
 defense rows from positionless sources cannot enter the feature universe.
@@ -274,6 +315,13 @@ Stores eligible input rows, resolved identity rows, and resolution rate by
 source table and source kind. Ambiguous positionless rows remain unresolved;
 the builder does not force fuzzy matches to improve coverage.
 
+The audit also stores `excluded_rows`,
+`source_row_exclusion_ids`, `source_row_exclusion_reasons`, and
+`source_row_exclusion_references`. Any nonzero exclusion count requires all
+three metadata fields. The build's `source_manifest` publishes a matching
+`source_quarantine` receipt with the governed rule ID/reference and excluded
+row count.
+
 ## Required Invariants
 
 1. Projection values are unique by `player_key, season, provider`.
@@ -288,28 +336,48 @@ the builder does not force fuzzy matches to improve coverage.
 10. Every published long-table position is QB, RB, WR, or TE.
 11. Feature, spine, and foundation run IDs form an explicit lineage.
 12. Template family budgets do not exceed one in total.
+13. Every complete beta QB provider row has a non-null sack projection.
+14. Every imputed value equals the median of its recorded same-position
+    donors; component, donor-provider, and donor-count lineage is complete.
+15. Every projection-value row carries exactly one governed provider-estimand
+    version.
+16. DK and beta share canonical identity, alias, spine, and normalized value
+    populations, while configured-score completeness may differ by league.
+17. No configured source-row quarantine survives into normalized values or
+    features, and every nonzero exclusion audit has rule ID, reason, and
+    reference.
+18. Reused foundations carry exactly one policy receipt whose hash matches the
+    current `SOURCE_ROW_EXCLUSIONS` policy.
 
 ## Current Validation Snapshot
 
-The 2026-07-28 shadow build contains:
+The corrected and fully replayed 2026-07-29 builds contain, per league:
 
-- 14,075 spine and feature rows;
-- 31,842 normalized provider projection rows;
-- 31,821 normalized market/rank rows;
+- 6,655 identities and 55,914 aliases, identical between DK and beta;
+- 13,909 spine and feature rows;
+- 31,798 normalized provider projection rows;
+- 31,834 normalized market/rank rows;
 - 160 cataloged features;
 - 31 incumbent residual, 13 history-gap residual challenger, 12
   legacy-inspired residual challenger, 19 participation, 26 projection
   residual challenger, five projection-trajectory challenger, one ADP-transform
   challenger, 11 team-environment challenger, and 12 template features;
-- 85 high-correlation within-family pairs;
-- 751 pending 2026 candidates, all with null outcome labels, including 720
-  with configured-score expert consensus; and
-- 102 current rookies: 97 with expert consensus, 79 with ADP, and 80 with
-  draft-capital features.
+- 82 DK and 84 beta high-correlation within-family pairs;
+- 745 pending 2026 candidates, all with null outcome labels, including 715 DK
+  and 673 beta rows with configured-score expert consensus; and
+- 102 current rookies: DK has 97 with expert consensus, beta has 89, and both
+  have 79 with ADP and 80 with draft-capital features.
 
-Aggregate source identity resolution is 99.4%. Positioned sources are
-effectively complete in the current build. Positionless FantasyPros best-ball
-ADP resolves 91.6%; unresolved ambiguous names remain excluded and auditable.
+Positioned sources remain effectively complete after quarantine. Positionless
+unresolved names remain excluded and auditable. The
+`FFToday_Projections` feature-source receipt records 6,308 eligible/resolved
+rows and 50 excluded rows under
+`fftoday_qb_stored_2018_2019_vintage_quarantine_v1`. No stored-2018 FFToday QB
+row remains in aliases or normalized values, while all 50 native 2019 provider
+rows remain. There are still zero complete beta QB rows with null sacks. When
+the quarantined row was the only apparent 2018 sack donor, the affected beta
+QB provider row is now correctly incomplete rather than scored with leaked
+2019 evidence or an invented zero.
 
 The legacy-inspired rolling OOF study did not promote any of the 12 features.
 No family materially improved Ridge or shallow LightGBM, every deterministic

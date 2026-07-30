@@ -17,6 +17,7 @@ from Scripts.V2.contracts import (
     PLAYER_SEASON_SOURCE_COLUMNS,
     PLAYER_SEASON_SPINE_COLUMNS,
     align_columns,
+    apply_source_row_exclusions,
     require_columns,
     scoring_hash,
 )
@@ -71,6 +72,12 @@ def build_player_season_sources(
     )
 
     aliases = player_aliases.copy()
+    if "source_table" not in aliases:
+        aliases["source_table"] = pd.NA
+    aliases = apply_source_row_exclusions(
+        aliases,
+        "player_aliases for projection spine",
+    )
     aliases["season"] = pd.to_numeric(
         aliases["season"], errors="coerce"
     ).astype("Int64")

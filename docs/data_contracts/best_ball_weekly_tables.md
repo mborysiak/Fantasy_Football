@@ -30,8 +30,12 @@ Important columns:
   disagreement, and market-vs-projection gap match fields
 - center audit: `legacy_historical_pred_fp_per_game`,
   `v2_historical_pred_fp_per_game`, `v2_point_center_source`,
-  `v2_template_center_available`, `historical_center_policy`, and
-  `v2_recenter_promoted`
+  `v2_template_center_available`,
+  `v2_template_center_unavailable_reason`,
+  `v2_template_center_position`,
+  `v2_template_center_position_mismatch`,
+  `v2_template_center_position_mismatch_reason`,
+  `historical_center_policy`, and `v2_recenter_promoted`
 - player context: `avg_pick`, uncapped `year_exp`, `source_year_exp`,
   `year_exp_source`, `year_exp_uncapped_delta`, `year_exp_bucket`, `exp_bucket`
 - workload context: projected role shares plus within-room rank, gap to the next
@@ -97,6 +101,51 @@ Important columns:
 - `Best_Ball_Weekly_Bucket_Audit`: current vs historical bucket comparability.
 - `Best_Ball_ADP_Audit`: current-player ADP availability/join review.
 
+## League-Scoring Boundary
+
+Historical weekly points are scored explicitly for the requested league before
+they become templates. `load_weekly_points(..., league=...)` passes that league
+to the QB, RB, WR, and TE scoring paths and attaches a transient
+`scoring_league` marker. `build_weekly_templates(..., league=...)` derives the
+template league from that marker and fails if the requested league differs.
+The marker is an in-memory build guard; the durable template row stores the
+result as `league`, and its globally offset `template_id` uses the same league.
+
+This boundary is methodologically important because beta and DK use different
+reception, touchdown, sack, and yardage-bonus rules. Historical `active_ppg`,
+`season_points`, centered residuals, and weekly trajectories are all
+league-scored outcomes. Yardage bonuses therefore flow through the realized
+weekly-upside path and `active_ppg`; they are not inferred from season totals.
+A beta build must never reuse a DK-scored weekly frame even when the source
+statistics and player identities are otherwise identical.
+
+## Validated V2 Identity/Scoring Refresh
+
+The 2026-07-29 V2 correction was republished without changing required consumer
+fields or sampling semantics; additive audit columns were added. A follow-up
+correction binds weekly scoring explicitly to the requested league; the earlier
+beta template slice had been labeled beta after receiving the default DK
+scoring dictionary. Both league slices must therefore be rebuilt from weekly
+source statistics rather than relabeled or copied.
+
+The upstream V2 refresh also quarantines the 50 FFToday QB rows stored as 2018
+that match the provider's 2019 archive. Native 2019 rows remain. This changes
+historical beta QB provider completeness where the quarantined rows were the
+only apparent sack donor; it does not authorize a zero-sack fill. See
+`v2_identity_outcomes.md` and `v2_feature_mart.md`.
+
+These are source, scoring, and lineage corrections. Consumer joins and runtime
+sampling semantics are unchanged. In the production rebuild, 5,120 of 5,298
+paired historical `active_ppg` values and 5,147 normalized weekly paths differ
+between beta and DK. Mean absolute PPG difference is 1.3508 and the maximum is
+6.8.
+
+The promoted source and both V2 databases match their staged artifacts
+byte-for-byte. All 11 generated auction-app tables match source row-for-row and
+hash-for-hash without changing app-owned content, and the Snake database
+SHA-256 equals the source Simulation database. All five source/app databases
+pass SQLite integrity with zero foreign-key errors.
+
 ## Contract Rules
 
 - Keep `template_pool_key` stable across `Player_Map`, `Template_Pools`, and
@@ -112,6 +161,9 @@ Important columns:
   `player_key` or contains a null key.
 - Treat `template_id` as unique across league slices in a generated database.
   Use `template_local_id` only for within-league diagnostics.
+- Derive the durable template `league` and league ID offset from the weekly
+  frame's `scoring_league` marker. Reject mixed markers and any explicit
+  requested-league mismatch.
 - Join template pools to templates with both `template_id` and league context
   (`Template_Pools.template_league`/`pool_version` to `Templates.league`) when
   the app or audit logic does not rely on globally offset IDs.
@@ -146,6 +198,23 @@ Important columns:
   `v2_recenter_promoted = 0`. A strict rolling replay on 2017-2025 rows found
   that V2 recentering worsened PPG CRPS in both DK and beta; do not switch the
   active center without clearing that replay again.
+- A missing V2 diagnostic center normally fails the build. The only governed
+  exception is a beta 2018 QB locked-handoff row with
+  `template_center_available = 0` when the active FFToday quarantine receipt
+  proves that no valid beta sack donor exists. Keep
+  `v2_historical_pred_fp_per_game` null, retain the complete
+  `legacy_validated_oos` active center, and record
+  `legacy_validated_oos_fallback:fftoday_qb_stored_2018_2019_vintage_quarantine_v1:no_valid_beta_qb_sack_donor`
+  in `v2_template_center_unavailable_reason`. A missing locked row, stale
+  policy receipt, other season/position/league, or any other unavailable center
+  remains an error.
+- A template/V2-center position mismatch also fails closed except for three
+  reviewed hybrid-role rows: Cordarrelle Patterson's 2019 and 2021 templates
+  are WR while the locked center position is RB, and Ty Montgomery's 2022
+  template is RB while the locked center position is WR. Persist the locked
+  position, mismatch flag, and exact
+  `canonical_hybrid_role_shift:<player>` reason. No name-only, position-family,
+  or generalized hybrid exception is allowed.
 - Keep structurally non-transferable outcomes in the template and audit tables,
   but set `template_eligible = 0` and record a declared reason. Le'Veon Bell's
   2018 contract holdout is currently the only exclusion. Ordinary zero-active
@@ -169,6 +238,15 @@ Important columns:
 - Do not remove `template_sample_prob` without updating app sampling logic.
 - Rebuilds should replace only the active league/year/dataset slice and preserve
   other league slices already present in the table.
+- Rebuild beta and DK separately with explicit league arguments. As a
+  cross-league audit, paired historical rows should not have identical
+  `active_ppg` and weekly paths throughout the full population; complete
+  equality indicates a scoring-dictionary routing failure.
+- The live source `Simulation.sqlite3` may read only the configured V2 database
+  for its active league. A copied/staged Simulation database must use an
+  explicit staged V2 copy and `--no-app-sync`; it may not read a live V2
+  database. These asymmetric guards prevent staged evidence from reaching live
+  output and live evidence from contaminating a staged audit.
 - Treat role-share features as projected fantasy-point shares unless a column
   name explicitly says attempts, targets, or another raw volume unit.
 - Compute current room shares/ranks/concentration on the complete preseason

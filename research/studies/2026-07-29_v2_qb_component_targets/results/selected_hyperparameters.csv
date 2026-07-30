@@ -1,0 +1,82 @@
+target_name,model_name,forecast_origin,candidate_id,parameters_json,selection_score,selection_start_season,selection_end_season,selection_seasons
+total,lasso,2017,3,"{""alpha"": 0.3}",3.469786895278673,2013,2016,4
+total,lasso,2018,3,"{""alpha"": 0.3}",3.418569890911935,2013,2017,5
+total,lasso,2019,3,"{""alpha"": 0.3}",3.5166909783543097,2013,2018,6
+total,lasso,2020,3,"{""alpha"": 0.3}",3.609005901360734,2013,2019,7
+total,lasso,2021,3,"{""alpha"": 0.3}",3.6556594816803862,2013,2020,8
+total,lasso,2022,3,"{""alpha"": 0.3}",3.5618969188061027,2013,2021,9
+total,lasso,2023,3,"{""alpha"": 0.3}",3.5672127800806996,2013,2022,10
+total,lasso,2024,3,"{""alpha"": 0.3}",3.533408053281241,2013,2023,11
+total,lasso,2025,3,"{""alpha"": 0.3}",3.5251178957353755,2013,2024,12
+total,random_forest,2017,1,"{""bootstrap"": true, ""max_depth"": 6, ""max_features"": 0.5, ""min_samples_leaf"": 15, ""n_estimators"": 125, ""n_jobs"": 1, ""random_state"": 1234}",3.534595847851775,2013,2016,4
+total,random_forest,2018,1,"{""bootstrap"": true, ""max_depth"": 6, ""max_features"": 0.5, ""min_samples_leaf"": 15, ""n_estimators"": 125, ""n_jobs"": 1, ""random_state"": 1234}",3.4543126053586675,2013,2017,5
+total,random_forest,2019,3,"{""bootstrap"": true, ""max_depth"": 10, ""max_features"": 0.5, ""min_samples_leaf"": 15, ""n_estimators"": 125, ""n_jobs"": 1, ""random_state"": 1234}",3.520087372494295,2013,2018,6
+total,random_forest,2020,1,"{""bootstrap"": true, ""max_depth"": 6, ""max_features"": 0.5, ""min_samples_leaf"": 15, ""n_estimators"": 125, ""n_jobs"": 1, ""random_state"": 1234}",3.571707947413131,2013,2019,7
+total,random_forest,2021,1,"{""bootstrap"": true, ""max_depth"": 6, ""max_features"": 0.5, ""min_samples_leaf"": 15, ""n_estimators"": 125, ""n_jobs"": 1, ""random_state"": 1234}",3.6268499440736908,2013,2020,8
+total,random_forest,2022,1,"{""bootstrap"": true, ""max_depth"": 6, ""max_features"": 0.5, ""min_samples_leaf"": 15, ""n_estimators"": 125, ""n_jobs"": 1, ""random_state"": 1234}",3.5471266778029844,2013,2021,9
+total,random_forest,2023,1,"{""bootstrap"": true, ""max_depth"": 6, ""max_features"": 0.5, ""min_samples_leaf"": 15, ""n_estimators"": 125, ""n_jobs"": 1, ""random_state"": 1234}",3.5541802090391874,2013,2022,10
+total,random_forest,2024,1,"{""bootstrap"": true, ""max_depth"": 6, ""max_features"": 0.5, ""min_samples_leaf"": 15, ""n_estimators"": 125, ""n_jobs"": 1, ""random_state"": 1234}",3.5141022219218523,2013,2023,11
+total,random_forest,2025,1,"{""bootstrap"": true, ""max_depth"": 6, ""max_features"": 0.5, ""min_samples_leaf"": 15, ""n_estimators"": 125, ""n_jobs"": 1, ""random_state"": 1234}",3.497465288451568,2013,2024,12
+total,lightgbm,2017,0,"{""learning_rate"": 0.03, ""max_depth"": 3, ""min_child_samples"": 40, ""n_estimators"": 100, ""num_leaves"": 7, ""reg_lambda"": 5.0}",3.5797810576978204,2013,2016,4
+total,lightgbm,2018,0,"{""learning_rate"": 0.03, ""max_depth"": 3, ""min_child_samples"": 40, ""n_estimators"": 100, ""num_leaves"": 7, ""reg_lambda"": 5.0}",3.4815446396671677,2013,2017,5
+total,lightgbm,2019,1,"{""learning_rate"": 0.03, ""max_depth"": 4, ""min_child_samples"": 40, ""n_estimators"": 200, ""num_leaves"": 7, ""reg_lambda"": 1.0}",3.5485611765813037,2013,2018,6
+total,lightgbm,2020,1,"{""learning_rate"": 0.03, ""max_depth"": 4, ""min_child_samples"": 40, ""n_estimators"": 200, ""num_leaves"": 7, ""reg_lambda"": 1.0}",3.584210470541824,2013,2019,7
+total,lightgbm,2021,1,"{""learning_rate"": 0.03, ""max_depth"": 4, ""min_child_samples"": 40, ""n_estimators"": 200, ""num_leaves"": 7, ""reg_lambda"": 1.0}",3.6472623506634596,2013,2020,8
+total,lightgbm,2022,0,"{""learning_rate"": 0.03, ""max_depth"": 3, ""min_child_samples"": 40, ""n_estimators"": 100, ""num_leaves"": 7, ""reg_lambda"": 5.0}",3.5767655869698274,2013,2021,9
+total,lightgbm,2023,0,"{""learning_rate"": 0.03, ""max_depth"": 3, ""min_child_samples"": 40, ""n_estimators"": 100, ""num_leaves"": 7, ""reg_lambda"": 5.0}",3.5849358173452837,2013,2022,10
+total,lightgbm,2024,0,"{""learning_rate"": 0.03, ""max_depth"": 3, ""min_child_samples"": 40, ""n_estimators"": 100, ""num_leaves"": 7, ""reg_lambda"": 5.0}",3.5426933153426714,2013,2023,11
+total,lightgbm,2025,0,"{""learning_rate"": 0.03, ""max_depth"": 3, ""min_child_samples"": 40, ""n_estimators"": 100, ""num_leaves"": 7, ""reg_lambda"": 5.0}",3.5248829139528084,2013,2024,12
+pass,lasso,2017,3,"{""alpha"": 0.3}",3.217027694107265,2013,2016,4
+pass,lasso,2018,3,"{""alpha"": 0.3}",3.1807468975613173,2013,2017,5
+pass,lasso,2019,3,"{""alpha"": 0.3}",3.3193388151040426,2013,2018,6
+pass,lasso,2020,3,"{""alpha"": 0.3}",3.3678960464913272,2013,2019,7
+pass,lasso,2021,3,"{""alpha"": 0.3}",3.391992856321504,2013,2020,8
+pass,lasso,2022,3,"{""alpha"": 0.3}",3.3669656372442347,2013,2021,9
+pass,lasso,2023,3,"{""alpha"": 0.3}",3.3518381082297837,2013,2022,10
+pass,lasso,2024,3,"{""alpha"": 0.3}",3.299952886458767,2013,2023,11
+pass,lasso,2025,3,"{""alpha"": 0.3}",3.278711126619856,2013,2024,12
+pass,random_forest,2017,2,"{""bootstrap"": true, ""max_depth"": 10, ""max_features"": 0.5, ""min_samples_leaf"": 5, ""n_estimators"": 125, ""n_jobs"": 1, ""random_state"": 1234}",3.309459051575447,2013,2016,4
+pass,random_forest,2018,2,"{""bootstrap"": true, ""max_depth"": 10, ""max_features"": 0.5, ""min_samples_leaf"": 5, ""n_estimators"": 125, ""n_jobs"": 1, ""random_state"": 1234}",3.2268435617815063,2013,2017,5
+pass,random_forest,2019,2,"{""bootstrap"": true, ""max_depth"": 10, ""max_features"": 0.5, ""min_samples_leaf"": 5, ""n_estimators"": 125, ""n_jobs"": 1, ""random_state"": 1234}",3.32875668671527,2013,2018,6
+pass,random_forest,2020,2,"{""bootstrap"": true, ""max_depth"": 10, ""max_features"": 0.5, ""min_samples_leaf"": 5, ""n_estimators"": 125, ""n_jobs"": 1, ""random_state"": 1234}",3.358059618810311,2013,2019,7
+pass,random_forest,2021,2,"{""bootstrap"": true, ""max_depth"": 10, ""max_features"": 0.5, ""min_samples_leaf"": 5, ""n_estimators"": 125, ""n_jobs"": 1, ""random_state"": 1234}",3.386057506569067,2013,2020,8
+pass,random_forest,2022,2,"{""bootstrap"": true, ""max_depth"": 10, ""max_features"": 0.5, ""min_samples_leaf"": 5, ""n_estimators"": 125, ""n_jobs"": 1, ""random_state"": 1234}",3.3851809851172487,2013,2021,9
+pass,random_forest,2023,0,"{""bootstrap"": true, ""max_depth"": 6, ""max_features"": 0.5, ""min_samples_leaf"": 5, ""n_estimators"": 125, ""n_jobs"": 1, ""random_state"": 1234}",3.3625647700511268,2013,2022,10
+pass,random_forest,2024,1,"{""bootstrap"": true, ""max_depth"": 6, ""max_features"": 0.5, ""min_samples_leaf"": 15, ""n_estimators"": 125, ""n_jobs"": 1, ""random_state"": 1234}",3.31849365140359,2013,2023,11
+pass,random_forest,2025,1,"{""bootstrap"": true, ""max_depth"": 6, ""max_features"": 0.5, ""min_samples_leaf"": 15, ""n_estimators"": 125, ""n_jobs"": 1, ""random_state"": 1234}",3.297457273169727,2013,2024,12
+pass,lightgbm,2017,0,"{""learning_rate"": 0.03, ""max_depth"": 3, ""min_child_samples"": 40, ""n_estimators"": 100, ""num_leaves"": 7, ""reg_lambda"": 5.0}",3.3854518507679363,2013,2016,4
+pass,lightgbm,2018,0,"{""learning_rate"": 0.03, ""max_depth"": 3, ""min_child_samples"": 40, ""n_estimators"": 100, ""num_leaves"": 7, ""reg_lambda"": 5.0}",3.289788234936713,2013,2017,5
+pass,lightgbm,2019,0,"{""learning_rate"": 0.03, ""max_depth"": 3, ""min_child_samples"": 40, ""n_estimators"": 100, ""num_leaves"": 7, ""reg_lambda"": 5.0}",3.391598250606369,2013,2018,6
+pass,lightgbm,2020,0,"{""learning_rate"": 0.03, ""max_depth"": 3, ""min_child_samples"": 40, ""n_estimators"": 100, ""num_leaves"": 7, ""reg_lambda"": 5.0}",3.3934809311448,2013,2019,7
+pass,lightgbm,2021,0,"{""learning_rate"": 0.03, ""max_depth"": 3, ""min_child_samples"": 40, ""n_estimators"": 100, ""num_leaves"": 7, ""reg_lambda"": 5.0}",3.4194448456356286,2013,2020,8
+pass,lightgbm,2022,3,"{""learning_rate"": 0.05, ""max_depth"": 3, ""min_child_samples"": 40, ""n_estimators"": 100, ""num_leaves"": 15, ""reg_lambda"": 5.0}",3.408093696024644,2013,2021,9
+pass,lightgbm,2023,0,"{""learning_rate"": 0.03, ""max_depth"": 3, ""min_child_samples"": 40, ""n_estimators"": 100, ""num_leaves"": 7, ""reg_lambda"": 5.0}",3.3836382714597826,2013,2022,10
+pass,lightgbm,2024,1,"{""learning_rate"": 0.03, ""max_depth"": 4, ""min_child_samples"": 40, ""n_estimators"": 200, ""num_leaves"": 7, ""reg_lambda"": 1.0}",3.3175018543533557,2013,2023,11
+pass,lightgbm,2025,3,"{""learning_rate"": 0.05, ""max_depth"": 3, ""min_child_samples"": 40, ""n_estimators"": 100, ""num_leaves"": 15, ""reg_lambda"": 5.0}",3.3058800979935423,2013,2024,12
+rush,lasso,2017,3,"{""alpha"": 0.3}",1.3442394331308845,2013,2016,4
+rush,lasso,2018,3,"{""alpha"": 0.3}",1.3677394479809568,2013,2017,5
+rush,lasso,2019,2,"{""alpha"": 0.1}",1.3721813588645206,2013,2018,6
+rush,lasso,2020,2,"{""alpha"": 0.1}",1.49974489086137,2013,2019,7
+rush,lasso,2021,2,"{""alpha"": 0.1}",1.5197583761193845,2013,2020,8
+rush,lasso,2022,2,"{""alpha"": 0.1}",1.521787151094578,2013,2021,9
+rush,lasso,2023,1,"{""alpha"": 0.03}",1.521918319735157,2013,2022,10
+rush,lasso,2024,1,"{""alpha"": 0.03}",1.510927956053343,2013,2023,11
+rush,lasso,2025,1,"{""alpha"": 0.03}",1.502469821244777,2013,2024,12
+rush,random_forest,2017,3,"{""bootstrap"": true, ""max_depth"": 10, ""max_features"": 0.5, ""min_samples_leaf"": 15, ""n_estimators"": 125, ""n_jobs"": 1, ""random_state"": 1234}",1.288280292107418,2013,2016,4
+rush,random_forest,2018,3,"{""bootstrap"": true, ""max_depth"": 10, ""max_features"": 0.5, ""min_samples_leaf"": 15, ""n_estimators"": 125, ""n_jobs"": 1, ""random_state"": 1234}",1.2689927963194765,2013,2017,5
+rush,random_forest,2019,3,"{""bootstrap"": true, ""max_depth"": 10, ""max_features"": 0.5, ""min_samples_leaf"": 15, ""n_estimators"": 125, ""n_jobs"": 1, ""random_state"": 1234}",1.3256564748993884,2013,2018,6
+rush,random_forest,2020,1,"{""bootstrap"": true, ""max_depth"": 6, ""max_features"": 0.5, ""min_samples_leaf"": 15, ""n_estimators"": 125, ""n_jobs"": 1, ""random_state"": 1234}",1.378857012965249,2013,2019,7
+rush,random_forest,2021,1,"{""bootstrap"": true, ""max_depth"": 6, ""max_features"": 0.5, ""min_samples_leaf"": 15, ""n_estimators"": 125, ""n_jobs"": 1, ""random_state"": 1234}",1.4272525413468142,2013,2020,8
+rush,random_forest,2022,1,"{""bootstrap"": true, ""max_depth"": 6, ""max_features"": 0.5, ""min_samples_leaf"": 15, ""n_estimators"": 125, ""n_jobs"": 1, ""random_state"": 1234}",1.4340930898592856,2013,2021,9
+rush,random_forest,2023,1,"{""bootstrap"": true, ""max_depth"": 6, ""max_features"": 0.5, ""min_samples_leaf"": 15, ""n_estimators"": 125, ""n_jobs"": 1, ""random_state"": 1234}",1.4479055901666291,2013,2022,10
+rush,random_forest,2024,2,"{""bootstrap"": true, ""max_depth"": 10, ""max_features"": 0.5, ""min_samples_leaf"": 5, ""n_estimators"": 125, ""n_jobs"": 1, ""random_state"": 1234}",1.4403402023013046,2013,2023,11
+rush,random_forest,2025,0,"{""bootstrap"": true, ""max_depth"": 6, ""max_features"": 0.5, ""min_samples_leaf"": 5, ""n_estimators"": 125, ""n_jobs"": 1, ""random_state"": 1234}",1.4367517168572481,2013,2024,12
+rush,lightgbm,2017,3,"{""learning_rate"": 0.05, ""max_depth"": 3, ""min_child_samples"": 40, ""n_estimators"": 100, ""num_leaves"": 15, ""reg_lambda"": 5.0}",1.2982711913527571,2013,2016,4
+rush,lightgbm,2018,3,"{""learning_rate"": 0.05, ""max_depth"": 3, ""min_child_samples"": 40, ""n_estimators"": 100, ""num_leaves"": 15, ""reg_lambda"": 5.0}",1.2972417319658747,2013,2017,5
+rush,lightgbm,2019,3,"{""learning_rate"": 0.05, ""max_depth"": 3, ""min_child_samples"": 40, ""n_estimators"": 100, ""num_leaves"": 15, ""reg_lambda"": 5.0}",1.3384743342194894,2013,2018,6
+rush,lightgbm,2020,3,"{""learning_rate"": 0.05, ""max_depth"": 3, ""min_child_samples"": 40, ""n_estimators"": 100, ""num_leaves"": 15, ""reg_lambda"": 5.0}",1.3975956698179728,2013,2019,7
+rush,lightgbm,2021,3,"{""learning_rate"": 0.05, ""max_depth"": 3, ""min_child_samples"": 40, ""n_estimators"": 100, ""num_leaves"": 15, ""reg_lambda"": 5.0}",1.4394691949953622,2013,2020,8
+rush,lightgbm,2022,3,"{""learning_rate"": 0.05, ""max_depth"": 3, ""min_child_samples"": 40, ""n_estimators"": 100, ""num_leaves"": 15, ""reg_lambda"": 5.0}",1.4446298641076183,2013,2021,9
+rush,lightgbm,2023,3,"{""learning_rate"": 0.05, ""max_depth"": 3, ""min_child_samples"": 40, ""n_estimators"": 100, ""num_leaves"": 15, ""reg_lambda"": 5.0}",1.464988702774909,2013,2022,10
+rush,lightgbm,2024,1,"{""learning_rate"": 0.03, ""max_depth"": 4, ""min_child_samples"": 40, ""n_estimators"": 200, ""num_leaves"": 7, ""reg_lambda"": 1.0}",1.4706902236608626,2013,2023,11
+rush,lightgbm,2025,3,"{""learning_rate"": 0.05, ""max_depth"": 3, ""min_child_samples"": 40, ""n_estimators"": 100, ""num_leaves"": 15, ""reg_lambda"": 5.0}",1.474331062741132,2013,2024,12

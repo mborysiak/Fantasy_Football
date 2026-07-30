@@ -1,0 +1,11 @@
+component,event_count_or_rows,dk_points,beta_points,status
+pass_300_games,915,,,included_actual
+pass_400_games,106,,,included_actual_cumulative
+rush_100_games,839,,,included_actual
+rush_200_games,18,,,included_actual_cumulative
+receive_100_games,1552,,,included_actual
+receive_200_games,27,,,included_actual_cumulative
+all_yardage_bonuses,,9918,3608,included_actual_excluded_provider_estimand
+lost_fumbles,2154,-2154,-4308,included_actual_excluded_provider_estimand
+two_point_conversions,809,0,0,coefficient_not_configured
+special_teams_touchdowns,68,0,0,coefficient_not_configured

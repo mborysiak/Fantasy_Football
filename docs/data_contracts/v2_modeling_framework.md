@@ -263,6 +263,14 @@ pooled correlation alone does not.
 8. Split-control columns cannot enter fitted pipelines.
 9. Compact feature sets remain subsets of reviewed manifests.
 10. Model outputs retain exact Milestone 3 feature-run lineage.
+11. A lock is valid only for the rebuilt identity, source-season, league
+    scoring hash, and `core_offensive_season_components_v1` provider estimand
+    recorded by its Milestone 3 run.
+12. Beta lock evidence includes QB provider completeness by season and proves
+    that no complete beta QB row has null sacks.
+13. Any foundation identity, effective-season, source-row-quarantine, or
+    provider-scoring correction invalidates downstream performance claims
+    until locked, calibration, template, and next-year replays are rerun.
 
 ## Locked 2026 Production Candidate
 
@@ -279,12 +287,13 @@ specification:
   hyperparameter decision, route, calibration estimate, and interval using
   only earlier seasons.
 
-The whole-season primary scores 3.0941 RMSE versus 3.1793 for expert
-recalibration and wins all nine seasons. Do not add a point-calibration overlay:
-every tested strictly-prior policy worsens pooled RMSE. The projection-anchored
-gap route for genuinely no-history players remains a locked secondary component
-after a 0.0036 RMSE gain, but it is not combined with other routes or substituted
-for the published primary center.
+The latest source-quarantine-corrected whole-season primary scores 3.1078 RMSE
+versus 3.1951 for expert recalibration and wins all nine seasons. Do not add a
+point-calibration overlay: every tested strictly-prior policy worsens pooled
+RMSE. The projection-anchored gap route remains a locked secondary component
+and is not combined with other routes or substituted for the published primary
+center. Exact secondary-route metrics from the pre-quarantine lineage are
+superseded; no secondary promotion is made from this data correction.
 
 The locked template handoff supplies a strict-OOS V2 historical point center,
 not a second residual distribution. Production retains it as
@@ -295,13 +304,21 @@ both player-cluster 95% intervals entirely above zero. Production therefore
 keeps `historical_center_policy = legacy_validated_oos` and
 `v2_recenter_promoted = 0`.
 
+The FFToday quarantine can make a beta 2018 QB V2 diagnostic center unavailable
+when the leaked future-vintage row was the only apparent sack donor. Preserve
+that absence explicitly. Do not fill it from DK, from the quarantined vintage,
+or from a zero-sack assumption; the complete active historical center remains
+the validated legacy OOS value. The corrected beta template population has
+2,657/2,696 V2 diagnostic centers; the 39 unavailable rows are all governed
+2018 QB fallbacks with an explicit reason and active quarantine proof.
+
 `v2_conditional_ppg_2026_candidate_beta_v1` is the separately fitted
 beta-scored counterpart. It uses the same primary feature hashes and
-equal-third architecture, scores 2.9109 RMSE versus 2.9759 for beta expert
-recalibration, and wins all nine seasons. No beta secondary route clears its
-season-bootstrap check, and every tested prior-only calibration policy worsens
-pooled RMSE. The DK no-history gap result is therefore not automatically
-portable to beta.
+equal-third architecture, scores 2.8845 RMSE versus 2.9600 for beta expert
+recalibration, and wins all nine seasons. The beta no-history route remains a
+secondary diagnostic rather than changing the published primary during a
+data-lineage correction. Exact pre-quarantine secondary metrics are
+superseded. Every tested prior-only calibration policy worsens pooled RMSE.
 
 Both locks are active for the 2026 production player population: 268 DK rows
 and 180 beta rows. `production_handoff.py` joins each league lock by canonical
@@ -310,6 +327,13 @@ and publishes `Final_Predictions_Resid`,
 `V2_Production_Projection_Handoff`, and
 `V2_Production_Projection_Audit`. The original rows are retained once in
 `V2_Projection_Legacy_Backup`.
+
+The corrected fit-through-2025 shadows contain 745 candidates per league, 715
+DK point centers, 673 beta point centers, and 745 participation probabilities.
+Production coverage remains 100% for the 268/180 app populations.
+`production_handoff.py` is refresh-safe: a republish replaces its governed key
+and metadata columns from the canonical weekly map rather than creating merge
+suffixes. A second identical publish must produce zero point deltas.
 
 The production current residual quantiles are exactly zero,
 `independent_current_residual_draw_allowed = 0`, and
@@ -320,8 +344,10 @@ zeroed legacy model spread. DK and beta retain separate V2 databases and
 scoring hashes, and every join is by league plus canonical key rather than
 display name.
 
-The reproducible replay and audit live under
-`research/studies/2026-07-29_v2_locked_final_validation/`.
+The original replay lives under
+`research/studies/2026-07-29_v2_locked_final_validation/`. Its data-lineage
+claims are superseded by the corrected replay summarized under
+`research/studies/2026-07-29_v2_weekly_fftoday_correction/`.
 
 ## Following-Season Production Contract
 
@@ -349,10 +375,15 @@ random forest, and deterministic shallow LightGBM residuals. The primary
 appearance forecast is deterministic shallow LightGBM. Whole-origin validation
 uses 2017-2024 because 2025 is the latest completed target season.
 
-| League | Conditional blend RMSE | Expert carry RMSE | Origin wins | Appearance Brier | Logistic Brier |
-|---|---:|---:|---:|---:|---:|
-| DK | 3.9003 | 5.2070 | 8/8 | 0.1604 | 0.1732 |
-| beta | 3.6718 | 4.6685 | 8/8 | 0.1623 | 0.1748 |
+| League | Conditional blend RMSE | Expert carry RMSE | Origin wins |
+|---|---:|---:|---:|
+| DK | 3.9137 | 5.2351 | 8/8 |
+| beta | 3.5538 | 4.3653 | 8/8 |
+
+These conditional metrics come from the source-quarantine-corrected lineage.
+Pre-quarantine appearance-Brier figures are not carried forward as current
+evidence; the separate appearance architecture and promotion status are
+unchanged.
 
 The output databases publish:
 
@@ -367,11 +398,11 @@ The output databases publish:
 | `next_year_template_handoff` | Historical and shadow matching context by canonical key |
 | `next_year_2027_shadow_predictions` | Current 2026-origin forecast for 2027 |
 
-The complete 2027 shadow contains 751 canonical candidates per league, 720
-conditional PPG centers, and 751 appearance probabilities. The production
-handoff publishes the intersection with the current app population: 268 DK
-and 180 beta rows. DK and beta use independent scoring-specific features and
-fits.
+The complete corrected 2027 shadow contains 745 canonical candidates per
+league, 715 DK and 673 beta conditional PPG centers, and 745 appearance
+probabilities per league. The production handoff publishes the intersection
+with the current app population: 268 DK and 180 beta rows. DK and beta use
+independent scoring-specific features and fits.
 
 The rolling weekly-template replay does not promote the two next-year fields
 as donor-matching features. Residual rank improves weekly-PPG CRPS by only

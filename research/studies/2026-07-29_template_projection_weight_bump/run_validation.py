@@ -113,6 +113,16 @@ VARIANTS = {
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--league", default="dk")
+    parser.add_argument(
+        "--v2-db",
+        type=Path,
+        default=None,
+        help=(
+            "League-specific V2 database used for historical centers and "
+            "canonical identity. Defaults to the configured database for "
+            "--league."
+        ),
+    )
     parser.add_argument("--results-dir", type=Path, default=DEFAULT_RESULTS)
     return parser.parse_args()
 
@@ -322,6 +332,11 @@ Runtime: {runtime_seconds:.1f} seconds.
 def main() -> None:
     args = parse_args()
     league = str(args.league).lower()
+    v2_db = (
+        Path(args.v2_db).resolve()
+        if args.v2_db is not None
+        else builder.resolve_v2_database(league=league)
+    )
     results_dir = args.results_dir.resolve()
     results_dir.mkdir(parents=True, exist_ok=True)
     started = time.perf_counter()
@@ -334,9 +349,16 @@ def main() -> None:
     pruning.PERIODS = PERIODS
 
     max_season = builder.get_daily_max_template_season()
-    projections = builder.load_historical_projection_context(max_season)
-    weekly = builder.load_weekly_points(max_season)
-    templates = builder.build_weekly_templates(projections, weekly)
+    projections = builder.load_historical_projection_context(
+        max_season,
+        v2_database=v2_db,
+    )
+    weekly = builder.load_weekly_points(max_season, league=league)
+    templates = builder.build_weekly_templates(
+        projections,
+        weekly,
+        league=league,
+    )
     forecasts = base.load_production_oos_forecasts(max_season)
     target_templates = base.build_production_oos_target_templates(
         templates,

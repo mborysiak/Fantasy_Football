@@ -1,5 +1,10 @@
 # Beta Findings
 
+> Superseded data lineage: these metrics predate the governed identity,
+> source-season, and beta provider-scoring corrections. Retain them as
+> historical evidence only. The accepted corrective replay is documented in
+> `../../2026-07-29_v2_identity_scoring_revalidation/results/findings.md`.
+
 The independently scored beta lineage confirms the DK conclusion.
 
 - The equal-third residual blend scores 3.6718 RMSE versus 4.6685 for the

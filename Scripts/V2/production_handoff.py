@@ -46,6 +46,21 @@ NEXT_RESIDUAL_SOURCE_COLUMNS = {
     "pred_resid_95_ny_shadow": "pred_resid_95_ny",
 }
 PRODUCTION_HANDOFF_VERSION = "v2_current_next_production_handoff_v1"
+REFRESHED_HANDOFF_COLUMNS = (
+    "player_key",
+    "current_projection_model_version",
+    "next_projection_model_version",
+    "v2_scoring_hash",
+    "pred_appear_current",
+    "pred_appear_ny",
+    "production_handoff_version",
+    "current_projection_source",
+    "current_uncertainty_source",
+    "independent_current_residual_draw_allowed",
+    "next_projection_source",
+    "next_uncertainty_source",
+    "production_handoff_created_at_utc",
+)
 
 
 def _read_table(database: Path, table: str) -> pd.DataFrame:
@@ -73,6 +88,17 @@ def build_production_projection_slice(
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Return one league's production rows and an auditable comparison."""
 
+    # A production slice may already have been published by an earlier V2
+    # run. Refresh canonical keys from the rebuilt weekly player map and
+    # replace prior handoff metadata instead of creating merge suffixes or
+    # duplicate columns.
+    legacy_slice = legacy_slice.drop(
+        columns=[
+            column
+            for column in REFRESHED_HANDOFF_COLUMNS
+            if column in legacy_slice
+        ]
+    ).copy()
     join_columns = (
         "player",
         "pos",

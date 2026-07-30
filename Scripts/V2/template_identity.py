@@ -10,7 +10,13 @@ from typing import Iterable
 import pandas as pd
 
 from Scripts.V2.config import TEAM_MAP
-from Scripts.V2.contracts import normalize_player_name, require_columns
+from Scripts.V2.contracts import (
+    SOURCE_STORED_SEASON_COLUMN,
+    apply_source_row_exclusions,
+    assert_no_source_row_exclusions,
+    normalize_player_name,
+    require_columns,
+)
 
 
 def _normalize_team(value: object) -> str | None:
@@ -105,11 +111,35 @@ def attach_v2_player_keys(
             """,
             connection,
         )
+        alias_columns = {
+            str(row[1])
+            for row in connection.execute('PRAGMA table_info("player_aliases")')
+        }
+        required_alias_columns = {
+            "player_key",
+            "normalized_name",
+            "position",
+            "team",
+            "season",
+            "source_table",
+        }
+        missing_alias_columns = sorted(
+            required_alias_columns.difference(alias_columns)
+        )
+        if missing_alias_columns:
+            raise ValueError(
+                "V2 player_aliases lacks source provenance required for "
+                "governed quarantine enforcement: "
+                f"{missing_alias_columns}"
+            )
+        stored_season_select = (
+            f", {SOURCE_STORED_SEASON_COLUMN}"
+            if SOURCE_STORED_SEASON_COLUMN in alias_columns
+            else ""
+        )
         aliases = pd.read_sql_query(
-            """
-            SELECT player_key, normalized_name, position, team, season
-            FROM player_aliases
-            """,
+            "SELECT player_key, normalized_name, position, team, season, "
+            f"source_table{stored_season_select} FROM player_aliases",
             connection,
         )
 
@@ -118,6 +148,21 @@ def attach_v2_player_keys(
     aliases["season"] = pd.to_numeric(
         aliases["season"], errors="coerce"
     ).astype("Int64")
+    source_tables = aliases["source_table"].astype("string").str.strip()
+    if (source_tables.isna() | source_tables.eq("")).any():
+        raise ValueError(
+            "V2 player_aliases contains rows without source_table provenance; "
+            "governed quarantine enforcement cannot be verified"
+        )
+    aliases["source_table"] = source_tables
+    aliases = apply_source_row_exclusions(
+        aliases,
+        "weekly template player_aliases",
+    )
+    assert_no_source_row_exclusions(
+        aliases,
+        "weekly template player_aliases after quarantine",
+    )
     identity["rookie_season"] = pd.to_numeric(
         identity["rookie_season"], errors="coerce"
     )

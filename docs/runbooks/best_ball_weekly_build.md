@@ -13,15 +13,41 @@ Publish the locked current/next V2 projection handoff first:
 Then rebuild each supported league slice:
 
 ```powershell
-.venv_ff_312\Scripts\python.exe Scripts\Modeling\s4_Best_Ball_Weekly.py
+.venv_ff_312\Scripts\python.exe Scripts\Modeling\s4_Best_Ball_Weekly.py --league beta --v2-db Data\Databases\Projection_V2_beta.sqlite3
+.venv_ff_312\Scripts\python.exe Scripts\Modeling\s4_Best_Ball_Weekly.py --league dk --v2-db Data\Databases\Projection_V2.sqlite3
 ```
 
 Use the active repo environment if `.venv_ff_312` is not available.
 
-The build uses `YEAR`, `LEAGUE`, and `PRED_VERSION` from `Scripts/config.py`.
-It rewrites only the active league/year/dataset slice for app-facing current
-tables and preserves other league slices already present in `Simulation.sqlite3`.
+The build uses `YEAR` and `PRED_VERSION` from `Scripts/config.py`. Always pass
+`--league`; omitting it falls back to configured `LEAGUE` only for backward
+compatibility. The selected league is passed explicitly through weekly scoring,
+template construction, V2 center loading, and output slicing. It rewrites only
+the active league/year/dataset slice for app-facing current tables and
+preserves other league slices already present in `Simulation.sqlite3`.
 Historical template rows are keyed by `league`.
+
+The selected V2 database must contain an active locked handoff whose
+`locked_candidate_runs.metadata_json.scoring_objective` exactly matches the
+requested league. The builder rejects a DK/beta database swap.
+
+## Staged Rebuild
+
+For corrective, schema, or scoring work, copy the V2 and Simulation databases
+to a dedicated staging directory and build both slices there:
+
+```powershell
+.venv_ff_312\Scripts\python.exe Scripts\Modeling\s4_Best_Ball_Weekly.py --league beta --simulation-db <staging>\Simulation.sqlite3 --v2-db <staging>\Projection_V2_beta.sqlite3 --no-app-sync
+.venv_ff_312\Scripts\python.exe Scripts\Modeling\s4_Best_Ball_Weekly.py --league dk --simulation-db <staging>\Simulation.sqlite3 --v2-db <staging>\Projection_V2.sqlite3 --no-app-sync
+```
+
+A custom `--simulation-db` requires both an explicit staged `--v2-db` and
+`--no-app-sync`. A live V2 path is rejected with a custom Simulation target.
+Conversely, the live source Simulation database accepts only the configured V2
+database for the requested league; it rejects staged or other custom V2 paths
+even when app sync is disabled.
+Run the handoff and audits against the same staged database set, promote only
+after all gates pass, then synchronize apps from the promoted source database.
 
 ## Inputs
 
@@ -59,10 +85,23 @@ After a build, review:
 
 - row counts by `version`/`league` across the best-ball tables
 - template counts by position
+- `Templates.league`, the league-specific template ID offset, and
+  `Template_Pools.template_league` all agree with the requested league
+- paired beta/DK template rows have nonzero scoring differences in
+  `active_ppg` and/or weekly paths; full equality is a scoring-routing failure
 - historical projection source mix
 - `historical_pred_fp_per_game` equals
-  `legacy_historical_pred_fp_per_game`, V2 diagnostic centers cover every
-  2017-2025 donor, and `v2_recenter_promoted = 0`
+  `legacy_historical_pred_fp_per_game`, V2 diagnostic-center availability is
+  reported explicitly, and `v2_recenter_promoted = 0`
+- the only missing V2 diagnostics are governed beta 2018 QB rows with a joined
+  locked-handoff `template_center_available = 0`, the current FFToday
+  quarantine receipt, and the exact
+  `v2_template_center_unavailable_reason`; do not fill them from DK,
+  quarantined evidence, or zero sacks
+- V2 locked-center positions match template positions except for the exact
+  audited hybrid rows: Cordarrelle Patterson 2019/2021 template WR to locked
+  RB, and Ty Montgomery 2022 template RB to locked WR; every other mismatch
+  fails closed
 - zero/low-active template exposure
 - `played_week_1` through `played_week_16` contain only 0/1, sum to
   `played_games`, preserve source-observed zero/negative outcomes, and retain
@@ -82,6 +121,13 @@ After a build, review:
   persisted diagnostic column remains available to existing comp views
 - current and historical absolute PPG, market/projection disagreement, and
   workload-room match fields are complete
+- beta actual weekly outcomes reflect beta reception, touchdown, sack, and
+  cumulative yardage-bonus rules; yardage bonuses are already included in
+  `active_ppg`
+- known scoring sentinels reconcile: Amon-Ra St. Brown's 2024 beta season is
+  256.7 points/17.1133 PPG versus 302.2/20.1467 DK, while Josh Allen's 2024
+  beta score is 378.16 points and removing his 14 sacks raises it by exactly
+  14 points
 - current and historical uncapped `year_exp` ranges, `year_exp_source` mix,
   named veteran values, and pool experience ranges for players above ten years
 - current bucket universe sizes

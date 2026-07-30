@@ -31,10 +31,12 @@ from Scripts.V2.contracts import (
     MODEL_RUN_COLUMNS,
     SOURCE_MANIFEST_COLUMNS,
     align_columns,
+    assert_no_source_row_exclusions,
     create_run_id,
     publish_tables_atomic,
     read_existing_table,
     scoring_hash,
+    source_row_exclusion_policy_receipt,
     utc_now,
 )
 
@@ -111,10 +113,42 @@ def _active_foundation(
             "No active Milestone 2 foundation matches the requested build"
         )
     foundation_run_id = str(eligible.iloc[-1]["run_id"])
+    source_manifest = read_existing_table(
+        output_database,
+        "source_manifest",
+        SOURCE_MANIFEST_COLUMNS,
+    )
+    expected_receipt = source_row_exclusion_policy_receipt(foundation_run_id)
+    receipts = source_manifest[
+        source_manifest["run_id"].eq(foundation_run_id)
+        & source_manifest["component"].eq(expected_receipt["component"])
+        & source_manifest["source_name"].eq(expected_receipt["source_name"])
+    ]
+    if len(receipts) != 1:
+        raise ValueError(
+            "The active Milestone 2 foundation has no unique source-row "
+            "exclusion policy receipt and must be rebuilt"
+        )
+    receipt = receipts.iloc[0]
+    if (
+        str(receipt["source_sha256"]) != expected_receipt["source_sha256"]
+        or pd.isna(receipt["row_count"])
+        or int(receipt["row_count"]) != expected_receipt["row_count"]
+    ):
+        raise ValueError(
+            "The active Milestone 2 foundation source-row exclusion policy "
+            "does not match the current governed policy"
+        )
+
+    aliases = read_existing_table(output_database, "player_aliases")
     spine = read_existing_table(output_database, "player_season_spine")
     sources = read_existing_table(output_database, "player_season_sources")
-    if spine.empty or sources.empty:
+    if aliases.empty or spine.empty or sources.empty:
         raise ValueError("The active Milestone 2 foundation tables are missing")
+    assert_no_source_row_exclusions(
+        aliases,
+        "active Milestone 2 player_aliases",
+    )
     spine_run_ids = spine["run_id"].dropna().astype(str).unique()
     if set(spine_run_ids) != {foundation_run_id}:
         raise ValueError("The active spine does not match its Milestone 2 run")
@@ -219,6 +253,23 @@ def _validate_feature_outputs(
         rates = pd.to_numeric(source_audit["resolution_rate"], errors="coerce")
         if ((rates.dropna() < 0) | (rates.dropna() > 1)).any():
             raise ValueError("Source resolution rates must be between zero and one")
+        excluded = pd.to_numeric(
+            source_audit["excluded_rows"],
+            errors="coerce",
+        ).fillna(0)
+        if excluded.lt(0).any():
+            raise ValueError("Source exclusion counts cannot be negative")
+        missing_metadata = excluded.gt(0) & source_audit[
+            [
+                "source_row_exclusion_ids",
+                "source_row_exclusion_reasons",
+                "source_row_exclusion_references",
+            ]
+        ].isna().any(axis=1)
+        if missing_metadata.any():
+            raise ValueError(
+                "Excluded source rows require ID, reason, and reference metadata"
+            )
 
 
 def _source_manifest(
@@ -242,6 +293,20 @@ def _source_manifest(
                 "row_count": int(row.input_rows),
             }
         )
+        excluded_rows = (
+            0 if pd.isna(row.excluded_rows) else int(row.excluded_rows)
+        )
+        if excluded_rows:
+            rows.append(
+                {
+                    "run_id": run_id,
+                    "component": "source_quarantine",
+                    "source_name": str(row.source_row_exclusion_ids),
+                    "source_uri": str(row.source_row_exclusion_references),
+                    "source_sha256": pd.NA,
+                    "row_count": excluded_rows,
+                }
+            )
     rows.append(
         {
             "run_id": run_id,
@@ -459,6 +524,7 @@ def build_milestone_3(
     current = features["season"].eq(projection_through_season)
     resolved_inputs = int(source_audit["resolved_rows"].sum())
     total_inputs = int(source_audit["input_rows"].sum())
+    excluded_inputs = int(source_audit["excluded_rows"].sum())
     return {
         "run_id": run_id,
         "foundation_run_id": spine_run_id,
@@ -475,6 +541,7 @@ def build_milestone_3(
         "source_resolution_rate": (
             resolved_inputs / total_inputs if total_inputs else None
         ),
+        "source_excluded_rows": excluded_inputs,
         "current_season_rows": int(current.sum()),
         "current_expert_consensus_rows": int(
             features.loc[current, "expert_points_median"].notna().sum()

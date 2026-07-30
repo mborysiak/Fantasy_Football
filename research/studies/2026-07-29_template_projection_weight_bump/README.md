@@ -31,6 +31,7 @@ Run beta:
 ```powershell
 .venv_ff_312\Scripts\python.exe research\studies\2026-07-29_template_projection_weight_bump\run_validation.py `
   --league beta `
+  --v2-db Data\Databases\Projection_V2_beta.sqlite3 `
   --results-dir research\studies\2026-07-29_template_projection_weight_bump\results_beta
 ```
 

@@ -26,6 +26,58 @@ NFLVERSE_WEEKLY_STATS_URL = (
     "stats_player/stats_player_week_{season}.csv"
 )
 
+# Declarative corrections for confirmed source-season labeling errors.  The
+# shared contracts helper applies these rules to identity and feature rows,
+# retains the stored season and rationale as audit metadata, and rejects a
+# correction if native rows already exist for the effective table/position/year.
+SOURCE_SEASON_OVERRIDES = (
+    {
+        "override_id": "fantasypros_wr_2016_to_2018_v1",
+        "source_table": "FantasyPros_Projections",
+        "position": "WR",
+        "stored_season": 2016,
+        "effective_season": 2018,
+        "reason": (
+            "The archived FantasyPros WR loader entry stored under 2016 "
+            "contains the 2018 projection vintage."
+        ),
+        "reference": "wayback_timestamp=20180808115212",
+    },
+    {
+        "override_id": "fantasypros_wr_2020_to_2021_v1",
+        "source_table": "FantasyPros_Projections",
+        "position": "WR",
+        "stored_season": 2020,
+        "effective_season": 2021,
+        "reason": (
+            "The archived FantasyPros WR loader entry stored under 2020 "
+            "contains the 2021 projection vintage."
+        ),
+        "reference": "wayback_timestamp=20210728120136",
+    },
+)
+
+# Declarative quarantines for source rows that must not enter any V2 identity,
+# candidate, or feature lineage.  These are intentionally distinct from season
+# overrides: a quarantined slice is dropped when the archived vintage is
+# already represented by native rows under its correct season.
+SOURCE_ROW_EXCLUSIONS = (
+    {
+        "exclusion_id": "fftoday_qb_stored_2018_2019_vintage_quarantine_v1",
+        "source_table": "FFToday_Projections",
+        "position": "QB",
+        "stored_season": 2018,
+        "reason": (
+            "The FFToday QB rows stored under 2018 match the official 2019 "
+            "projection archive, while native 2019 QB rows already exist."
+        ),
+        "reference": (
+            "https://www.fftoday.com/rankings/playerproj.php"
+            "?Season=2019&PosID=10"
+        ),
+    },
+)
+
 # These sources define who was knowable before a season. A row enters the
 # projection spine through at least one of these sources; observed outcomes are
 # deliberately not a candidate source.

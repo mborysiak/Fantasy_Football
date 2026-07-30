@@ -1,6 +1,7 @@
 import sqlite3
 
 import pandas as pd
+import pytest
 
 from Scripts.V2.template_identity import attach_v2_player_keys
 
@@ -62,6 +63,7 @@ def _identity_database(path):
                 "position": "WR",
                 "team": "CAR",
                 "season": 2008,
+                "source_table": "Fixture_Projections",
             },
             {
                 "player_key": "newer",
@@ -69,6 +71,7 @@ def _identity_database(path):
                 "position": "WR",
                 "team": "LAR",
                 "season": 2008,
+                "source_table": "Fixture_Projections",
             },
             {
                 "player_key": "redundant-provisional",
@@ -76,6 +79,7 @@ def _identity_database(path):
                 "position": "WR",
                 "team": "CAR",
                 "season": 2008,
+                "source_table": "Fixture_Projections",
             },
             {
                 "player_key": "rookie-provisional",
@@ -83,6 +87,7 @@ def _identity_database(path):
                 "position": "RB",
                 "team": "TB",
                 "season": 2026,
+                "source_table": "Fixture_Projections",
             },
         ]
     )
@@ -133,3 +138,98 @@ def test_template_identity_retains_preplay_provisional_key(tmp_path):
     resolved = attach_v2_player_keys(frame, database)
     assert resolved.loc[0, "player_key"] == "rookie-provisional"
     assert resolved.loc[0, "player_key_match_method"] == "alias_unique"
+
+
+def test_template_identity_quarantines_stale_fftoday_alias(tmp_path):
+    database = tmp_path / "identity.sqlite3"
+    _identity_database(database)
+    with sqlite3.connect(database) as connection:
+        connection.execute(
+            """
+            INSERT INTO player_identity (
+                player_key, normalized_name, position, rookie_season,
+                last_season, draft_year, draft_team, latest_team,
+                identity_status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                "stale-provisional",
+                "stale quarterback",
+                "QB",
+                None,
+                None,
+                None,
+                "LAR",
+                "LAR",
+                "provisional",
+            ),
+        )
+        connection.execute(
+            """
+            INSERT INTO player_aliases (
+                player_key, normalized_name, position, team, season,
+                source_table
+            ) VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            (
+                "stale-provisional",
+                "stale quarterback",
+                "QB",
+                "LAR",
+                2018,
+                "FFToday_Projections",
+            ),
+        )
+
+    frame = pd.DataFrame(
+        [
+            {
+                "player": "Stale Quarterback",
+                "pos": "QB",
+                "team": "LAR",
+                "season": 2018,
+            }
+        ]
+    )
+    resolved = attach_v2_player_keys(
+        frame,
+        database,
+        require_complete=False,
+    )
+
+    assert pd.isna(resolved.loc[0, "player_key"])
+    assert resolved.loc[0, "player_key_match_method"] == (
+        "unresolved_ambiguous_identity"
+    )
+
+
+def test_template_identity_rejects_aliases_without_source_provenance(tmp_path):
+    database = tmp_path / "identity.sqlite3"
+    _identity_database(database)
+    with sqlite3.connect(database) as connection:
+        aliases = pd.read_sql_query(
+            """
+            SELECT player_key, normalized_name, position, team, season
+            FROM player_aliases
+            """,
+            connection,
+        )
+        aliases.to_sql(
+            "player_aliases",
+            connection,
+            if_exists="replace",
+            index=False,
+        )
+
+    frame = pd.DataFrame(
+        [
+            {
+                "player": "Same Player",
+                "pos": "WR",
+                "team": "CAR",
+                "season": 2008,
+            }
+        ]
+    )
+    with pytest.raises(ValueError, match="source provenance"):
+        attach_v2_player_keys(frame, database)

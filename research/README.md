@@ -14,30 +14,67 @@ reproducible bundles.
   data contract/runbook.
 
 ## Current Study Types
+- Projection V2 QB target decomposition. The 2026-07-29 strict rolling study
+  fits the same QB-only Lasso/RF/LightGBM surface to total conditional PPG and
+  to realized passing/rushing PPG separately, then sums the component
+  forecasts. The component sum plus a causal other-points adjustment worsens
+  DK RMSE by 0.0414 versus the same-model direct-total blend and improves beta
+  by 0.0270; both player-cluster intervals cross zero, recent 2023-2025 results
+  worsen in both leagues, and the directions disagree. Rookie-QB and beta
+  high-rush slices are exploratory only. Retain the direct total target and
+  preserve the component route as a diagnostic. See
+  `studies/2026-07-29_v2_qb_component_targets/`.
+- Projection V2 weekly-scoring and FFToday-vintage correction. The follow-up
+  binds every historical weekly position scorer to an explicit league, carries
+  a scoring marker into template construction, and rejects league/marker or
+  locked-V2-objective mismatches. It also quarantines 50 FFToday QB rows stored
+  under 2018 that match the provider's native 2019 vintage. Rebuilt DK/beta
+  foundations have 6,655 identities, 55,914 aliases, 31,798 projection values,
+  and 13,909 feature rows each. Locked primary RMSE is 3.1078 DK and 2.8845
+  beta versus 3.1951/2.9600 expert recalibration, both 9/9; next-year RMSE is
+  3.9137/3.5538 versus 5.2351/4.3653 expert carry, both 8/8. In the rebuilt
+  weekly slices, 5,120/5,298 paired active-PPG values and 5,147 paired paths
+  now differ across leagues; 39 beta 2018 QB rows retain an audited legacy
+  center with the unavailable V2 diagnostic left explicit. The byte-identical
+  production cutover passes handoff idempotence, all 11 auction-table parity
+  checks, Snake/source SHA-256 equality, and integrity/foreign-key checks. See
+  `studies/2026-07-29_v2_weekly_fftoday_correction/`.
+- Projection V2 identity/scoring revalidation (superseded foundation). The
+  earlier 2026-07-29 corrective
+  study consolidates governed aliases, fixes two mislabeled FantasyPros WR
+  seasons with stored/effective provenance, removes `last_season` as a hard
+  identity endpoint, and requires same-position sack estimates for beta QBs.
+  Its identity, source-season, and beta-sack methods remain accepted, but its
+  exact counts and model metrics are superseded by the FFToday quarantine
+  follow-up. See
+  `studies/2026-07-29_v2_identity_scoring_revalidation/`.
 - Projection V2 following-season residual and appearance modeling. The
   2026-07-29 study predicts `t+1` conditional PPG as a residual around the
   origin-`t` expert projection and separately predicts any `t+1` appearance.
   A one-origin embargo means forecasts at `t` train only through origins
-  `t-2`. DK/beta residual blends improve RMSE from 5.2070/4.6685 expert carry
-  to 3.9003/3.6718 and win all eight origins; appearance Brier is
-  0.1604/0.1623. Both publish 751 canonical 2027 shadow rows. A strict
-  1,620-target template replay finds negligible PPG CRPS gains and generally
-  worse contribution CRPS, so the signals remain a separate two-stage shadow
-  rather than production matching fields. See
-  `studies/2026-07-29_v2_next_year_residual/`.
+  `t-2`. The latest quarantined-lineage replay improves RMSE from
+  5.2351/4.3653 expert carry to 3.9137/3.5538 and wins all eight origins.
+  Both publish 745 canonical 2027 shadow rows. In the corrected strict
+  1,620-target template replay, next-residual rank improves DK PPG CRPS by
+  0.002006 but worsens contribution CRPS by 0.031825 with both intervals
+  excluding zero; beta's 0.001110 PPG gain and 0.000771 contribution loss are
+  uncertain. The signals remain outside production matching even though their
+  two-stage outputs feed keeper valuation. The original study is retained as
+  historical evidence; corrected metrics live in the weekly/FFToday correction
+  bundle.
 - Projection V2 locked whole-season and 2026 shadow validation. The 2026-07-29
   study freezes exact feature hashes, compact grids, and the fixed pooled
   Lasso/RF/LightGBM blend, then forecasts every 2017-2025 season using only
   earlier-season fitting, selection, routing, and calibration evidence. The
-  primary scores 3.0941 RMSE versus 3.1793 for expert recalibration and wins
-  all nine seasons; prior-only point calibration is rejected. A no-history gap
-  route improves only 0.0036 but wins all nine and remains a DK-only locked
-  secondary component. A separate beta rebuild scores 2.9109 versus 2.9759
-  expert and also wins all nine, but promotes no secondary route. Each
-  fit-through-2025 run publishes 751 unique 2026 shadow rows. Canonical
+  latest quarantined-lineage replay scores 3.1078 DK and 2.8845 beta RMSE
+  versus 3.1951/2.9600 expert recalibration, both with nine of nine wins;
+  prior-only point calibration remains rejected. Each fit-through-2025 run
+  publishes 745
+  unique 2026 shadow rows. Canonical
   `player_key` now covers 100% of both league template/map audit populations,
   and reconstruction passes with one joint donor residual/path.
-  See `studies/2026-07-29_v2_locked_final_validation/`.
+  The original study is retained as historical evidence; corrected metrics
+  live in the weekly/FFToday correction bundle.
 - Projection V2 rolling OOF modeling. The 2026-07-27 M4A study uses the
   existing five-fold per-season `SciKitModel` scheme while fitting every held
   player-season only on prior years. It compares expert/hybrid baselines,
@@ -233,10 +270,13 @@ reproducible bundles.
   `studies/2026-07-23_template_weight_sensitivity/`.
 - Weekly-template projection-weight sensitivity. The 2026-07-29 strict rolling
   replay tests higher absolute PPG, component-rank, and scoring-aligned raw
-  component-magnitude weights in DK and beta. Every global PPG/raw-component
-  bump worsens PPG, contribution, and played-games CRPS. A QB-only 50%
-  component-rank bump is directionally favorable in both leagues but its
-  clustered intervals cross zero, so production weights remain unchanged. See
+  component-magnitude weights in DK and beta. The explicit-league corrective
+  replay retains production weights: DK's 2.25 PPG weight worsens PPG CRPS by
+  0.003261 with interval above zero; beta improves PPG CRPS by only 0.000351
+  with interval crossing zero while worsening played-games CRPS by 0.002868
+  with interval above zero. The earlier DK-routed beta claim that every global
+  bump worsened every metric is superseded. See
+  `studies/2026-07-29_v2_weekly_fftoday_correction/` and the original
   `studies/2026-07-29_template_projection_weight_bump/`.
 - Additive salary normalization. The 2026-07-16 audit holds v3 raw rolling
   predictions fixed and compares the prior proportional-above-floor market

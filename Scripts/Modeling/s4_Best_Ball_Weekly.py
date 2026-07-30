@@ -1,4 +1,6 @@
 #%%
+import argparse
+import json
 import os
 import hashlib
 import re
@@ -19,7 +21,11 @@ from ff.db_operations import DataManage
 from ff import general
 import ff.data_clean as dc
 
-from Scripts.V2.config import OUTPUT_DB_PATH as V2_IDENTITY_DB_PATH
+from Scripts.V2.config import (
+    OUTPUT_DB_PATH as V2_IDENTITY_DB_PATH,
+    SOURCE_ROW_EXCLUSIONS,
+)
+from Scripts.V2.contracts import source_row_exclusion_policy_receipt
 from Scripts.V2.production_handoff import V2_DATABASES
 from Scripts.V2.template_identity import attach_v2_player_keys
 
@@ -101,6 +107,44 @@ TEMPLATE_ID_LEAGUE_OFFSETS = {
     "dk": 2 * TEMPLATE_ID_OFFSET_STEP,
     "nffc": 3 * TEMPLATE_ID_OFFSET_STEP,
     "nv": 4 * TEMPLATE_ID_OFFSET_STEP,
+}
+V2_TEMPLATE_CENTER_UNAVAILABLE_REASON_COLUMN = (
+    "v2_template_center_unavailable_reason"
+)
+V2_TEMPLATE_CENTER_POSITION_COLUMN = "v2_template_center_position"
+V2_TEMPLATE_CENTER_POSITION_MISMATCH_COLUMN = (
+    "v2_template_center_position_mismatch"
+)
+V2_TEMPLATE_CENTER_POSITION_MISMATCH_REASON_COLUMN = (
+    "v2_template_center_position_mismatch_reason"
+)
+BETA_2018_QB_CENTER_FALLBACK_EXCLUSION_ID = (
+    "fftoday_qb_stored_2018_2019_vintage_quarantine_v1"
+)
+BETA_2018_QB_CENTER_FALLBACK_REASON = (
+    "legacy_validated_oos_fallback:"
+    f"{BETA_2018_QB_CENTER_FALLBACK_EXCLUSION_ID}:"
+    "no_valid_beta_qb_sack_donor"
+)
+GOVERNED_V2_TEMPLATE_CENTER_POSITION_MISMATCHES = {
+    (
+        "b16d3ba0-39d4-5a4b-bca8-ad15e147c96b",
+        2019,
+        "WR",
+        "RB",
+    ): "canonical_hybrid_role_shift:cordarrelle_patterson",
+    (
+        "b16d3ba0-39d4-5a4b-bca8-ad15e147c96b",
+        2021,
+        "WR",
+        "RB",
+    ): "canonical_hybrid_role_shift:cordarrelle_patterson",
+    (
+        "2f3a5f36-ad51-527b-8fdc-ca0a5e431ad6",
+        2022,
+        "RB",
+        "WR",
+    ): "canonical_hybrid_role_shift:ty_montgomery",
 }
 
 LOW_ACTIVE_GAME_THRESHOLD = 2
@@ -232,6 +276,12 @@ MATCH_OUTPUT_COLS = [
 root_path = general.get_main_path("Fantasy_Football")
 db_path = f"{root_path}/Data/Databases/"
 dm = DataManage(db_path)
+DEFAULT_SIMULATION_DB_PATH = (
+    Path(root_path) / "Data" / "Databases" / "Simulation.sqlite3"
+).resolve()
+SIMULATION_DB_PATH = DEFAULT_SIMULATION_DB_PATH
+SIMULATION_DB_NAME = SIMULATION_DB_PATH.stem
+simulation_dm = DataManage(str(SIMULATION_DB_PATH.parent))
 
 daily_root_path = general.get_main_path("Daily_Fantasy_Data")
 daily_db_path = f"{daily_root_path}/Databases/"
@@ -246,6 +296,111 @@ def clean_player_names(df):
     df = df.copy()
     df["player"] = df["player"].apply(dc.name_clean)
     return df
+
+
+def resolve_league(league=None):
+    league = LEAGUE if league is None else league
+    league = str(league).strip().lower()
+    if league not in TEMPLATE_ID_LEAGUE_OFFSETS:
+        valid = ", ".join(sorted(TEMPLATE_ID_LEAGUE_OFFSETS))
+        raise ValueError(f"League must be one of: {valid}")
+    return league
+
+
+def set_active_league(league):
+    global LEAGUE
+    LEAGUE = resolve_league(league)
+    return LEAGUE
+
+
+def set_simulation_db(simulation_db):
+    simulation_db = Path(simulation_db).expanduser().resolve()
+    if simulation_db.suffix.lower() != ".sqlite3":
+        raise ValueError("Simulation database must use the .sqlite3 extension.")
+    if not simulation_db.is_file():
+        raise FileNotFoundError(
+            f"Simulation database does not exist: {simulation_db}"
+        )
+
+    global SIMULATION_DB_PATH, SIMULATION_DB_NAME, simulation_dm
+    SIMULATION_DB_PATH = simulation_db
+    SIMULATION_DB_NAME = simulation_db.stem
+    simulation_dm = DataManage(str(simulation_db.parent))
+    return SIMULATION_DB_PATH
+
+
+def resolve_v2_database(v2_database=None, league=None):
+    league = resolve_league(league)
+    if v2_database is None:
+        v2_database = V2_DATABASES.get(league, V2_IDENTITY_DB_PATH)
+    v2_database = Path(v2_database).expanduser().resolve()
+    if not v2_database.is_file():
+        raise FileNotFoundError(
+            f"V2 database does not exist: {v2_database}"
+        )
+
+    required_tables = {"player_identity", "player_aliases"}
+    if league in V2_DATABASES:
+        required_tables.update(
+            {"locked_candidate_runs", "locked_template_handoff"}
+        )
+    with sqlite3.connect(v2_database) as connection:
+        tables = {
+            row[0]
+            for row in connection.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            )
+        }
+        missing_tables = sorted(required_tables - tables)
+        if missing_tables:
+            raise ValueError(
+                "V2 database is missing required tables: "
+                + ", ".join(missing_tables)
+            )
+        if league in V2_DATABASES:
+            locked_runs = connection.execute(
+                """
+                SELECT DISTINCT handoff.model_run_id,
+                                runs.metadata_json
+                FROM locked_template_handoff handoff
+                LEFT JOIN locked_candidate_runs runs
+                  ON runs.model_run_id=handoff.model_run_id
+                """
+            ).fetchall()
+            if not locked_runs:
+                raise ValueError(
+                    f"V2 database has no active locked handoff: {v2_database}"
+                )
+            locked_objectives = set()
+            for model_run_id, metadata_json in locked_runs:
+                if metadata_json is None:
+                    raise ValueError(
+                        "V2 locked handoff has no candidate-run metadata for "
+                        f"{model_run_id}: {v2_database}"
+                    )
+                try:
+                    metadata = json.loads(metadata_json)
+                except (TypeError, json.JSONDecodeError) as exc:
+                    raise ValueError(
+                        "V2 locked handoff has invalid candidate-run metadata "
+                        f"for {model_run_id}: {v2_database}"
+                    ) from exc
+                scoring_objective = metadata.get("scoring_objective")
+                if not scoring_objective:
+                    raise ValueError(
+                        "V2 locked handoff metadata has no scoring_objective "
+                        f"for {model_run_id}: {v2_database}"
+                    )
+                locked_objectives.add(
+                    str(scoring_objective).strip().lower()
+                )
+            if locked_objectives != {league}:
+                raise ValueError(
+                    "V2 locked handoff scoring objective "
+                    f"{sorted(locked_objectives)} does not match {league}: "
+                    f"{v2_database}"
+                )
+    return v2_database
 
 
 def canonical_team(team):
@@ -433,13 +588,22 @@ def calc_fp(df, pts_dict, output_col):
     return df
 
 
-def add_fantasy_points(df, pos, filter_qb_workload=True):
+def add_fantasy_points(df, pos, league, filter_qb_workload=True):
+    league = resolve_league(league)
     df = add_bonus_cols(df)
 
-    df = calc_fp(df, get_scoring_dict("rush"), "fantasy_pts_rush")
+    df = calc_fp(
+        df,
+        get_scoring_dict("rush", league=league),
+        "fantasy_pts_rush",
+    )
 
     if pos == "QB":
-        df = calc_fp(df, get_scoring_dict("passing"), "fantasy_pts_pass")
+        df = calc_fp(
+            df,
+            get_scoring_dict("passing", league=league),
+            "fantasy_pts_pass",
+        )
         df["fantasy_pts"] = df["fantasy_pts_rush"] + df["fantasy_pts_pass"]
 
         df = add_missing_cols(df, ["pass_qb_dropback_sum", "rush_rush_attempt_sum"])
@@ -447,7 +611,11 @@ def add_fantasy_points(df, pos, filter_qb_workload=True):
         if filter_qb_workload:
             df = df[df["total_plays"] > 15].reset_index(drop=True)
     else:
-        df = calc_fp(df, get_scoring_dict("receiving"), "fantasy_pts_rec")
+        df = calc_fp(
+            df,
+            get_scoring_dict("receiving", league=league),
+            "fantasy_pts_rec",
+        )
         df["fantasy_pts"] = df["fantasy_pts_rush"] + df["fantasy_pts_rec"]
 
     return df
@@ -956,14 +1124,14 @@ def rows_matching(df, criteria):
 
 
 def db_table_exists(table_name):
-    exists = dm.read(
+    exists = simulation_dm.read(
         f"""
         SELECT name
         FROM sqlite_master
         WHERE type='table'
               AND name='{table_name}'
         """,
-        "Simulation",
+        SIMULATION_DB_NAME,
     )
     return len(exists) > 0
 
@@ -978,16 +1146,19 @@ def infer_existing_best_ball_league():
     for table_name, col in candidates:
         if not db_table_exists(table_name):
             continue
-        existing = dm.read(f"SELECT * FROM {table_name} LIMIT 0", "Simulation")
+        existing = simulation_dm.read(
+            f"SELECT * FROM {table_name} LIMIT 0",
+            SIMULATION_DB_NAME,
+        )
         if col not in existing.columns:
             continue
-        values = dm.read(
+        values = simulation_dm.read(
             f"""
             SELECT DISTINCT {col} inferred_league
             FROM {table_name}
             WHERE {col} IS NOT NULL
             """,
-            "Simulation",
+            SIMULATION_DB_NAME,
         )
         values = values["inferred_league"].dropna().astype(str).tolist()
         if len(values) == 1:
@@ -1015,7 +1186,10 @@ def prepare_existing_best_ball_table(existing, table_name):
 
 def replace_table_slice(table_name, new_df, keep_existing_mask_func):
     if db_table_exists(table_name):
-        existing = dm.read(f"SELECT * FROM {table_name}", "Simulation")
+        existing = simulation_dm.read(
+            f"SELECT * FROM {table_name}",
+            SIMULATION_DB_NAME,
+        )
         existing = prepare_existing_best_ball_table(existing, table_name)
         keep_existing = existing[keep_existing_mask_func(existing)].copy()
         combined = pd.concat([keep_existing, new_df], ignore_index=True, sort=False)
@@ -1026,7 +1200,12 @@ def replace_table_slice(table_name, new_df, keep_existing_mask_func):
         col for col in combined.columns if col not in new_df.columns
     ]
     combined = combined[ordered_cols]
-    dm.write_to_db(combined, "Simulation", table_name, "replace")
+    simulation_dm.write_to_db(
+        combined,
+        SIMULATION_DB_NAME,
+        table_name,
+        "replace",
+    )
 
 
 def keep_not_current_league(df):
@@ -1084,15 +1263,21 @@ def write_best_ball_tables(
         replace_table_slice(table_name, df, keep_existing)
 
 
-def attach_weekly_handoff_player_keys(templates, player_map):
+def attach_weekly_handoff_player_keys(
+    templates,
+    player_map,
+    *,
+    v2_database=None,
+):
+    v2_database = resolve_v2_database(v2_database)
     templates = attach_v2_player_keys(
         templates,
-        V2_IDENTITY_DB_PATH,
+        v2_database,
         season_column="season",
     )
     player_map = attach_v2_player_keys(
         player_map,
-        V2_IDENTITY_DB_PATH,
+        v2_database,
         season_column="year",
     )
     return templates, player_map
@@ -1214,7 +1399,11 @@ def load_validation_ensemble_predictions(max_template_season):
     return validation_preds
 
 
-def load_historical_projection_context(max_template_season):
+def load_historical_projection_context(
+    max_template_season,
+    *,
+    v2_database=None,
+):
     proj = pd.DataFrame()
 
     for pos in POSITIONS:
@@ -1262,6 +1451,7 @@ def load_historical_projection_context(max_template_season):
     proj = attach_locked_v2_historical_centers(
         proj,
         max_template_season=max_template_season,
+        v2_database=v2_database,
     )
     proj = add_projection_buckets(
         proj,
@@ -1278,10 +1468,140 @@ def load_historical_projection_context(max_template_season):
     return proj.reset_index(drop=True)
 
 
+def _beta_2018_qb_center_fallback_proof(
+    connection,
+    model_run_ids,
+):
+    """Return the governed fallback reason only for an actively proven quarantine."""
+
+    rules = [
+        rule
+        for rule in SOURCE_ROW_EXCLUSIONS
+        if str(rule.get("exclusion_id", "")).strip()
+        == BETA_2018_QB_CENTER_FALLBACK_EXCLUSION_ID
+    ]
+    if len(rules) != 1:
+        return None
+    rule = rules[0]
+    expected_scope = ("FFToday_Projections", "QB", 2018)
+    observed_scope = (
+        str(rule.get("source_table", "")).strip(),
+        str(rule.get("position", "")).strip().upper(),
+        int(rule.get("stored_season", -1)),
+    )
+    reference = str(rule.get("reference", "")).strip()
+    if observed_scope != expected_scope or not reference:
+        return None
+
+    model_run_ids = sorted(
+        {str(model_run_id).strip() for model_run_id in model_run_ids}
+    )
+    if not model_run_ids:
+        return None
+    required_tables = {
+        "locked_candidate_runs",
+        "build_runs",
+        "source_manifest",
+    }
+    available_tables = {
+        row[0]
+        for row in connection.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        )
+    }
+    if not required_tables.issubset(available_tables):
+        return None
+
+    placeholders = ", ".join("?" for _ in model_run_ids)
+    candidate_rows = connection.execute(
+        f"""
+        SELECT DISTINCT model_run_id, feature_run_id
+        FROM locked_candidate_runs
+        WHERE model_run_id IN ({placeholders})
+        """,
+        model_run_ids,
+    ).fetchall()
+    candidate_features = {
+        str(model_run_id): str(feature_run_id)
+        for model_run_id, feature_run_id in candidate_rows
+        if model_run_id is not None and feature_run_id is not None
+    }
+    if set(candidate_features) != set(model_run_ids):
+        return None
+
+    for feature_run_id in sorted(set(candidate_features.values())):
+        feature_builds = connection.execute(
+            """
+            SELECT foundation_run_id
+            FROM build_runs
+            WHERE run_id=?
+              AND component='milestone_3'
+              AND league='beta'
+              AND status='complete'
+            """,
+            (feature_run_id,),
+        ).fetchall()
+        if len(feature_builds) != 1 or feature_builds[0][0] is None:
+            return None
+        foundation_run_id = str(feature_builds[0][0])
+        expected_policy = source_row_exclusion_policy_receipt(
+            foundation_run_id
+        )
+        policy_rows = connection.execute(
+            """
+            SELECT source_uri, source_sha256, row_count
+            FROM source_manifest
+            WHERE run_id=?
+              AND component=?
+              AND source_name=?
+            """,
+            (
+                foundation_run_id,
+                expected_policy["component"],
+                expected_policy["source_name"],
+            ),
+        ).fetchall()
+        if len(policy_rows) != 1:
+            return None
+        policy_uri, policy_hash, policy_count = policy_rows[0]
+        if (
+            str(policy_uri) != expected_policy["source_uri"]
+            or str(policy_hash) != expected_policy["source_sha256"]
+            or policy_count is None
+            or int(policy_count) != int(expected_policy["row_count"])
+        ):
+            return None
+
+        quarantine_rows = connection.execute(
+            """
+            SELECT source_uri, row_count
+            FROM source_manifest
+            WHERE run_id=?
+              AND component='source_quarantine'
+              AND source_name=?
+            """,
+            (
+                feature_run_id,
+                BETA_2018_QB_CENTER_FALLBACK_EXCLUSION_ID,
+            ),
+        ).fetchall()
+        if len(quarantine_rows) != 1:
+            return None
+        quarantine_uri, quarantine_count = quarantine_rows[0]
+        if (
+            str(quarantine_uri) != reference
+            or quarantine_count is None
+            or int(quarantine_count) <= 0
+        ):
+            return None
+    return BETA_2018_QB_CENTER_FALLBACK_REASON
+
+
 def attach_locked_v2_historical_centers(
     projections,
     *,
     max_template_season,
+    v2_database=None,
 ):
     """Attach strict-OOS V2 centers without replacing validated donor centers.
 
@@ -1300,6 +1620,10 @@ def attach_locked_v2_historical_centers(
     ]
     projections["v2_point_center_source"] = pd.NA
     projections["v2_template_center_available"] = 0
+    projections[V2_TEMPLATE_CENTER_UNAVAILABLE_REASON_COLUMN] = pd.NA
+    projections[V2_TEMPLATE_CENTER_POSITION_COLUMN] = pd.NA
+    projections[V2_TEMPLATE_CENTER_POSITION_MISMATCH_COLUMN] = 0
+    projections[V2_TEMPLATE_CENTER_POSITION_MISMATCH_REASON_COLUMN] = pd.NA
     projections["historical_center_policy"] = "legacy_validated_oos"
     projections["v2_recenter_promoted"] = 0
     if LEAGUE not in V2_DATABASES:
@@ -1308,11 +1632,7 @@ def attach_locked_v2_historical_centers(
         )
         return projections
 
-    v2_database = Path(V2_DATABASES[LEAGUE])
-    if not v2_database.exists():
-        raise FileNotFoundError(
-            f"Missing {LEAGUE} V2 projection database: {v2_database}"
-        )
+    v2_database = resolve_v2_database(v2_database)
     projections = attach_v2_player_keys(
         projections,
         v2_database,
@@ -1321,8 +1641,10 @@ def attach_locked_v2_historical_centers(
     with sqlite3.connect(v2_database) as connection:
         centers = pd.read_sql_query(
             """
-            SELECT player_key,
+            SELECT model_run_id,
+                   player_key,
                    CAST(season AS INTEGER) season,
+                   position locked_v2_center_position,
                    historical_pred_fp_per_game v2_historical_pred_fp_per_game,
                    point_center_source v2_point_center_source,
                    template_center_available
@@ -1336,36 +1658,155 @@ def attach_locked_v2_historical_centers(
         raise ValueError(
             f"{LEAGUE} locked template handoff contains duplicate keys"
         )
+    available = pd.to_numeric(
+        centers["template_center_available"],
+        errors="coerce",
+    )
+    if available.isna().any() or not available.isin([0, 1]).all():
+        raise ValueError(
+            f"{LEAGUE} locked template handoff has invalid "
+            "template_center_available values"
+        )
+    center_present = centers["v2_historical_pred_fp_per_game"].notna()
+    inconsistent_center = available.astype(int).ne(center_present.astype(int))
+    if inconsistent_center.any():
+        preview = centers.loc[
+            inconsistent_center,
+            [
+                "player_key",
+                "season",
+                "v2_historical_pred_fp_per_game",
+                "template_center_available",
+            ],
+        ].head(10)
+        raise ValueError(
+            f"{LEAGUE} locked template handoff center availability is "
+            f"inconsistent: {preview.to_dict('records')}"
+        )
+    centers["template_center_available"] = available.astype(int)
     projections = projections.merge(
         centers,
         on=["player_key", "season"],
         how="left",
         validate="one_to_one",
         suffixes=("", "_locked"),
+        indicator="_v2_center_join",
     )
     if "v2_point_center_source_locked" in projections:
         projections["v2_point_center_source"] = projections.pop(
             "v2_point_center_source_locked"
         )
     v2_era = projections["season"].between(2017, max_template_season)
-    missing_v2 = (
-        v2_era
-        & projections["v2_historical_pred_fp_per_game"].isna()
-    )
-    if missing_v2.any():
+    missing_handoff = v2_era & projections["_v2_center_join"].ne("both")
+    if missing_handoff.any():
         preview = projections.loc[
-            missing_v2,
+            missing_handoff,
+            ["player", "pos", "season", "player_key"],
+        ].head(10)
+        raise ValueError(
+            f"{LEAGUE} historical V2 point-center handoff coverage is "
+            f"incomplete: {preview.to_dict('records')}"
+        )
+    position_mismatch = (
+        v2_era
+        & projections["_v2_center_join"].eq("both")
+        & projections["locked_v2_center_position"].ne(projections["pos"])
+    )
+    governed_position_mismatch = pd.Series(
+        False,
+        index=projections.index,
+        dtype=bool,
+    )
+    for mismatch_key, mismatch_reason in (
+        GOVERNED_V2_TEMPLATE_CENTER_POSITION_MISMATCHES.items()
+    ):
+        player_key, season, template_position, locked_position = mismatch_key
+        governed_row = (
+            position_mismatch
+            & projections["player_key"].astype(str).eq(player_key)
+            & projections["season"].eq(season)
+            & projections["pos"].eq(template_position)
+            & projections["locked_v2_center_position"].eq(locked_position)
+        )
+        governed_position_mismatch |= governed_row
+        projections.loc[
+            governed_row,
+            V2_TEMPLATE_CENTER_POSITION_MISMATCH_REASON_COLUMN,
+        ] = mismatch_reason
+    unexpected_position_mismatch = (
+        position_mismatch & ~governed_position_mismatch
+    )
+    if unexpected_position_mismatch.any():
+        preview = projections.loc[
+            unexpected_position_mismatch,
+            [
+                "player",
+                "player_key",
+                "season",
+                "pos",
+                "locked_v2_center_position",
+            ],
+        ].head(10)
+        raise ValueError(
+            f"{LEAGUE} historical V2 point-center positions are "
+            f"inconsistent: {preview.to_dict('records')}"
+        )
+    projections[V2_TEMPLATE_CENTER_POSITION_COLUMN] = projections[
+        "locked_v2_center_position"
+    ]
+    projections[V2_TEMPLATE_CENTER_POSITION_MISMATCH_COLUMN] = (
+        position_mismatch.astype(int)
+    )
+    missing_v2 = v2_era & projections[
+        "v2_historical_pred_fp_per_game"
+    ].isna()
+    allowed_fallback = (
+        missing_v2
+        & projections["template_center_available"].eq(0)
+        & projections["pos"].eq("QB")
+        & projections["season"].eq(2018)
+        & (LEAGUE == "beta")
+    )
+    unexpected_missing = missing_v2 & ~allowed_fallback
+    if unexpected_missing.any():
+        preview = projections.loc[
+            unexpected_missing,
             ["player", "pos", "season", "player_key"],
         ].head(10)
         raise ValueError(
             f"{LEAGUE} historical V2 point-center coverage is incomplete: "
             f"{preview.to_dict('records')}"
         )
-    use_v2 = projections["v2_historical_pred_fp_per_game"].notna()
-    projections["v2_template_center_available"] = use_v2.astype(int)
+    if allowed_fallback.any():
+        with sqlite3.connect(v2_database) as connection:
+            fallback_proof = _beta_2018_qb_center_fallback_proof(
+                connection,
+                projections.loc[
+                    allowed_fallback,
+                    "model_run_id",
+                ]
+                .dropna()
+                .astype(str)
+                .unique(),
+            )
+        if fallback_proof is None:
+            raise ValueError(
+                "beta 2018 QB historical V2 center fallback lacks the active "
+                "FFToday quarantine proof"
+            )
+        projections.loc[
+            allowed_fallback,
+            V2_TEMPLATE_CENTER_UNAVAILABLE_REASON_COLUMN,
+        ] = fallback_proof
+    projections["v2_template_center_available"] = (
+        projections["template_center_available"].fillna(0).astype(int)
+    )
     projections.drop(
         columns=[
             "template_center_available",
+            "model_run_id",
+            "locked_v2_center_position",
+            "_v2_center_join",
         ],
         inplace=True,
         errors="ignore",
@@ -1373,7 +1814,10 @@ def attach_locked_v2_historical_centers(
     return projections
 
 
-def load_weekly_points(max_template_season):
+def load_weekly_points(max_template_season, league=None):
+    # Resolve at call time so research callers that temporarily set
+    # builder.LEAGUE still receive the requested scoring rules.
+    league = resolve_league(league)
     weekly = pd.DataFrame()
 
     for pos in POSITIONS:
@@ -1405,6 +1849,7 @@ def load_weekly_points(max_template_season):
         scored_pos = add_fantasy_points(
             df_pos,
             pos,
+            league=league,
             filter_qb_workload=False,
         )
         scored_pos["pos"] = pos
@@ -1439,10 +1884,45 @@ def load_weekly_points(max_template_season):
 
     weekly["season"] = weekly["season"].astype(int)
     weekly["week"] = weekly["week"].astype(int)
+    weekly["scoring_league"] = league
     return weekly
 
 
-def build_weekly_templates(proj, weekly):
+def resolve_template_scoring_league(weekly, league=None):
+    requested_league = (
+        resolve_league(league)
+        if league is not None
+        else None
+    )
+    weekly_leagues = []
+    if "scoring_league" in weekly.columns:
+        weekly_leagues = sorted(
+            {
+                resolve_league(value)
+                for value in weekly["scoring_league"].dropna().unique()
+            }
+        )
+    if len(weekly_leagues) > 1:
+        raise ValueError(
+            f"Weekly rows contain multiple scoring leagues: {weekly_leagues}"
+        )
+    if (
+        requested_league is not None
+        and weekly_leagues
+        and weekly_leagues[0] != requested_league
+    ):
+        raise ValueError(
+            "Weekly scoring league "
+            f"{weekly_leagues[0]} does not match requested template league "
+            f"{requested_league}."
+        )
+    if weekly_leagues:
+        return weekly_leagues[0]
+    return requested_league or resolve_league()
+
+
+def build_weekly_templates(proj, weekly, league=None):
+    league = resolve_template_scoring_league(weekly, league=league)
     base_cols = [
         "player",
         "player_key",
@@ -1460,6 +1940,10 @@ def build_weekly_templates(proj, weekly):
         "v2_historical_pred_fp_per_game",
         "v2_point_center_source",
         "v2_template_center_available",
+        V2_TEMPLATE_CENTER_UNAVAILABLE_REASON_COLUMN,
+        V2_TEMPLATE_CENTER_POSITION_COLUMN,
+        V2_TEMPLATE_CENTER_POSITION_MISMATCH_COLUMN,
+        V2_TEMPLATE_CENTER_POSITION_MISMATCH_REASON_COLUMN,
         "historical_center_policy",
         "v2_recenter_promoted",
         "validation_ensemble_sources",
@@ -1480,10 +1964,10 @@ def build_weekly_templates(proj, weekly):
         col for col in MATCH_OUTPUT_COLS if col in proj.columns and col not in base_cols
     ]
     template_index = proj[template_cols].copy()
-    template_index["league"] = LEAGUE
+    template_index["league"] = league
     template_index["template_local_id"] = np.arange(1, len(template_index) + 1)
     template_index["template_id"] = (
-        template_id_offset(LEAGUE) + template_index["template_local_id"]
+        template_id_offset(league) + template_index["template_local_id"]
     )
 
     week_grid = pd.DataFrame({"week": WEEKS})
@@ -1493,7 +1977,7 @@ def build_weekly_templates(proj, weekly):
         week_grid, how="cross"
     )
 
-    weekly = weekly.copy()
+    weekly = weekly.drop(columns=["scoring_league"], errors="ignore").copy()
     if "played_week" not in weekly.columns:
         # Backward-compatible fixture/legacy input: any scored source row is
         # also evidence that the player participated.
@@ -1636,6 +2120,10 @@ def build_weekly_templates(proj, weekly):
         "v2_historical_pred_fp_per_game",
         "v2_point_center_source",
         "v2_template_center_available",
+        V2_TEMPLATE_CENTER_UNAVAILABLE_REASON_COLUMN,
+        V2_TEMPLATE_CENTER_POSITION_COLUMN,
+        V2_TEMPLATE_CENTER_POSITION_MISMATCH_COLUMN,
+        V2_TEMPLATE_CENTER_POSITION_MISMATCH_REASON_COLUMN,
         "historical_center_policy",
         "v2_recenter_promoted",
         "validation_ensemble_sources",
@@ -2388,7 +2876,7 @@ def load_current_player_context():
         projection_col="current_avg_proj_points",
     )
 
-    adp = dm.read(
+    adp = simulation_dm.read(
         f"""
         SELECT player,
                CAST(year AS INTEGER) year,
@@ -2399,7 +2887,7 @@ def load_current_player_context():
         WHERE year={YEAR}
               AND league='{LEAGUE}'
         """,
-        "Simulation",
+        SIMULATION_DB_NAME,
     )
     adp = clean_player_names(adp)
     adp = adp.sort_values(["player", "adp_avg_pick"]).drop_duplicates(["player"])
@@ -2442,7 +2930,7 @@ def load_current_player_context():
 
 
 def build_player_map_base():
-    preds = dm.read(
+    preds = simulation_dm.read(
         f"""
         SELECT *
         FROM Final_Predictions_Resid
@@ -2450,7 +2938,7 @@ def build_player_map_base():
               AND version='{LEAGUE}'
               AND dataset='{PRED_VERSION}'
         """,
-        "Simulation",
+        SIMULATION_DB_NAME,
     )
     preds = clean_player_names(preds)
     preds = add_projection_buckets(
@@ -2652,7 +3140,7 @@ def build_adp_audit(player_map):
         how="left",
     )
 
-    avg_adp = dm.read(
+    avg_adp = simulation_dm.read(
         f"""
         SELECT player avg_adp_player,
                CAST(year AS INTEGER) year,
@@ -2666,7 +3154,7 @@ def build_adp_audit(player_map):
         WHERE year={YEAR}
               AND league='{LEAGUE}'
         """,
-        "Simulation",
+        SIMULATION_DB_NAME,
     )
 
     if len(avg_adp) == 0:
@@ -2835,7 +3323,7 @@ def build_adp_audit(player_map):
 
 
 def copy_simulation_db_to_apps():
-    src = Path(root_path) / "Data" / "Databases" / "Simulation.sqlite3"
+    src = SIMULATION_DB_PATH
     generated_tables = [
         "Final_Predictions_Resid",
         "V2_Production_Projection_Handoff",
@@ -3014,17 +3502,106 @@ def copy_simulation_db_to_apps():
         print(f"Copied Simulation.sqlite3 to {snake_dst}")
 
 
-def main():
+def parse_args(argv=None):
+    parser = argparse.ArgumentParser(
+        description="Build league-specific best-ball weekly templates."
+    )
+    parser.add_argument(
+        "--league",
+        choices=sorted(TEMPLATE_ID_LEAGUE_OFFSETS),
+        default=None,
+        help=f"Scoring/output league (default: {LEAGUE}).",
+    )
+    parser.add_argument(
+        "--simulation-db",
+        type=Path,
+        default=None,
+        help="Existing Simulation.sqlite3-compatible staging target.",
+    )
+    parser.add_argument(
+        "--v2-db",
+        type=Path,
+        default=None,
+        help="V2 database used for both locked centers and player identity.",
+    )
+    parser.add_argument(
+        "--no-app-sync",
+        action="store_true",
+        help="Do not synchronize generated tables to application databases.",
+    )
+    return parser.parse_args(argv)
+
+
+def main(
+    league=None,
+    simulation_db=None,
+    v2_database=None,
+    sync_apps=True,
+):
+    active_league = set_active_league(LEAGUE if league is None else league)
+    if simulation_db is not None:
+        set_simulation_db(simulation_db)
+    if SIMULATION_DB_PATH != DEFAULT_SIMULATION_DB_PATH and sync_apps:
+        raise ValueError(
+            "A custom simulation database requires sync_apps=False "
+            "(CLI: --no-app-sync)."
+        )
+    if (
+        SIMULATION_DB_PATH != DEFAULT_SIMULATION_DB_PATH
+        and v2_database is None
+    ):
+        raise ValueError(
+            "A custom simulation database requires an explicit v2_database "
+            "(CLI: --v2-db) to prevent mixing staged and live inputs."
+        )
+    active_v2_database = resolve_v2_database(
+        v2_database,
+        league=active_league,
+    )
+    live_v2_databases = {
+        Path(path).resolve()
+        for path in [V2_IDENTITY_DB_PATH, *V2_DATABASES.values()]
+    }
+    configured_v2_database = Path(
+        V2_DATABASES.get(active_league, V2_IDENTITY_DB_PATH)
+    ).resolve()
+    if (
+        SIMULATION_DB_PATH == DEFAULT_SIMULATION_DB_PATH
+        and active_v2_database != configured_v2_database
+    ):
+        raise ValueError(
+            "The live Simulation database requires the configured "
+            f"{active_league} V2 database: {configured_v2_database}"
+        )
+    if (
+        SIMULATION_DB_PATH != DEFAULT_SIMULATION_DB_PATH
+        and active_v2_database in live_v2_databases
+    ):
+        raise ValueError(
+            "A custom simulation database requires a staged V2 database "
+            "copy, not a live V2 database."
+        )
+
     max_template_season = min(YEAR - 1, get_daily_max_template_season())
     print(
         f"Building weekly templates for {TEMPLATE_SEASON_MIN}-{max_template_season} "
-        f"using {LEAGUE} scoring and {WEEK_COUNT} weeks..."
+        f"using {active_league} scoring and {WEEK_COUNT} weeks..."
     )
 
-    proj = load_historical_projection_context(max_template_season)
-    weekly = load_weekly_points(max_template_season)
+    proj = load_historical_projection_context(
+        max_template_season,
+        v2_database=active_v2_database,
+    )
+    weekly = load_weekly_points(
+        max_template_season,
+        league=active_league,
+    )
 
-    templates = build_weekly_templates(proj, weekly)
+    templates = build_weekly_templates(
+        proj,
+        weekly,
+        league=active_league,
+    )
     template_audit = build_template_join_audit(templates)
     player_map_base = build_player_map_base()
     bucket_audit = build_bucket_comparability_audit(proj, player_map_base)
@@ -3033,6 +3610,7 @@ def main():
     templates, player_map = attach_weekly_handoff_player_keys(
         templates,
         player_map,
+        v2_database=active_v2_database,
     )
     player_pool_audit = build_player_pool_audit(player_map, pool_members, templates)
     adp_audit = build_adp_audit(player_map)
@@ -3049,7 +3627,8 @@ def main():
         adp_audit,
     )
 
-    copy_simulation_db_to_apps()
+    if sync_apps:
+        copy_simulation_db_to_apps()
 
     print("\nTemplate count by position:")
     print(templates.groupby("pos").template_id.count())
@@ -3263,6 +3842,12 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    args = parse_args()
+    main(
+        league=args.league,
+        simulation_db=args.simulation_db,
+        v2_database=args.v2_db,
+        sync_apps=not args.no_app_sync,
+    )
 
 #%%

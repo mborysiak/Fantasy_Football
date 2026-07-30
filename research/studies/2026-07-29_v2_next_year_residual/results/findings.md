@@ -1,5 +1,10 @@
 # Findings
 
+> Superseded data lineage: these metrics predate the governed identity,
+> source-season, and beta provider-scoring corrections. Retain them as
+> historical evidence only. The accepted corrective replay is documented in
+> `../../2026-07-29_v2_identity_scoring_revalidation/results/findings.md`.
+
 The leakage-safe next-year residual model is a useful shadow replacement for
 the legacy forward-filled target, but it is not a new weekly-template matching
 feature.

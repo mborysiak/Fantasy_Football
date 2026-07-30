@@ -19,18 +19,67 @@ from Scripts.V2.config import (
     POSITIONS,
     SOURCE_DB_PATH,
     START_SEASON,
+    TEAM_MAP,
 )
 from Scripts.V2.contracts import (
     PLAYER_ALIAS_COLUMNS,
     PLAYER_IDENTITY_COLUMNS,
+    SOURCE_ROW_EXCLUSION_ID_COLUMN,
+    SOURCE_ROW_EXCLUSION_REFERENCE_COLUMN,
+    SOURCE_SEASON_OVERRIDE_ID_COLUMN,
+    SOURCE_SEASON_OVERRIDE_REASON_COLUMN,
+    SOURCE_SEASON_OVERRIDE_REFERENCE_COLUMN,
+    SOURCE_STORED_SEASON_COLUMN,
     SOURCE_MANIFEST_COLUMNS,
     align_columns,
+    apply_source_row_exclusions,
+    apply_source_season_overrides,
+    assert_no_source_row_exclusions,
     bytes_sha256,
     normalize_player_name,
     normalize_source_position,
+    partition_source_row_exclusions,
     stable_player_key,
     table_exists,
 )
+
+# Deliberately narrow, reviewed exceptions for provider names that cannot be
+# recovered by punctuation/suffix normalization.  A ``None`` source applies
+# across providers; source-specific rules contain known provider truncations.
+GOVERNED_NAME_ALIASES: dict[tuple[str | None, str], str] = {
+    (None, "tet mcmillan"): "tetairoa mcmillan",
+    ("fantasypros", "amon ra st"): "amon ra st brown",
+    ("fantasypros", "equanimeous st"): "equanimeous st brown",
+    ("adp_mfl", "brown st"): "equanimeous st brown",
+    ("fantasydata", "drew ogletree"): "andrew ogletree",
+    ("fantasypros", "drew ogletree"): "andrew ogletree",
+    ("fantasydata", "irv charles"): "irvin charles",
+    ("barret_rank", "jacorey croskey merritt"): (
+        "jacory croskey merritt"
+    ),
+    ("adp_average_nffc", "jayden ott"): "jaydn ott",
+    ("nffc_best_ball_overall", "jayden ott"): "jaydn ott",
+    ("nffc_rotowire_online", "jayden ott"): "jaydn ott",
+    ("adp_fpros", "matt hibner"): "matthew hibner",
+    ("fantasydata", "matt hibner"): "matthew hibner",
+    ("fantasypros_best_ball_adp", "matt hibner"): "matthew hibner",
+    ("adp_average_nffc", "nathan carter"): "nate carter",
+    ("fantasydata", "nathan carter"): "nate carter",
+    ("fff", "nathan carter"): "nate carter",
+    ("nffc_best_ball_25s50s", "nathan carter"): "nate carter",
+    ("nffc_best_ball_overall", "nathan carter"): "nate carter",
+    ("fantasydata", "scotty miller"): "scott miller",
+    ("fantasypros", "scotty miller"): "scott miller",
+    ("fantasypros_best_ball_adp", "scotty miller"): "scott miller",
+    ("fftoday", "scotty miller"): "scott miller",
+}
+
+# Tet entered the production lineage under this provisional key before nflverse
+# exposed his GSIS identity.  Keep the production key authoritative when both
+# historical rows are present so downstream player-key continuity is preserved.
+GOVERNED_STABLE_PLAYER_KEYS: dict[str, str] = {
+    "00-0040124": "c16a5e67-fff0-57b9-838c-c8df91df7b9d",
+}
 
 
 def fetch_csv(url: str) -> tuple[pd.DataFrame, str]:
@@ -51,6 +100,32 @@ def _clean_text(value: object) -> object:
         return pd.NA
     text = str(value).strip()
     return text if text else pd.NA
+
+
+def _normalize_team(value: object) -> str | None:
+    if value is None or pd.isna(value):
+        return None
+    team = str(value).strip().upper()
+    return TEAM_MAP.get(team, team) if team else None
+
+
+def _governed_match_name(
+    normalized_name: object,
+    source: object = None,
+) -> str:
+    """Return the reviewed canonical match name for a provider name."""
+    name = normalize_player_name(normalized_name)
+    if not name:
+        return ""
+    source_name = (
+        str(source).strip().lower()
+        if source is not None and pd.notna(source)
+        else None
+    )
+    return GOVERNED_NAME_ALIASES.get(
+        (source_name, name),
+        GOVERNED_NAME_ALIASES.get((None, name), name),
+    )
 
 
 def _existing_key_maps(
@@ -77,16 +152,22 @@ def _existing_key_maps(
         if getattr(row, "identity_status", None) == "provisional":
             draft_year = getattr(row, "draft_year", None)
             draft_value = int(draft_year) if pd.notna(draft_year) else None
-            provisional_candidates[
-                (
-                    str(row.normalized_name),
-                    str(row.position),
-                    draft_value,
-                )
-            ].append(player_key)
-            cross_position_candidates[
-                (str(row.normalized_name), draft_value)
-            ].append(player_key)
+            raw_name = str(row.normalized_name)
+            match_name = _governed_match_name(
+                raw_name,
+                getattr(row, "identity_source", None),
+            )
+            for candidate_name in {raw_name, match_name}:
+                provisional_candidates[
+                    (
+                        candidate_name,
+                        str(row.position),
+                        draft_value,
+                    )
+                ].append(player_key)
+                cross_position_candidates[
+                    (candidate_name, draft_value)
+                ].append(player_key)
     provisional_to_key = {
         signature: keys[0]
         for signature, keys in provisional_candidates.items()
@@ -201,7 +282,8 @@ def canonicalize_nflverse_players(
             (row.normalized_name, row.position, None)
         )
         keys.append(
-            gsis_to_key.get(gsis_id)
+            GOVERNED_STABLE_PLAYER_KEYS.get(gsis_id)
+            or gsis_to_key.get(gsis_id)
             or promoted_key
             or stable_player_key(f"gsis:{gsis_id}")
         )
@@ -368,6 +450,33 @@ def load_identity_source_records(
     frame["draft_year"] = _nullable_int(frame["draft_year"])
     frame["draft_round"] = _nullable_int(frame["draft_round"])
     frame["draft_pick"] = _nullable_int(frame["draft_pick"])
+    frame, excluded_records = partition_source_row_exclusions(
+        frame,
+        "identity source records",
+    )
+    for exclusion_id, excluded_group in excluded_records.groupby(
+        SOURCE_ROW_EXCLUSION_ID_COLUMN,
+        dropna=False,
+        sort=True,
+    ):
+        references = excluded_group[
+            SOURCE_ROW_EXCLUSION_REFERENCE_COLUMN
+        ].dropna().unique()
+        manifest_rows.append(
+            {
+                "component": "identity_quarantine",
+                "source_name": str(exclusion_id),
+                "source_uri": (
+                    str(references[0]) if len(references) == 1 else pd.NA
+                ),
+                "source_sha256": pd.NA,
+                "row_count": len(excluded_group),
+            }
+        )
+    frame = apply_source_season_overrides(
+        frame,
+        "identity source records",
+    )
     frame["_draft_year_inferred"] = False
     known_drafts = (
         frame[frame["draft_year"].notna()]
@@ -439,6 +548,36 @@ def _candidate_name_indexes(
     return lookup
 
 
+def _candidate_is_compatible(
+    record: pd.Series,
+    candidate: pd.Series,
+) -> bool:
+    """Reject confident entry-year contradictions before name uniqueness."""
+    draft_year = record.get("draft_year")
+    draft_year_inferred = bool(record.get("_draft_year_inferred", False))
+    if pd.notna(draft_year) and not draft_year_inferred:
+        known_entry_years = {
+            int(value)
+            for value in (
+                candidate.get("draft_year"),
+                candidate.get("rookie_season"),
+            )
+            if pd.notna(value)
+        }
+        if known_entry_years and int(draft_year) not in known_entry_years:
+            return False
+
+    season = record.get("season")
+    if pd.notna(season):
+        season_value = int(season)
+        career_start = candidate.get("rookie_season")
+        if pd.isna(career_start):
+            career_start = candidate.get("draft_year")
+        if pd.notna(career_start) and season_value < int(career_start):
+            return False
+    return True
+
+
 def _resolve_candidate(
     record: pd.Series,
     identity: pd.DataFrame,
@@ -447,37 +586,60 @@ def _resolve_candidate(
     candidate_list = list(candidates)
     if not candidate_list:
         return None, "provisional_unmatched"
-    if len(candidate_list) == 1:
-        return candidate_list[0], "name_position_unique"
 
-    subset = identity.loc[candidate_list]
+    compatible_list = [
+        index
+        for index in candidate_list
+        if _candidate_is_compatible(record, identity.loc[index])
+    ]
+    if not compatible_list:
+        return None, "provisional_incompatible"
+    if len(candidate_list) == 1:
+        return compatible_list[0], "name_position_unique"
+
+    subset = identity.loc[compatible_list]
     draft_year = record.get("draft_year")
     draft_year_inferred = bool(record.get("_draft_year_inferred", False))
     if pd.notna(draft_year) and not draft_year_inferred:
-        exact_draft = subset[subset["draft_year"].eq(int(draft_year))]
+        exact_draft = subset[
+            subset["draft_year"].eq(int(draft_year))
+            | subset["rookie_season"].eq(int(draft_year))
+        ]
         if len(exact_draft) == 1:
             return int(exact_draft.index[0]), "name_position_draft_year"
 
     season = record.get("season")
     if pd.notna(season):
         season_value = int(season)
+        # Career windows are only a namesake tie-breaker.  Allow the preseason
+        # immediately after the last recorded appearance, but never use this
+        # metadata as a hard rejection for an otherwise unique returning
+        # player.
         active = subset[
             subset["rookie_season"].fillna(subset["draft_year"]).fillna(-1)
             <= season_value
         ]
         active = active[
-            active["last_season"].fillna(season_value).ge(season_value)
+            active["last_season"]
+            .fillna(season_value)
+            .add(1)
+            .ge(season_value)
         ]
         if len(active) == 1:
             return int(active.index[0]), "name_position_active_window"
 
     team = record.get("team")
     if pd.notna(team):
+        normalized_team = _normalize_team(team)
+        draft_teams = subset["draft_team"].map(_normalize_team)
+        latest_teams = subset["latest_team"].map(_normalize_team)
         team_match = subset[
-            subset["draft_team"].eq(team) | subset["latest_team"].eq(team)
+            draft_teams.eq(normalized_team) | latest_teams.eq(normalized_team)
         ]
         if len(team_match) == 1:
             return int(team_match.index[0]), "name_position_team"
+    if len(compatible_list) == 1:
+        return compatible_list[0], "name_position_compatible_unique"
     return None, "provisional_ambiguous"
 
 
@@ -493,21 +655,67 @@ def _reconcile_provisional_identities(
     confirmed = identity[identity["identity_status"].eq("confirmed")]
     remap: dict[str, str] = {}
     for row in identity[provisional].itertuples(index=False):
+        provisional_key = str(row.player_key)
+        match_name = _governed_match_name(
+            row.normalized_name,
+            row.identity_source,
+        )
         candidates = confirmed[
-            confirmed["normalized_name"].eq(row.normalized_name)
+            confirmed["normalized_name"].eq(match_name)
             & confirmed["position"].eq(row.position)
         ]
-        if pd.notna(row.draft_year):
-            draft_matches = candidates[
-                candidates["draft_year"].eq(int(row.draft_year))
-                | candidates["rookie_season"].eq(int(row.draft_year))
-            ]
-            if len(draft_matches) == 1:
-                candidates = draft_matches
-        if len(candidates) == 1:
-            remap[str(row.player_key)] = str(
-                candidates.iloc[0]["player_key"]
+        record = pd.Series(
+            {
+                "draft_year": row.draft_year,
+                "_draft_year_inferred": False,
+                "season": row.rookie_season,
+                "team": (
+                    row.latest_team
+                    if pd.notna(row.latest_team)
+                    else row.draft_team
+                ),
+            }
+        )
+        candidate_index, _ = _resolve_candidate(
+            record,
+            confirmed,
+            candidates.index,
+        )
+        if candidate_index is None:
+            continue
+
+        candidate = confirmed.loc[candidate_index]
+        provisional_aliases = aliases[
+            aliases["player_key"].astype(str).eq(provisional_key)
+        ]
+        if provisional_aliases.empty:
+            # Without source evidence, retaining the provisional row is safer
+            # than silently merging it into a confirmed player.
+            continue
+
+        aliases_compatible = True
+        for alias in provisional_aliases.itertuples(index=False):
+            match_method = str(alias.match_method)
+            if "provisional_incompatible" in match_method:
+                aliases_compatible = False
+                break
+            alias_record = pd.Series(
+                {
+                    "draft_year": alias.draft_year,
+                    # player_aliases does not retain the inference flag.  A
+                    # fail-closed reconciliation treats a recorded year as
+                    # explicit; ordinary source resolution already handles
+                    # inferred years before provisional creation.
+                    "_draft_year_inferred": False,
+                    "season": alias.season,
+                    "team": alias.team,
+                }
             )
+            if not _candidate_is_compatible(alias_record, candidate):
+                aliases_compatible = False
+                break
+        if aliases_compatible:
+            remap[provisional_key] = str(candidate["player_key"])
 
     if not remap:
         return identity, aliases
@@ -528,6 +736,21 @@ def resolve_source_records(
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """Resolve provider rows to canonical players and add provisional identities."""
     identity = canonical_identity.copy().reset_index(drop=True)
+    source_records = source_records.copy()
+    if "source_table" not in source_records:
+        source_records["source_table"] = pd.NA
+    source_records = apply_source_row_exclusions(
+        source_records,
+        "identity source records",
+    )
+    source_records = apply_source_season_overrides(
+        source_records,
+        "identity source records",
+    )
+    assert_no_source_row_exclusions(
+        source_records,
+        "identity source records after quarantine",
+    )
     lookup = _candidate_indexes(identity)
     name_lookup = _candidate_name_indexes(identity)
     existing = (
@@ -537,19 +760,27 @@ def resolve_source_records(
     )
     _, existing_provisional, _ = _existing_key_maps(existing)
 
-    def candidate_pool(record: pd.Series) -> tuple[list[int], bool]:
+    def candidate_pool(
+        record: pd.Series,
+    ) -> tuple[list[int], bool, bool]:
+        raw_name = str(record["normalized_name"])
+        match_name = _governed_match_name(
+            raw_name,
+            record.get("source"),
+        )
+        governed_alias = match_name != raw_name
         position = record.get("position")
         exact = (
-            lookup.get((record["normalized_name"], str(position)), [])
+            lookup.get((match_name, str(position)), [])
             if pd.notna(position)
             else []
         )
         if exact:
-            return list(exact), False
-        return list(name_lookup.get(record["normalized_name"], [])), True
+            return list(exact), False, governed_alias
+        return list(name_lookup.get(match_name, [])), True, governed_alias
 
     def resolve_record(record: pd.Series) -> tuple[int | None, str]:
-        candidates, cross_position = candidate_pool(record)
+        candidates, cross_position, governed_alias = candidate_pool(record)
         candidate_index, method = _resolve_candidate(
             record,
             identity,
@@ -560,6 +791,8 @@ def resolve_source_records(
                 "name_position",
                 "name_cross_position",
             )
+        if governed_alias:
+            method = f"governed_alias_{method}"
         return candidate_index, method
 
     aliases: list[dict[str, object]] = []
@@ -616,6 +849,11 @@ def resolve_source_records(
             resolved_index, method = resolve_record(record)
 
         if resolved_index is None:
+            if method == "governed_alias_provisional_incompatible":
+                # The governed identity is known, but this source row carries
+                # an impossible draft/entry season.  Exclude it instead of
+                # creating a duplicate provisional identity.
+                continue
             if pd.isna(record["position"]):
                 # A position-less market row is useful only when it can be tied
                 # to an existing identity. Do not invent an untyped player.
@@ -677,6 +915,22 @@ def resolve_source_records(
                 "position": record["position"],
                 "team": record.get("team", pd.NA),
                 "season": record.get("season", pd.NA),
+                SOURCE_STORED_SEASON_COLUMN: record.get(
+                    SOURCE_STORED_SEASON_COLUMN,
+                    record.get("season", pd.NA),
+                ),
+                SOURCE_SEASON_OVERRIDE_ID_COLUMN: record.get(
+                    SOURCE_SEASON_OVERRIDE_ID_COLUMN,
+                    pd.NA,
+                ),
+                SOURCE_SEASON_OVERRIDE_REASON_COLUMN: record.get(
+                    SOURCE_SEASON_OVERRIDE_REASON_COLUMN,
+                    pd.NA,
+                ),
+                SOURCE_SEASON_OVERRIDE_REFERENCE_COLUMN: record.get(
+                    SOURCE_SEASON_OVERRIDE_REFERENCE_COLUMN,
+                    pd.NA,
+                ),
                 "draft_year": record.get("draft_year", pd.NA),
                 "match_method": method,
             }
@@ -719,6 +973,7 @@ def validate_identity(
         raise ValueError(
             f"player_aliases contains unknown player keys: {sorted(unknown_aliases)[:5]}"
         )
+    assert_no_source_row_exclusions(aliases, "player_aliases")
 
 
 def build_player_identity_frames(

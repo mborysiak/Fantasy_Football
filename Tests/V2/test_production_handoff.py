@@ -86,6 +86,37 @@ def test_production_handoff_uses_one_current_template_residual():
     assert audit.iloc[0]["next_ppg_delta"] == 1.5
 
 
+def test_production_handoff_can_refresh_an_existing_v2_publish():
+    legacy, player_map, current, next_year = fixture_frames()
+    first, _ = build_production_projection_slice(
+        legacy,
+        player_map,
+        current,
+        next_year,
+        league="dk",
+    )
+
+    refreshed, audit = build_production_projection_slice(
+        first,
+        player_map,
+        current,
+        next_year,
+        league="dk",
+    )
+
+    assert refreshed.columns.is_unique
+    assert not any(
+        column.endswith(("_x", "_y")) for column in refreshed.columns
+    )
+    assert refreshed.loc[0, "player_key"] == "player-key"
+    assert refreshed.loc[0, "current_projection_model_version"] == (
+        "current-lock"
+    )
+    assert refreshed.loc[0, "next_projection_model_version"] == "next-lock"
+    assert audit.loc[0, "current_ppg_delta"] == 0
+    assert audit.loc[0, "next_ppg_delta"] == 0
+
+
 def test_production_handoff_fails_closed_on_missing_next_appearance():
     legacy, player_map, current, next_year = fixture_frames()
     next_year.loc[0, "predicted_next_year_appearance_probability"] = None

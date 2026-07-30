@@ -1,0 +1,20 @@
+{
+  "completed_at": "2026-07-29",
+  "provider_points_estimand": "core_offensive_season_components_v1",
+  "dk": {
+    "feature_run_id": "milestone_3_20260729T190851Z_d22d53be",
+    "locked_model_run_id": "v2_locked_final_dk_20260729T191753Z_f21e0fb3",
+    "next_year_run_id": "v2_next_year_dk_20260729T192730Z_6f141e66",
+    "scoring_hash": "ffd5380565fe3f79beadf882313f7071e869807a3b684be52ca0f35394cf5f70"
+  },
+  "beta": {
+    "feature_run_id": "milestone_3_20260729T191056Z_a46b82c3",
+    "locked_model_run_id": "v2_locked_final_beta_20260729T191753Z_c5215ad1",
+    "next_year_run_id": "v2_next_year_beta_20260729T192730Z_bb06195a",
+    "scoring_hash": "6a9a803feee65cd1bd54f3b013594fb56a3c5c3eb6f65caf5c7e61ffee7bb0e6"
+  },
+  "tests": {
+    "v2_passed": 108,
+    "warnings": 3
+  }
+}

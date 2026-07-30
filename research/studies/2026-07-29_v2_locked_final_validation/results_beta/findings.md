@@ -1,5 +1,10 @@
 # Beta V2 Locked Validation Findings
 
+> Superseded data lineage: this replay used two mislabeled FantasyPros WR
+> seasons and omitted sacks from standardized beta QB provider scores. Retain
+> it as historical evidence only. The accepted corrective replay is documented
+> in `../../2026-07-29_v2_identity_scoring_revalidation/results/findings.md`.
+
 ## Decision
 
 Freeze `v2_conditional_ppg_2026_candidate_beta_v1` as the beta-scored shadow
@@ -85,4 +90,3 @@ season labels: Cordarrelle Patterson in 2019 and 2021, and Ty Montgomery in
 Production point predictions and optimizer inputs remain unchanged. The
 canonical key columns are active in the generated weekly template and player
 map tables.
-

@@ -26,13 +26,83 @@ from Scripts.V2.contracts import (
     MARKET_VALUE_COLUMNS,
     PROJECTION_VALUE_COLUMNS,
     PROJECTION_VALUE_METRICS,
+    SOURCE_ROW_EXCLUSION_ID_COLUMN,
+    SOURCE_ROW_EXCLUSION_REASON_COLUMN,
+    SOURCE_ROW_EXCLUSION_REFERENCE_COLUMN,
+    SOURCE_SEASON_OVERRIDE_ID_COLUMN,
+    SOURCE_SEASON_OVERRIDE_REASON_COLUMN,
+    SOURCE_SEASON_OVERRIDE_REFERENCE_COLUMN,
+    SOURCE_STORED_SEASON_COLUMN,
     align_columns,
+    apply_source_row_exclusions,
+    apply_source_season_overrides,
+    assert_no_source_row_exclusions,
     configured_scoring,
     normalize_player_name,
     normalize_source_position,
+    partition_source_row_exclusions,
     require_columns,
     table_exists,
 )
+
+# Provider projections expose season totals, so this score is deliberately the
+# core offensive, season-component portion of the configured rules. Weekly
+# threshold bonuses cannot be reconstructed from season yardage totals.
+# Projected fumbles, two-point conversions, and return TDs are also excluded
+# until their source coverage and league coefficients are governed explicitly.
+PROVIDER_POINTS_ESTIMAND_VERSION = "core_offensive_season_components_v1"
+
+# FFToday's modeled sack projection is the only sack source in several
+# historical seasons. Permit one available sack donor to standardize the other
+# beta QB providers; every other missing component still requires two
+# independent provider donors.
+_SINGLE_DONOR_IMPUTATION_EXCEPTIONS = frozenset(
+    {("beta", "QB", "sacks")}
+)
+
+
+_POSITION_SCORING_COMPONENTS = {
+    "QB": (
+        ("passing_yards", "passing", "pass_yards_gained_sum"),
+        ("passing_tds", "passing", "pass_pass_touchdown_sum"),
+        ("interceptions", "passing", "pass_interception_sum"),
+        ("sacks", "passing", "sack_sum"),
+        ("rushing_yards", "rushing", "rush_yards_gained_sum"),
+        ("rushing_tds", "rushing", "rush_rush_touchdown_sum"),
+    ),
+    "RB": (
+        ("rushing_yards", "rushing", "rush_yards_gained_sum"),
+        ("rushing_tds", "rushing", "rush_rush_touchdown_sum"),
+        ("receptions", "receiving", "rec_complete_pass_sum"),
+        ("receiving_yards", "receiving", "rec_yards_gained_sum"),
+        ("receiving_tds", "receiving", "rec_pass_touchdown_sum"),
+    ),
+    "WR": (
+        ("receptions", "receiving", "rec_complete_pass_sum"),
+        ("receiving_yards", "receiving", "rec_yards_gained_sum"),
+        ("receiving_tds", "receiving", "rec_pass_touchdown_sum"),
+    ),
+    "TE": (
+        ("receptions", "receiving", "rec_complete_pass_sum"),
+        ("receiving_yards", "receiving", "rec_yards_gained_sum"),
+        ("receiving_tds", "receiving", "rec_pass_touchdown_sum"),
+    ),
+}
+
+
+def _required_projection_components(
+    league: str,
+) -> dict[str, tuple[str, ...]]:
+    """Return position components with a nonzero configured scoring weight."""
+    rules = configured_scoring(league)
+    return {
+        position: tuple(
+            column
+            for column, scoring_family, scoring_key in components
+            if float(rules[scoring_family].get(scoring_key, 0.0)) != 0.0
+        )
+        for position, components in _POSITION_SCORING_COMPONENTS.items()
+    }
 
 
 def _clean_text(value: object) -> object:
@@ -65,11 +135,11 @@ def _normalize_source_values(
     )
 
 
-def _standardize_identity_rows(
+def _standardize_identity_row_partitions(
     raw: pd.DataFrame,
     table: str,
     identity_spec: dict[str, object],
-) -> pd.DataFrame:
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     standard = pd.DataFrame(index=raw.index)
     standard["source_table"] = table
     standard["source"] = _normalize_source_values(raw, identity_spec)
@@ -94,7 +164,28 @@ def _standardize_identity_rows(
     standard["season"] = pd.to_numeric(
         standard["season"], errors="coerce"
     ).astype("Int64")
-    return standard
+    included, excluded = partition_source_row_exclusions(
+        standard,
+        f"{table} feature identity rows",
+    )
+    included = apply_source_season_overrides(
+        included,
+        f"{table} feature identity rows",
+    )
+    return included, excluded
+
+
+def _standardize_identity_rows(
+    raw: pd.DataFrame,
+    table: str,
+    identity_spec: dict[str, object],
+) -> pd.DataFrame:
+    included, _ = _standardize_identity_row_partitions(
+        raw,
+        table,
+        identity_spec,
+    )
+    return included
 
 
 def _unique_lookup(
@@ -136,16 +227,32 @@ def resolve_source_rows(
         ("player_key", *required),
         "player_aliases",
     )
+    assert_no_source_row_exclusions(
+        identity_rows,
+        "source feature identity rows before alias resolution",
+    )
+    identity_rows = apply_source_season_overrides(
+        identity_rows,
+        "source feature identity rows",
+    )
     aliases = player_aliases[
         player_aliases["source_table"].isin(
             identity_rows["source_table"].dropna().unique()
         )
     ].copy()
+    aliases = apply_source_row_exclusions(
+        aliases,
+        "player_aliases for feature resolution",
+    )
     for column in ("source_player_id", "normalized_name", "position", "team"):
         aliases[column] = aliases[column].map(_clean_text)
     aliases["season"] = pd.to_numeric(
         aliases["season"], errors="coerce"
     ).astype("Int64")
+    aliases = apply_source_season_overrides(
+        aliases,
+        "player_aliases for feature resolution",
+    )
 
     id_columns = ["source_table", "source", "source_player_id"]
     full_columns = [
@@ -223,7 +330,7 @@ def _read_resolved_value_rows(
     player_aliases: pd.DataFrame,
     start_season: int,
     projection_through_season: int,
-) -> tuple[pd.DataFrame, int, int]:
+) -> tuple[pd.DataFrame, int, int, pd.DataFrame]:
     identity_spec = CANDIDATE_SOURCE_TABLES[table]
     available = {
         row[1] for row in connection.execute(f'PRAGMA table_info("{table}")')
@@ -236,7 +343,19 @@ def _read_resolved_value_rows(
         f'SELECT {query_columns} FROM "{table}"',
         connection,
     )
-    identity_rows = _standardize_identity_rows(raw, table, identity_spec)
+    identity_rows, excluded_rows = _standardize_identity_row_partitions(
+        raw,
+        table,
+        identity_spec,
+    )
+    excluded_seasons = pd.to_numeric(
+        excluded_rows[SOURCE_STORED_SEASON_COLUMN],
+        errors="coerce",
+    )
+    excluded_rows = excluded_rows[
+        excluded_seasons.ge(start_season)
+        & excluded_seasons.le(projection_through_season)
+    ].copy()
     in_window = (
         identity_rows["season"].ge(start_season)
         & identity_rows["season"].le(projection_through_season)
@@ -246,8 +365,9 @@ def _read_resolved_value_rows(
         in_window &= identity_rows["position"].isin(POSITIONS)
     elif not identity_spec.get("allow_missing_position"):
         in_window &= identity_rows["position"].isin(POSITIONS)
-    raw = raw[in_window].reset_index(drop=True)
-    identity_rows = identity_rows[in_window].reset_index(drop=True)
+    included_index = identity_rows.index[in_window.fillna(False)]
+    raw = raw.loc[included_index].reset_index(drop=True)
+    identity_rows = identity_rows.loc[included_index].reset_index(drop=True)
     identity_rows["player_key"] = resolve_source_rows(
         identity_rows,
         player_aliases,
@@ -263,7 +383,12 @@ def _read_resolved_value_rows(
             )
         else:
             output[target] = np.nan
-    return output, len(identity_rows), int(resolved.sum())
+    return (
+        output,
+        len(identity_rows),
+        int(resolved.sum()),
+        excluded_rows.reset_index(drop=True),
+    )
 
 
 def _deterministic_mode(values: Iterable[object]) -> object:
@@ -274,10 +399,44 @@ def _deterministic_mode(values: Iterable[object]) -> object:
     return sorted(counts[counts.eq(counts.max())].index)[0]
 
 
+def _audit_pipe(values: Iterable[object]) -> object:
+    cleaned = sorted(
+        {
+            str(int(value)) if isinstance(value, (int, np.integer)) else str(value)
+            for value in values
+            if pd.notna(value) and str(value)
+        }
+    )
+    return "|".join(cleaned) if cleaned else pd.NA
+
+
+def _source_exclusion_audit_values(
+    excluded_rows: pd.DataFrame,
+) -> dict[str, object]:
+    return {
+        "excluded_rows": len(excluded_rows),
+        "source_row_exclusion_ids": _audit_pipe(
+            excluded_rows[SOURCE_ROW_EXCLUSION_ID_COLUMN]
+        ),
+        "source_row_exclusion_reasons": _audit_pipe(
+            excluded_rows[SOURCE_ROW_EXCLUSION_REASON_COLUMN]
+        ),
+        "source_row_exclusion_references": _audit_pipe(
+            excluded_rows[SOURCE_ROW_EXCLUSION_REFERENCE_COLUMN]
+        ),
+    }
+
+
 def _season_context_maps(
     player_aliases: pd.DataFrame,
 ) -> tuple[dict[tuple[str, int], str], dict[tuple[str, int], str]]:
     aliases = player_aliases.copy()
+    if "source_table" not in aliases:
+        aliases["source_table"] = pd.NA
+    aliases = apply_source_row_exclusions(
+        aliases,
+        "player_aliases for feature context",
+    )
     aliases["season"] = pd.to_numeric(
         aliases["season"], errors="coerce"
     ).astype("Int64")
@@ -306,24 +465,7 @@ def _score_projection_values(
 ) -> pd.DataFrame:
     scored = frame.copy()
     rules = configured_scoring(league)
-    required_by_position = {
-        "QB": (
-            "passing_yards",
-            "passing_tds",
-            "interceptions",
-            "rushing_yards",
-            "rushing_tds",
-        ),
-        "RB": (
-            "rushing_yards",
-            "rushing_tds",
-            "receptions",
-            "receiving_yards",
-            "receiving_tds",
-        ),
-        "WR": ("receptions", "receiving_yards", "receiving_tds"),
-        "TE": ("receptions", "receiving_yards", "receiving_tds"),
-    }
+    required_by_position = _required_projection_components(league)
 
     def numeric(column: str) -> pd.Series:
         return pd.to_numeric(scored[column], errors="coerce")
@@ -341,31 +483,87 @@ def _score_projection_values(
             position_mask, list(columns)
         ].isna().sum(axis=1)
     imputed_count = pd.Series(0, index=scored.index, dtype=int)
-    keys = ["player_key", "season"]
+    imputed_components = pd.Series(
+        pd.NA, index=scored.index, dtype="string"
+    )
+    imputation_donor_providers = pd.Series(
+        pd.NA, index=scored.index, dtype="string"
+    )
+    imputation_donor_count = pd.Series(0, index=scored.index, dtype=int)
+    # Hybrid players can have provider rows under more than one position.
+    # Donors must match the position being scored so a non-QB sack placeholder
+    # cannot make a QB projection appear complete.
+    keys = ["player_key", "season", "position"]
     for column in sorted(
         {column for columns in required_by_position.values() for column in columns}
     ):
         values = numeric(column)
+        groupers = [scored[key] for key in keys]
         donor_median = values.groupby(
-            [scored[key] for key in keys], dropna=False
+            groupers, dropna=False
         ).transform("median")
         donor_count = values.notna().groupby(
-            [scored[key] for key in keys], dropna=False
+            groupers, dropna=False
         ).transform("sum")
+        row_keys = list(
+            scored.loc[:, keys].itertuples(index=False, name=None)
+        )
+        provider_sets: dict[tuple[object, ...], set[str]] = defaultdict(set)
+        for row_key, provider, has_value in zip(
+            row_keys,
+            scored["provider"],
+            values.notna(),
+            strict=True,
+        ):
+            if has_value and pd.notna(provider) and str(provider).strip():
+                provider_sets[row_key].add(str(provider))
+        donor_providers = pd.Series(
+            [
+                "|".join(sorted(provider_sets.get(row_key, set())))
+                or pd.NA
+                for row_key in row_keys
+            ],
+            index=scored.index,
+            dtype="string",
+        )
         required_mask = pd.Series(False, index=scored.index)
         for position, columns in required_by_position.items():
             if column in columns:
                 required_mask |= scored["position"].eq(position)
+        minimum_donors = pd.Series(2, index=scored.index, dtype=int)
+        for (
+            exception_league,
+            exception_position,
+            exception_column,
+        ) in _SINGLE_DONOR_IMPUTATION_EXCEPTIONS:
+            if league == exception_league and column == exception_column:
+                minimum_donors.loc[
+                    scored["position"].eq(exception_position)
+                ] = 1
         eligible = (
             required_mask
             & values.isna()
             & missing_required.eq(1)
-            & donor_count.ge(2)
+            & donor_count.ge(minimum_donors)
             & donor_median.notna()
         )
         scored.loc[eligible, column] = donor_median.loc[eligible]
         imputed_count.loc[eligible] = 1
+        imputed_components.loc[eligible] = column
+        imputation_donor_providers.loc[eligible] = donor_providers.loc[
+            eligible
+        ]
+        imputation_donor_count.loc[eligible] = donor_count.loc[
+            eligible
+        ].astype(int)
     scored["configured_points_imputed_component_count"] = imputed_count
+    scored["configured_points_imputed_components"] = imputed_components
+    scored[
+        "configured_points_imputation_donor_providers"
+    ] = imputation_donor_providers
+    scored[
+        "configured_points_imputation_donor_count"
+    ] = imputation_donor_count
 
     scored["passing_points"] = (
         numeric("passing_yards").fillna(0)
@@ -419,6 +617,7 @@ def _score_projection_values(
     scored["provider_projected_points"] = scored[
         "configured_projected_points"
     ].where(use_configured)
+    scored["provider_points_estimand"] = PROVIDER_POINTS_ESTIMAND_VERSION
     used_imputation = (
         use_configured
         & scored["configured_points_imputed_component_count"].gt(0)
@@ -517,7 +716,12 @@ def build_projection_values(
         for table, spec in PROJECTION_VALUE_SPECS.items():
             if not table_exists(connection, table):
                 continue
-            resolved, input_rows, resolved_rows = _read_resolved_value_rows(
+            (
+                resolved,
+                input_rows,
+                resolved_rows,
+                excluded_rows,
+            ) = _read_resolved_value_rows(
                 connection,
                 table,
                 spec,
@@ -536,6 +740,7 @@ def build_projection_values(
                     "resolution_rate": (
                         resolved_rows / input_rows if input_rows else np.nan
                     ),
+                    **_source_exclusion_audit_values(excluded_rows),
                 }
             )
     if not raw_rows:
@@ -544,6 +749,10 @@ def build_projection_values(
             pd.DataFrame(audit_rows),
         )
     raw_values = pd.concat(raw_rows, ignore_index=True)
+    assert_no_source_row_exclusions(
+        raw_values,
+        "resolved projection value rows",
+    )
     for metric in PROJECTION_VALUE_METRICS:
         if metric not in raw_values:
             raw_values[metric] = np.nan
@@ -556,9 +765,32 @@ def build_projection_values(
             "source_table",
             lambda values: "|".join(sorted(set(values))),
         ),
+        source_stored_seasons=(
+            SOURCE_STORED_SEASON_COLUMN,
+            _audit_pipe,
+        ),
+        source_season_override_ids=(
+            SOURCE_SEASON_OVERRIDE_ID_COLUMN,
+            _audit_pipe,
+        ),
+        source_season_override_reasons=(
+            SOURCE_SEASON_OVERRIDE_REASON_COLUMN,
+            _audit_pipe,
+        ),
+        source_season_override_references=(
+            SOURCE_SEASON_OVERRIDE_REFERENCE_COLUMN,
+            _audit_pipe,
+        ),
         position=("position", _deterministic_mode),
         team=("team", _deterministic_mode),
     )
+    for column in (
+        "source_stored_seasons",
+        "source_season_override_ids",
+        "source_season_override_reasons",
+        "source_season_override_references",
+    ):
+        metadata[column] = metadata[column].astype("string")
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", RuntimeWarning)
         metrics = grouped[list(PROJECTION_VALUE_METRICS)].median()
@@ -628,7 +860,12 @@ def build_market_values(
         for table, spec in MARKET_VALUE_SPECS.items():
             if not table_exists(connection, table):
                 continue
-            resolved, input_rows, resolved_rows = _read_resolved_value_rows(
+            (
+                resolved,
+                input_rows,
+                resolved_rows,
+                excluded_rows,
+            ) = _read_resolved_value_rows(
                 connection,
                 table,
                 spec,
@@ -646,6 +883,7 @@ def build_market_values(
                     "resolution_rate": (
                         resolved_rows / input_rows if input_rows else np.nan
                     ),
+                    **_source_exclusion_audit_values(excluded_rows),
                 }
             )
     if not raw_rows:
@@ -654,6 +892,10 @@ def build_market_values(
             pd.DataFrame(audit_rows),
         )
     raw_values = pd.concat(raw_rows, ignore_index=True)
+    assert_no_source_row_exclusions(
+        raw_values,
+        "resolved market value rows",
+    )
     for metric in ("adp", "expert_rank", "source_position_rank"):
         if metric not in raw_values:
             raw_values[metric] = np.nan

@@ -94,6 +94,53 @@ def _outcomes() -> pd.DataFrame:
     )
 
 
+def test_source_spine_quarantines_only_fftoday_2018_qbs():
+    identity = pd.DataFrame(
+        [
+            {"player_key": "excluded-qb", "position": "QB"},
+            {"player_key": "included-rb", "position": "RB"},
+            {"player_key": "included-qb", "position": "QB"},
+        ]
+    )
+    aliases = pd.DataFrame(
+        [
+            {
+                "player_key": player_key,
+                "source": "fftoday",
+                "source_table": "FFToday_Projections",
+                "source_name": player_key,
+                "position": position,
+                "team": "TST",
+                "season": season,
+                "match_method": "fixture",
+            }
+            for player_key, position, season in (
+                ("excluded-qb", "QB", 2018),
+                ("included-rb", "RB", 2018),
+                ("included-qb", "QB", 2019),
+            )
+        ]
+    )
+
+    sources = build_player_season_sources(
+        aliases,
+        identity,
+        run_id="quarantine_fixture",
+        start_season=2018,
+        projection_through_season=2019,
+    )
+
+    assert set(
+        sources[["player_key", "source_position", "season"]].itertuples(
+            index=False,
+            name=None,
+        )
+    ) == {
+        ("included-rb", "RB", 2018),
+        ("included-qb", "QB", 2019),
+    }
+
+
 def _build() -> tuple[pd.DataFrame, pd.DataFrame]:
     identity = _identity()
     aliases = pd.DataFrame(
