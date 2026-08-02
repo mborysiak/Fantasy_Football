@@ -1,0 +1,19 @@
+{
+  "league": "beta",
+  "v2_database": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\Data\\Databases\\Projection_V2_beta.sqlite3",
+  "max_season": 2025,
+  "target_players": 2696,
+  "rooms_per_origin": 12,
+  "teams_per_room": 12,
+  "roster_size": 20,
+  "scenarios": 384,
+  "rooms": 108,
+  "prediction_rows": 3888,
+  "matchers": [
+    "production",
+    "flatter_w025_all",
+    "wr_ppg225_both025"
+  ],
+  "production_changed": false,
+  "runtime_seconds": 24.16489419998834
+}

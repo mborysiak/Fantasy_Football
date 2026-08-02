@@ -12,6 +12,7 @@ from Scripts.V2.config import (
     POSITIONS,
     START_SEASON,
     candidate_source_kind,
+    candidate_source_through_season,
 )
 from Scripts.V2.contracts import (
     PLAYER_SEASON_SOURCE_COLUMNS,
@@ -82,10 +83,18 @@ def build_player_season_sources(
         aliases["season"], errors="coerce"
     ).astype("Int64")
     aliases["source_kind"] = aliases["source"].map(candidate_source_kind)
+    aliases["source_through_season"] = pd.to_numeric(
+        aliases["source"].map(candidate_source_through_season),
+        errors="coerce",
+    )
     aliases = aliases[
         aliases["source_kind"].notna()
         & aliases["season"].notna()
         & aliases["season"].ge(start_season)
+        & (
+            aliases["source_through_season"].isna()
+            | aliases["season"].le(aliases["source_through_season"])
+        )
     ].copy()
     if projection_through_season is not None:
         aliases = aliases[

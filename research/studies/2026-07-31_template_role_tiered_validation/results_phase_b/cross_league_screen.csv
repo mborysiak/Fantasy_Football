@@ -1,0 +1,6 @@
+study,method,league_count,leagues,mean_development_ppg_relative_delta,worst_development_ppg_relative_delta,mean_development_contribution_relative_delta,worst_temporal_ppg_relative_delta,all_leagues_ppg_improve,all_leagues_screen_pass,all_leagues_one_se_near_best
+2026-07-31_template_role_tiered_validation,flatter_w025_all,2,"beta,dk",-0.0030060522559354763,-0.002851440220444368,-0.002475702856417572,0.0007951596355619817,True,True,True
+2026-07-31_template_role_tiered_validation,wr_ppg225_tdrate050__te_ypr050,2,"beta,dk",-0.0006011100915090939,-0.0003544066550248415,-0.0010909377179378899,0.001513786466474043,True,True,False
+2026-07-31_template_role_tiered_validation,wr_ppg225_both025,2,"beta,dk",-0.0003620120548791794,-0.0002495428910029851,-0.0007575889736685104,0.0008964398479380797,True,True,False
+2026-07-31_template_role_tiered_validation,wr_ppg225_tdrate050,2,"beta,dk",-0.00036145604888876415,-0.00026474432061596165,-0.00073538554858954,0.0014329050756007877,True,True,False
+2026-07-31_template_role_tiered_validation,te_ypr050,2,"beta,dk",-0.00023965404262038525,-8.966233440887983e-05,-0.0003555521693484054,8.08813908732553e-05,True,True,False

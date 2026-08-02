@@ -321,6 +321,20 @@ and is not combined with other routes or substituted for the published primary
 center. Exact secondary-route metrics from the pre-quarantine lineage are
 superseded; no secondary promotion is made from this data correction.
 
+Annual tuning state is stored separately in
+`Data/Databases/V2_Parameter_Cache.sqlite3` at
+`(season, league, runner, model_name)`. The cache holds the complete selected
+parameter row for every required forecast origin plus a SHA-256 over the exact
+selection inputs and specification. Any training-row, target, feature, grid,
+origin, embargo, metric, or seed change invalidates that model entry and reruns
+its grid. A valid entry skips only hyperparameter optimization; every selected
+model is still refit and predicts again. Random forests use four workers with
+their locked random seed and produce the same shadows as the prior one-worker
+execution. `locked_parameter_cache_receipts` and
+`next_year_parameter_cache_receipts` record hit/miss status and fingerprints in
+each league database, while the central cache is a governed refresh/promotion
+artifact rather than an app input.
+
 The locked template handoff supplies a strict-OOS V2 historical point center,
 not a second residual distribution. Production retains it as
 `v2_historical_pred_fp_per_game` for diagnostics. For DK and beta, it does not
@@ -411,6 +425,21 @@ complete approved-cycle stage and explicit promotion. They must not be
 described as part of the earlier live DK/beta release merely because canonical
 NFFC ADP already exists.
 
+Beginning with exclusion policy
+`v2_market_only_incomplete_buffer_exclusion_v3`, a refresh does not fail for
+an incomplete market-only tail row merely because it appears in the requested
+ADP surface. Core `ProjOnly` players and league keepers always fail closed.
+New market-only gaps also fail closed through the first five-sixths of the
+expected draft (`200` DK picks, `300` NFFC picks, and `150` beta/ETR ranks)
+unless separately accepted in the annual explicit-exclusion review. Beyond that
+protected depth, an incomplete current or next-year handoff is omitted rather
+than filled from legacy projections, is retained as a governed exclusion in
+`V2_Production_Eligibility_Audit`, and is allowed only when the remaining
+complete population still covers the full `240`/`360`/`180`-player draft.
+`Avg_ADPs` continues to retain the full canonical market surface.
+The audit records the required depth, protected depth, effective market draft
+position, and whether the exclusion was automatic.
+
 The canonical current market snapshot contains 416 live DK rows, 497 NFFC
 rows (431 offense plus 33 `TK` and 33 `TDSP` draft units), and 243 ETR rows.
 The latest local NFFC and ETR exports are dated 2026-07-27. ETR's exact source
@@ -497,6 +526,7 @@ The output databases publish:
 | `next_year_targets` | Origin player-season with auditable `t+1` labels |
 | `next_year_target_audit` | Origin/position label and identity counts |
 | `next_year_selected_hyperparameters` | Strict-prior selection provenance |
+| `next_year_parameter_cache_receipts` | Season/league/model cache fingerprint and hit/miss provenance |
 | `next_year_whole_season_predictions` | Long-form validation predictions |
 | `next_year_model_scores` | Pooled, origin, position, and history slices |
 | `next_year_model_comparisons` | Origin-paired causal comparisons |

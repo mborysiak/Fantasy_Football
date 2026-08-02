@@ -1,0 +1,19 @@
+{
+  "league": "dk",
+  "v2_database": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\Data\\Databases\\Projection_V2.sqlite3",
+  "fastr_database": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Daily_Fantasy_Data\\Databases\\FastR_Beta.sqlite3",
+  "max_template_season": 2025,
+  "expanded_target_counts": {
+    "QB": 48,
+    "RB": 90,
+    "WR": 120,
+    "TE": 48
+  },
+  "target_rows": 2647,
+  "prediction_rows": 13235,
+  "method_count": 5,
+  "baseline_method": "production",
+  "primary_method": "rb_dual_role_w050",
+  "runtime_seconds": 28.148360099992715,
+  "production_changed": false
+}

@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import argparse
+import gc
 import json
 import sqlite3
 import sys
 import time
-import warnings
 from pathlib import Path
 from typing import Mapping, Sequence
 
@@ -47,9 +47,20 @@ from Scripts.V2.contracts import (  # noqa: E402
     scoring_hash,
     utc_now,
 )
-from Scripts.V2.native_runtime import assert_single_openmp_runtime  # noqa: E402
+from Scripts.V2.native_runtime import (  # noqa: E402
+    MAX_ISOLATED_LIGHTGBM_FITS,
+    RANDOM_FOREST_N_JOBS,
+    assert_single_openmp_runtime,
+    run_module_function_in_fresh_process,
+)
 from Scripts.V2.locked_candidates import LOCKED_RANDOM_SEED  # noqa: E402
 from Scripts.V2.modeling import add_modeling_features  # noqa: E402
+from Scripts.V2.parameter_cache import (  # noqa: E402
+    NEXT_YEAR_CACHE_RUNNER,
+    load_parameter_cache,
+    parameter_fingerprint,
+    write_parameter_cache,
+)
 from Scripts.V2.next_year import (  # noqa: E402
     NEXT_YEAR_PARTICIPATION_FEATURES,
     NEXT_YEAR_RESIDUAL_FEATURES,
@@ -61,6 +72,9 @@ from Scripts.V2.next_year import (  # noqa: E402
 
 
 DEFAULT_RESULTS_DIR = STUDY_DIR / "results"
+DEFAULT_PARAMETER_CACHE_DB = (
+    REPO_ROOT / "Data" / "Databases" / "V2_Parameter_Cache.sqlite3"
+)
 VALIDATION_ORIGINS = tuple(range(2017, 2025))
 SHADOW_ORIGINS = (2025, 2026)
 PREDICTION_ORIGINS = tuple(range(2011, 2027))
@@ -77,13 +91,6 @@ RESIDUAL_COMPONENTS = (
 PRIMARY_RESIDUAL_METHOD = "next_residual_primary_blend"
 PRIMARY_PPG_METHOD = "next_ppg_primary_blend"
 PRIMARY_PARTICIPATION_METHOD = "next_participation_lightgbm"
-
-warnings.filterwarnings(
-    "ignore",
-    message="X does not have valid feature names, but LGBM.*",
-    category=UserWarning,
-)
-
 
 LASSO_GRID = (
     {"alpha": 0.01},
@@ -176,6 +183,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--results-dir", type=Path, default=DEFAULT_RESULTS_DIR
     )
+    parser.add_argument(
+        "--parameter-cache-db",
+        type=Path,
+        default=DEFAULT_PARAMETER_CACHE_DB,
+    )
     parser.add_argument("--league", default="dk")
     return parser.parse_args()
 
@@ -231,7 +243,7 @@ def model_pipeline(
         steps.append(("scale", StandardScaler()))
     if model_name == "next_residual_lasso":
         estimator = Lasso(
-            max_iter=20_000,
+            max_iter=50_000,
             tol=1e-6,
             **parameters,
         )
@@ -239,7 +251,7 @@ def model_pipeline(
         estimator = RandomForestRegressor(
             bootstrap=True,
             random_state=LOCKED_RANDOM_SEED,
-            n_jobs=1,
+            n_jobs=RANDOM_FOREST_N_JOBS,
             **parameters,
         )
     elif model_name == "next_residual_lightgbm":
@@ -276,7 +288,14 @@ def model_pipeline(
     else:
         raise ValueError(f"Unsupported next-year model: {model_name}")
     steps.append(("model", estimator))
-    return Pipeline(steps)
+    pipeline = Pipeline(steps)
+    if model_name.endswith("lightgbm"):
+        # LightGBM records feature names even when scikit-learn gives it an
+        # unnamed array during fit.  Preserve the imputer's generated names on
+        # both fit and predict so sklearn does not report a false schema
+        # mismatch and LightGBM can enforce the real column contract.
+        pipeline.set_output(transform="pandas")
+    return pipeline
 
 
 def model_inputs(
@@ -351,12 +370,13 @@ def hold_rows(
     return hold
 
 
-def grid_predictions(
+def grid_predictions_for_origins(
     targets: pd.DataFrame,
     model_name: str,
+    origins: Sequence[int],
 ) -> pd.DataFrame:
     rows: list[pd.DataFrame] = []
-    for origin in GRID_ORIGINS:
+    for origin in origins:
         train = training_rows(targets, model_name, origin)
         hold = hold_rows(
             targets, model_name, origin, require_actual=True
@@ -378,9 +398,26 @@ def grid_predictions(
             current["training_through_origin"] = origin - 2
             current["target_outcome_through"] = origin - 1
             rows.append(current)
+            if model_name.endswith("lightgbm"):
+                # LightGBM owns native Booster state. Release each fitted
+                # pipeline before the next fit so long grids do not retain
+                # enough native state to destabilize the Windows process.
+                del model, prediction
+                gc.collect()
     if not rows:
         raise ValueError(f"No grid predictions for {model_name}")
     return pd.concat(rows, ignore_index=True)
+
+
+def grid_predictions(
+    targets: pd.DataFrame,
+    model_name: str,
+) -> pd.DataFrame:
+    return grid_predictions_for_origins(
+        targets,
+        model_name,
+        GRID_ORIGINS,
+    )
 
 
 def metric(
@@ -456,14 +493,52 @@ def select_hyperparameters(
     return pd.DataFrame(rows)
 
 
-def selected_predictions(
+def selection_cache_fingerprint(
+    targets: pd.DataFrame,
+    model_name: str,
+    league: str,
+) -> str:
+    features, target_column, probability = model_inputs(model_name)
+    eligibility_column = (
+        "next_conditional_ppg_training_eligible"
+        if model_name.startswith("next_residual")
+        else "next_participation_target_available"
+    )
+    return parameter_fingerprint(
+        frame=targets,
+        data_columns=(
+            "player_key",
+            "origin_season",
+            "position",
+            target_column,
+            eligibility_column,
+            *features,
+        ),
+        specification={
+            "runner": NEXT_YEAR_CACHE_RUNNER,
+            "season": max(PREDICTION_ORIGINS),
+            "league": league,
+            "model_name": model_name,
+            "grid": [dict(parameters) for parameters in MODEL_GRIDS[model_name]],
+            "grid_origins": list(GRID_ORIGINS),
+            "forecast_origins": list(PREDICTION_ORIGINS),
+            "target_horizon": TARGET_HORIZON,
+            "minimum_selection_seasons": MIN_SELECTION_SEASONS,
+            "selection_metric": "brier" if probability else "rmse",
+            "random_seed": LOCKED_RANDOM_SEED,
+        },
+    )
+
+
+def selected_predictions_for_origins(
     targets: pd.DataFrame,
     model_name: str,
     selections: pd.DataFrame,
+    origins: Sequence[int],
 ) -> pd.DataFrame:
     rows: list[pd.DataFrame] = []
     probability = model_inputs(model_name)[2]
-    for origin in PREDICTION_ORIGINS:
+    for origin in origins:
         train = training_rows(targets, model_name, origin)
         hold = hold_rows(
             targets, model_name, origin, require_actual=False
@@ -494,7 +569,90 @@ def selected_predictions(
             selection.iloc[0]["candidate_id"]
         )
         rows.append(current)
+        if model_name.endswith("lightgbm"):
+            # Selected replays run in the same long-lived process as the
+            # grids, so they need the same native-model lifecycle boundary.
+            del model, prediction
+            gc.collect()
     return pd.concat(rows, ignore_index=True)
+
+
+def selected_predictions(
+    targets: pd.DataFrame,
+    model_name: str,
+    selections: pd.DataFrame,
+) -> pd.DataFrame:
+    return selected_predictions_for_origins(
+        targets,
+        model_name,
+        selections,
+        PREDICTION_ORIGINS,
+    )
+
+
+def runtime_grid_predictions(
+    targets: pd.DataFrame,
+    model_name: str,
+) -> pd.DataFrame:
+    if not model_name.endswith("lightgbm"):
+        return grid_predictions(targets, model_name)
+    grid_size = len(MODEL_GRIDS[model_name])
+    if grid_size > MAX_ISOLATED_LIGHTGBM_FITS:
+        raise ValueError(
+            f"{model_name} grid has {grid_size} candidates; isolated "
+            f"workers allow at most {MAX_ISOLATED_LIGHTGBM_FITS} fits"
+        )
+    frames: list[pd.DataFrame] = []
+    for origin in GRID_ORIGINS:
+        train = training_rows(targets, model_name, origin)
+        hold = hold_rows(
+            targets,
+            model_name,
+            origin,
+            require_actual=True,
+        )
+        if train.empty or hold.empty:
+            continue
+        frames.append(
+            run_module_function_in_fresh_process(
+                Path(__file__),
+                "grid_predictions_for_origins",
+                args=(targets, model_name, (origin,)),
+            )
+        )
+    if not frames:
+        raise ValueError(f"No grid predictions for {model_name}")
+    return pd.concat(frames, ignore_index=True)
+
+
+def runtime_selected_predictions(
+    targets: pd.DataFrame,
+    model_name: str,
+    selections: pd.DataFrame,
+) -> pd.DataFrame:
+    if not model_name.endswith("lightgbm"):
+        return selected_predictions(targets, model_name, selections)
+    frames: list[pd.DataFrame] = []
+    for start in range(
+        0,
+        len(PREDICTION_ORIGINS),
+        MAX_ISOLATED_LIGHTGBM_FITS,
+    ):
+        frames.append(
+            run_module_function_in_fresh_process(
+                Path(__file__),
+                "selected_predictions_for_origins",
+                args=(
+                    targets,
+                    model_name,
+                    selections,
+                    PREDICTION_ORIGINS[
+                        start : start + MAX_ISOLATED_LIGHTGBM_FITS
+                    ],
+                ),
+            )
+        )
+    return pd.concat(frames, ignore_index=True)
 
 
 def experience_group(frame: pd.DataFrame) -> pd.Series:
@@ -1119,6 +1277,7 @@ def main() -> None:
     args = parse_args()
     output_db = args.output_db.resolve()
     results_dir = args.results_dir.resolve()
+    parameter_cache_db = args.parameter_cache_db.resolve()
     league = str(args.league).lower()
     started = time.perf_counter()
     results_dir.mkdir(parents=True, exist_ok=True)
@@ -1142,17 +1301,54 @@ def main() -> None:
     target_audit = build_next_year_target_audit(targets)
     run_id = create_run_id(f"v2_next_year_{league}")
 
-    grid_frames: dict[str, pd.DataFrame] = {}
     selection_frames = []
+    cache_receipts: list[dict[str, object]] = []
     prediction_frames = []
     for model_name in MODEL_GRIDS:
-        print(f"Fitting grid: {model_name}", flush=True)
-        grid = grid_predictions(targets, model_name)
-        selected = select_hyperparameters(grid, model_name)
-        grid_frames[model_name] = grid
+        model_grid = MODEL_GRIDS[model_name]
+        cache_fingerprint = selection_cache_fingerprint(
+            targets,
+            model_name,
+            league,
+        )
+        selected, cache_receipt = load_parameter_cache(
+            parameter_cache_db,
+            season=max(PREDICTION_ORIGINS),
+            league=league,
+            runner=NEXT_YEAR_CACHE_RUNNER,
+            model_name=model_name,
+            fingerprint_sha256=cache_fingerprint,
+            expected_origins=PREDICTION_ORIGINS,
+            grid=model_grid,
+        )
+        if selected is None:
+            print(
+                f"Fitting grid: {model_name} "
+                f"(cache {cache_receipt['cache_status']})",
+                flush=True,
+            )
+            grid = runtime_grid_predictions(targets, model_name)
+            selected = select_hyperparameters(grid, model_name)
+            cache_receipt = write_parameter_cache(
+                parameter_cache_db,
+                season=max(PREDICTION_ORIGINS),
+                league=league,
+                runner=NEXT_YEAR_CACHE_RUNNER,
+                model_name=model_name,
+                fingerprint_sha256=cache_fingerprint,
+                expected_origins=PREDICTION_ORIGINS,
+                grid=model_grid,
+                selections=selected,
+            )
+        else:
+            print(
+                f"Parameter cache hit: {model_name}; skipping grid",
+                flush=True,
+            )
+        cache_receipts.append(cache_receipt)
         selection_frames.append(selected)
         prediction_frames.append(
-            selected_predictions(targets, model_name, selected)
+            runtime_selected_predictions(targets, model_name, selected)
         )
     prediction_frames.extend(
         [
@@ -1161,6 +1357,13 @@ def main() -> None:
         ]
     )
     selections = pd.concat(selection_frames, ignore_index=True)
+    parameter_cache_receipts = pd.DataFrame(cache_receipts)
+    parameter_cache_receipts.insert(0, "run_id", run_id)
+    parameter_cache_receipts.insert(
+        1,
+        "target_version",
+        NEXT_YEAR_TARGET_VERSION,
+    )
     wide = assemble_wide(targets, prediction_frames)
     evaluation = evaluation_long(wide)
     scores = score_table(evaluation)
@@ -1250,6 +1453,10 @@ def main() -> None:
                 "primary_participation_method": PRIMARY_PARTICIPATION_METHOD,
                 "runtime_seconds": runtime_seconds,
                 "status": "shadow",
+                "parameter_cache_hits": int(
+                    parameter_cache_receipts["cache_hit"].sum()
+                ),
+                "parameter_cache_entries": len(parameter_cache_receipts),
             }
         ]
     )
@@ -1264,6 +1471,7 @@ def main() -> None:
         "next_year_model_comparisons": comparisons,
         "next_year_template_handoff": handoff,
         "next_year_2027_shadow_predictions": current,
+        "next_year_parameter_cache_receipts": parameter_cache_receipts,
     }
     publish_tables_atomic(output_db, tables)
     for table, frame in tables.items():
@@ -1279,6 +1487,10 @@ def main() -> None:
         "primary_residual_method": PRIMARY_RESIDUAL_METHOD,
         "primary_participation_method": PRIMARY_PARTICIPATION_METHOD,
         "runtime_seconds": runtime_seconds,
+        "parameter_cache_hits": int(
+            parameter_cache_receipts["cache_hit"].sum()
+        ),
+        "parameter_cache_entries": len(parameter_cache_receipts),
     }
     (results_dir / "run_metadata.json").write_text(
         json.dumps(metadata, indent=2), encoding="utf-8"

@@ -26,7 +26,7 @@ import uuid
 from contextlib import closing
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any, Callable, Iterable, Mapping, Sequence
 
 from Scripts.V2.contracts import scoring_hash
 from Scripts.V2.production_cycle import (
@@ -60,7 +60,8 @@ DEFAULT_MAX_WORKERS = 6
 DEFAULT_SELECTION_TRIALS = 1000
 DEFAULT_SELECTION_WORKERS = max(1, min(8, os.cpu_count() or 1))
 DEFAULT_APP_TIMEOUT = 90
-MANIFEST_SCHEMA_VERSION = 3
+GITHUB_BLOB_LIMIT_BYTES = 100 * 1024 * 1024
+MANIFEST_SCHEMA_VERSION = 5
 NATIVE_THREAD_ENVIRONMENT_VARIABLES = (
     "OMP_NUM_THREADS",
     "OPENBLAS_NUM_THREADS",
@@ -69,13 +70,13 @@ NATIVE_THREAD_ENVIRONMENT_VARIABLES = (
     "VECLIB_MAXIMUM_THREADS",
     "BLIS_NUM_THREADS",
 )
-WINDOWS_ACCESS_VIOLATION_RETURN_CODES = frozenset(
-    {
-        3221225477,
-        -1073741819,
-    }
-)
-MAX_NATIVE_CRASH_ATTEMPTS = 2
+WINDOWS_NATIVE_CRASH_CLASSES = {
+    3221225477: "windows_access_violation",
+    -1073741819: "windows_access_violation",
+    3221226356: "windows_heap_corruption",
+    -1073740940: "windows_heap_corruption",
+}
+MAX_NATIVE_CRASH_ATTEMPTS = 5
 
 PIPELINE_CODE_ROOTS = {
     "main_scripts": REPO_ROOT / "Scripts",
@@ -155,7 +156,12 @@ DATABASE_FILES = {
     "v2_beta": "Projection_V2_beta.sqlite3",
     "simulation": "Simulation.sqlite3",
     "validations": "Validations.sqlite3",
+    "parameter_cache": "V2_Parameter_Cache.sqlite3",
 }
+MODEL_INPUT_BASE_KEYS = (
+    "model_inputs",
+    "model_inputs_next",
+)
 PROMOTED_DATABASES = (
     "model_inputs",
     "model_inputs_next",
@@ -164,8 +170,9 @@ PROMOTED_DATABASES = (
     "v2_beta",
     "simulation",
     "validations",
+    "parameter_cache",
 )
-BOOTSTRAPPABLE_DATABASES = frozenset({"v2_nffc"})
+BOOTSTRAPPABLE_DATABASES = frozenset({"v2_nffc", "parameter_cache"})
 GOVERNED_HANDOFF_TABLES = (
     "Avg_ADPs",
     "Avg_ADPs_Publication_Audit",
@@ -387,6 +394,75 @@ def database_state(path: Path) -> dict[str, Any]:
     return validate_sqlite(path)
 
 
+def sqlite_page_usage(path: Path) -> dict[str, int]:
+    """Return allocated and reusable page counts for a closed SQLite file."""
+
+    path = Path(path).resolve()
+    validate_sqlite(path)
+    with closing(
+        sqlite3.connect(f"file:{path.as_posix()}?mode=ro", uri=True)
+    ) as connection:
+        page_size = int(connection.execute("PRAGMA page_size").fetchone()[0])
+        page_count = int(connection.execute("PRAGMA page_count").fetchone()[0])
+        freelist_count = int(
+            connection.execute("PRAGMA freelist_count").fetchone()[0]
+        )
+    return {
+        "page_size": page_size,
+        "page_count": page_count,
+        "freelist_count": freelist_count,
+        "allocated_bytes": page_size * page_count,
+        "reusable_bytes": page_size * freelist_count,
+    }
+
+
+def vacuum_sqlite(path: Path) -> dict[str, Any]:
+    """Compact a staged SQLite artifact and retain an auditable receipt."""
+
+    path = Path(path).resolve()
+    before_state = database_state(path)
+    before_pages = sqlite_page_usage(path)
+    with closing(sqlite3.connect(path)) as connection:
+        connection.execute("VACUUM")
+    after_state = database_state(path)
+    after_pages = sqlite_page_usage(path)
+    if after_pages["freelist_count"] != 0:
+        raise ValueError(
+            f"VACUUM left {after_pages['freelist_count']} reusable pages in {path}"
+        )
+    return {
+        "before": before_state,
+        "before_pages": before_pages,
+        "after": after_state,
+        "after_pages": after_pages,
+        "reclaimed_bytes": int(before_state["size_bytes"])
+        - int(after_state["size_bytes"]),
+    }
+
+
+def validate_app_artifact_size(
+    path: Path,
+    *,
+    app: str,
+    limit_bytes: int = GITHUB_BLOB_LIMIT_BYTES,
+) -> dict[str, Any]:
+    """Fail before promotion when an app database exceeds GitHub's blob cap."""
+
+    path = Path(path).resolve()
+    size_bytes = int(path.stat().st_size)
+    if size_bytes > int(limit_bytes):
+        raise ValueError(
+            f"{app} app database is {size_bytes:,} bytes after VACUUM; "
+            f"GitHub's configured blob limit is {int(limit_bytes):,} bytes"
+        )
+    return {
+        "path": str(path),
+        "size_bytes": size_bytes,
+        "limit_bytes": int(limit_bytes),
+        "within_limit": True,
+    }
+
+
 def sqlite_backup(source: Path, destination: Path) -> dict[str, Any]:
     """Create a consistent SQLite backup without mutating the source."""
 
@@ -415,6 +491,60 @@ def sqlite_backup(source: Path, destination: Path) -> dict[str, Any]:
         return {
             "source": source_before,
             "staged": copied,
+        }
+    finally:
+        if temporary.exists():
+            temporary.unlink()
+
+
+def atomic_validated_sqlite_copy(
+    source: Path,
+    destination: Path,
+) -> dict[str, Any]:
+    """Copy a closed SQLite snapshot byte-for-byte and replace atomically."""
+
+    source = Path(source).resolve()
+    destination = Path(destination).resolve()
+    if source == destination:
+        raise ValueError("SQLite copy source and destination must differ")
+    source_before = database_state(source)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    temporary = destination.with_name(
+        f".{destination.name}.{uuid.uuid4().hex}.tmp"
+    )
+    try:
+        shutil.copy2(source, temporary)
+        copied = validate_sqlite(temporary)
+        source_after = database_state(source)
+        if (
+            source_before["size_bytes"] != source_after["size_bytes"]
+            or source_before["sha256"] != source_after["sha256"]
+        ):
+            raise RuntimeError(
+                f"SQLite source changed while it was copied: {source}"
+            )
+        if (
+            copied["size_bytes"] != source_before["size_bytes"]
+            or copied["sha256"] != source_before["sha256"]
+        ):
+            raise RuntimeError(
+                f"SQLite byte copy differs from its source: {source}"
+            )
+        for sidecar in _sqlite_sidecars(destination):
+            sidecar.unlink()
+        os.replace(temporary, destination)
+        staged = database_state(destination)
+        if (
+            staged["size_bytes"] != source_before["size_bytes"]
+            or staged["sha256"] != source_before["sha256"]
+        ):
+            raise RuntimeError(
+                f"Replaced SQLite destination differs from its source: "
+                f"{destination}"
+            )
+        return {
+            "source": source_before,
+            "staged": staged,
         }
     finally:
         if temporary.exists():
@@ -520,6 +650,12 @@ def _path_map(stage_dir: Path) -> dict[str, dict[str, str]]:
     return {
         "live": live,
         "staged": staged,
+        "model_input_bases": {
+            key: str(
+                (stage_dir / "model_input_bases" / DATABASE_FILES[key]).resolve()
+            )
+            for key in MODEL_INPUT_BASE_KEYS
+        },
         "app_bases": {
             "auction": str(
                 (stage_dir / "app_bases" / "Auction_Simulation.sqlite3").resolve()
@@ -659,6 +795,7 @@ def _native_thread_limited_environment(
             for variable in NATIVE_THREAD_ENVIRONMENT_VARIABLES
         }
     )
+    limited["PYTHONFAULTHANDLER"] = "1"
     return limited
 
 
@@ -668,6 +805,9 @@ def run_logged_command(
     step: str,
     stage_dir: Path,
     environment: Mapping[str, str] | None = None,
+    before_attempt: (
+        Callable[[int], Mapping[str, Any] | None] | None
+    ) = None,
 ) -> dict[str, Any]:
     log_path = Path(stage_dir) / "logs" / f"{step}.log"
     log_path.parent.mkdir(parents=True, exist_ok=True)
@@ -688,6 +828,29 @@ def run_logged_command(
             log.flush()
             if attempt > 1:
                 print(f"[{step}] {attempt_label}", flush=True)
+            preparation = None
+            if before_attempt is not None:
+                try:
+                    preparation = before_attempt(attempt)
+                except BaseException as error:
+                    completed = utc_now()
+                    receipt = {
+                        "attempt": attempt,
+                        "started_at_utc": started,
+                        "completed_at_utc": completed,
+                        "return_code": None,
+                        "outcome": "preparation_failed",
+                        "will_retry": False,
+                    }
+                    attempt_receipts.append(receipt)
+                    log.write(
+                        f"[{completed}] {attempt_label} preparation failed: "
+                        f"{type(error).__name__}: {error}\n"
+                    )
+                    log.flush()
+                    error.attempt_receipts = attempt_receipts
+                    error.log_path = str(log_path.resolve())
+                    raise
             process = subprocess.Popen(
                 [str(item) for item in command],
                 cwd=REPO_ROOT,
@@ -723,9 +886,10 @@ def run_logged_command(
                 raise
 
             completed = utc_now()
-            native_crash = (
-                return_code in WINDOWS_ACCESS_VIOLATION_RETURN_CODES
+            native_failure_class = WINDOWS_NATIVE_CRASH_CLASSES.get(
+                return_code
             )
+            native_crash = native_failure_class is not None
             will_retry = (
                 native_crash
                 and attempt < MAX_NATIVE_CRASH_ATTEMPTS
@@ -747,7 +911,9 @@ def run_logged_command(
                 "will_retry": will_retry,
             }
             if native_crash:
-                receipt["failure_class"] = "windows_access_violation"
+                receipt["failure_class"] = native_failure_class
+            if preparation is not None:
+                receipt["preparation"] = preparation
             attempt_receipts.append(receipt)
             log.write(
                 f"[{completed}] {attempt_label} exited {return_code}; "
@@ -771,8 +937,11 @@ def run_logged_command(
                 error.attempt_receipts = attempt_receipts
                 error.log_path = str(log_path.resolve())
                 raise error
+            failure_label = str(native_failure_class).removeprefix(
+                "windows_"
+            ).replace("_", " ")
             retry_message = (
-                f"[{step}] Windows access violation on {attempt_label}; "
+                f"[{step}] Windows {failure_label} on {attempt_label}; "
                 "retrying"
             )
             print(retry_message, flush=True)
@@ -796,12 +965,14 @@ def step_snapshot(manifest: dict[str, Any]) -> dict[str, Any]:
         Path(manifest["stage_dir"]) / "databases",
         Path(manifest["stage_dir"]) / "results",
         Path(manifest["stage_dir"]) / "logs",
+        Path(manifest["stage_dir"]) / "model_input_bases",
         Path(manifest["stage_dir"]) / "app_bases",
         Path(manifest["stage_dir"]) / "app_artifacts",
     ):
         directory.mkdir(parents=True, exist_ok=True)
 
     receipts: dict[str, Any] = {}
+    model_input_bases: dict[str, Any] = {}
     for key in DATABASE_FILES:
         live_path = paths["live"][key]
         staged_path = paths["staged"][key]
@@ -817,6 +988,21 @@ def step_snapshot(manifest: dict[str, Any]) -> dict[str, Any]:
                 "staged": database_state(staged_path),
                 "bootstrap": True,
             }
+        elif key in MODEL_INPUT_BASE_KEYS:
+            base_receipt = sqlite_backup(
+                live_path,
+                paths["model_input_bases"][key],
+            )
+            staged_receipt = atomic_validated_sqlite_copy(
+                paths["model_input_bases"][key],
+                staged_path,
+            )
+            receipt = {
+                "source": base_receipt["source"],
+                "staged": staged_receipt["staged"],
+                "retry_base": base_receipt["staged"],
+            }
+            model_input_bases[key] = base_receipt["staged"]
         else:
             receipt = sqlite_backup(live_path, staged_path)
         receipts[key] = receipt
@@ -849,8 +1035,53 @@ def step_snapshot(manifest: dict[str, Any]) -> dict[str, Any]:
     return {
         "database_count": len(receipts),
         "receipts": receipts,
+        "model_input_bases": model_input_bases,
         "external_inputs": external_inputs,
         "source_market_counts": source_market_counts,
+    }
+
+
+def _restore_model_input_databases(
+    manifest: Mapping[str, Any],
+    attempt: int,
+) -> dict[str, Any]:
+    paths = _resolved_paths(manifest)
+    snapshot = manifest.get("steps", {}).get("snapshot", {})
+    expected_bases = snapshot.get("result", {}).get("model_input_bases")
+    if not expected_bases:
+        raise ValueError(
+            "Snapshot receipt lacks immutable Model_Inputs retry bases"
+        )
+
+    actual_bases: dict[str, dict[str, Any]] = {}
+    for key in MODEL_INPUT_BASE_KEYS:
+        expected = expected_bases.get(key)
+        if not expected:
+            raise ValueError(f"Snapshot receipt lacks retry base for {key}")
+        actual = database_state(paths["model_input_bases"][key])
+        if (
+            int(actual["size_bytes"]) != int(expected["size_bytes"])
+            or str(actual["sha256"]) != str(expected["sha256"])
+        ):
+            raise RuntimeError(
+                f"Immutable retry base changed after snapshot: {key}"
+            )
+        actual_bases[key] = actual
+
+    print(
+        f"[model_inputs] restoring pristine inputs for attempt {attempt}",
+        flush=True,
+    )
+    restored = {
+        key: atomic_validated_sqlite_copy(
+            paths["model_input_bases"][key],
+            paths["staged"][key],
+        )
+        for key in MODEL_INPUT_BASE_KEYS
+    }
+    return {
+        "retry_bases": actual_bases,
+        "restored": restored,
     }
 
 
@@ -869,6 +1100,10 @@ def step_model_inputs(manifest: dict[str, Any]) -> dict[str, Any]:
         step="model_inputs",
         stage_dir=Path(manifest["stage_dir"]),
         environment=environment,
+        before_attempt=lambda attempt: _restore_model_input_databases(
+            manifest,
+            attempt,
+        ),
     )
     required = [
         f"{position}_{manifest['options']['year']}_ProjOnly"
@@ -883,31 +1118,56 @@ def step_v2(manifest: dict[str, Any], league: str) -> dict[str, Any]:
     paths = _resolved_paths(manifest)
     step = f"v2_{league}"
     year = int(manifest["options"]["year"])
-    return run_logged_command(
+    common_arguments = [
+        "--source-db",
+        str(paths["staged"]["source"]),
+        "--output-db",
+        str(paths["staged"][step]),
+        "--league",
+        league,
+        "--completed-through",
+        str(year - 1),
+        "--projection-through",
+        str(year),
+        "--max-workers",
+        str(manifest["options"]["max_workers"]),
+    ]
+    environment = _subprocess_environment(
+        paths["staged"],
+        year=year,
+    )
+    # Keep the parallel identity/spine build and the wide source feature pass in
+    # separate processes. Releasing the first process avoids an intermittent
+    # Windows native-heap failure while preserving the validated Milestone 2
+    # foundation consumed by Milestone 3's supported reuse path.
+    foundation = run_logged_command(
+        [
+            _python(manifest),
+            "-m",
+            "Scripts.V2.build_milestone_2",
+            *common_arguments,
+        ],
+        step=f"{step}_foundation",
+        stage_dir=Path(manifest["stage_dir"]),
+        environment=environment,
+    )
+    feature_mart = run_logged_command(
         [
             _python(manifest),
             "-m",
             "Scripts.V2.build_milestone_3",
-            "--source-db",
-            str(paths["staged"]["source"]),
-            "--output-db",
-            str(paths["staged"][step]),
-            "--league",
-            league,
-            "--completed-through",
-            str(year - 1),
-            "--projection-through",
-            str(year),
-            "--max-workers",
-            str(manifest["options"]["max_workers"]),
+            *common_arguments,
+            "--reuse-foundation",
         ],
         step=step,
         stage_dir=Path(manifest["stage_dir"]),
-        environment=_subprocess_environment(
-            paths["staged"],
-            year=int(manifest["options"]["year"]),
-        ),
+        environment=environment,
     )
+    return {
+        "process_isolation": "milestone_2_then_milestone_3_reuse",
+        "foundation": foundation,
+        "feature_mart": feature_mart,
+    }
 
 
 def step_locked(manifest: dict[str, Any], league: str) -> dict[str, Any]:
@@ -924,6 +1184,8 @@ def step_locked(manifest: dict[str, Any], league: str) -> dict[str, Any]:
             str(paths["staged"][f"v2_{league}"]),
             "--results-dir",
             str(Path(manifest["stage_dir"]) / "results" / step),
+            "--parameter-cache-db",
+            str(paths["staged"]["parameter_cache"]),
         ],
         step=step,
         stage_dir=Path(manifest["stage_dir"]),
@@ -948,6 +1210,8 @@ def step_next(manifest: dict[str, Any], league: str) -> dict[str, Any]:
             str(paths["staged"][f"v2_{league}"]),
             "--results-dir",
             str(Path(manifest["stage_dir"]) / "results" / step),
+            "--parameter-cache-db",
+            str(paths["staged"]["parameter_cache"]),
         ],
         step=step,
         stage_dir=Path(manifest["stage_dir"]),
@@ -2201,6 +2465,18 @@ def validate_release(manifest: Mapping[str, Any]) -> dict[str, Any]:
     from Scripts.V2.production_handoff import (
         load_validated_shadow_predictions,
     )
+    from Scripts.V2.parameter_cache import (
+        EXPECTED_CACHE_MODELS,
+        LOCKED_CACHE_RUNNER,
+        NEXT_YEAR_CACHE_RUNNER,
+        validate_parameter_cache_database,
+    )
+
+    parameter_cache = validate_parameter_cache_database(
+        staged["parameter_cache"],
+        season=int(manifest["options"]["year"]),
+        leagues=cycle.leagues,
+    )
 
     lineage: dict[str, dict[str, Any]] = {}
     for league in cycle.leagues:
@@ -2224,6 +2500,8 @@ def validate_release(manifest: Mapping[str, Any]) -> dict[str, Any]:
                 cycle.current_shadow_table,
                 cycle.next_shadow_table,
                 "locked_template_production_unmatched",
+                "locked_parameter_cache_receipts",
+                "next_year_parameter_cache_receipts",
             ),
         )
         with sqlite3.connect(database) as connection:
@@ -2245,6 +2523,22 @@ def validate_release(manifest: Mapping[str, Any]) -> dict[str, Any]:
                     """
                 )
             }
+            locked_cache_receipts = connection.execute(
+                """
+                SELECT model_name, fingerprint_sha256, cache_status
+                FROM locked_parameter_cache_receipts
+                WHERE runner=? AND season=? AND league=?
+                """,
+                (LOCKED_CACHE_RUNNER, int(manifest["options"]["year"]), league),
+            ).fetchall()
+            next_cache_receipts = connection.execute(
+                """
+                SELECT model_name, fingerprint_sha256, cache_status
+                FROM next_year_parameter_cache_receipts
+                WHERE runner=? AND season=? AND league=?
+                """,
+                (NEXT_YEAR_CACHE_RUNNER, int(manifest["options"]["year"]), league),
+            ).fetchall()
         if unmatched:
             raise ValueError(
                 f"{league} template handoff has {unmatched} unmatched rows"
@@ -2254,6 +2548,36 @@ def validate_release(manifest: Mapping[str, Any]) -> dict[str, Any]:
                 f"{league} active handoff does not reference exactly one "
                 f"feature run: {sorted(active_feature_runs)}"
             )
+        for runner, receipt_rows in (
+            (LOCKED_CACHE_RUNNER, locked_cache_receipts),
+            (NEXT_YEAR_CACHE_RUNNER, next_cache_receipts),
+        ):
+            observed_models = {str(row[0]) for row in receipt_rows}
+            expected_models = set(EXPECTED_CACHE_MODELS[runner])
+            if observed_models != expected_models:
+                raise ValueError(
+                    f"{league}/{runner} parameter-cache receipts differ: "
+                    f"missing={sorted(expected_models - observed_models)}, "
+                    f"extra={sorted(observed_models - expected_models)}"
+                )
+            if any(
+                len(str(row[1])) != 64
+                or str(row[2]) not in {"hit", "miss_written"}
+                for row in receipt_rows
+            ):
+                raise ValueError(
+                    f"{league}/{runner} parameter-cache receipt is invalid"
+                )
+        lineage[league]["parameter_cache"] = {
+            "locked_hits": sum(
+                str(row[2]) == "hit" for row in locked_cache_receipts
+            ),
+            "locked_entries": len(locked_cache_receipts),
+            "next_hits": sum(
+                str(row[2]) == "hit" for row in next_cache_receipts
+            ),
+            "next_entries": len(next_cache_receipts),
+        }
         lineage[league]["feature_run_id"] = next(
             iter(active_feature_runs)
         )
@@ -2280,6 +2604,7 @@ def validate_release(manifest: Mapping[str, Any]) -> dict[str, Any]:
         "next_model_input_counts": model_inputs_next,
         "cross_league_identity_counts": identity,
         "cross_league_remote_sources": remote_sources,
+        "parameter_cache": parameter_cache,
         "shadow_lineage": lineage,
         "simulation": simulation,
     }
@@ -2360,6 +2685,13 @@ def step_prepare_apps(manifest: dict[str, Any]) -> dict[str, Any]:
         paths["app_artifacts"]["auction"],
         GENERATED_AUCTION_TABLES,
     )
+    auction_compaction = vacuum_sqlite(
+        paths["app_artifacts"]["auction"]
+    )
+    auction_size_gate = validate_app_artifact_size(
+        paths["app_artifacts"]["auction"],
+        app="auction",
+    )
     auction_owned_after = table_digests(
         paths["app_artifacts"]["auction"],
         auction_owned_tables,
@@ -2394,6 +2726,11 @@ def step_prepare_apps(manifest: dict[str, Any]) -> dict[str, Any]:
         paths["staged"]["simulation"],
         paths["app_artifacts"]["snake"],
     )
+    snake_compaction = vacuum_sqlite(paths["app_artifacts"]["snake"])
+    snake_size_gate = validate_app_artifact_size(
+        paths["app_artifacts"]["snake"],
+        app="snake",
+    )
     simulation_tables = database_tables(paths["staged"]["simulation"])
     snake_tables = database_tables(paths["app_artifacts"]["snake"])
     if simulation_tables != snake_tables:
@@ -2413,12 +2750,16 @@ def step_prepare_apps(manifest: dict[str, Any]) -> dict[str, Any]:
             "app_owned_table_count": len(auction_owned_tables),
             "app_owned_tables_unchanged": True,
             "generated_tables_match_staging": True,
+            "compaction": auction_compaction,
+            "github_size_gate": auction_size_gate,
             "final_state": database_state(paths["app_artifacts"]["auction"]),
         },
         "snake": {
             "copy": snake_receipt,
             "table_count": len(snake_tables),
             "tables_match_staging": True,
+            "compaction": snake_compaction,
+            "github_size_gate": snake_size_gate,
             "final_state": database_state(paths["app_artifacts"]["snake"]),
         },
     }

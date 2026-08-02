@@ -93,6 +93,112 @@ def test_release_plan_covers_every_downstream_surface():
     assert len(set(refresh.GENERATED_AUCTION_TABLES)) == 20
     assert "V2_Projection_Legacy_Backup" in refresh.GENERATED_AUCTION_TABLES
     assert "Salary_Selection_Premium" in refresh.GENERATED_AUCTION_TABLES
+    assert refresh.MANIFEST_SCHEMA_VERSION == 5
+    assert refresh.DATABASE_FILES["parameter_cache"] == (
+        "V2_Parameter_Cache.sqlite3"
+    )
+    assert "parameter_cache" in refresh.PROMOTED_DATABASES
+    assert "parameter_cache" in refresh.BOOTSTRAPPABLE_DATABASES
+    assert refresh.GITHUB_BLOB_LIMIT_BYTES == 100 * 1024 * 1024
+
+
+def test_vacuum_sqlite_reclaims_pages_without_changing_content(tmp_path):
+    database = tmp_path / "compact.sqlite3"
+    with closing(sqlite3.connect(database)) as connection:
+        connection.execute(
+            "CREATE TABLE values_table (value INTEGER, payload BLOB)"
+        )
+        connection.executemany(
+            "INSERT INTO values_table VALUES (?, ?)",
+            [(index, b"x" * 8192) for index in range(200)],
+        )
+        connection.execute("DELETE FROM values_table WHERE value > 0")
+        connection.commit()
+    before_digest = refresh.stable_table_digest(database, "values_table")
+
+    receipt = refresh.vacuum_sqlite(database)
+
+    assert receipt["reclaimed_bytes"] > 0
+    assert receipt["after"]["size_bytes"] < receipt["before"]["size_bytes"]
+    assert receipt["after_pages"]["freelist_count"] == 0
+    assert refresh.stable_table_digest(database, "values_table") == before_digest
+
+
+def test_app_artifact_size_gate_rejects_oversized_database(tmp_path):
+    database = tmp_path / "oversized.sqlite3"
+    _database(
+        database,
+        [
+            "CREATE TABLE values_table (value INTEGER)",
+            "INSERT INTO values_table VALUES (1)",
+        ],
+    )
+
+    accepted = refresh.validate_app_artifact_size(
+        database,
+        app="snake",
+        limit_bytes=database.stat().st_size,
+    )
+    assert accepted["within_limit"] is True
+
+    with pytest.raises(ValueError, match="after VACUUM"):
+        refresh.validate_app_artifact_size(
+            database,
+            app="snake",
+            limit_bytes=database.stat().st_size - 1,
+        )
+
+
+def test_prepare_apps_vacuums_both_candidates(tmp_path, monkeypatch):
+    simulation = tmp_path / "staged" / "Simulation.sqlite3"
+    auction_base = tmp_path / "bases" / "Auction.sqlite3"
+    auction_artifact = tmp_path / "artifacts" / "Auction.sqlite3"
+    snake_artifact = tmp_path / "artifacts" / "Snake.sqlite3"
+    simulation.parent.mkdir(parents=True)
+    auction_base.parent.mkdir(parents=True)
+    with closing(sqlite3.connect(simulation)) as connection:
+        connection.execute("CREATE TABLE generated (value INTEGER, payload BLOB)")
+        connection.executemany(
+            "INSERT INTO generated VALUES (?, ?)",
+            [(index, b"x" * 8192) for index in range(200)],
+        )
+        connection.execute("DELETE FROM generated WHERE value > 0")
+        connection.commit()
+    _database(
+        auction_base,
+        [
+            "CREATE TABLE generated (value INTEGER, payload BLOB)",
+            "INSERT INTO generated VALUES (999, X'01')",
+            "CREATE TABLE app_owned (value TEXT)",
+            "INSERT INTO app_owned VALUES ('preserve')",
+        ],
+    )
+    paths = {
+        "staged": {"simulation": simulation},
+        "app_bases": {"auction": auction_base},
+        "app_artifacts": {
+            "auction": auction_artifact,
+            "snake": snake_artifact,
+        },
+    }
+    monkeypatch.setattr(refresh, "_resolved_paths", lambda _manifest: paths)
+    monkeypatch.setattr(refresh, "GENERATED_AUCTION_TABLES", ("generated",))
+
+    result = refresh.step_prepare_apps({})
+
+    assert result["auction"]["compaction"]["after_pages"]["freelist_count"] == 0
+    assert result["snake"]["compaction"]["reclaimed_bytes"] > 0
+    assert result["snake"]["compaction"]["after_pages"]["freelist_count"] == 0
+    assert result["auction"]["github_size_gate"]["within_limit"] is True
+    assert result["snake"]["github_size_gate"]["within_limit"] is True
+    assert refresh.table_digests(simulation, ["generated"]) == refresh.table_digests(
+        snake_artifact,
+        ["generated"],
+    )
+    assert refresh.table_digests(auction_base, ["app_owned"]) == refresh.table_digests(
+        auction_artifact,
+        ["app_owned"],
+    )
 
 
 def test_source_market_gate_returns_each_governed_nffc_feed(tmp_path):
@@ -198,6 +304,11 @@ def test_snapshot_validates_source_markets_before_modeling(
     paths = {
         "live": live,
         "staged": staged,
+        "model_input_bases": {
+            key: tmp_path / "stage" / "model_input_bases" / filename
+            for key, filename in refresh.DATABASE_FILES.items()
+            if key in refresh.MODEL_INPUT_BASE_KEYS
+        },
         "app_bases": {
             "auction": tmp_path / "stage" / "auction_base.sqlite3",
             "snake": tmp_path / "stage" / "snake_base.sqlite3",
@@ -224,6 +335,11 @@ def test_snapshot_validates_source_markets_before_modeling(
 
     monkeypatch.setattr(refresh, "_resolved_paths", lambda _manifest: paths)
     monkeypatch.setattr(refresh, "sqlite_backup", fake_backup)
+    monkeypatch.setattr(
+        refresh,
+        "atomic_validated_sqlite_copy",
+        fake_backup,
+    )
     monkeypatch.setattr(refresh, "EXTERNAL_SQLITE_INPUTS", {})
     monkeypatch.setattr(refresh, "external_file_inputs", lambda _year: {})
     monkeypatch.setattr(refresh, "_validate_source_markets", fake_validate)
@@ -239,6 +355,19 @@ def test_snapshot_validates_source_markets_before_modeling(
     assert result["source_market_counts"] == {
         "nffc_feed_counts": {"nffc_cutline": 250}
     }
+    assert set(result["model_input_bases"]) == set(
+        refresh.MODEL_INPUT_BASE_KEYS
+    )
+
+
+def test_path_map_separates_model_input_retry_bases(tmp_path):
+    paths = refresh._path_map(tmp_path)
+
+    for key in refresh.MODEL_INPUT_BASE_KEYS:
+        retry_base = Path(paths["model_input_bases"][key])
+        assert retry_base.parent == (tmp_path / "model_input_bases").resolve()
+        assert retry_base != Path(paths["staged"][key])
+        assert retry_base != Path(paths["live"][key])
 
 
 def test_future_year_fails_closed_until_model_rollover():
@@ -273,6 +402,7 @@ def test_subprocess_environment_propagates_cycle_year_and_keeper_input(
         variable: "1"
         for variable in refresh.NATIVE_THREAD_ENVIRONMENT_VARIABLES
     }
+    assert environment["PYTHONFAULTHANDLER"] == "1"
 
 
 class _FakeLoggedProcess:
@@ -323,6 +453,11 @@ def test_logged_command_caps_native_threads_and_retries_access_violation(
         monkeypatch,
         [3221225477, 0],
     )
+    preparations: list[int] = []
+
+    def prepare_attempt(attempt: int) -> dict[str, int]:
+        preparations.append(attempt)
+        return {"prepared_attempt": attempt}
 
     receipt = refresh.run_logged_command(
         ["python", "model.py"],
@@ -332,9 +467,11 @@ def test_logged_command_caps_native_threads_and_retries_access_violation(
             variable: "8"
             for variable in refresh.NATIVE_THREAD_ENVIRONMENT_VARIABLES
         },
+        before_attempt=prepare_attempt,
     )
 
     assert len(calls) == 2
+    assert preparations == [1, 2]
     for call in calls:
         assert {
             variable: call["environment"][variable]
@@ -351,10 +488,96 @@ def test_logged_command_caps_native_threads_and_retries_access_violation(
         attempt["return_code"]
         for attempt in receipt["attempts"]
     ] == [3221225477, 0]
+    assert [
+        attempt["preparation"]["prepared_attempt"]
+        for attempt in receipt["attempts"]
+    ] == [1, 2]
     log_text = Path(receipt["log"]).read_text(encoding="utf-8")
-    assert "attempt 1/2 exited 3221225477" in log_text
-    assert "Windows access violation on attempt 1/2; retrying" in log_text
-    assert "attempt 2/2 exited 0" in log_text
+    assert (
+        f"attempt 1/{refresh.MAX_NATIVE_CRASH_ATTEMPTS} "
+        "exited 3221225477"
+    ) in log_text
+    assert (
+        "Windows access violation on attempt "
+        f"1/{refresh.MAX_NATIVE_CRASH_ATTEMPTS}; retrying"
+    ) in log_text
+    assert (
+        f"attempt 2/{refresh.MAX_NATIVE_CRASH_ATTEMPTS} exited 0"
+        in log_text
+    )
+
+
+@pytest.mark.parametrize("return_code", (3221226356, -1073740940))
+def test_logged_command_retries_windows_heap_corruption(
+    monkeypatch,
+    tmp_path,
+    return_code,
+):
+    calls = _install_fake_logged_processes(
+        monkeypatch,
+        [return_code, 0],
+    )
+
+    receipt = refresh.run_logged_command(
+        ["python", "model.py"],
+        step="v2_nffc",
+        stage_dir=tmp_path,
+    )
+
+    assert len(calls) == 2
+    assert [
+        attempt["failure_class"]
+        for attempt in receipt["attempts"]
+        if "failure_class" in attempt
+    ] == ["windows_heap_corruption"]
+    log_text = Path(receipt["log"]).read_text(encoding="utf-8")
+    assert (
+        "Windows heap corruption on attempt "
+        f"1/{refresh.MAX_NATIVE_CRASH_ATTEMPTS}; retrying"
+    ) in log_text
+
+
+def test_v2_step_isolates_foundation_from_feature_mart(monkeypatch, tmp_path):
+    calls = []
+    staged = {
+        "source": tmp_path / "Season_Stats_New.sqlite3",
+        "v2_dk": tmp_path / "Projection_V2.sqlite3",
+    }
+
+    monkeypatch.setattr(
+        refresh,
+        "_resolved_paths",
+        lambda _manifest: {"staged": staged},
+    )
+    monkeypatch.setattr(refresh, "_python", lambda _manifest: "python")
+    monkeypatch.setattr(
+        refresh,
+        "_subprocess_environment",
+        lambda _paths, year: {"FF_CURRENT_SEASON": str(year)},
+    )
+
+    def fake_run(command, **kwargs):
+        calls.append((list(command), kwargs))
+        return {"command": list(command), "step": kwargs["step"]}
+
+    monkeypatch.setattr(refresh, "run_logged_command", fake_run)
+    result = refresh.step_v2(
+        {
+            "stage_dir": str(tmp_path),
+            "options": {"year": 2026, "max_workers": 6},
+        },
+        "dk",
+    )
+
+    assert result["process_isolation"] == (
+        "milestone_2_then_milestone_3_reuse"
+    )
+    assert len(calls) == 2
+    assert calls[0][0][1:3] == ["-m", "Scripts.V2.build_milestone_2"]
+    assert calls[0][1]["step"] == "v2_dk_foundation"
+    assert calls[1][0][1:3] == ["-m", "Scripts.V2.build_milestone_3"]
+    assert calls[1][0][-1] == "--reuse-foundation"
+    assert calls[1][1]["step"] == "v2_dk"
 
 
 def test_logged_command_exhausts_native_retry_and_records_manifest_attempts(
@@ -363,7 +586,7 @@ def test_logged_command_exhausts_native_retry_and_records_manifest_attempts(
 ):
     calls = _install_fake_logged_processes(
         monkeypatch,
-        [-1073741819, -1073741819],
+        [-1073741819] * refresh.MAX_NATIVE_CRASH_ATTEMPTS,
     )
     manifest = {
         "stage_dir": str(tmp_path),
@@ -394,7 +617,10 @@ def test_logged_command_exhausts_native_retry_and_records_manifest_attempts(
         attempt["outcome"]
         for attempt in attempts
     ] == [
-        "retryable_native_failure",
+        *(
+            ["retryable_native_failure"]
+            * (refresh.MAX_NATIVE_CRASH_ATTEMPTS - 1)
+        ),
         "native_failure_exhausted",
     ]
     assert manifest["steps"]["snapshot"]["status"] == "failed"
@@ -452,6 +678,139 @@ def test_sqlite_backup_closes_handles_and_preserves_content(tmp_path):
     replacement = tmp_path / "replacement.sqlite3"
     destination.replace(replacement)
     assert replacement.is_file()
+
+
+def test_atomic_sqlite_copy_is_exact_and_removes_stale_sidecars(tmp_path):
+    source = tmp_path / "source.sqlite3"
+    destination = tmp_path / "destination.sqlite3"
+    _database(
+        source,
+        [
+            "CREATE TABLE rows (row_id INTEGER PRIMARY KEY, value TEXT)",
+            "INSERT INTO rows VALUES (1, 'source')",
+        ],
+    )
+    _database(
+        destination,
+        [
+            "CREATE TABLE rows (row_id INTEGER PRIMARY KEY, value TEXT)",
+            "INSERT INTO rows VALUES (1, 'old')",
+        ],
+    )
+    sidecars = [Path(f"{destination}{suffix}") for suffix in ("-wal", "-shm", "-journal")]
+    for sidecar in sidecars:
+        sidecar.write_bytes(b"stale")
+
+    receipt = refresh.atomic_validated_sqlite_copy(source, destination)
+
+    assert receipt["source"]["sha256"] == receipt["staged"]["sha256"]
+    assert refresh.sha256_file(source) == refresh.sha256_file(destination)
+    assert not any(sidecar.exists() for sidecar in sidecars)
+    with closing(sqlite3.connect(destination)) as connection:
+        assert connection.execute("SELECT * FROM rows").fetchall() == [
+            (1, "source")
+        ]
+
+
+def _write_model_input_retry_base(path: Path, marker: str) -> None:
+    statements = [
+        "CREATE TABLE marker (value TEXT)",
+        f"INSERT INTO marker VALUES ('{marker}')",
+    ]
+    statements.extend(
+        f"CREATE TABLE {position}_2026_ProjOnly (player TEXT)"
+        for position in ("QB", "RB", "WR", "TE")
+    )
+    _database(path, statements)
+
+
+def test_model_inputs_retry_restores_both_databases_before_each_attempt(
+    monkeypatch,
+    tmp_path,
+):
+    staged = {
+        "model_inputs": tmp_path / "databases" / "Model_Inputs.sqlite3",
+        "model_inputs_next": (
+            tmp_path / "databases" / "Model_Inputs_next.sqlite3"
+        ),
+        "simulation": tmp_path / "databases" / "Simulation.sqlite3",
+        "v2_beta": tmp_path / "databases" / "Projection_V2_beta.sqlite3",
+    }
+    retry_bases = {
+        "model_inputs": tmp_path / "bases" / "Model_Inputs.sqlite3",
+        "model_inputs_next": tmp_path / "bases" / "Model_Inputs_next.sqlite3",
+    }
+    for key in refresh.MODEL_INPUT_BASE_KEYS:
+        retry_bases[key].parent.mkdir(parents=True, exist_ok=True)
+        _write_model_input_retry_base(retry_bases[key], f"base-{key}")
+        refresh.atomic_validated_sqlite_copy(retry_bases[key], staged[key])
+        with closing(sqlite3.connect(staged[key])) as connection:
+            connection.execute("UPDATE marker SET value='dirty-before-run'")
+            connection.commit()
+
+    paths = {
+        "staged": staged,
+        "model_input_bases": retry_bases,
+    }
+    base_states = {
+        key: refresh.database_state(path)
+        for key, path in retry_bases.items()
+    }
+    manifest = {
+        "stage_dir": str(tmp_path),
+        "options": {
+            "year": 2026,
+            "python": "python",
+        },
+        "steps": {
+            "snapshot": {
+                "status": "completed",
+                "result": {"model_input_bases": base_states},
+            }
+        },
+    }
+    monkeypatch.setattr(refresh, "_resolved_paths", lambda _manifest: paths)
+    return_codes = iter([3221225477, 0])
+    observed: list[dict[str, str]] = []
+
+    def fake_popen(command, **kwargs):
+        values = {}
+        for key in refresh.MODEL_INPUT_BASE_KEYS:
+            with closing(sqlite3.connect(staged[key])) as connection:
+                values[key] = connection.execute(
+                    "SELECT value FROM marker"
+                ).fetchone()[0]
+        observed.append(values)
+        if len(observed) == 1:
+            for key in refresh.MODEL_INPUT_BASE_KEYS:
+                with closing(sqlite3.connect(staged[key])) as connection:
+                    connection.execute(
+                        "UPDATE marker SET value='partial-after-crash'"
+                    )
+                    connection.commit()
+        return _FakeLoggedProcess(next(return_codes))
+
+    monkeypatch.setattr(refresh.subprocess, "Popen", fake_popen)
+
+    result = refresh.step_model_inputs(manifest)
+
+    expected = {
+        key: f"base-{key}"
+        for key in refresh.MODEL_INPUT_BASE_KEYS
+    }
+    assert observed == [expected, expected]
+    assert [
+        attempt["outcome"]
+        for attempt in result["attempts"]
+    ] == ["retryable_native_failure", "completed"]
+    assert all("preparation" in attempt for attempt in result["attempts"])
+    assert {
+        key: refresh.database_state(path)["sha256"]
+        for key, path in retry_bases.items()
+    } == {
+        key: state["sha256"]
+        for key, state in base_states.items()
+    }
 
 
 def _write_identity_database(path: Path, *, alias_name: str = "player") -> None:

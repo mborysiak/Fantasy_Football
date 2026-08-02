@@ -1,0 +1,25 @@
+{
+  "validation_seasons": [
+    2017,
+    2025
+  ],
+  "rolling_test_seasons": [
+    2018,
+    2025
+  ],
+  "development_end": 2022,
+  "primary_league": "dk",
+  "replication_league": "beta",
+  "baseline": "locked conditional_ppg_primary_blend",
+  "baseline_feature_count": 40,
+  "baseline_includes_expert_projection": true,
+  "baseline_includes_adp": true,
+  "ridge_alpha": 10.0,
+  "logistic_c": 0.2,
+  "bootstrap_draws": 20000,
+  "candidate_count": 26,
+  "target_rows": {
+    "dk": 3696,
+    "beta": 3622
+  }
+}

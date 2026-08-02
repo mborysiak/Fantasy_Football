@@ -332,6 +332,18 @@ def _read_resolved_value_rows(
     projection_through_season: int,
 ) -> tuple[pd.DataFrame, int, int, pd.DataFrame]:
     identity_spec = CANDIDATE_SOURCE_TABLES[table]
+    source_through_season = min(
+        projection_through_season,
+        int(
+            value_spec.get(
+                "through_season",
+                identity_spec.get(
+                    "through_season",
+                    projection_through_season,
+                ),
+            )
+        ),
+    )
     available = {
         row[1] for row in connection.execute(f'PRAGMA table_info("{table}")')
     }
@@ -358,7 +370,7 @@ def _read_resolved_value_rows(
     ].copy()
     in_window = (
         identity_rows["season"].ge(start_season)
-        & identity_rows["season"].le(projection_through_season)
+        & identity_rows["season"].le(source_through_season)
     )
     has_position_column = isinstance(identity_spec.get("position"), str)
     if has_position_column:

@@ -1165,9 +1165,10 @@ def test_nffc_v2_current_context_uses_scoring_components_and_17_week_ppg(
     published_adp = pd.DataFrame(
         [
             {
-                "player_key": "scoring-key",
-                "year": weekly_builder.YEAR,
-                "adp_avg_pick": 40.0,
+                    "player_key": "scoring-key",
+                    "year": weekly_builder.YEAR,
+                    "adp_team": pd.NA,
+                    "adp_avg_pick": 40.0,
                 "adp_year_exp": 3.0,
             }
         ]
@@ -1231,9 +1232,10 @@ def test_non_nffc_v2_current_context_derives_qb_passing_component_before_filter(
     published_adp = pd.DataFrame(
         [
             {
-                "player_key": "scoring-key",
-                "year": weekly_builder.YEAR,
-                "adp_avg_pick": 40.0,
+                    "player_key": "scoring-key",
+                    "year": weekly_builder.YEAR,
+                    "adp_team": pd.NA,
+                    "adp_avg_pick": 40.0,
                 "adp_year_exp": 3.0,
             }
         ]
@@ -1719,6 +1721,28 @@ def test_current_context_join_is_key_first_and_uses_v2_fallback():
         "current_context_fallback_fields",
     ]
     assert attached["current_context_missing_fields"].eq("").all()
+
+
+def test_canonical_adp_team_fills_only_unassigned_current_team():
+    context = pd.DataFrame(
+        {
+            "team": [pd.NA, "FA", "KC"],
+            "published_team": ["NYG", pd.NA, "BUF"],
+        }
+    )
+
+    filled = weekly_builder.fill_current_team_from_published_adp(
+        context,
+        published_team_column="published_team",
+        primary_source="v2_player_season_features",
+    )
+
+    assert filled["team"].tolist() == ["NYG", "FA", "KC"]
+    assert filled["current_team_source"].tolist() == [
+        "canonical_avg_adps",
+        "unassigned",
+        "v2_player_season_features",
+    ]
 
 
 def test_recommendation_row_without_required_keyed_context_fails():

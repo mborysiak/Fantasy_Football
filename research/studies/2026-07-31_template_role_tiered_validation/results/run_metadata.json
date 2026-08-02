@@ -1,0 +1,11 @@
+{
+  "source_count": 13,
+  "prediction_rows": 214488,
+  "metric_rows": 3080,
+  "bootstrap_rows": 3384,
+  "bootstrap_samples": 5000,
+  "bootstrap_seed": 20260731,
+  "current_direct_candidate_rows": 68,
+  "current_direct_screen_passes": 19,
+  "production_changed": false
+}

@@ -1,7 +1,52 @@
+import sqlite3
+
 import pandas as pd
 import pytest
 
 from Scripts.Modeling import s5_Auction_Selection_Premium as premium
+
+
+def test_clear_active_slice_preserves_other_seasons_and_leagues():
+    with sqlite3.connect(":memory:") as conn:
+        pd.DataFrame(
+            [
+                {"year": 2026, "league": "beta", "player_key": "stale-1"},
+                {"year": 2026, "league": "beta", "player_key": "stale-2"},
+                {"year": 2025, "league": "beta", "player_key": "prior"},
+                {"year": 2026, "league": "dk", "player_key": "other-league"},
+            ]
+        ).to_sql(premium.PREMIUM_TABLE, conn, index=False)
+
+        removed = premium.clear_active_slice(
+            conn,
+            premium.PREMIUM_TABLE,
+            2026,
+            "beta",
+        )
+        remaining = pd.read_sql_query(
+            f'SELECT * FROM "{premium.PREMIUM_TABLE}"',
+            conn,
+        )
+
+    assert removed == 2
+    assert set(remaining.player_key) == {"prior", "other-league"}
+
+
+def test_clear_active_slice_accepts_absent_table():
+    with sqlite3.connect(":memory:") as conn:
+        assert premium.clear_active_slice(conn, premium.PREMIUM_TABLE, 2026, "beta") == 0
+
+
+def test_clear_active_slice_rejects_unscoped_table():
+    with sqlite3.connect(":memory:") as conn:
+        conn.execute(f'CREATE TABLE "{premium.PREMIUM_TABLE}" (player_key TEXT)')
+        with pytest.raises(ValueError, match="missing columns"):
+            premium.clear_active_slice(
+                conn,
+                premium.PREMIUM_TABLE,
+                2026,
+                "beta",
+            )
 
 
 def _historical_seeds(

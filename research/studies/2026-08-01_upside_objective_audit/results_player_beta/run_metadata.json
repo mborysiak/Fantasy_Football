@@ -1,0 +1,18 @@
+{
+  "league": "beta",
+  "v2_database": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\Data\\Databases\\Projection_V2_beta.sqlite3",
+  "max_template_season": 2025,
+  "target_rows": 2647,
+  "prediction_rows": 15882,
+  "method_count": 6,
+  "residual_strike": 5.0,
+  "threshold_lookback_seasons": 5,
+  "threshold_target_counts": {
+    "QB": 48,
+    "RB": 90,
+    "WR": 120,
+    "TE": 48
+  },
+  "production_changed": false,
+  "runtime_seconds": 40.508808100013994
+}

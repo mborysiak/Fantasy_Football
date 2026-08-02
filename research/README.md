@@ -214,7 +214,35 @@ reproducible bundles.
   seasons, and has an interval narrowly crossing zero. Carry it into
   whole-season/template validation rather than changing the point model. See
   `studies/2026-07-29_v2_team_environment/`.
-- Best-ball weekly template calibration.
+- Best-ball weekly template calibration. The 2026-07-31 role-tiered study
+  replaces the equal-third core-player selection objective with hierarchical
+  active-PPG CRPS, contribution tie-breaking, aggregate availability
+  guardrails, and replacement-aware roster scoring. A fresh 2,647-target per
+  league replay selected the historical 0.25x distance candidate as its only
+  one-SE finalist: development core PPG improved 0.007901 DK and 0.005511
+  beta. It nevertheless failed downstream 20-player roster CRPS
+  non-inferiority, worsening DK 0.7096% in development and 0.5696% in
+  2023-2025 while beta was slightly worse. Missed-week calibration stayed
+  within margin, so retain production matching but use the role-tiered
+  validation policy going forward. See
+  `studies/2026-07-31_template_role_tiered_validation/`.
+- nflfastR receiver-profile matching. The 2026-07-31 causal replay attaches
+  only prior-season target share, air-yards share, aDOT, red-zone target share,
+  and targeted-week dispersion; opportunity shrinkage makes rookies and
+  missing histories neutral. None of four normalized WR/TE bundles improves
+  development core PPG CRPS in both DK and beta. The profiles reduce the
+  visible Ladd/Pryor mismatch but do not improve predictive scoring, so
+  production remains unchanged. TE-only usage/depth is a post-hoc follow-up,
+  not a promotion candidate. See
+  `studies/2026-07-31_template_fastr_receiver_profiles/`.
+- nflfastR RB role matching. The 2026-07-31 causal replay tests prior-season
+  red-zone/goal-line carry room share and third/fourth-down target room share
+  with opportunity shrinkage and neutral rookie handling. No global RB arm
+  improves development core PPG in both DK and beta, so production and roster
+  simulation remain unchanged. Passing-down share improves the depth-player
+  composite in all four development/temporal league cells, but that depth-only
+  slice is post-hoc and requires a separately frozen confirmation. See
+  `studies/2026-07-31_template_fastr_rb_roles/`.
 - NFFC weekly-template center calibration. The 2026-07-31 strict rolling replay
   uses NFFC-scored V2 preseason matcher context, 2021-forward donors, a 17-week
   horizon, and 540 held-out targets from 2023-2025. The locked OOF donor center

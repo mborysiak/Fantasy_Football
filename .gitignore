@@ -162,6 +162,7 @@ Data/Databases/Model_Inputs.sqlite3
 Data/Databases/Model_Inputs.sqlite3
 Data/Databases/Projection_V2.sqlite3*
 Data/Databases/Projection_V2_*.sqlite3*
+Data/Databases/V2_Parameter_Cache.sqlite3*
 
 # Local cutover staging and recoverable database backups
 research/studies/*/staging/databases/

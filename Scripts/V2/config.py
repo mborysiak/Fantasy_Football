@@ -153,6 +153,10 @@ CANDIDATE_SOURCE_TABLES = {
     "FantasyData": {
         "source": "fantasydata",
         "source_kind": "projection",
+        # The subscription is no longer being refreshed. Retain historical
+        # evidence, but exclude the static 2026 snapshot from every current
+        # candidate, projection-value, and market-value path.
+        "through_season": 2025,
         "player": "player",
         "position": "pos",
         "team": "team",
@@ -277,6 +281,21 @@ def candidate_source_kind(source: str) -> str | None:
         if spec.get("source_column") and prefix:
             if source_value.startswith(str(prefix)):
                 return source_kind
+    return None
+
+
+def candidate_source_through_season(source: str) -> int | None:
+    """Return an optional final eligible season for a normalized source."""
+    source_value = str(source)
+    for spec in CANDIDATE_SOURCE_TABLES.values():
+        constant = spec.get("source")
+        prefix = spec.get("source_prefix")
+        matches = constant is not None and source_value == str(constant)
+        if spec.get("source_column") and prefix:
+            matches = matches or source_value.startswith(str(prefix))
+        if matches:
+            through_season = spec.get("through_season")
+            return int(through_season) if through_season is not None else None
     return None
 
 

@@ -141,6 +141,37 @@ def test_source_spine_quarantines_only_fftoday_2018_qbs():
     }
 
 
+def test_source_spine_keeps_fantasydata_historical_only():
+    identity = pd.DataFrame(
+        [
+            {"player_key": "historical", "position": "WR"},
+            {"player_key": "current", "position": "WR"},
+        ]
+    )
+    aliases = pd.DataFrame(
+        [
+            _alias("historical", "fantasydata", 2025, "Historical Receiver"),
+            _alias("current", "fantasydata", 2026, "Current Receiver"),
+        ]
+    )
+
+    sources = build_player_season_sources(
+        aliases,
+        identity,
+        run_id="fantasydata_historical_only_fixture",
+        start_season=2025,
+        projection_through_season=2026,
+    )
+
+    observed = set(
+        sources[["player_key", "season", "source"]].itertuples(
+            index=False,
+            name=None,
+        )
+    )
+    assert observed == {("historical", 2025, "fantasydata")}
+
+
 def _build() -> tuple[pd.DataFrame, pd.DataFrame]:
     identity = _identity()
     aliases = pd.DataFrame(
@@ -217,7 +248,7 @@ def test_completed_unresolved_identity_has_unknown_participation():
 def test_pending_candidate_has_no_outcome_labels():
     _, spine = _build()
     future = spine.set_index("player_key").loc["future"]
-    assert future["candidate_rule"] == "preseason_evidence"
+    assert future["candidate_rule"] == "drafted_rookie_only"
     assert future["is_rookie"] == 1
     assert future["active_target_available"] == 0
     assert future["outcome_join_status"] == "pending"

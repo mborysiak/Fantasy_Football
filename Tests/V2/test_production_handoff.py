@@ -7,8 +7,11 @@ import pytest
 
 from Scripts.V2.contracts import scoring_hash
 from Scripts.V2.production_handoff import (
+    AUTOMATIC_MARKET_BUFFER_EXCLUSION_REASON,
     CURRENT_RESIDUAL_COLUMNS,
     GOVERNED_PRODUCTION_EXCLUSIONS_BY_YEAR,
+    MARKET_HANDOFF_PROTECTED_PICK_DEPTH,
+    MARKET_HANDOFF_REQUIRED_DEPTH,
     NEXT_RESIDUAL_SOURCE_COLUMNS,
     PRODUCTION_ELIGIBILITY_VERSION,
     PRODUCTION_EXCLUSION_POLICY_VERSION,
@@ -674,8 +677,18 @@ def test_nffc_eligibility_uses_its_own_keyed_market_flag():
 
 def test_reviewed_dk_exclusion_policy_is_exact_and_versioned():
     assert PRODUCTION_EXCLUSION_POLICY_VERSION == (
-        "v2_market_only_missing_current_center_exclusion_v1"
+        "v2_market_only_incomplete_buffer_exclusion_v3"
     )
+    assert MARKET_HANDOFF_REQUIRED_DEPTH == {
+        "dk": 240,
+        "nffc": 360,
+        "beta": 180,
+    }
+    assert MARKET_HANDOFF_PROTECTED_PICK_DEPTH == {
+        "dk": 200,
+        "nffc": 300,
+        "beta": 150,
+    }
     assert GOVERNED_PRODUCTION_EXCLUSIONS_BY_YEAR[2026]["dk"] == {
         "3f0b675d-ef58-5606-8f9e-73bc2a9b4118": (
             "market_only_without_current_projection_center"
@@ -703,7 +716,7 @@ def test_reviewed_dk_exclusion_policy_is_exact_and_versioned():
         ),
     }
     nffc_exclusions = GOVERNED_PRODUCTION_EXCLUSIONS_BY_YEAR[2026]["nffc"]
-    assert len(nffc_exclusions) == 9
+    assert len(nffc_exclusions) == 8
     assert set(nffc_exclusions.values()) == {
         "market_only_without_current_projection_center"
     }
@@ -755,8 +768,108 @@ def test_missing_required_center_fails_unless_explicitly_excluded():
     )
     assert (
         excluded["governed_exclusion_policy_version"]
-        == "v2_market_only_missing_current_center_exclusion_v1"
+        == "v2_market_only_incomplete_buffer_exclusion_v3"
     )
+
+
+def test_incomplete_market_only_buffer_row_is_audited_not_fatal():
+    current, next_year = shadow_frames()
+    current.loc[current["player_key"].eq("new-key"), "conditional_ppg_shadow"] = (
+        None
+    )
+    eligibility = eligibility_frame()
+    eligibility.loc[
+        eligibility["player_key"].eq("new-key"),
+        [
+            "eligibility_sources",
+            "eligible_core_projonly",
+            "eligible_dk_adp",
+            "market_eligibility_rank",
+            "market_eligibility_pick",
+        ],
+    ] = ["dk_adp", 0, 1, 243, 225.0]
+
+    output, _, master = build_production_projection_slice(
+        legacy_frame(),
+        current,
+        next_year,
+        eligibility,
+        league="dk",
+        governed_exclusions={},
+    )
+
+    assert output["player_key"].tolist() == ["other-key"]
+    excluded = master.set_index("player_key").loc["new-key"]
+    assert excluded["governed_excluded"] == 1
+    assert (
+        excluded["governed_exclusion_reason"]
+        == AUTOMATIC_MARKET_BUFFER_EXCLUSION_REASON
+    )
+    assert excluded["market_handoff_required_depth"] == 240
+    assert excluded["market_handoff_protected_pick_depth"] == 200
+    assert excluded["market_handoff_draft_position"] == 225.0
+    assert excluded["automatic_market_buffer_exclusion"] == 1
+    assert excluded["population_action"] == "governed_excluded"
+
+
+def test_incomplete_market_only_row_inside_protected_depth_still_fails():
+    current, next_year = shadow_frames()
+    current.loc[current["player_key"].eq("new-key"), "conditional_ppg_shadow"] = (
+        None
+    )
+    eligibility = eligibility_frame()
+    eligibility.loc[
+        eligibility["player_key"].eq("new-key"),
+        [
+            "eligibility_sources",
+            "eligible_core_projonly",
+            "eligible_dk_adp",
+            "market_eligibility_rank",
+            "market_eligibility_pick",
+        ],
+    ] = ["dk_adp", 0, 1, 200, 200.0]
+
+    with pytest.raises(ValueError, match="eligibility-required.*incomplete"):
+        build_production_projection_slice(
+            legacy_frame(),
+            current,
+            next_year,
+            eligibility,
+            league="dk",
+            governed_exclusions={},
+        )
+
+
+def test_automatic_tail_exclusion_cannot_underfill_draft(
+    monkeypatch,
+):
+    current, next_year = shadow_frames()
+    current.loc[current["player_key"].eq("new-key"), "conditional_ppg_shadow"] = (
+        None
+    )
+    eligibility = eligibility_frame()
+    eligibility.loc[
+        eligibility["player_key"].eq("new-key"),
+        [
+            "eligibility_sources",
+            "eligible_core_projonly",
+            "eligible_dk_adp",
+            "market_eligibility_rank",
+            "market_eligibility_pick",
+        ],
+    ] = ["dk_adp", 0, 1, 2, 2.0]
+    monkeypatch.setitem(MARKET_HANDOFF_REQUIRED_DEPTH, "dk", 2)
+    monkeypatch.setitem(MARKET_HANDOFF_PROTECTED_PICK_DEPTH, "dk", 1)
+
+    with pytest.raises(ValueError, match="required to cover the draft"):
+        build_production_projection_slice(
+            legacy_frame(),
+            current,
+            next_year,
+            eligibility,
+            league="dk",
+            governed_exclusions={},
+        )
 
 
 def test_governed_exclusion_cannot_remove_complete_core_player():

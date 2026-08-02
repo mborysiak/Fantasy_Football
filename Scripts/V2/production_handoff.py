@@ -13,9 +13,13 @@ Eligibility is preseason-only:
   current beta keeper.
 
 All source labels resolve through the governed V2 identity tables before they
-can affect eligibility.  A required player with an incomplete current or
-next-year V2 handoff fails closed unless the canonical key has an explicit,
-reasoned governed exclusion.
+can affect eligibility.  Core players and keepers always fail closed when their
+current or next-year V2 handoff is incomplete.  New incomplete market-only
+players inside the protected portion of a league's draft also fail closed
+unless an explicit annual exclusion has been reviewed.  A market-only player
+may be excluded automatically only from the final sixth of the draft surface,
+the exclusion remains visible in the eligibility audit, and the remaining
+eligible population must still cover the full draft.
 """
 
 from __future__ import annotations
@@ -77,6 +81,24 @@ MARKET_ELIGIBILITY_RULES = {
     # intentionally ordered by ETR overall rank.
     "beta": ("etr", 180, "etr_adp"),
 }
+# The minimum complete population must still cover the full draft.  Within that
+# surface, the first five-sixths of expected picks are protected and fail closed
+# unless an explicit annual exclusion has already been reviewed.
+# An incomplete row in the final sixth may be omitted only when it is market-only
+# (never a ProjOnly/core player or keeper).  This treats sparse tail ADP as a
+# discovery source without inventing projection centers for fringe players.
+MARKET_HANDOFF_REQUIRED_DEPTH = {
+    "dk": 240,
+    "nffc": 360,
+    "beta": 180,
+}
+MARKET_HANDOFF_PROTECTED_PICK_DEPTH = {
+    league: (required_depth * 5) // 6
+    for league, required_depth in MARKET_HANDOFF_REQUIRED_DEPTH.items()
+}
+AUTOMATIC_MARKET_BUFFER_EXCLUSION_REASON = (
+    "market_buffer_only_without_complete_v2_handoff"
+)
 ELIGIBILITY_SOURCE_PRIORITY = {
     "core_projonly": 0,
     "league_keeper": 1,
@@ -103,7 +125,7 @@ NEXT_RESIDUAL_SOURCE_COLUMNS = {
 PRODUCTION_HANDOFF_VERSION = "v2_current_next_production_handoff_v2"
 PRODUCTION_ELIGIBILITY_VERSION = "v2_preseason_master_eligibility_v1"
 PRODUCTION_EXCLUSION_POLICY_VERSION = (
-    "v2_market_only_missing_current_center_exclusion_v1"
+    "v2_market_only_incomplete_buffer_exclusion_v3"
 )
 PRODUCTION_EXCLUSION_REFERENCE_BY_YEAR = {
     2026: "2026 V2 feature mart + ProjOnly/salary-source coverage audit",
@@ -147,11 +169,10 @@ GOVERNED_MARKET_POSITION_MISMATCHES_BY_YEAR: Mapping[
 }
 
 # Entries must be canonical player keys with a durable, non-empty reason.  The
-# eight DK rows below are stale/deep market-only rows: they are absent from the
-# current ProjOnly and salary sources, and their V2 expert point/PPG medians are
-# null.  They remain visible in the master audit but cannot become recommendation
-# rows until a current projection center exists.  Any new missing-center case
-# still fails closed.
+# reviewed rows below predate the deterministic late-market rule or require an
+# explicit annual decision.  New incomplete market-only rows are excluded
+# automatically only when their expected pick is beyond the protected depth
+# above; every other new missing-center case still fails closed.
 GOVERNED_PRODUCTION_EXCLUSIONS_BY_YEAR: Mapping[
     int,
     Mapping[str, Mapping[str, str]],
@@ -203,9 +224,6 @@ GOVERNED_PRODUCTION_EXCLUSIONS_BY_YEAR: Mapping[
                 "market_only_without_current_projection_center"
             ),
             "86efb1f0-e04a-5f4d-b8cb-048353f1d3f5": (
-                "market_only_without_current_projection_center"
-            ),
-            "d7bc9396-1066-506a-a354-10b0c70cf212": (
                 "market_only_without_current_projection_center"
             ),
             "f973b1c8-3470-57f5-bc68-42e35a830411": (
@@ -3099,7 +3117,48 @@ def build_production_projection_slice(
         )
     master["governed_exclusion_reason"] = master["player_key"].map(
         exclusions
+    ).astype("string")
+    required_market_depth = MARKET_HANDOFF_REQUIRED_DEPTH[league]
+    protected_pick_depth = MARKET_HANDOFF_PROTECTED_PICK_DEPTH[league]
+    market_rank = pd.to_numeric(
+        master["market_eligibility_rank"], errors="coerce"
     )
+    market_pick = pd.to_numeric(
+        master["market_eligibility_pick"], errors="coerce"
+    )
+    market_draft_position = market_pick.where(
+        market_pick.notna(), market_rank
+    )
+    master["market_handoff_required_depth"] = required_market_depth
+    master["market_handoff_protected_pick_depth"] = protected_pick_depth
+    master["market_handoff_draft_position"] = market_draft_position
+    market_only = (
+        master["eligible_core_projonly"].eq(0)
+        & master["eligible_league_keeper"].eq(0)
+        & (
+            master["eligible_dk_adp"].eq(1)
+            | master["eligible_nffc_adp"].eq(1)
+            | master["eligible_etr_adp"].eq(1)
+        )
+    )
+    incomplete_handoff = (
+        master["current_handoff_complete"].eq(0)
+        | master["next_handoff_complete"].eq(0)
+    )
+    automatic_market_buffer_exclusion = (
+        master["eligibility_required"].eq(1)
+        & market_only
+        & incomplete_handoff
+        & market_draft_position.gt(protected_pick_depth)
+        & master["governed_exclusion_reason"].isna()
+    )
+    master["automatic_market_buffer_exclusion"] = (
+        automatic_market_buffer_exclusion.astype(int)
+    )
+    master.loc[
+        automatic_market_buffer_exclusion,
+        "governed_exclusion_reason",
+    ] = AUTOMATIC_MARKET_BUFFER_EXCLUSION_REASON
     master["governed_exclusion_policy_version"] = np.where(
         master["governed_exclusion_reason"].notna(),
         PRODUCTION_EXCLUSION_POLICY_VERSION,
@@ -3124,6 +3183,18 @@ def build_production_projection_slice(
         master["eligibility_required"].eq(1)
         & master["governed_excluded"].eq(0)
     ).astype(int)
+
+    eligible_population = int(master["eligibility_required"].sum())
+    selected_population = int(master["production_selected"].sum())
+    if (
+        eligible_population >= required_market_depth
+        and selected_population < required_market_depth
+    ):
+        raise ValueError(
+            f"{league} governed exclusions leave only "
+            f"{selected_population} production players; "
+            f"{required_market_depth} are required to cover the draft"
+        )
 
     incomplete = (
         master["production_selected"].eq(1)

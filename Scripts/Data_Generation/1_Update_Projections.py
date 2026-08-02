@@ -24,11 +24,23 @@ from Scripts.V2.refresh_dk_adp import (
     parse_dk_payload,
     replace_current_dk_rows,
 )
+from Scripts.Data_Generation.fantasypros_projection_csv import (
+    FANTASYPROS_PROJECTION_POSITIONS,
+    build_fantasypros_projection_rows,
+    fantasypros_projection_filename,
+)
+from Scripts.Data_Generation.adp_rank_ingest import (
+    FANTASYPROS_ADP_POSITIONS,
+    FANTASYPROS_MINIMUM_ROWS,
+    MFL_MINIMUM_ROWS,
+    replace_adp_rank_slice,
+)
 
 # set the root path and database management object
 root_path = general.get_main_path('Fantasy_Football')
 db_path = f'{root_path}/Data/Databases/'
 dm = DataManage(db_path)
+adp_db_path = Path(db_path) / f'{DB_NAME}.sqlite3'
 
 import pandas as pd
 import requests
@@ -153,6 +165,7 @@ def get_adp(year_val, pos, source):
         df['pos'] = df.pos.str.extract(r'^([A-Z]+)', expand=False)
         df['pick'] = df.pick.replace('-', np.nan).astype('float')
         df = df.dropna(subset=['player', 'pos', 'pick']).reset_index(drop=True)
+        df = df[df.pos.isin(FANTASYPROS_ADP_POSITIONS)].reset_index(drop=True)
         df = df.assign(year=year_val, source='fpros')
         df = df[['player', 'pick', 'pos', 'year', 'source']]
         
@@ -483,11 +496,25 @@ def format_ffa(df, table_name, set_year):
 for pos in POSITIONS:
     print(YEAR, pos)
     mfl_adp = get_adp(YEAR, pos, 'mfl')
-    dm.delete_from_db(DB_NAME, 'ADP_Ranks', f"year={YEAR} and pos='{pos}'", create_backup=False)
-    dm.write_to_db(mfl_adp, DB_NAME, 'ADP_Ranks', 'append')
+    replace_adp_rank_slice(
+        adp_db_path,
+        mfl_adp,
+        year=YEAR,
+        source='mfl',
+        position=pos,
+        allowed_positions=(pos,),
+        minimum_rows_by_position={pos: MFL_MINIMUM_ROWS[pos]},
+    )
 
 fp_adp = get_adp(YEAR, 'all', 'fantasypros')
-dm.write_to_db(fp_adp, DB_NAME, 'ADP_Ranks', 'append')
+replace_adp_rank_slice(
+    adp_db_path,
+    fp_adp,
+    year=YEAR,
+    source='fpros',
+    allowed_positions=FANTASYPROS_ADP_POSITIONS,
+    minimum_rows_by_position=FANTASYPROS_MINIMUM_ROWS,
+)
 
 #%%
 
@@ -592,18 +619,18 @@ dm.write_to_db(output, DB_NAME, 'FFToday_Projections', 'append')
 
 #%%
 
-# pull fantasydata projections
-try:
-    fdta_file = [f for f in os.listdir('c:/Users/borys/Downloads') if 'fantasy-football-weekly-projections' in f][0]
-    new_fname = '-'.join(fdta_file.split('-')[:-1])+'.csv'
-    os.rename(f'/Users/borys/Downloads/{fdta_file}', f'/Users/borys/Downloads/{new_fname}')
-except: 
-    print('No new Fantasy Data file found')
+# # pull fantasydata projections
+# try:
+#     fdta_file = [f for f in os.listdir('c:/Users/borys/Downloads') if 'fantasy-football-weekly-projections' in f][0]
+#     new_fname = '-'.join(fdta_file.split('-')[:-1])+'.csv'
+#     os.rename(f'/Users/borys/Downloads/{fdta_file}', f'/Users/borys/Downloads/{new_fname}')
+# except:
+#     print('No new Fantasy Data file found')
 
-df = pull_fantasy_data(new_fname, YEAR)
+# df = pull_fantasy_data(new_fname, YEAR)
 
-dm.delete_from_db(DB_NAME, 'FantasyData', f"year={YEAR}", create_backup=False)
-dm.write_to_db(df, DB_NAME, 'FantasyData', 'append')
+# dm.delete_from_db(DB_NAME, 'FantasyData', f"year={YEAR}", create_backup=False)
+# dm.write_to_db(df, DB_NAME, 'FantasyData', 'append')
 
 
 
@@ -628,46 +655,28 @@ dm.write_to_db(df, DB_NAME, 'FFA_RawStats', 'append')
 
 
 #%%
-rename_cols = {
-    'Player': 'player',
-    'PASSING_ATT': 'fpros_pass_att',
-    'PASSING_CMP': 'fpros_pass_cmp',
-    'PASSING_YDS': 'fpros_pass_yds',
-    'PASSING_TD': 'fpros_pass_td',
-    'PASSING_TDS': 'fpros_pass_td',
-    'PASSING_INT': 'fpros_pass_int',
-    'PASSING_INTS': 'fpros_pass_int',
-    'RUSHING_ATT': 'fpros_rush_att',
-    'RUSHING_YDS': 'fpros_rush_yds',
-    'RUSHING_TD': 'fpros_rush_td',
-    'RUSHING_TDS': 'fpros_rush_td',
-    'RECEIVING_REC': 'fpros_rec',
-    'RECEIVING_YDS': 'fpros_rec_yds',
-    'RECEIVING_TD': 'fpros_rec_td',
-    'RECEIVING_TDS': 'fpros_rec_td',
-    'MISC_FL': 'fpros_fum_lost',
-    'FPTS': 'fpros_proj_pts',
-    'MISC_FPTS': 'fpros_proj_pts',
-}
+fantasypros_frames = {}
+for pos in FANTASYPROS_PROJECTION_POSITIONS:
+    fname = fantasypros_projection_filename(pos)
+    print(f'FantasyPros CSV: {pos} {YEAR} ({fname})')
+    fantasypros_frames[pos] = move_download_to_folder(
+        root_path,
+        'FantasyPros_Projections',
+        fname,
+        YEAR,
+    )
 
-df = pd.DataFrame()
-for pos in ['qb', 'rb', 'wr', 'te']:
-    print(pos, YEAR)
-    
-    df_cur = pd.read_html(f'https://www.fantasypros.com/nfl/projections/{pos}.php?week=draft')[0]
-    cols = [f'{c[0]}_{c[1]}' if 'Unnamed' not in c[0] else c[1] for c in df_cur.columns]
-
-    df_cur.columns = cols
-    df_cur = df_cur.rename(columns=rename_cols).assign(pos=pos.upper(), year=YEAR)
-    df_cur.player = df_cur.player.apply(lambda x: x.split(' ')[0] + ' ' + x.split(' ')[1])
-    df_cur.player = df_cur.player.apply(dc.name_clean)
-    col_order = ['player', 'pos', 'year']
-    col_order.extend([c for c in df_cur.columns if 'fpros' in c])
-    df_cur = df_cur[col_order]
-    df = pd.concat([df, df_cur], axis=0)
-
-df = df.fillna(0)
-df = df.round(2)
+df = build_fantasypros_projection_rows(fantasypros_frames, year=YEAR)
+df['player'] = df.player.apply(dc.name_clean)
+if df.duplicated(['player', 'pos']).any():
+    duplicates = df.loc[
+        df.duplicated(['player', 'pos'], keep=False),
+        ['player', 'pos'],
+    ].to_dict('records')
+    raise ValueError(
+        f'FantasyPros projections have duplicate cleaned player keys: {duplicates}'
+    )
+print(df.groupby('pos').size().to_dict())
 
 dm.delete_from_db(DB_NAME, 'FantasyPros_Projections', f"year={YEAR}", create_backup=False)
 dm.write_to_db(df, DB_NAME, 'FantasyPros_Projections', 'append')
@@ -792,6 +801,41 @@ cols.extend([c for c in df.columns if 'fpts' in c])
 df = df[cols]
 dm.delete_from_db(DB_NAME, 'FantasyPoints_Projections', f"year={YEAR}", create_backup=False)
 dm.write_to_db(df, DB_NAME, 'FantasyPoints_Projections', 'append')
+#%%
+
+fff_name = [f for f in os.listdir("/Users/borys/Downloads/") if '4for4' in f and 'proj' in f][0]
+df = move_download_to_folder(root_path, '4for4', fff_name, YEAR)
+cols = {
+    'Player': 'player', 
+    'Pos': 'pos',
+    'Team': 'team',
+    'Pass Comp': 'fff_pass_cmp',
+    'Pass Att': 'fff_pass_att',
+    'Pass Yds': 'fff_pass_yds',
+    'Pass TD': 'fff_pass_td',
+    'INT': 'fff_pass_int',
+    'Rush Att': 'fff_rush_att',
+    'Rush Yds': 'fff_rush_yds',
+    'Rush TD': 'fff_rush_td',
+    'Rec': 'fff_rec',
+    'Rec Yds': 'fff_rec_yds',
+    'Rec TD': 'fff_rec_td',
+    'Pa1D': 'fff_pass_first_downs',
+    'Ru1D': 'fff_rush_first_downs',
+    'Rec1D': 'fff_rec_first_downs',
+    'Health': 'fff_health'
+}
+df = (
+    df
+    .rename(columns=cols)
+    .loc[:, cols.values()]
+    .assign(year=YEAR)
+)
+
+df.player = df.player.apply(dc.name_clean)
+dm.delete_from_db(DB_NAME, 'FFF_Projections', f"year={YEAR}", create_backup=False)
+dm.write_to_db(df, DB_NAME, 'FFF_Projections', 'append')
+
 
 #%%
 
@@ -847,39 +891,38 @@ dm.write_to_db(df, DB_NAME, 'Fanduel_Projections', 'append')
 
 #%%
 
-fff_name = [f for f in os.listdir("/Users/borys/Downloads/") if '4for4' in f and 'proj' in f][0]
-df = move_download_to_folder(root_path, '4for4', fff_name, YEAR)
-cols = {
-    'Player': 'player', 
-    'Pos': 'pos',
-    'Team': 'team',
-    'Pass Comp': 'fff_pass_cmp',
-    'Pass Att': 'fff_pass_att',
-    'Pass Yds': 'fff_pass_yds',
-    'Pass TD': 'fff_pass_td',
-    'INT': 'fff_pass_int',
-    'Rush Att': 'fff_rush_att',
-    'Rush Yds': 'fff_rush_yds',
-    'Rush TD': 'fff_rush_td',
-    'Rec': 'fff_rec',
-    'Rec Yds': 'fff_rec_yds',
-    'Rec TD': 'fff_rec_td',
-    'Pa1D': 'fff_pass_first_downs',
-    'Ru1D': 'fff_rush_first_downs',
-    'Rec1D': 'fff_rec_first_downs',
-    'Health': 'fff_health'
-}
-df = (
-    df
-    .rename(columns=cols)
-    .loc[:, cols.values()]
-    .assign(year=YEAR)
-)
 
-df.player = df.player.apply(dc.name_clean)
-dm.delete_from_db(DB_NAME, 'FFF_Projections', f"year={YEAR}", create_backup=False)
-dm.write_to_db(df, DB_NAME, 'FFF_Projections', 'append')
 
+
+
+#%%
+
+def save_pff_stats(stat_type, set_year):
+    if stat_type=='QB': fname = 'passing_summary'
+    elif stat_type=='Rec': fname='receiving_summary'
+    elif stat_type=='Rush': fname='rushing_summary'
+    elif stat_type=='Oline': fname='offense_blocking'
+
+    try:
+        os.replace(f"/Users/borys/Downloads/{fname}.csv", 
+                   f'{root_path}/Data/OtherData/PFF_Stats/{set_year}_{fname}.csv')
+    except: 
+        pass
+    
+    df = pd.read_csv(f'{root_path}/Data/OtherData/PFF_Stats/{set_year}_{fname}.csv')
+    df.player = df.player.apply(dc.name_clean)
+    df['year'] = set_year
+
+    cols = dm.read(f"SELECT * FROM PFF_{stat_type}_Stats WHERE year={set_year}", DB_NAME).columns
+    df = df[[c for c in cols if c in df.columns]]
+
+    dm.delete_from_db(DB_NAME, f'PFF_{stat_type}_Stats', f"year={set_year}", create_backup=False)
+    dm.write_to_db(df, DB_NAME, f'PFF_{stat_type}_Stats', 'append')
+
+    return df
+
+for stat_type in ['QB', 'Rec', 'Rush', 'Oline']:
+    df = save_pff_stats(stat_type, YEAR-1)
 
 #%%
 # create full positional list to loop through

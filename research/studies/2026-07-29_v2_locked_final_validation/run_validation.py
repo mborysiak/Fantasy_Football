@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import gc
 import json
 import sqlite3
 import sys
@@ -60,11 +61,25 @@ from Scripts.V2.locked_candidates import (
     specification_table,
     validate_feature_lock,
 )
-from Scripts.V2.native_runtime import assert_single_openmp_runtime
+from Scripts.V2.native_runtime import (
+    MAX_ISOLATED_LIGHTGBM_FITS,
+    RANDOM_FOREST_N_JOBS,
+    assert_single_openmp_runtime,
+    run_module_function_in_fresh_process,
+)
 from Scripts.V2.modeling import add_modeling_features, rolling_position_rate
+from Scripts.V2.parameter_cache import (
+    LOCKED_CACHE_RUNNER,
+    load_parameter_cache,
+    parameter_fingerprint,
+    write_parameter_cache,
+)
 
 
 DEFAULT_RESULTS_DIR = STUDY_DIR / "results"
+DEFAULT_PARAMETER_CACHE_DB = (
+    REPO_ROOT / "Data" / "Databases" / "V2_Parameter_Cache.sqlite3"
+)
 ACTIVE_OUTPUT_DB_PATH = DEFAULT_OUTPUT_DB_PATH
 ACTIVE_RESULTS_DIR = DEFAULT_RESULTS_DIR
 ACTIVE_SCORING_OBJECTIVE = "dk"
@@ -113,6 +128,11 @@ def parse_args() -> argparse.Namespace:
         "--results-dir",
         type=Path,
         default=DEFAULT_RESULTS_DIR,
+    )
+    parser.add_argument(
+        "--parameter-cache-db",
+        type=Path,
+        default=DEFAULT_PARAMETER_CACHE_DB,
     )
     parser.add_argument("--league", default="dk")
     return parser.parse_args()
@@ -216,9 +236,12 @@ def _model_pipeline(
     if model_name == "expert_recalibrated_ridge":
         estimator = Ridge(max_iter=5_000, **parameters)
     elif model_name == "conditional_ppg_lasso":
-        estimator = Lasso(max_iter=20_000, tol=1e-6, **parameters)
+        estimator = Lasso(max_iter=50_000, tol=1e-6, **parameters)
     elif model_name == "conditional_ppg_random_forest":
-        estimator = RandomForestRegressor(**parameters)
+        estimator = RandomForestRegressor(
+            n_jobs=RANDOM_FOREST_N_JOBS,
+            **parameters,
+        )
     elif model_name == "conditional_ppg_lightgbm":
         estimator = LGBMRegressor(
             objective="regression",
@@ -253,7 +276,14 @@ def _model_pipeline(
     else:
         raise ValueError(f"Unsupported locked model: {model_name}")
     steps.append(("model", estimator))
-    return Pipeline(steps)
+    pipeline = Pipeline(steps)
+    if model_name.endswith("lightgbm"):
+        # LightGBM records feature names even when scikit-learn gives it an
+        # unnamed array during fit.  Preserve the imputer's generated names on
+        # both fit and predict so sklearn does not report a false schema
+        # mismatch and LightGBM can enforce the real column contract.
+        pipeline.set_output(transform="pandas")
+    return pipeline
 
 
 def _predict(
@@ -285,15 +315,16 @@ def _fit(
     return model
 
 
-def _grid_predictions(
+def _grid_predictions_for_origins(
     target: pd.DataFrame,
     feature_columns: Sequence[str],
     model_name: str,
     grid: Sequence[Mapping[str, object]],
+    origins: Sequence[int],
     probability: bool = False,
 ) -> pd.DataFrame:
     rows: list[pd.DataFrame] = []
-    for origin in GRID_ORIGINS:
+    for origin in origins:
         train = target[target["season"].lt(origin)]
         hold = target[target["season"].eq(origin)]
         if train.empty or hold.empty:
@@ -312,9 +343,32 @@ def _grid_predictions(
             current["candidate_id"] = candidate_id
             current["prediction"] = prediction
             rows.append(current)
+            if model_name.endswith("lightgbm"):
+                # LightGBM owns native Booster state. Release each fitted
+                # pipeline before the next fit so long grids do not retain
+                # enough native state to destabilize the Windows process.
+                del model, prediction
+                gc.collect()
     if not rows:
         raise ValueError(f"No grid predictions generated for {model_name}")
     return pd.concat(rows, ignore_index=True)
+
+
+def _grid_predictions(
+    target: pd.DataFrame,
+    feature_columns: Sequence[str],
+    model_name: str,
+    grid: Sequence[Mapping[str, object]],
+    probability: bool = False,
+) -> pd.DataFrame:
+    return _grid_predictions_for_origins(
+        target,
+        feature_columns,
+        model_name,
+        grid,
+        GRID_ORIGINS,
+        probability=probability,
+    )
 
 
 def _metric(
@@ -380,18 +434,53 @@ def _select_hyperparameters(
     return pd.DataFrame(rows)
 
 
-def _selected_predictions(
+def _selection_cache_fingerprint(
+    target: pd.DataFrame,
+    feature_columns: Sequence[str],
+    *,
+    cache_model_name: str,
+    fit_model_name: str,
+    grid: Sequence[Mapping[str, object]],
+    probability: bool,
+) -> str:
+    return parameter_fingerprint(
+        frame=target,
+        data_columns=(
+            "player_key",
+            "season",
+            "position",
+            "actual",
+            *feature_columns,
+        ),
+        specification={
+            "runner": LOCKED_CACHE_RUNNER,
+            "season": CURRENT_SEASON,
+            "league": ACTIVE_SCORING_OBJECTIVE,
+            "cache_model_name": cache_model_name,
+            "fit_model_name": fit_model_name,
+            "grid": [dict(parameters) for parameters in grid],
+            "grid_origins": list(GRID_ORIGINS),
+            "forecast_origins": [*OUTER_SEASONS, CURRENT_SEASON],
+            "minimum_inner_seasons": MIN_INNER_SEASONS,
+            "selection_metric": "brier" if probability else "rmse",
+            "random_seed": LOCKED_RANDOM_SEED,
+        },
+    )
+
+
+def _selected_predictions_for_origins(
     train_target: pd.DataFrame,
     candidates: pd.DataFrame,
     feature_columns: Sequence[str],
     fit_model_name: str,
     output_model_name: str,
     selected: pd.DataFrame,
+    origins: Sequence[int],
     probability: bool = False,
     require_expert: bool = True,
 ) -> pd.DataFrame:
     rows: list[pd.DataFrame] = []
-    for origin in (*OUTER_SEASONS, CURRENT_SEASON):
+    for origin in origins:
         train = train_target[train_target["season"].lt(origin)]
         hold = candidates[candidates["season"].eq(origin)].copy()
         if require_expert:
@@ -421,7 +510,128 @@ def _selected_predictions(
             selection.iloc[0]["candidate_id"]
         )
         rows.append(current)
+        if fit_model_name.endswith("lightgbm"):
+            # Selected replays run in the same long-lived process as the
+            # grids, so they need the same native-model lifecycle boundary.
+            del model, prediction
+            gc.collect()
     return pd.concat(rows, ignore_index=True)
+
+
+def _selected_predictions(
+    train_target: pd.DataFrame,
+    candidates: pd.DataFrame,
+    feature_columns: Sequence[str],
+    fit_model_name: str,
+    output_model_name: str,
+    selected: pd.DataFrame,
+    probability: bool = False,
+    require_expert: bool = True,
+) -> pd.DataFrame:
+    return _selected_predictions_for_origins(
+        train_target,
+        candidates,
+        feature_columns,
+        fit_model_name,
+        output_model_name,
+        selected,
+        (*OUTER_SEASONS, CURRENT_SEASON),
+        probability=probability,
+        require_expert=require_expert,
+    )
+
+
+def _runtime_grid_predictions(
+    target: pd.DataFrame,
+    feature_columns: Sequence[str],
+    model_name: str,
+    grid: Sequence[Mapping[str, object]],
+    probability: bool = False,
+) -> pd.DataFrame:
+    if not model_name.endswith("lightgbm"):
+        return _grid_predictions(
+            target,
+            feature_columns,
+            model_name,
+            grid,
+            probability=probability,
+        )
+    if len(grid) > MAX_ISOLATED_LIGHTGBM_FITS:
+        raise ValueError(
+            f"{model_name} grid has {len(grid)} candidates; isolated "
+            f"workers allow at most {MAX_ISOLATED_LIGHTGBM_FITS} fits"
+        )
+    frames: list[pd.DataFrame] = []
+    for origin in GRID_ORIGINS:
+        train = target[target["season"].lt(origin)]
+        hold = target[target["season"].eq(origin)]
+        if train.empty or hold.empty:
+            continue
+        frames.append(
+            run_module_function_in_fresh_process(
+                Path(__file__),
+                "_grid_predictions_for_origins",
+                args=(
+                    target,
+                    feature_columns,
+                    model_name,
+                    grid,
+                    (origin,),
+                ),
+                kwargs={"probability": probability},
+            )
+        )
+    if not frames:
+        raise ValueError(f"No grid predictions generated for {model_name}")
+    return pd.concat(frames, ignore_index=True)
+
+
+def _runtime_selected_predictions(
+    train_target: pd.DataFrame,
+    candidates: pd.DataFrame,
+    feature_columns: Sequence[str],
+    fit_model_name: str,
+    output_model_name: str,
+    selected: pd.DataFrame,
+    probability: bool = False,
+    require_expert: bool = True,
+) -> pd.DataFrame:
+    if not fit_model_name.endswith("lightgbm"):
+        return _selected_predictions(
+            train_target,
+            candidates,
+            feature_columns,
+            fit_model_name,
+            output_model_name,
+            selected,
+            probability=probability,
+            require_expert=require_expert,
+        )
+    origins = (*OUTER_SEASONS, CURRENT_SEASON)
+    frames: list[pd.DataFrame] = []
+    for start in range(0, len(origins), MAX_ISOLATED_LIGHTGBM_FITS):
+        frames.append(
+            run_module_function_in_fresh_process(
+                Path(__file__),
+                "_selected_predictions_for_origins",
+                args=(
+                    train_target,
+                    candidates,
+                    feature_columns,
+                    fit_model_name,
+                    output_model_name,
+                    selected,
+                    origins[
+                        start : start + MAX_ISOLATED_LIGHTGBM_FITS
+                    ],
+                ),
+                kwargs={
+                    "probability": probability,
+                    "require_expert": require_expert,
+                },
+            )
+        )
+    return pd.concat(frames, ignore_index=True)
 
 
 def _prior_position_predictions(
@@ -1218,6 +1428,7 @@ def main() -> None:
     ACTIVE_LOCK_VERSION = lock_version_for_scoring(
         ACTIVE_SCORING_OBJECTIVE
     )
+    parameter_cache_db = args.parameter_cache_db.resolve()
     ACTIVE_RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     run_id = create_run_id(f"v2_locked_final_{ACTIVE_SCORING_OBJECTIVE}")
     features, _, feature_run_id = _load_inputs()
@@ -1257,25 +1468,67 @@ def main() -> None:
         ),
     }
     selections = []
+    cache_receipts: list[dict[str, object]] = []
     selected_prediction_frames = []
     for model_name, (target, feature_columns, probability) in model_inputs.items():
-        print(f"Nested whole-season grid: {model_name}", flush=True)
-        grid_predictions = _grid_predictions(
+        model_grid = MODEL_GRIDS[model_name]
+        cache_fingerprint = _selection_cache_fingerprint(
             target,
             feature_columns,
-            model_name,
-            MODEL_GRIDS[model_name],
+            cache_model_name=model_name,
+            fit_model_name=model_name,
+            grid=model_grid,
             probability=probability,
         )
-        selected = _select_hyperparameters(
-            grid_predictions,
-            MODEL_GRIDS[model_name],
-            model_name,
-            probability=probability,
+        selected, cache_receipt = load_parameter_cache(
+            parameter_cache_db,
+            season=CURRENT_SEASON,
+            league=ACTIVE_SCORING_OBJECTIVE,
+            runner=LOCKED_CACHE_RUNNER,
+            model_name=model_name,
+            fingerprint_sha256=cache_fingerprint,
+            expected_origins=(*OUTER_SEASONS, CURRENT_SEASON),
+            grid=model_grid,
         )
+        if selected is None:
+            print(
+                f"Nested whole-season grid: {model_name} "
+                f"(cache {cache_receipt['cache_status']})",
+                flush=True,
+            )
+            grid_predictions = _runtime_grid_predictions(
+                target,
+                feature_columns,
+                model_name,
+                model_grid,
+                probability=probability,
+            )
+            selected = _select_hyperparameters(
+                grid_predictions,
+                model_grid,
+                model_name,
+                probability=probability,
+            )
+            cache_receipt = write_parameter_cache(
+                parameter_cache_db,
+                season=CURRENT_SEASON,
+                league=ACTIVE_SCORING_OBJECTIVE,
+                runner=LOCKED_CACHE_RUNNER,
+                model_name=model_name,
+                fingerprint_sha256=cache_fingerprint,
+                expected_origins=(*OUTER_SEASONS, CURRENT_SEASON),
+                grid=model_grid,
+                selections=selected,
+            )
+        else:
+            print(
+                f"Parameter cache hit: {model_name}; skipping grid",
+                flush=True,
+            )
+        cache_receipts.append(cache_receipt)
         selections.append(selected)
         selected_prediction_frames.append(
-            _selected_predictions(
+            _runtime_selected_predictions(
                 target,
                 candidates,
                 feature_columns,
@@ -1292,26 +1545,69 @@ def main() -> None:
         )
     selected_hyperparameters = pd.concat(selections, ignore_index=True)
 
-    print("Nested whole-season grid: conditional_ppg_log_adp_lasso", flush=True)
-    log_grid = _grid_predictions(
+    log_model_name = "conditional_ppg_log_adp_lasso"
+    log_model_grid = MODEL_GRIDS["conditional_ppg_lasso"]
+    log_cache_fingerprint = _selection_cache_fingerprint(
         ppg,
         LOG_ADP_LASSO_FEATURES,
-        "conditional_ppg_lasso",
-        MODEL_GRIDS["conditional_ppg_lasso"],
+        cache_model_name=log_model_name,
+        fit_model_name="conditional_ppg_lasso",
+        grid=log_model_grid,
+        probability=False,
     )
-    log_selected = _select_hyperparameters(
-        log_grid,
-        MODEL_GRIDS["conditional_ppg_lasso"],
-        "conditional_ppg_lasso",
+    log_selected, log_cache_receipt = load_parameter_cache(
+        parameter_cache_db,
+        season=CURRENT_SEASON,
+        league=ACTIVE_SCORING_OBJECTIVE,
+        runner=LOCKED_CACHE_RUNNER,
+        model_name=log_model_name,
+        fingerprint_sha256=log_cache_fingerprint,
+        expected_origins=(*OUTER_SEASONS, CURRENT_SEASON),
+        grid=log_model_grid,
     )
-    log_selected["model_name"] = "conditional_ppg_log_adp_lasso"
+    if log_selected is None:
+        print(
+            "Nested whole-season grid: conditional_ppg_log_adp_lasso "
+            f"(cache {log_cache_receipt['cache_status']})",
+            flush=True,
+        )
+        log_grid = _runtime_grid_predictions(
+            ppg,
+            LOG_ADP_LASSO_FEATURES,
+            "conditional_ppg_lasso",
+            log_model_grid,
+        )
+        log_selected = _select_hyperparameters(
+            log_grid,
+            log_model_grid,
+            "conditional_ppg_lasso",
+        )
+        log_selected["model_name"] = log_model_name
+        log_cache_receipt = write_parameter_cache(
+            parameter_cache_db,
+            season=CURRENT_SEASON,
+            league=ACTIVE_SCORING_OBJECTIVE,
+            runner=LOCKED_CACHE_RUNNER,
+            model_name=log_model_name,
+            fingerprint_sha256=log_cache_fingerprint,
+            expected_origins=(*OUTER_SEASONS, CURRENT_SEASON),
+            grid=log_model_grid,
+            selections=log_selected,
+        )
+    else:
+        print(
+            "Parameter cache hit: conditional_ppg_log_adp_lasso; "
+            "skipping grid",
+            flush=True,
+        )
+    cache_receipts.append(log_cache_receipt)
     selected_hyperparameters = pd.concat(
         [selected_hyperparameters, log_selected], ignore_index=True
     )
     log_fit_selection = log_selected.copy()
     log_fit_selection["model_name"] = "conditional_ppg_lasso"
     selected_prediction_frames.append(
-        _selected_predictions(
+        _runtime_selected_predictions(
             ppg,
             candidates,
             LOG_ADP_LASSO_FEATURES,
@@ -1336,7 +1632,7 @@ def main() -> None:
             output_name = f"{variant_name}_{suffix}"
             print(f"Selected-grid replay: {output_name}", flush=True)
             selected_prediction_frames.append(
-                _selected_predictions(
+                _runtime_selected_predictions(
                     ppg,
                     candidates,
                     feature_columns,
@@ -1347,7 +1643,7 @@ def main() -> None:
             )
     print("Selected-grid replay: conditional_ppg_projection_only", flush=True)
     selected_prediction_frames.append(
-        _selected_predictions(
+        _runtime_selected_predictions(
             ppg,
             candidates,
             PROJECTION_ONLY_PPG_FEATURES,
@@ -1443,6 +1739,7 @@ def main() -> None:
         "publication_status",
     ]
     current = current.loc[:, current_columns]
+    parameter_cache_receipts = pd.DataFrame(cache_receipts)
 
     for frame in (
         specifications,
@@ -1456,6 +1753,7 @@ def main() -> None:
         router_decisions,
         template_handoff,
         template_audit,
+        parameter_cache_receipts,
     ):
         if "model_run_id" not in frame:
             frame.insert(0, "model_run_id", run_id)
@@ -1479,6 +1777,10 @@ def main() -> None:
                     current["conditional_ppg_shadow"].notna().sum()
                 ),
                 "status": "complete_shadow",
+                "parameter_cache_hits": int(
+                    parameter_cache_receipts["cache_hit"].sum()
+                ),
+                "parameter_cache_entries": len(parameter_cache_receipts),
                 "metadata_json": json.dumps(
                     locked_metadata(
                         ACTIVE_SCORING_OBJECTIVE,
@@ -1504,6 +1806,7 @@ def main() -> None:
         "locked_2026_shadow_predictions": current,
         "locked_template_handoff": template_handoff,
         "locked_template_handoff_audit": template_audit,
+        "locked_parameter_cache_receipts": parameter_cache_receipts,
     }
     publish_tables_atomic(ACTIVE_OUTPUT_DB_PATH, tables)
 

@@ -1,0 +1,10 @@
+{
+  "leagues": [
+    "dk",
+    "beta"
+  ],
+  "targets_per_league": 2647,
+  "challenger_count": 4,
+  "phase_b_finalists": [],
+  "production_changed": false
+}

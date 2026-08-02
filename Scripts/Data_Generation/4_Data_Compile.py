@@ -11,6 +11,7 @@
 # Import configuration
 import sys
 import os
+import warnings
 
 # Add Scripts directory to path to import config
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -19,7 +20,14 @@ from config import YEAR, LEAGUE, DB_NAME, CLASS_CUTS, POSITIONS, get_scoring_dic
 from ff.db_operations import DataManage
 from ff import general
 
-from skmodel import SciKitModel
+with warnings.catch_warnings():
+    warnings.filterwarnings(
+        'ignore',
+        message=r'pkg_resources is deprecated as an API.*',
+        category=UserWarning,
+        module=r'hyperopt\.atpe',
+    )
+    from skmodel import SciKitModel
 import pandas as pd
 from zData_Functions import *
 pd.options.mode.chained_assignment = None
@@ -29,7 +37,6 @@ try:
 except ImportError:
     def display(obj):
         print(obj)
-import warnings
 warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
 pd.set_option('display.max_columns', 999)
 
@@ -49,8 +56,42 @@ def rolling_stats(df, gcols, rcols, period, agg_type='mean'):
     '''
     Calculate rolling mean stats over a specified number of previous weeks
     '''
-    
-    rolls = df.groupby(gcols)[rcols].rolling(period, min_periods=1).agg(agg_type).reset_index(drop=True)
+
+    # pandas' grouped rolling window intermittently corrupts its window-bound
+    # state on the production Windows stack (pandas 2.3.1 / NumPy 2.2.6),
+    # sometimes terminating Python with 0xC0000005.  The lag formulation is
+    # exactly the same trailing window with min_periods=1, but stays on stable
+    # groupby-shift and NumPy reduction paths.
+    grouped = df.groupby(gcols, sort=False)[rcols]
+    shape = (len(df), len(rcols))
+    valid_counts = np.zeros(shape, dtype=np.int16)
+    if agg_type == 'mean':
+        aggregated = np.zeros(shape, dtype=np.float64)
+    elif agg_type == 'max':
+        aggregated = np.full(shape, np.nan, dtype=np.float64)
+    else:
+        raise ValueError(f'Unsupported rolling aggregation: {agg_type}')
+
+    for offset in range(period):
+        values = grouped.shift(offset).to_numpy(dtype=np.float64, copy=False)
+        valid = ~np.isnan(values)
+        valid_counts += valid
+        if agg_type == 'mean':
+            aggregated += np.where(valid, values, 0.0)
+        else:
+            aggregated = np.fmax(aggregated, values)
+
+    if agg_type == 'mean':
+        aggregated = np.divide(
+            aggregated,
+            valid_counts,
+            out=np.full(shape, np.nan, dtype=np.float64),
+            where=valid_counts > 0,
+        )
+    else:
+        aggregated[valid_counts == 0] = np.nan
+
+    rolls = pd.DataFrame(aggregated, columns=rcols).reset_index(drop=True)
     rolls.columns = [f'r{agg_type}{period}_{c}' for c in rolls.columns]
 
     return rolls
@@ -75,7 +116,7 @@ def forward_fill(df, cols=None):
     
     if cols is None: cols = df.columns
     df = df.sort_values(by=['player', 'year'])
-    df = df.groupby('player', as_index=False)[cols].fillna(method='ffill')
+    df = df.groupby('player', as_index=False)[cols].ffill()
     df = df.sort_values(by=['player', 'year'])
 
     return df
@@ -738,22 +779,28 @@ def remove_low_corrs(df, corr_cut = 3, collinear_cut = 0.995):
                      'avg_proj_points_exp', 'avg_proj_points_exp_diff', 'avg_proj_points_exp_diff', 'avg_pick_exp', 'avg_pick_exp_diff',
                      'avg_proj_rank'])
     obj_cols.extend([c for c in df.columns if 'y_act_' in c])
-    obj_cols = list(set([c for c in obj_cols if c in df.columns]))
+    # Preserve first-seen column order.  ``set`` randomized the emitted schema
+    # across fresh Python processes even when every value was identical.
+    obj_cols = list(dict.fromkeys(c for c in obj_cols if c in df.columns))
 
     orig_shape = df.shape[1]
     skm = SciKitModel(df, model_obj='reg')
     X, y = skm.Xy_split('y_act', to_drop = obj_cols)
     corr_collin = skm.piece('corr_collinear')[-1]
     corr_collin.set_params(**{'corr_percentile': corr_cut, 'collinear_threshold': collinear_cut})
-    X = corr_collin.fit_transform(X, y)
+    # Constant candidate columns legitimately produce undefined correlations;
+    # the selector drops those NaNs immediately.
+    with np.errstate(divide='ignore', invalid='ignore'):
+        X = corr_collin.fit_transform(X, y)
     new_shape = X.shape[1]
 
     print(f'Removed {orig_shape - new_shape} / {orig_shape} columns')
     df = pd.concat([df[obj_cols], X], axis=1)
 
-    corrs = pd.DataFrame(np.corrcoef(pd.concat([X,y],axis=1).values, rowvar=False), 
-                         columns=pd.concat([X,y],axis=1).columns,
-                         index=pd.concat([X,y],axis=1).columns)
+    with np.errstate(divide='ignore', invalid='ignore'):
+        corrs = pd.DataFrame(np.corrcoef(pd.concat([X,y],axis=1).values, rowvar=False),
+                             columns=pd.concat([X,y],axis=1).columns,
+                             index=pd.concat([X,y],axis=1).columns)
     
     corrs = corrs['y_act']
     corrs = corrs.dropna().sort_values()

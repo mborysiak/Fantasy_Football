@@ -1,0 +1,14 @@
+{
+  "leagues": [
+    "dk",
+    "beta"
+  ],
+  "targets_per_league": 2647,
+  "challenger_count": 5,
+  "phase_b_finalists": [
+    "flatter_w025_all"
+  ],
+  "season_bootstrap_samples": 5000,
+  "player_bootstrap_samples": 5000,
+  "production_changed": false
+}

@@ -1,0 +1,12 @@
+{
+  "leagues": [
+    "dk",
+    "beta"
+  ],
+  "rosters_per_league": 1296,
+  "scenarios_per_roster": 384,
+  "roster_score_noninferiority_margin": 0.005,
+  "missed_week_bias_per_player_margin": 0.15,
+  "promote_flatter_w025_all": false,
+  "production_changed": false
+}

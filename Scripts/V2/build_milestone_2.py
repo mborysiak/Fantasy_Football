@@ -97,10 +97,19 @@ def _source_manifest(
                 continue
             season_column = spec.get("season")
             if isinstance(season_column, str):
+                source_through_season = min(
+                    projection_through_season,
+                    int(
+                        spec.get(
+                            "through_season",
+                            projection_through_season,
+                        )
+                    ),
+                )
                 row_count = connection.execute(
                     f'SELECT COUNT(*) FROM "{table}" '
                     f'WHERE CAST("{season_column}" AS INTEGER) BETWEEN ? AND ?',
-                    (start_season, projection_through_season),
+                    (start_season, source_through_season),
                 ).fetchone()[0]
             else:
                 row_count = connection.execute(

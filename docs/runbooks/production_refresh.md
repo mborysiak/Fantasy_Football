@@ -27,6 +27,19 @@ DK, NFFC, ETR, and projection inputs. For 2026, `NFFC_ADP` must contain exactly
 400, and 250 rows respectively. Missing, renamed, unexpected, or shallow feeds
 fail during `snapshot`, before model fitting.
 
+FantasyPros season projections are manual CSV exports rather than an HTML
+pull. Download all four position exports and leave these exact filenames in
+`Downloads` before running the script:
+
+- `FantasyPros_Fantasy_Football_Projections_QB.csv`
+- `FantasyPros_Fantasy_Football_Projections_RB.csv`
+- `FantasyPros_Fantasy_Football_Projections_WR.csv`
+- `FantasyPros_Fantasy_Football_Projections_TE.csv`
+
+The loader archives each file under
+`Data/OtherData/FantasyPros_Projections/`, maps duplicate stat headers by
+position, and rejects partial exports below QB/RB/WR/TE depths 50/80/100/60.
+
 An already-running notebook kernel does not inherit a newly set environment
 variable; restart it and confirm `YEAR` inside the notebook before any write.
 Close notebooks, apps, and other database writers before continuing. The
@@ -88,6 +101,8 @@ Omitting `--through` on the next resume continues through `app_smoke`.
 the manifest's model options; only `--app-timeout` is treated as a retry-time
 override. Start a new refresh if any snapshotted live database, external
 weekly/salary input, or fingerprinted pipeline/app source file changed.
+Manifest schema 4 adds immutable Model_Inputs retry bases; older stage manifests
+fail closed and must be rebuilt rather than resumed.
 
 Every production refresh runs a fresh 1,000-trial Auction selection seed.
 Carrying an earlier seed across changed projections, salaries, keepers, weekly
@@ -101,15 +116,62 @@ tests when the modeling virtualenv does not include Streamlit. Pass
 
 Refresh subprocesses cap native thread pools at one. The annual LightGBM
 runners load scikit-learn first and fail before fitting unless Windows exposes
-exactly one `vcomp` OpenMP runtime. Only Windows access violation
-`0xC0000005` is retried, once; every automatic attempt is retained in the step
-receipt. Ordinary errors fail immediately.
+exactly one `vcomp` OpenMP runtime. Annual LightGBM grid work is isolated by
+forecast origin in fresh spawned workers, with a hard ceiling of eight fits per
+worker. Selected-model replays use the same eight-fit ceiling. Each fitted
+pipeline is deleted and garbage-collected before another fit, and an abruptly
+terminated worker is retried once with the identical small batch. Model folds,
+parameters, deterministic seeds, named feature handoff, and output ordering are
+unchanged by this runtime boundary.
+
+Each league's V2 foundation and feature mart also use a deliberate process
+boundary. `build_milestone_2` first publishes the validated identity, outcomes,
+and projection spine; a fresh `build_milestone_3 --reuse-foundation` process
+then builds the source values and feature mart from that exact foundation. This
+prevents an intermittent Windows native-heap failure after the parallel spine
+build without changing the foundation or feature contracts.
+
+Annual random-forest fits use four joblib workers. This is an execution-only
+setting: fixed seeds, tree counts, candidates, folds, and selected predictions
+are unchanged, and a one-worker/four-worker replay must be prediction-identical.
+Each `locked_*` and `next_*` runner first checks the staged
+`V2_Parameter_Cache.sqlite3` for its season/league/model entry. A hit requires
+an exact SHA-256 over the relevant training rows, features, target, grid,
+forecast origins, embargo, metric, and seed. A miss or changed fingerprint runs
+the full grid and atomically replaces only that entry. Cached parameters skip
+optimization but still refit every selected historical/current model and make
+fresh predictions. The cache database is validated, backed up, and promoted in
+the same rollback set as the model databases.
+
+At the outer step level, Windows access violation `0xC0000005` and heap
+corruption `0xC0000374` are retried up to four times; every automatic attempt
+is retained in the step receipt. Ordinary Python errors fail immediately. A native
+LightGBM fault is normally contained inside its worker and reaches the runner
+as `BrokenProcessPool` if the small-batch retry also fails. Python's
+fatal-signal handler is enabled in every subprocess so the failing fit remains
+visible in the step log.
+
+The Model_Inputs compiler does not use pandas' grouped rolling-window engine.
+That path intermittently corrupted window bounds under the production pandas
+2.3.1 / NumPy 2.2.6 Windows stack and surfaced as either `0xC0000005` or an
+impossible pandas-internal object type. The replacement computes the identical
+three-season, `min_periods=1` rolling mean/max from within-player lags. Its 18
+generated 2026 tables match a successful pre-change build in population,
+column set, null pattern, and values within `1e-12`. Column ordering is now
+deterministic instead of depending on Python set iteration.
+
+At `snapshot`, pristine current/next Model_Inputs bases are retained under
+`model_input_bases/`. Before attempt 1, an automatic native retry, or a later
+supported resume, both writable staged databases are restored from those
+hash-checked bases. A retry therefore cannot inherit a half-written table set,
+and the base copies are never promotion sources.
 
 A supported resume replaces the current manifest state for the resumed step,
 so inspect its append-only step log for failures that preceded the resume. The
 guard removes one known multiple-OpenMP failure mode, but it does not certify
-the host as stable. Run a production refresh while unrelated heavy Python
-workloads are idle. See the
+the host as stable. Windows also recorded unrelated Python and `git.exe` native
+faults during the investigation. Complete any pending Windows update/reboot and
+run a production refresh while unrelated heavy native workloads are idle. See the
 [LightGBM OpenMP guidance](https://lightgbm.readthedocs.io/en/latest/FAQ.html#lightgbm-crashes-randomly-or-operating-system-hangs-during-or-after-running-lightgbm).
 
 ## Ordered Steps
@@ -143,12 +205,14 @@ prepare_apps
 app_smoke
 ```
 
-- `snapshot` copies and hashes the eight source/model databases plus both live
-  app databases. It also records the read-only weekly-history database, current
-  Auction salary export, and historical selection bootstrap files that remain
-  outside the staged database directory.
+- `snapshot` copies and hashes the nine source/model databases plus both live
+  app databases, and retains immutable current/next Model_Inputs retry bases.
+  It also records the read-only weekly-history database, current Auction salary
+  export, and historical selection bootstrap files that remain outside the
+  staged database directory.
 - `model_inputs` runs the canonical-input portion of
-  `4_Data_Compile.py`, producing current and next-year model inputs.
+  `4_Data_Compile.py`, producing current and next-year model inputs. Both
+  writable outputs are reset from the snapshot bases before every attempt.
 - `v2_*` rebuilds the DK, NFFC, and beta V2 feature/model databases.
 - `locked_*` publishes the accepted current-year locked shadows; `next_*`
   publishes next-year residual/appearance shadows.
@@ -177,8 +241,12 @@ databases/
   Projection_V2.sqlite3
   Projection_V2_nffc.sqlite3
   Projection_V2_beta.sqlite3
+  V2_Parameter_Cache.sqlite3
   Simulation.sqlite3
   Validations.sqlite3
+model_input_bases/
+  Model_Inputs.sqlite3
+  Model_Inputs_next.sqlite3
 app_bases/
   Auction_Simulation.sqlite3
   Snake_Simulation.sqlite3
@@ -189,13 +257,14 @@ logs/
 results/
 ```
 
-Promotion replaces these seven main-repo databases:
+Promotion replaces these eight main-repo databases:
 
 - `Model_Inputs.sqlite3`
 - `Model_Inputs_next.sqlite3`
 - `Projection_V2.sqlite3`
 - `Projection_V2_nffc.sqlite3`
 - `Projection_V2_beta.sqlite3`
+- `V2_Parameter_Cache.sqlite3`
 - `Simulation.sqlite3`
 - `Validations.sqlite3`
 
@@ -206,7 +275,7 @@ live file remains owned by the manual ingest boundary.
 The first approved NFFC refresh may create
 `Data/Databases/Projection_V2_nffc.sqlite3`; its absence at snapshot is recorded
 rather than treated as prior production evidence. Promotion installs it only as
-part of the same validated rollback set as the other eight destinations.
+part of the same validated rollback set as the other nine destinations.
 
 The downstream Validation outputs are `Salary_Validations_Resid`,
 `Salary_Backtest_Predictions`, `Salary_Selection_Seeds`, and
@@ -295,6 +364,10 @@ Before preparing app candidates, validation requires:
   exact projection/weekly-map parity
 - NFFC eligibility from the top-360 canonical offensive ADP union, excluding
   `TK` and `TDSP` from model/app player rows
+- fail-closed current/next V2 completeness for every core player, keeper, and
+  market-only player in the protected first five-sixths of the draft; audited
+  omission is allowed only for incomplete market-only tail rows when the
+  remaining complete pool still covers 240 DK, 360 NFFC, or 180 beta picks
 - exact registered historical center policy and scoring-context source for
   every league; NFFC must use `nffc_scored_expert_consensus` plus the
   NFFC-scored V2 context, while DK/beta retain their existing contract
@@ -307,7 +380,13 @@ Before preparing app candidates, validation requires:
   least one successful seed trial
 - an idempotent production handoff across all eight governed tables
 
-`prepare_apps` validates the resulting Auction and Snake candidate databases.
+`prepare_apps` runs `VACUUM` on both the Auction and Snake candidate databases,
+then validates their table content. The manifest records before/after file and
+page usage plus reclaimed bytes. Both candidates must have an empty SQLite
+freelist after compaction and remain at or below GitHub's 100 MiB blob limit;
+an oversized artifact fails staging before app smoke or promotion. Compaction
+changes only the physical SQLite layout: Auction app-owned/generated-table
+parity and full Snake table/content parity are checked afterward.
 `app_smoke` launches each Streamlit app against its explicit candidate database
 and requires zero rendered errors or exceptions. The Snake smoke must render
 both the DK and NFFC selectors from the staged candidate. This is a
@@ -320,7 +399,7 @@ validation/AppTest, and requires the pipeline/app source-code fingerprint and
 external weekly/salary input hashes to match the start of the run. It creates
 durable
 `Data/Production_Refresh_Backups/<run-id>/*.pre_refresh.sqlite3` files, and
-installs all nine destinations as one rollback set. Each installed file must
+installs all ten destinations as one rollback set. Each installed file must
 match the staged SHA-256. SQLite cannot provide a true transaction across
 multiple files, so keep both apps and all database writers closed until the
 command reports success.

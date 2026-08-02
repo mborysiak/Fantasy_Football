@@ -130,3 +130,175 @@ print(json.dumps(assert_single_openmp_runtime()))
         assert len(inventory) == 1
         assert inventory[0]["prefix"] == "vcomp"
         assert Path(inventory[0]["filepath"]).name.casefold() == "vcomp140.dll"
+
+
+@pytest.mark.parametrize(
+    ("runner", "factory_name", "model_names"),
+    (
+        (
+            ANNUAL_RUNNERS[0],
+            "_model_pipeline",
+            ("conditional_ppg_lightgbm", "participation_lightgbm"),
+        ),
+        (
+            ANNUAL_RUNNERS[1],
+            "model_pipeline",
+            ("next_residual_lightgbm", "next_participation_lightgbm"),
+        ),
+    ),
+    ids=("locked", "next_year"),
+)
+def test_annual_lightgbm_pipelines_preserve_feature_names(
+    runner: Path,
+    factory_name: str,
+    model_names: tuple[str, str],
+) -> None:
+    probe = f"""
+import importlib.util
+import warnings
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+
+runner = Path({str(runner)!r})
+spec = importlib.util.spec_from_file_location("annual_feature_name_probe", runner)
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+factory = getattr(module, {factory_name!r})
+X = pd.DataFrame(
+    {{
+        "feature_a": [1.0, np.nan, 3.0, 4.0, 5.0, 6.0],
+        "feature_b": [0.0, 1.0, 0.0, 1.0, 0.0, 1.0],
+    }}
+)
+
+for model_name in {model_names!r}:
+    is_classifier = "participation" in model_name
+    target = (
+        np.array([0, 1, 0, 1, 0, 1], dtype=int)
+        if is_classifier
+        else np.arange(len(X), dtype=float)
+    )
+    model = factory(model_name, {{}})
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "error",
+            message="X does not have valid feature names, but LGBM.*",
+            category=UserWarning,
+        )
+        model.fit(X, target)
+        if is_classifier:
+            model.predict_proba(X)
+        else:
+            model.predict(X)
+    transformed = model[:-1].transform(X)
+    assert isinstance(transformed, pd.DataFrame), type(transformed)
+    assert list(transformed.columns) == list(
+        model.named_steps["model"].feature_names_in_
+    )
+
+print("ok")
+"""
+    completed = subprocess.run(
+        [sys.executable, "-c", probe],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    assert completed.stdout.strip().splitlines()[-1] == "ok"
+
+
+@pytest.mark.parametrize(
+    ("runner", "factory_name", "model_name"),
+    (
+        (
+            ANNUAL_RUNNERS[0],
+            "_model_pipeline",
+            "conditional_ppg_lasso",
+        ),
+        (
+            ANNUAL_RUNNERS[1],
+            "model_pipeline",
+            "next_residual_lasso",
+        ),
+    ),
+    ids=("locked", "next_year"),
+)
+def test_annual_lasso_pipelines_have_solver_convergence_headroom(
+    runner: Path,
+    factory_name: str,
+    model_name: str,
+) -> None:
+    probe = f"""
+import importlib.util
+from pathlib import Path
+
+runner = Path({str(runner)!r})
+spec = importlib.util.spec_from_file_location("annual_lasso_probe", runner)
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+model = getattr(module, {factory_name!r})({model_name!r}, {{"alpha": 0.001}})
+estimator = model.named_steps["model"]
+assert estimator.max_iter == 50_000
+assert estimator.tol == 1e-6
+print("ok")
+"""
+    completed = subprocess.run(
+        [sys.executable, "-c", probe],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    assert completed.stdout.strip().splitlines()[-1] == "ok"
+
+
+@pytest.mark.parametrize(
+    ("runner", "factory_name", "model_name"),
+    (
+        (
+            ANNUAL_RUNNERS[0],
+            "_model_pipeline",
+            "conditional_ppg_random_forest",
+        ),
+        (
+            ANNUAL_RUNNERS[1],
+            "model_pipeline",
+            "next_residual_random_forest",
+        ),
+    ),
+    ids=("locked", "next_year"),
+)
+def test_annual_random_forests_use_four_workers(
+    runner: Path,
+    factory_name: str,
+    model_name: str,
+) -> None:
+    probe = f"""
+import importlib.util
+from pathlib import Path
+
+runner = Path({str(runner)!r})
+spec = importlib.util.spec_from_file_location("annual_rf_probe", runner)
+module = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(module)
+model = getattr(module, {factory_name!r})({model_name!r}, {{}})
+assert model.named_steps["model"].n_jobs == 4
+print("ok")
+"""
+    completed = subprocess.run(
+        [sys.executable, "-c", probe],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    assert completed.stdout.strip().splitlines()[-1] == "ok"

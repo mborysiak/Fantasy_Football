@@ -1,6 +1,6 @@
 # Session Notes Landing
 
-Last updated: 2026-07-31
+Last updated: 2026-08-02
 
 ## Project Objective
 
@@ -10,6 +10,20 @@ template tables consumed by downstream draft apps.
 
 ## Current Focus
 
+- `ADP_Ranks` provider replacement is now source-scoped, depth-validated, and
+  atomic. The live `Season_Stats_New` FantasyPros slices contain 313 valid 2024
+  offense rows, 302 valid 2025 offense rows including 42 recovered QBs, and
+  466 valid 2026 rows including one 32-team DST snapshot. Duplicate provider
+  keys and legacy `DS`/`K1`-`K9` rows are gone. The three V2 databases remain
+  deliberately unchanged until a fresh governed refresh recomputes the
+  corrected historical market consensus and model fingerprints.
+- Annual current/next model selection now uses a separately promoted
+  `V2_Parameter_Cache.sqlite3`: 36 season/league/model entries are reusable only
+  under an exact training-data and model-spec fingerprint. Cache hits skip the
+  grids but still refit and predict every origin. Random forests use four
+  workers. The schema-5 2026 production refresh promoted 36 validated entries:
+  all 7 current and 5 next selections hit cache for each of DK, NFFC, and beta,
+  while every selected-origin model was freshly refit and predicted.
 - Raw provider exports remain a manual step in
   `Scripts/Data_Generation/1_Update_Projections.py`. After that boundary,
   `python -m Scripts.V2.refresh_production --year 2026` owns the complete
@@ -25,11 +39,44 @@ template tables consumed by downstream draft apps.
   core plus top-360 canonical offensive ADP union, NFFC scoring, and 17-week
   2021-forward templates. Snake labels it offense-only 3RR: canonical TK/TDSP
   remain audit rows, while K/DST and alternate contest formats are unsupported.
-  The complete 24-step 2026 rehearsal passed without promotion: all four exact
-  NFFC raw-feed labels/depth floors, the 385-player 17-week NFFC surface, and
-  both staged app smokes passed. The run required recorded bounded native
-  retries, so the Windows host is not described as fully stable. No NFFC
-  release has been promoted.
+  The complete 24-step 2026 production run and atomic promotion passed: all
+  four exact NFFC raw-feed labels/depth floors, the 383-player 17-week NFFC
+  surface, fresh 1,000/1,000 auction reserve, and both app smokes passed. Live
+  DK/NFFC/beta maps contain 350/383/328 players. The Windows host still retains
+  bounded native-crash retries rather than being described as fully stable.
+- The later Model_Inputs `0xC0000005` failure was reproduced independently of
+  database completeness and traced to pandas' grouped rolling-window path,
+  which also returned a corrupted internal window-bound type. The compiler now
+  uses an equivalent within-player three-lag mean/max reduction; all 18 output
+  tables match the prior successful build within `1e-12`, and repeated full
+  compiles complete in about 22 seconds without warnings. Refresh manifest
+  schema 4 snapshots immutable current/next Model_Inputs bases and restores
+  both before every attempt or resume. A fresh non-promoting run through
+  `model_inputs` passed; the older failed schema-3 stage must not be resumed.
+- A subsequent `locked_dk` access violation was isolated to cumulative native
+  LightGBM fitting, not its inputs, feature names, OpenMP inventory, or one bad
+  fold. Annual current/next runners now execute each LightGBM grid origin in a
+  fresh spawned worker with at most eight fits, use the same ceiling for
+  selected replays, release each fitted pipeline, and retry one abruptly
+  terminated batch. The unchanged locked-DK model replay then completed all
+  families against the staged feature mart (660 current rows, 615 PPG rows;
+  SQLite integrity `ok`), and the following-season runner published 660 2027
+  shadows against the same disposable copy. Start a fresh governed stage
+  because this runtime fix changes the code fingerprint; no live artifact was
+  promoted.
+- Production handoff exclusion policy v3 now treats incomplete market-only
+  players in the final sixth of a league's draft surface as audited tail
+  omissions rather than run-fatal rows. Core players, keepers, and new gaps in
+  the protected first five-sixths still fail closed, and the remaining population
+  must cover the entire draft. A disposable replay of the completed staged
+  models published 350 DK, 383 NFFC, and 328 beta rows; J'Mari Taylor plus three
+  NFFC ADP-316/317 players were audited out, while the now-complete Najee Harris
+  row was restored by removing its stale annual exclusion. The prior stage's
+  code fingerprint is stale, so a fresh governed refresh is required.
+- FantasyPros season projections now require four manually exported QB/RB/WR/TE
+  CSVs with the exact `FantasyPros_Fantasy_Football_Projections_<POS>.csv`
+  filenames. The loader archives and schema-validates them; it no longer uses
+  the login-limited HTML tables.
 - The NFFC weekly matcher now takes all scoring-sensitive historical and
   current preseason context from the NFFC-scored V2 consensus; DK-scored
   `Model_Inputs` values are audit-only. Receiver environment uses the selected
@@ -44,6 +91,57 @@ template tables consumed by downstream draft apps.
   Snake exposes only prediction slices backed by the current map, preventing
   regenerated template IDs from being paired to stale years. DK/beta are
   unchanged, and no NFFC artifacts were promoted.
+- Weekly-template matcher validation now uses role-tiered objectives. Core
+  players (main QB/RB/WR/TE cutoffs 18/36/48/18, with strict and broad
+  sensitivities) optimize active-PPG CRPS first and managed contribution among
+  one-SE PPG near-ties. Individual played-games CRPS is diagnostic for core
+  players; aggregate played bias, extended-absence calibration, coverage,
+  temporal/position slices, and replacement-aware roster CRPS remain gates.
+  Depth players retain the equal-third PPG/contribution/played composite. A
+  fresh 2,647-target per-league replay made the 0.25x all-distance matcher the
+  only one-SE finalist, improving development core PPG CRPS by 0.007901 DK and
+  0.005511 beta. It failed downstream 20-player roster CRPS non-inferiority:
+  DK worsened 0.7096% in development and 0.5696% in 2023-2025; beta was
+  slightly worse. Aggregate missed-week bias stayed within margin, so this is
+  not an injury-prediction rejection. Keep production matching unchanged and
+  use the role-tiered validator for future matcher studies.
+- Weekly-template validation now also has a causal rare-upside objective. A
+  league-winner player-season requires at least +5 active PPG over the held-out
+  projection and managed contribution above a position-specific q90 estimated
+  from comparable preseason-ranked players in the five strictly prior seasons;
+  q95 is the severity sensitivity. Ordinary PPG/contribution CRPS remains the
+  calibration gate. The tighter WR PPG plus 0.25 projected YPR/TD-rate arm was
+  the only saved finalist to improve q90 Brier, log loss, tail-utility CRPS,
+  and contribution CRPS in all four DK/beta development/temporal cells, but
+  most season intervals crossed zero. It also failed to transport to 12-team
+  championship probability, worsening Brier/log loss in both DK periods and
+  beta development while improving only recent beta. Production matching and
+  both app objectives remain unchanged. Future Auction/Snake objective tests
+  should keep calibrated draws and expected-score non-inferiority, then use a
+  paired championship-probability lower bound only among near-tied actions.
+  Raw DK tail probabilities need calibration work first: production predicts
+  7.45%/6.02% versus 16.39%/14.17% realized core q90 events in development and
+  2023-2025.
+- A corrected 2,647-target per-league replay tested causal prior-season
+  nflfastR receiver profiles: target share, air-yards share, aDOT, red-zone
+  target share, and targeted-week usage dispersion. Profiles are
+  position-season ranked, opportunity-shrunk, and neutral for rookies/missing
+  histories. All four WR/TE bundles failed to improve development core PPG in
+  both leagues; the closest arm worsened mean cross-league CRPS by 0.0095%.
+  The features reduced Ladd McConkey's Terrelle Pryor donor weight and moved
+  Pryor from beta rank 3 to as low as rank 10, but the more intuitive pools
+  did not forecast better. Retain production matching. TE-only usage/depth is
+  exploratory follow-up evidence, not a promoted specification.
+- A follow-up causal nflfastR RB replay tested red-zone/goal-line carry room
+  share, third/fourth-down target room share, and combined role bundles. Main
+  core RB coverage was 86.1%. No arm improved development core PPG in both
+  leagues; the strongest combined arm was effectively flat on average but
+  worsened DK and improved beta, with clustered intervals crossing zero.
+  Scoring role alone weakened temporal performance. Passing-down share improved
+  the depth-player PPG/contribution/played composite in both league/period
+  cells, but that depth-only slice is post-hoc. Keep global production matching
+  unchanged; only a separately frozen depth/tapered passing-down follow-up is
+  supported.
 - A strict 1,620-target/league height/weight ablation joins the existing
   nflverse player master through exact V2 IDs and covers every rolling target
   plus 5,291/5,298 historical templates. The 0.25+0.25 primary size arm changes

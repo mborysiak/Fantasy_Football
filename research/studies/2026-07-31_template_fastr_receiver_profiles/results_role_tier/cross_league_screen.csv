@@ -1,0 +1,5 @@
+study,method,league_count,leagues,mean_development_ppg_relative_delta,worst_development_ppg_relative_delta,mean_development_contribution_relative_delta,worst_temporal_ppg_relative_delta,all_leagues_ppg_improve,all_leagues_screen_pass,all_leagues_one_se_near_best
+2026-07-31_template_fastr_receiver_profiles,usage_depth_w100,2,"beta,dk",9.478852310396135e-05,0.00012666269877703584,-0.00044162632519823,0.00041535970558248536,False,False,False
+2026-07-31_template_fastr_receiver_profiles,usage_air_value_w100,2,"beta,dk",0.00013037496565593276,0.0005425982781805949,-0.00011678720540625465,0.00012803724045573617,False,False,True
+2026-07-31_template_fastr_receiver_profiles,usage_air_value_disp_w100,2,"beta,dk",0.000205446765966677,0.00043537127175619084,-8.828141509120702e-05,-0.00020537190636404912,False,False,True
+2026-07-31_template_fastr_receiver_profiles,usage_air_value_disp_w150,2,"beta,dk",0.0002642657598201925,0.0004893764704441139,0.00012563744922811093,0.0003254720383172316,False,False,True

@@ -1,0 +1,7 @@
+method,all_weight_multiplier,wr_ppg_weight,wr_ypr_weight,wr_td_rate_weight,te_ypr_weight,recency_half_life,data_note
+production,1.0,1.5,0.0,0.0,0.0,12.0,receiver-rate fields are preseason projection profiles; no new historical performance source is introduced
+flatter_w025_all,0.25,1.5,0.0,0.0,0.0,12.0,receiver-rate fields are preseason projection profiles; no new historical performance source is introduced
+wr_ppg225_tdrate050,1.0,2.25,0.0,0.5,0.0,12.0,receiver-rate fields are preseason projection profiles; no new historical performance source is introduced
+wr_ppg225_both025,1.0,2.25,0.25,0.25,0.0,12.0,receiver-rate fields are preseason projection profiles; no new historical performance source is introduced
+te_ypr050,1.0,1.5,0.0,0.0,0.5,12.0,receiver-rate fields are preseason projection profiles; no new historical performance source is introduced
+wr_ppg225_tdrate050__te_ypr050,1.0,2.25,0.0,0.5,0.5,12.0,receiver-rate fields are preseason projection profiles; no new historical performance source is introduced

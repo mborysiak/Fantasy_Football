@@ -349,6 +349,7 @@ CURRENT_CONTEXT_REQUIRED_COLS = [
 CURRENT_CONTEXT_PROVENANCE_COLS = [
     "current_context_source",
     "current_context_match_method",
+    "current_team_source",
     "current_adp_source",
     "current_context_fallback_fields",
     "current_context_missing_fields",
@@ -778,6 +779,35 @@ def has_current_team(values):
         & teams.ne("")
         & ~teams.isin({"FA", "UNK", "UNKNOWN", "NONE", "NAN", "NULL"})
     )
+
+
+def fill_current_team_from_published_adp(
+    frame,
+    *,
+    published_team_column,
+    primary_source,
+):
+    """Fill only unassigned current teams from the canonical keyed ADP row."""
+
+    frame = frame.copy()
+    primary_team = frame.get(
+        "team",
+        pd.Series(pd.NA, index=frame.index, dtype="string"),
+    )
+    published_team = frame.get(
+        published_team_column,
+        pd.Series(pd.NA, index=frame.index, dtype="string"),
+    )
+    primary_valid = has_current_team(primary_team)
+    published_valid = has_current_team(published_team)
+    use_published = ~primary_valid & published_valid
+    frame["team"] = primary_team.where(~use_published, published_team)
+    frame["current_team_source"] = np.select(
+        [primary_valid, use_published],
+        [primary_source, "canonical_avg_adps"],
+        default="unassigned",
+    )
+    return frame
 
 
 def add_qb_team_rank_fields(df, year_col, projection_col):
@@ -3733,6 +3763,7 @@ def load_published_current_adp_context():
         f"""
         SELECT player_key,
                player,
+               team adp_team,
                CAST(year AS INTEGER) year,
                league,
                avg_pick adp_avg_pick,
@@ -3807,12 +3838,18 @@ def load_current_player_context(v2_database=None):
             "player_key",
             "year",
             "adp_source_player",
+            "adp_team",
             "adp_avg_pick",
             "adp_year_exp",
         ]],
         on=["player_key", "year"],
         how="left",
         validate="one_to_one",
+    )
+    current_context = fill_current_team_from_published_adp(
+        current_context,
+        published_team_column="adp_team",
+        primary_source="model_inputs",
     )
     current_context["year_exp"] = current_context["year_exp"].where(
         current_context["year_exp"].notna(),
@@ -4303,6 +4340,7 @@ def load_v2_current_player_context(
     fallback["model_input_avg_pick"] = np.nan
     published_adp = load_published_current_adp_context().rename(
         columns={
+            "adp_team": "published_adp_team",
             "adp_avg_pick": "published_adp_avg_pick",
             "adp_year_exp": "published_adp_year_exp",
         }
@@ -4312,6 +4350,7 @@ def load_v2_current_player_context(
             [
                 "player_key",
                 "year",
+                "published_adp_team",
                 "published_adp_avg_pick",
                 "published_adp_year_exp",
             ]
@@ -4319,6 +4358,11 @@ def load_v2_current_player_context(
         on=["player_key", "year"],
         how="left",
         validate="one_to_one",
+    )
+    fallback = fill_current_team_from_published_adp(
+        fallback,
+        published_team_column="published_adp_team",
+        primary_source="v2_player_season_features",
     )
     fallback["feature_adp_median"] = pd.to_numeric(
         fallback["feature_adp_median"],
@@ -4508,6 +4552,7 @@ def attach_current_context_by_player_key(
         "year_exp_uncapped_delta",
         "qb_team_rank",
         "qb_team_rank_bucket",
+        "current_team_source",
         "current_adp_source",
         "current_context_missing_optional_fields",
         "projection_context_scoring_hash",

@@ -1,0 +1,9 @@
+population,pos,rows,available,coverage,mean_targets_when_available
+historical_templates,QB,706,0,0.0,
+historical_templates,RB,1549,4,0.0025823111684958036,56.0
+historical_templates,TE,833,746,0.8955582232893158,59.30563002680965
+historical_templates,WR,2210,1883,0.8520361990950226,74.11364843335103
+rolling_targets,QB,359,0,0.0,
+rolling_targets,RB,788,1,0.0012690355329949238,26.0
+rolling_targets,TE,423,375,0.8865248226950354,60.16
+rolling_targets,WR,1077,915,0.8495821727019499,78.23169398907103

@@ -212,7 +212,6 @@ RANDOM_FOREST_GRID = tuple(
         max_features=max_features,
         bootstrap=True,
         random_state=LOCKED_RANDOM_SEED,
-        n_jobs=1,
     )
     for max_depth, min_samples_leaf, max_features in product(
         (6, 10), (5, 15), (0.5, 1.0)

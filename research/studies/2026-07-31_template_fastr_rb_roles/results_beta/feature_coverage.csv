@@ -1,0 +1,9 @@
+population,pos,rows,available,coverage,red_zone_share_available,goal_line_share_available,third_fourth_target_share_available,mean_opportunities_when_available
+historical_templates,QB,706,0,0.0,0,0,0,
+historical_templates,RB,1549,1262,0.8147191736604261,1260,1242,1255,165.03565768621237
+historical_templates,TE,833,0,0.0,0,0,0,
+historical_templates,WR,2210,0,0.0,0,0,0,
+rolling_targets,QB,359,0,0.0,0,0,0,
+rolling_targets,RB,788,638,0.8096446700507615,638,626,634,161.64890282131663
+rolling_targets,TE,423,0,0.0,0,0,0,
+rolling_targets,WR,1077,0,0.0,0,0,0,

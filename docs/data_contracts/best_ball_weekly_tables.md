@@ -92,7 +92,7 @@ Important columns:
   `independent_current_residual_draw_allowed`
 - context: `current_avg_proj_points`, `avg_pick`, uncapped `year_exp`,
   `source_year_exp`, `year_exp_source`, `year_exp_uncapped_delta`,
-  `year_exp_bucket`, `exp_bucket`
+  `year_exp_bucket`, `exp_bucket`, and `current_team_source`
 - pool: `template_pool_key`, `template_pool_level`, `template_pool_size`
 
 ### Audit Tables
@@ -178,6 +178,13 @@ and null `player_key`. This includes source labels such as `Ghost` and `Jeff
 Holder`; the publication neither drops them nor invents player/team identities
 for them.
 
+For offensive rows, `team` is the canonical `player_identity.latest_team`.
+The weekly context builder may use that same keyed `Avg_ADPs.team` only when
+the compiled Model Inputs or V2 feature row has no assigned current team; it
+never overrides an already assigned team. `Best_Ball_Weekly_Player_Map` stores
+`current_team_source` as `model_inputs`, `v2_player_season_features`,
+`canonical_avg_adps`, or `unassigned` so this fallback remains auditable.
+
 ETR rows preserve exact source `etr_rank` and `etr_pos_rank`; `avg_pick` equals
 `etr_rank` only for backward-compatible overall ordering. The source
 `etr_adp`, `etr_adp_pos_rank`, and `etr_adp_diff` fields are also retained.
@@ -210,6 +217,17 @@ rows after filtering to QB/RB/WR/TE. Every projection and weekly-map row still
 requires a canonical `player_key`. The `TK` and `TDSP` rows remain in
 `Avg_ADPs` as audited draft entities but do not enter the model population,
 template pools, or Snake player pool.
+
+The canonical ADP table remains complete even when a fringe market-only player
+cannot produce a valid current or next-year V2 center. Core players and keepers
+always fail closed. New market-only gaps also fail closed through the first
+five-sixths of the draft surface (`200` DK, `300` NFFC, and `150` beta) unless
+separately accepted in the annual explicit-exclusion review. An incomplete row
+beyond that protected pick depth may be omitted from projections and weekly maps only
+under exclusion policy `v2_market_only_incomplete_buffer_exclusion_v3`; the row
+and reason remain in `V2_Production_Eligibility_Audit`, and the handoff still
+requires at least `240`/`360`/`180` complete players for DK/NFFC/beta. Legacy
+current or next-year projections must not fill the missing V2 center.
 
 NFFC uses a 17-week template horizon and modern 2021-forward historical donors.
 Its `week_17`, `managed_week_17`, and `played_week_17` values must be populated;

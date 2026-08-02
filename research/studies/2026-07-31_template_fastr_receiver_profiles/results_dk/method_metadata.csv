@@ -1,0 +1,6 @@
+method,primary,added_total_weight,added_features,weight_match_actual_target_share_profile,weight_match_actual_air_yards_share_profile,weight_match_actual_adot_profile,weight_match_actual_red_zone_target_share_profile,weight_match_actual_target_share_iqr_profile,weight_match_actual_high_use_week_rate_profile
+production,0,0.0,,0.0,0.0,0.0,0.0,0.0,0.0
+usage_depth_w100,0,1.0,"match_actual_target_share_profile,match_actual_adot_profile",0.5,0.0,0.5,0.0,0.0,0.0
+usage_air_value_w100,0,1.0,"match_actual_target_share_profile,match_actual_air_yards_share_profile,match_actual_adot_profile,match_actual_red_zone_target_share_profile",0.3,0.25,0.2,0.25,0.0,0.0
+usage_air_value_disp_w100,1,1.0,"match_actual_target_share_profile,match_actual_air_yards_share_profile,match_actual_adot_profile,match_actual_red_zone_target_share_profile,match_actual_target_share_iqr_profile,match_actual_high_use_week_rate_profile",0.225,0.2,0.175,0.2,0.1,0.1
+usage_air_value_disp_w150,0,1.5,"match_actual_target_share_profile,match_actual_air_yards_share_profile,match_actual_adot_profile,match_actual_red_zone_target_share_profile,match_actual_target_share_iqr_profile,match_actual_high_use_week_rate_profile",0.3375,0.3,0.2625,0.3,0.15,0.15

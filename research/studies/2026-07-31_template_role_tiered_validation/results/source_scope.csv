@@ -1,0 +1,14 @@
+study,result_dir,experiment,league,evidence_class,baseline_method,rows,targets,methods,min_season,max_season
+2026-07-23_template_context_ablation,results,2026-07-23_template_context_ablation__results,dk_legacy,historical_superseded,production_baseline,16200,1620,10,2017,2025
+2026-07-23_template_feature_pruning,results,2026-07-23_template_feature_pruning__results,dk_legacy,historical_selection_audit,full,48600,1620,30,2017,2025
+2026-07-23_template_weight_sensitivity,results,2026-07-23_template_weight_sensitivity__results,dk_legacy,historical_nomination_only,recommended,58320,1620,36,2017,2025
+2026-07-29_template_projection_weight_bump,results,2026-07-29_template_projection_weight_bump__results,dk,current_direct,production,12960,1620,8,2017,2025
+2026-07-29_template_projection_weight_bump,results_beta,2026-07-29_template_projection_weight_bump__results_beta,beta,current_direct,production,12960,1620,8,2017,2025
+2026-07-30_template_height_weight_ablation,results,2026-07-30_template_height_weight_ablation__results,dk,current_direct,production,9720,1620,6,2017,2025
+2026-07-30_template_height_weight_ablation,results_beta,2026-07-30_template_height_weight_ablation__results_beta,beta,current_direct,production,9720,1620,6,2017,2025
+2026-07-30_template_projection_trajectory,results,2026-07-30_template_projection_trajectory__results,dk,current_direct,production,5832,648,9,2017,2025
+2026-07-30_template_projection_trajectory,results_beta,2026-07-30_template_projection_trajectory__results_beta,beta,current_direct,production,5832,648,9,2017,2025
+2026-07-30_template_receiver_rate_ablation,results,2026-07-30_template_receiver_rate_ablation__results,dk,current_direct,production,11340,1620,7,2017,2025
+2026-07-30_template_receiver_rate_ablation,results_beta,2026-07-30_template_receiver_rate_ablation__results_beta,beta,current_direct,production,11340,1620,7,2017,2025
+2026-07-30_wr_template_ppg_profile_tradeoff,results,2026-07-30_wr_template_ppg_profile_tradeoff__results,dk,current_direct,production,5832,648,9,2017,2025
+2026-07-30_wr_template_ppg_profile_tradeoff,results_beta,2026-07-30_wr_template_ppg_profile_tradeoff__results_beta,beta,current_direct,production,5832,648,9,2017,2025

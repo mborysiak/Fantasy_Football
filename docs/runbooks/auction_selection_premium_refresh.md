@@ -26,8 +26,9 @@ The default policy is the validated half-strength reserve. The command:
 
 1. loads or bootstraps the durable historical seed table;
 2. attaches newly available prior-season actual auction prices;
-3. runs one premium-free 1,000-roster Target seed under the active keeper market
-   and live organic construction policy;
+3. clears only the staged active year/league premium slice, then runs one
+   premium-free 1,000-roster Target seed under the active keeper market and
+   live organic construction policy;
 4. fits the ridge model only on seasons before the target year and records any
    governed historical/current salary-surface transfer;
 5. writes `Salary_Selection_Seeds` and `Salary_Selection_Calibrator` to
@@ -39,6 +40,12 @@ The default policy is the validated half-strength reserve. The command:
 Use `--reuse-current-seed` to change only the shrinkage strength or republish
 the table without paying for another Target seed. Use `--no-app-sync` for a
 source-only diagnostic run.
+
+The scoped clear in step 3 is required because the simulation constructor
+loads the published table before the seed explicitly disables selection
+premiums. It prevents stale players from a prior refresh from blocking or
+influencing the clean seed; other seasons and leagues are preserved, and the
+new active slice is published only after the seed and calibration succeed.
 
 Do not use `--reuse-current-seed` across a material roster-construction policy
 change. The current keeper-aware organic policy is versioned as

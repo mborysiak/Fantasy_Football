@@ -302,6 +302,91 @@ def test_feature_ingestion_uses_effective_season_before_alias_resolution(
     assert pd.isna(quarterback["source_season_override_ids"])
 
 
+def test_fantasydata_remains_historical_only_after_2025(tmp_path):
+    raw = pd.DataFrame(
+        [
+            {
+                "player": "Historical Running Back",
+                "pos": "RB",
+                "team": "ARI",
+                "year": 2025,
+                "fdta_rush_yds": 800,
+                "fdta_rush_td": 6,
+                "fdta_rec": 40,
+                "fdta_rec_yds": 300,
+                "fdta_rec_td": 2,
+                "fdta_rank": 80,
+            },
+            {
+                "player": "Current Running Back",
+                "pos": "RB",
+                "team": "ARI",
+                "year": 2026,
+                "fdta_rush_yds": 900,
+                "fdta_rush_td": 7,
+                "fdta_rec": 45,
+                "fdta_rec_yds": 350,
+                "fdta_rec_td": 3,
+                "fdta_rank": 60,
+            },
+        ]
+    )
+    standardized = _standardize_identity_rows(
+        raw,
+        "FantasyData",
+        CANDIDATE_SOURCE_TABLES["FantasyData"],
+    )
+    aliases = standardized[
+        [
+            "source_table",
+            "source",
+            "source_player_id",
+            "normalized_name",
+            "position",
+            "team",
+            "season",
+            SOURCE_STORED_SEASON_COLUMN,
+        ]
+    ].copy()
+    aliases["player_key"] = ["historical-rb", "current-rb"]
+
+    source_database = tmp_path / "fantasydata_historical_only.sqlite3"
+    with sqlite3.connect(source_database) as connection:
+        raw.to_sql("FantasyData", connection, index=False)
+
+    values, _ = build_projection_values(
+        aliases,
+        "dk",
+        "fantasydata_historical_only_fixture",
+        source_database=source_database,
+        start_season=2025,
+        projection_through_season=2026,
+    )
+
+    observed = set(
+        values[["player_key", "season", "provider"]].itertuples(
+            index=False,
+            name=None,
+        )
+    )
+    assert observed == {("historical-rb", 2025, "fantasydata")}
+
+    market_values, _ = build_market_values(
+        aliases,
+        "fantasydata_historical_only_fixture",
+        source_database=source_database,
+        start_season=2025,
+        projection_through_season=2026,
+    )
+    observed_market = set(
+        market_values[["player_key", "season", "source"]].itertuples(
+            index=False,
+            name=None,
+        )
+    )
+    assert observed_market == {("historical-rb", 2025, "fantasydata")}
+
+
 def test_nffc_contributes_only_its_single_composite_market_row(tmp_path):
     nffc_composite = pd.DataFrame(
         {

@@ -6,7 +6,7 @@ from ff import general
 import ff.data_clean as dc
 
 # set to last year
-year = 2024
+year = 2025
 
 # set the root path and database management object
 root_path = general.get_main_path('Fantasy_Football')
@@ -38,6 +38,9 @@ def save_pff_stats(stat_type, set_year):
     df = pd.read_csv(f'{root_path}/Data/OtherData/PFF_Stats/{set_year}_{fname}.csv')
     df.player = df.player.apply(dc.name_clean)
     df['year'] = set_year
+
+    cols = dm.read(f"SELECT * FROM PFF_{stat_type}_Stats WHERE year={set_year}", DB_NAME).columns
+    df = df[[c for c in cols if c in df.columns]]
 
     dm.delete_from_db(DB_NAME, f'PFF_{stat_type}_Stats', f"year={set_year}", create_backup=False)
     dm.write_to_db(df, DB_NAME, f'PFF_{stat_type}_Stats', 'append')

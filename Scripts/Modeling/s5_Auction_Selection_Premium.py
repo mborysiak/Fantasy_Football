@@ -123,6 +123,32 @@ def replace_active_slice(
     replace_table(conn, table, rows)
 
 
+def clear_active_slice(
+    conn: sqlite3.Connection,
+    table: str,
+    year: int,
+    league: str,
+) -> int:
+    """Remove a generated active slice before a deliberately clean rebuild."""
+    if not table_exists(conn, table):
+        return 0
+    columns = {
+        str(row[1])
+        for row in conn.execute(f'PRAGMA table_info("{table}")').fetchall()
+    }
+    missing = {"year", "league"} - columns
+    if missing:
+        raise ValueError(
+            f"{table} cannot be cleared by active slice; missing columns: "
+            f"{sorted(missing)}."
+        )
+    cursor = conn.execute(
+        f'DELETE FROM "{table}" WHERE year = ? AND league = ?',
+        (int(year), str(league)),
+    )
+    return max(int(cursor.rowcount), 0)
+
+
 def replace_league_slice(
     conn: sqlite3.Connection,
     table: str,
@@ -815,6 +841,21 @@ def main() -> None:
         requested_trials = int(saved_current.seed_trials.max())
         market = {}
     else:
+        # FootballSimulation loads the published premium table during
+        # construction, even though this seed later requests
+        # use_selection_premium=False.  Clear only the staged active slice so
+        # a stale player surface cannot contaminate or block the clean seed.
+        with sqlite3.connect(SIMULATION_DB) as conn:
+            cleared_premium_rows = clear_active_slice(
+                conn,
+                PREMIUM_TABLE,
+                args.year,
+                args.league,
+            )
+        print(
+            f"Cleared {cleared_premium_rows} stale {PREMIUM_TABLE} rows for "
+            f"{args.year} {args.league} before the premium-free seed."
+        )
         current_surface, success_trials, market = run_current_seed(
             args.year,
             args.league,
