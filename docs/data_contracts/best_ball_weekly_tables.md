@@ -1,6 +1,6 @@
 # Best-Ball Weekly Tables Contract
 
-Last updated: 2026-07-29
+Last updated: 2026-07-31
 
 ## Owner
 
@@ -27,7 +27,9 @@ Important columns:
 - projection context: `avg_proj_points`, `preseason_proj_ppg`,
   `historical_pred_fp_per_game`, `projection_rank_pct`,
   `projection_decile`, `projection_tier`, absolute projected PPG, projection
-  disagreement, and market-vs-projection gap match fields
+  disagreement, market-vs-projection gap match fields,
+  `projection_context_source`, and the audit-only
+  `model_input_*` projection-context columns
 - center audit: `legacy_historical_pred_fp_per_game`,
   `v2_historical_pred_fp_per_game`, `v2_point_center_source`,
   `v2_template_center_available`,
@@ -44,9 +46,10 @@ Important columns:
 - quality/context: `active_games`, `played_games`, `active_ppg`, `season_points`,
   `active_ppg_resid`, `profile_total`, `managed_profile_total`,
   `template_eligible`, `template_exclusion_reason`
-- weekly multipliers: `week_1` through `week_16`
-- managed weekly multipliers: `managed_week_1` through `managed_week_16`
-- weekly played evidence: `played_week_1` through `played_week_16`
+- weekly multipliers: `week_1` through the league horizon (`week_16` for
+  DK/beta and `week_17` for NFFC in the approved 2026 cycle)
+- managed weekly multipliers: `managed_week_1` through the same league horizon
+- weekly played evidence: `played_week_1` through the same league horizon
 
 ### `Best_Ball_Weekly_Template_Pools`
 
@@ -111,13 +114,17 @@ template league from that marker and fails if the requested league differs.
 The marker is an in-memory build guard; the durable template row stores the
 result as `league`, and its globally offset `template_id` uses the same league.
 
-This boundary is methodologically important because beta and DK use different
-reception, touchdown, sack, and yardage-bonus rules. Historical `active_ppg`,
-`season_points`, centered residuals, and weekly trajectories are all
-league-scored outcomes. Yardage bonuses therefore flow through the realized
-weekly-upside path and `active_ppg`; they are not inferred from season totals.
-A beta build must never reuse a DK-scored weekly frame even when the source
-statistics and player identities are otherwise identical.
+This boundary is methodologically important because beta, DK, and NFFC have
+distinct configured reception, touchdown, sack, and yardage-bonus rules.
+Historical `active_ppg`, `season_points`, centered residuals, and weekly
+trajectories are all league-scored outcomes. Configured yardage bonuses
+therefore flow through the realized weekly-upside path and `active_ppg`; they
+are not inferred from season totals. No league build may reuse another
+league's scored weekly frame even when source statistics and player identities
+are otherwise identical.
+These league-scored weekly outcomes feed optimizer selection but are not forced
+into the preseason salary point estimate. Two-point conversions and
+special-teams touchdowns remain omitted by decision.
 
 ## Validated V2 Identity/Scoring Refresh
 
@@ -140,11 +147,149 @@ paired historical `active_ppg` values and 5,147 normalized weekly paths differ
 between beta and DK. Mean absolute PPG difference is 1.3508 and the maximum is
 6.8.
 
-The promoted source and both V2 databases match their staged artifacts
-byte-for-byte. All 11 generated auction-app tables match source row-for-row and
-hash-for-hash without changing app-owned content, and the Snake database
-SHA-256 equals the source Simulation database. All five source/app databases
-pass SQLite integrity with zero foreign-key errors.
+The promoted source and the then-live DK/beta V2 databases match their staged
+artifacts byte-for-byte, and a second handoff leaves all governed table hashes
+unchanged across all eight governed tables. All 20 generated auction-app
+tables match staging while all six
+app-owned tables are unchanged, and every Snake table matches staging. All six
+source/app databases pass SQLite integrity with zero foreign-key errors.
+`Model_Inputs.sqlite3` was preserved, and pre-promotion copies live under
+`research/studies/2026-07-30_canonical_adp_handoff/results/pre_promotion/`.
+
+## Canonical Current Market Contract
+
+`Scripts/V2/production_handoff.py` is the sole owner of the current
+`Avg_ADPs` publication. It replaces the current DK, NFFC, and ETR slices from
+the explicitly bound `Season_Stats_New.sqlite3` snapshot while preserving other
+years/leagues. Staged handoffs must pass that frozen source path explicitly.
+The legacy s3 workflow calls this publisher; it must not append a name-only
+table.
+
+The current grain is `(year, league, draft_entity_key)`. Every QB/RB/WR/TE row
+has a unique, non-null governed `player_key`, and consumers join that key
+directly without re-resolving the display label. Source position must agree
+with the current `player_season_features.position`, falling back to
+`player_identity.position` only when current-season position is unavailable;
+the authority and source are retained on each row. This permits governed
+current roles such as Travis Hunter at WR while still auditing his DB identity
+position. NFFC `TK` and `TDSP` rows are draft units rather than asserted NFL
+player identities: all are retained with a deterministic `draft_entity_key`
+and null `player_key`. This includes source labels such as `Ghost` and `Jeff
+Holder`; the publication neither drops them nor invents player/team identities
+for them.
+
+ETR rows preserve exact source `etr_rank` and `etr_pos_rank`; `avg_pick` equals
+`etr_rank` only for backward-compatible overall ordering. The source
+`etr_adp`, `etr_adp_pos_rank`, and `etr_adp_diff` fields are also retained.
+`Avg_ADPs_Publication_Audit` stores row-level source labels, match methods, and
+row/snapshot digests. `Avg_ADPs_Publication_Receipt` records source/published
+row counts, SHA-256 digests, version, snapshot ID, and UTC publication time for
+each feed. An unchanged source snapshot reuses its prior publication time.
+Canonicalization removes legacy DK/NFFC/ETR rows whose year is null,
+non-numeric, non-finite, or fractional while preserving valid historical
+years and unrelated leagues; the per-feed removal count is retained in both
+the row audit and receipt. The initial migration removes 476 duplicated
+year-null ETR rows. Raw `ETR_Ranks` remains the source authority, so generated
+`Avg_ADPs` junk is not retained as historical evidence.
+
+The current source snapshot contains 416 live DK rows, 497 NFFC rows (431
+offensive players plus 33 `TK` and 33 `TDSP` units), and 243 ETR rows. The
+latest local NFFC and ETR exports are both dated 2026-07-27; DK is refreshed
+from the live feed. Publication fails closed on unresolved/duplicate offensive
+keys, missing draft-entity keys, invalid ranks/picks, unsupported positions,
+lost source rows, or insufficient offensive depth. All three tables are
+generated/source-owned tables copied to Auction; Snake receives the full
+source database.
+
+## Approved 2026 NFFC Offense-Only Candidate
+
+The approved 2026 production cycle adds an independently scored NFFC V2,
+handoff, weekly-template, and Snake-app path. NFFC production eligibility is
+the union of the core projection population and top-360 canonical NFFC ADP
+rows after filtering to QB/RB/WR/TE. Every projection and weekly-map row still
+requires a canonical `player_key`. The `TK` and `TDSP` rows remain in
+`Avg_ADPs` as audited draft entities but do not enter the model population,
+template pools, or Snake player pool.
+
+NFFC uses a 17-week template horizon and modern 2021-forward historical donors.
+Its `week_17`, `managed_week_17`, and `played_week_17` values must be populated;
+those columns are null for the 16-week DK and beta slices and consumers drop
+only a wholly null trailing horizon for the selected league.
+
+NFFC historical and current scoring-sensitive matcher context is authoritative
+from the NFFC-scored V2 `player_season_features` preseason consensus. This
+includes total points and team-game PPG, projection uncertainty, pass/rush/
+receiving point shares, and team-QB context. The builder reconstructs component
+points on that same scoring scale and fails closed on missing, inconsistent, or
+wrong-position context. The older `Model_Inputs.avg_proj_points` context is
+DK-scored and remains audit-only for NFFC; it cannot fill or override an NFFC
+matcher field.
+
+For WR/TE environment matching, `qb_avg_proj_pass_points` is the selected
+team QB1's NFFC-scored passing component
+(`expert_points_median * projected_pass_point_share`). Total QB fantasy PPG is
+retained as `team_qb1_ppg` context but must not be relabeled as passing points;
+doing so would overstate mobile-quarterback passing environments.
+
+The NFFC historical donor center is the scoring-matched preseason expert
+consensus, with
+`historical_center_policy = 'nffc_scored_expert_consensus'`. The strict-OOS
+locked NFFC center remains a diagnostic and is not promoted. A strict
+2023-2025 rolling replay on 540 targets found locked-minus-expert PPG CRPS of
+`+0.002901`; the locked arm lost all three seasons and its player-cluster 95%
+interval was `[-0.004914, +0.010748]`. It passed six of ten safety gates but
+failed all three promotion gates. This NFFC-only decision does not change the
+validated DK/beta historical center contract.
+
+The completed staged NFFC build contains 1,509 historical templates from
+2021-2025, all with 17 populated weeks, and a 385-player current map. These are
+candidate artifacts only; no live NFFC database or app release was promoted.
+
+This is not a complete NFFC contest implementation. The Snake NFFC selector is
+an offense-only 3RR mode; it does not project or draft K/DST and does not cover
+alternate NFFC contest formats. The candidate becomes live only after the full
+season-registered refresh, NFFC model-acceptance and template gates, both app
+smokes, and explicit promotion.
+
+## Live 2026 Population and Context Contract
+
+The current production population is selected before weekly context and donor
+construction:
+
+- DK contains 351 players: 56 QB, 101 RB, 143 WR, and 51 TE. It is the union
+  of the 326-player core and the top-280 DK market population after excluding
+  eight governed market-only rows without a current V2 center: Tyreek Hill,
+  Joe Mixon, DeAndre Hopkins, Nick Chubb, Austin Ekeler, Kareem Hunt, Brandin
+  Cooks, and Taysom Hill.
+- Beta contains 328 players: 50 QB, 95 RB, 133 WR, and 50 TE. It is the union
+  of the core population, top-180 ETR overall-rank population, and all governed
+  keepers.
+
+Current and following-season centers come from the locked league-specific V2
+shadows. Legacy current/next values are retained only for audit. This does not
+change the separate DK/beta historical-template rule: their donor residuals use
+the validated legacy OOS historical center where available and disclose the
+preseason projection fallback otherwise. NFFC instead uses the independently
+validated `nffc_scored_expert_consensus` rule described above.
+`V2_Production_Eligibility_Audit` retains all 1,490 reviewed eligibility rows,
+including governed exclusions.
+
+Every live player requires a canonical `player_key` before context joins and
+receives exactly 80 historical donors. DK uses exact canonical ADP for 343
+players and a governed fallback for eight; beta uses exact canonical ADP for
+238 players and a governed fallback for 90. No row uses a generic default or
+review route. Tetairoa McMillan and Amon-Ra St. Brown retain their governed
+canonical identities.
+
+The final release passed 187 main-repository tests, 69 strict release tests,
+49 Auction tests, and 16 Snake tests. Snake `AppTest` completed with zero
+exceptions. The durable release evidence lives under
+`research/studies/2026-07-30_canonical_adp_handoff/`.
+
+Team aliases are normalized only while calculating position-room features:
+`LA`/`LAR` and `ARZ`/`ARI` share their corresponding room. Outward player/team
+labels are preserved. Free agents retain their outward `FA` label and receive
+zero room features rather than being grouped into a synthetic team room.
 
 ## Contract Rules
 
@@ -167,12 +312,15 @@ pass SQLite integrity with zero foreign-key errors.
 - Join template pools to templates with both `template_id` and league context
   (`Template_Pools.template_league`/`pool_version` to `Templates.league`) when
   the app or audit logic does not rely on globally offset IDs.
-- Preserve `week_1` through `week_16` as profile multipliers, not raw points.
-- Preserve `managed_week_1` through `managed_week_16` as the auction app's
-  managed-season profile multipliers. They match `week_*` for workload-qualified
-  outcomes and additionally retain scores from short QB appearances. The Snake
-  best-ball app continues to use only `week_*`.
-- Preserve `played_week_1` through `played_week_16` as separate 0/1 masks.
+- Preserve `week_1` through the registered league horizon as profile
+  multipliers, not raw points. The approved 2026 horizons are 16 for DK/beta
+  and 17 for NFFC.
+- Preserve `managed_week_1` through the registered league horizon as the
+  auction app's managed-season profile multipliers. They match `week_*` for
+  workload-qualified outcomes and additionally retain scores from short QB
+  appearances. The Snake best-ball app continues to use only `week_*`.
+- Preserve `played_week_1` through the registered league horizon as separate
+  0/1 masks.
   A value of `1` means the source weekly play-by-play table contained a
   player-week row; it must not be inferred from the fantasy-point value. For
   QBs, this evidence is captured before the existing greater-than-15-play
@@ -180,24 +328,29 @@ pass SQLite integrity with zero foreign-key errors.
   played weeks even though they do not affect the template's `active_ppg`.
   This is strong participation evidence for a target, carry, or QB play, but it
   is not a comprehensive snap-count or pre-kickoff game-status flag.
-- For every template, the sum of `played_week_1` through `played_week_16` must
-  equal `played_games`. `active_games` remains the performance-profile
-  denominator and can be lower for QBs because of the greater-than-15-play
-  filter. Played zero and negative fantasy-point outcomes remain valid outcomes
-  rather than being reclassified as missed games.
+- For every template, the sum of `played_week_*` through that slice's
+  registered horizon must equal `played_games`. `active_games` remains the
+  performance-profile denominator and can be lower for QBs because of the
+  greater-than-15-play filter. Played zero and negative fantasy-point outcomes
+  remain valid outcomes rather than being reclassified as missed games.
 - A short QB week has `played_week_N = 1`, retains the existing filtered
   `week_N = 0` best-ball multiplier, and stores its unfiltered score relative to
   the template PPG denominator in `managed_week_N`. This preserves the managed
   outcome without injecting small-workload QB games into the best-ball profile.
 - Preserve `active_ppg_resid` as template active-game PPG minus historical
   predicted PPG.
-- Production donor residuals remain centered on the previously validated
-  historical OOS projection (`historical_center_policy =
-  legacy_validated_oos`). The strict-OOS V2 donor center is retained in
-  `v2_historical_pred_fp_per_game` for audit, but
-  `v2_recenter_promoted = 0`. A strict rolling replay on 2017-2025 rows found
-  that V2 recentering worsened PPG CRPS in both DK and beta; do not switch the
-  active center without clearing that replay again.
+- DK/beta production donor residuals use the previously validated historical
+  OOS projection where it exists (`historical_center_policy =
+  legacy_validated_oos`) and the same-season preseason projection otherwise
+  (`historical_center_policy = preseason_projection_fallback`). The strict-OOS
+  V2 donor center is retained in `v2_historical_pred_fp_per_game` for audit,
+  but `v2_recenter_promoted = 0`. A strict rolling replay on 2017-2025 rows
+  found that V2 recentering worsened PPG CRPS in both DK and beta; do not switch
+  the active center without clearing the league-specific replay again.
+- NFFC production candidates use the NFFC-scored preseason expert consensus for
+  both matcher context and the donor center
+  (`historical_center_policy = nffc_scored_expert_consensus`). The locked OOF
+  center remains diagnostic after failing its prespecified replay gates.
 - A missing V2 diagnostic center normally fails the build. The only governed
   exception is a beta 2018 QB locked-handoff row with
   `template_center_available = 0` when the active FFToday quarantine receipt
@@ -236,9 +389,13 @@ pass SQLite integrity with zero foreign-key errors.
   year; recency changes their sampling prevalence without excluding older
   archetypes. Renormalize and reapply the 5% donor cap afterward.
 - Do not remove `template_sample_prob` without updating app sampling logic.
-- Rebuilds should replace only the active league/year/dataset slice and preserve
-  other league slices already present in the table.
-- Rebuild beta and DK separately with explicit league arguments. As a
+- Template and template-audit rebuilds replace the active league. Pool, map,
+  summary, and player-audit rebuilds replace every retained year for the active
+  league/dataset, while preserving other leagues. Template IDs are regenerated
+  from the current donor bank, so retaining an older player map against a new
+  unversioned template table is prohibited. The Snake year selector exposes
+  only prediction slices present in the current weekly player map.
+- Rebuild beta, DK, and NFFC separately with explicit league arguments. As a
   cross-league audit, paired historical rows should not have identical
   `active_ppg` and weekly paths throughout the full population; complete
   equality indicates a scoring-dictionary routing failure.

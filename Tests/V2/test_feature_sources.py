@@ -11,9 +11,11 @@ from Scripts.V2.build_feature_sources import (
     _required_projection_components,
     _score_projection_values,
     _standardize_identity_rows,
+    build_market_values,
     build_projection_values,
     resolve_source_rows,
 )
+from Scripts.V2.build_feature_mart import build_market_consensus
 from Scripts.V2.config import (
     CANDIDATE_SOURCE_TABLES,
     PROJECTION_VALUE_SPECS,
@@ -298,6 +300,82 @@ def test_feature_ingestion_uses_effective_season_before_alias_resolution(
     assert quarterback["season"] == 2020
     assert quarterback["source_stored_seasons"] == "2020"
     assert pd.isna(quarterback["source_season_override_ids"])
+
+
+def test_nffc_contributes_only_its_single_composite_market_row(tmp_path):
+    nffc_composite = pd.DataFrame(
+        {
+            "player": ["Example Receiver"],
+            "pos": ["WR"],
+            "year": [2026],
+            "avg_pick": [42.0],
+            "league": ["nffc"],
+        }
+    )
+    nffc_contests = pd.DataFrame(
+        {
+            "player": ["Example Receiver"] * 4,
+            "pos": ["WR"] * 4,
+            "team": ["BUF"] * 4,
+            "year": [2026] * 4,
+            "pick_nffc": [38.0, 40.0, 44.0, 46.0],
+            "source": [
+                "nffc_rotowire_online",
+                "nffc_best_ball_overall",
+                "nffc_best_ball_25s50s",
+                "nffc_cutline",
+            ],
+        }
+    )
+    aliases = pd.concat(
+        [
+            _standardize_identity_rows(
+                nffc_composite,
+                "ADP_Averages",
+                CANDIDATE_SOURCE_TABLES["ADP_Averages"],
+            ),
+            _standardize_identity_rows(
+                nffc_contests,
+                "NFFC_ADP",
+                CANDIDATE_SOURCE_TABLES["NFFC_ADP"],
+            ),
+        ],
+        ignore_index=True,
+    )
+    aliases["player_key"] = "example-receiver"
+
+    source_database = tmp_path / "nffc_family_consensus.sqlite3"
+    with sqlite3.connect(source_database) as connection:
+        nffc_composite.to_sql(
+            "ADP_Averages",
+            connection,
+            index=False,
+        )
+        nffc_contests.to_sql(
+            "NFFC_ADP",
+            connection,
+            index=False,
+        )
+
+    values, audit = build_market_values(
+        aliases,
+        "nffc_family_fixture",
+        source_database=source_database,
+        start_season=2026,
+        projection_through_season=2026,
+    )
+
+    assert values[["player_key", "source", "adp"]].to_dict("records") == [
+        {
+            "player_key": "example-receiver",
+            "source": "adp_average_nffc",
+            "adp": 42.0,
+        }
+    ]
+    assert audit["source_table"].tolist() == ["ADP_Averages"]
+    consensus = build_market_consensus(values).iloc[0]
+    assert consensus["adp_median"] == 42.0
+    assert consensus["adp_source_count"] == 1
 
 
 def test_fftoday_quarantine_reaches_projection_values_and_resolution_audit(

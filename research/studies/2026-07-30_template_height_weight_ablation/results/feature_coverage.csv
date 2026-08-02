@@ -1,0 +1,9 @@
+population,pos,rows,height_available,weight_available,both_available,both_coverage,position_mismatches
+historical_templates,QB,706,706,706,706,1.0,3
+historical_templates,RB,1549,1549,1549,1549,1.0,12
+historical_templates,TE,833,831,831,831,0.9975990396158463,1
+historical_templates,WR,2210,2205,2205,2205,0.997737556561086,17
+rolling_targets,QB,216,216,216,216,1.0,2
+rolling_targets,RB,540,540,540,540,1.0,2
+rolling_targets,TE,216,216,216,216,1.0,0
+rolling_targets,WR,648,648,648,648,1.0,3

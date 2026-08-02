@@ -1,0 +1,9 @@
+{
+  "auction_app_owned_table_count": 7,
+  "auction_app_owned_tables_unchanged": true,
+  "auction_generated_table_count": 17,
+  "auction_generated_tables_match_staging": true,
+  "main_simulation_integrity": "ok",
+  "main_validations_integrity": "ok",
+  "snake_tables_match_staging": true
+}

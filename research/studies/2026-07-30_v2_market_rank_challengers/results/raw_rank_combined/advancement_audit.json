@@ -1,0 +1,369 @@
+{
+  "advancement_variant": "raw_percentile_coverage",
+  "bootstrap_iterations": 20000,
+  "both_leagues_pass_all_gates": false,
+  "decision_scope": "cross_league_advance_to_nested_retune_not_production_promotion",
+  "failed_gates_by_league": {
+    "beta": [
+      "beats_normalized_rank_by_0_001",
+      "early_era_nonworse",
+      "player_interval_upper_nonpositive",
+      "production_surface_player_interval_upper_nonpositive",
+      "production_surface_season_interval_upper_nonpositive",
+      "production_surface_season_wins_at_least_6",
+      "season_interval_upper_nonpositive",
+      "season_wins_at_least_6",
+      "three_of_four_positions_nonworse"
+    ],
+    "dk": [
+      "beats_normalized_rank_by_0_001",
+      "early_era_nonworse",
+      "player_interval_upper_nonpositive",
+      "production_surface_player_interval_upper_nonpositive",
+      "production_surface_season_interval_upper_nonpositive",
+      "season_interval_upper_nonpositive"
+    ]
+  },
+  "league_audits": {
+    "beta": {
+      "advancement_variant": "raw_percentile_coverage",
+      "all_single_league_gates_pass": false,
+      "candidate_minus_normalized_rank_rmse": 0.0021264575199935187,
+      "controlled_candidate_rmse": 2.8853035019349176,
+      "decision_scope": "single_league_advance_to_nested_retune_not_production_promotion",
+      "gates": {
+        "beats_normalized_rank_by_0_001": false,
+        "early_era_nonworse": false,
+        "expanded_era_nonworse": true,
+        "incomplete_coverage_nonworse": true,
+        "no_history_slice_worse_by_0_01": true,
+        "no_position_worse_by_0_01": true,
+        "player_interval_upper_nonpositive": false,
+        "pooled_delta_negative": true,
+        "production_surface_delta_negative": true,
+        "production_surface_player_interval_upper_nonpositive": false,
+        "production_surface_recent_delta_negative": true,
+        "production_surface_season_interval_upper_nonpositive": false,
+        "production_surface_season_wins_at_least_6": false,
+        "recent_delta_negative": true,
+        "season_interval_upper_nonpositive": false,
+        "season_wins_at_least_6": false,
+        "shallow_omission_nonworse_by_0_01": true,
+        "three_of_four_positions_nonworse": false
+      },
+      "incomplete_coverage_delta": -0.0015895934786165355,
+      "max_history_delta": 0.007104919495696027,
+      "max_position_delta": 0.005694620183115617,
+      "normalized_rank_level_rmse": 2.883177044414924,
+      "shallow_omission_delta": -0.0015895934786165355
+    },
+    "dk": {
+      "advancement_variant": "raw_percentile_coverage",
+      "all_single_league_gates_pass": false,
+      "candidate_minus_normalized_rank_rmse": 0.0017292068304675112,
+      "controlled_candidate_rmse": 3.1065101526312136,
+      "decision_scope": "single_league_advance_to_nested_retune_not_production_promotion",
+      "gates": {
+        "beats_normalized_rank_by_0_001": false,
+        "early_era_nonworse": false,
+        "expanded_era_nonworse": true,
+        "incomplete_coverage_nonworse": true,
+        "no_history_slice_worse_by_0_01": true,
+        "no_position_worse_by_0_01": true,
+        "player_interval_upper_nonpositive": false,
+        "pooled_delta_negative": true,
+        "production_surface_delta_negative": true,
+        "production_surface_player_interval_upper_nonpositive": false,
+        "production_surface_recent_delta_negative": true,
+        "production_surface_season_interval_upper_nonpositive": false,
+        "production_surface_season_wins_at_least_6": true,
+        "recent_delta_negative": true,
+        "season_interval_upper_nonpositive": false,
+        "season_wins_at_least_6": true,
+        "shallow_omission_nonworse_by_0_01": true,
+        "three_of_four_positions_nonworse": true
+      },
+      "incomplete_coverage_delta": -0.005494314462354044,
+      "max_history_delta": -0.0010353191139507167,
+      "max_position_delta": 0.00037982027944893915,
+      "normalized_rank_level_rmse": 3.104780945800746,
+      "shallow_omission_delta": -0.005494314462354044
+    }
+  },
+  "league_metrics": {
+    "beta": {
+      "controlled": {
+        "normalized_scoring_specific": {
+          "player_cluster_95_high": -0.0002465089281433,
+          "player_cluster_95_low": -0.0042866561744093,
+          "pooled_delta_variant_minus_incumbent": -0.002282842989925,
+          "season_bootstrap_95_high": -0.0002520945637985,
+          "season_bootstrap_95_low": -0.0043113200167184,
+          "season_count": 9,
+          "season_wins": 6,
+          "variant_rmse": 2.883177044414924
+        },
+        "raw_available_median": {
+          "player_cluster_95_high": 0.0008005644618687,
+          "player_cluster_95_low": -0.0029384782825597,
+          "pooled_delta_variant_minus_incumbent": -0.0010711347560308,
+          "season_bootstrap_95_high": 0.0005601483670907,
+          "season_bootstrap_95_low": -0.0029550616246784,
+          "season_count": 9,
+          "season_wins": 6,
+          "variant_rmse": 2.8843887526488183
+        },
+        "raw_log": {
+          "player_cluster_95_high": -9.90361794487418e-05,
+          "player_cluster_95_low": -0.0045069186680991,
+          "pooled_delta_variant_minus_incumbent": -0.0023071860528767,
+          "season_bootstrap_95_high": -0.0003737845704396,
+          "season_bootstrap_95_low": -0.0042205052017517,
+          "season_count": 9,
+          "season_wins": 7,
+          "variant_rmse": 2.8831527013519724
+        },
+        "raw_percentile": {
+          "player_cluster_95_high": 0.0030716517989142,
+          "player_cluster_95_low": -0.0009531065573521,
+          "pooled_delta_variant_minus_incumbent": 0.0010819570078908,
+          "season_bootstrap_95_high": 0.0045950712682867,
+          "season_bootstrap_95_low": -0.0018360987755849,
+          "season_count": 9,
+          "season_wins": 4,
+          "variant_rmse": 2.88654184441274
+        },
+        "raw_percentile_coverage": {
+          "player_cluster_95_high": 0.0021879570624195,
+          "player_cluster_95_low": -0.0024841124942735,
+          "pooled_delta_variant_minus_incumbent": -0.0001563854699315,
+          "season_bootstrap_95_high": 0.0040307877177268,
+          "season_bootstrap_95_low": -0.0041048516578642,
+          "season_count": 9,
+          "season_wins": 5,
+          "variant_rmse": 2.8853035019349176
+        }
+      },
+      "production_surface": {
+        "normalized_scoring_specific": {
+          "player_cluster_95_high": 0.0003194178252437,
+          "player_cluster_95_low": -0.0042521766657026,
+          "pooled_delta_variant_minus_incumbent": -0.0019563791947398,
+          "season_bootstrap_95_high": 0.0008960235064037,
+          "season_bootstrap_95_low": -0.0046901217701919,
+          "season_count": 9,
+          "season_wins": 6,
+          "variant_rmse": 2.8821555958131704
+        },
+        "raw_available_median": {
+          "player_cluster_95_high": 0.0011106834147277,
+          "player_cluster_95_low": -0.0039151146038701,
+          "pooled_delta_variant_minus_incumbent": -0.0013939190916523,
+          "season_bootstrap_95_high": -4.7332655341847385e-05,
+          "season_bootstrap_95_low": -0.0027711812643683,
+          "season_count": 9,
+          "season_wins": 6,
+          "variant_rmse": 2.882718055916258
+        },
+        "raw_log": {
+          "player_cluster_95_high": 0.0002825358302767,
+          "player_cluster_95_low": -0.0053982058332905,
+          "pooled_delta_variant_minus_incumbent": -0.0025613798799866,
+          "season_bootstrap_95_high": -0.0013859601724384,
+          "season_bootstrap_95_low": -0.0037537952692523,
+          "season_count": 9,
+          "season_wins": 8,
+          "variant_rmse": 2.881550595127924
+        },
+        "raw_percentile": {
+          "player_cluster_95_high": 0.0028495725499098,
+          "player_cluster_95_low": -0.0020514187336548,
+          "pooled_delta_variant_minus_incumbent": 0.0004470627884076,
+          "season_bootstrap_95_high": 0.0035523247630696,
+          "season_bootstrap_95_low": -0.0026027523536536,
+          "season_count": 9,
+          "season_wins": 5,
+          "variant_rmse": 2.884559037796318
+        },
+        "raw_percentile_coverage": {
+          "player_cluster_95_high": 0.0026024946242077,
+          "player_cluster_95_low": -0.0031115616006608,
+          "pooled_delta_variant_minus_incumbent": -0.0002434794332701,
+          "season_bootstrap_95_high": 0.0036079971281237,
+          "season_bootstrap_95_low": -0.0040777877996552,
+          "season_count": 9,
+          "season_wins": 5,
+          "variant_rmse": 2.88386849557464
+        }
+      },
+      "raw_log_vs_normalized": [
+        {
+          "baseline_rmse": 2.883177044414924,
+          "baseline_variant": "normalized_scoring_specific",
+          "challenger_rmse": 2.8831527013519724,
+          "challenger_variant": "raw_log",
+          "delta_challenger_minus_baseline": -2.4343062951626138e-05,
+          "method": "controlled_equal_thirds",
+          "player_cluster_95_high": 0.0024965880879928327,
+          "player_cluster_95_low": -0.002596313755691193,
+          "season_bootstrap_95_high": 0.0020857950610318034,
+          "season_bootstrap_95_low": -0.0023356504884346485,
+          "season_count": 9,
+          "season_wins": 5
+        },
+        {
+          "baseline_rmse": 2.8821555958131704,
+          "baseline_variant": "normalized_scoring_specific",
+          "challenger_rmse": 2.8815505951279237,
+          "challenger_variant": "raw_log",
+          "delta_challenger_minus_baseline": -0.0006050006852467149,
+          "method": "equal_thirds",
+          "player_cluster_95_high": 0.002040078810805711,
+          "player_cluster_95_low": -0.003298866671044287,
+          "season_bootstrap_95_high": 0.0023231210730509147,
+          "season_bootstrap_95_low": -0.0035411228835693365,
+          "season_count": 9,
+          "season_wins": 5
+        }
+      ]
+    },
+    "dk": {
+      "controlled": {
+        "normalized_scoring_specific": {
+          "player_cluster_95_high": -0.0013460922874889,
+          "player_cluster_95_low": -0.0048861885424841,
+          "pooled_delta_variant_minus_incumbent": -0.0031122379194847,
+          "season_bootstrap_95_high": -0.0008089549084524,
+          "season_bootstrap_95_low": -0.0052794849975499,
+          "season_count": 9,
+          "season_wins": 6,
+          "variant_rmse": 3.104780945800746
+        },
+        "raw_available_median": {
+          "player_cluster_95_high": 0.0030700235610238,
+          "player_cluster_95_low": -0.0024590393004669,
+          "pooled_delta_variant_minus_incumbent": 0.0002928265879011,
+          "season_bootstrap_95_high": 0.0034066552688755,
+          "season_bootstrap_95_low": -0.0023914862646861,
+          "season_count": 9,
+          "season_wins": 6,
+          "variant_rmse": 3.108186010308132
+        },
+        "raw_log": {
+          "player_cluster_95_high": -0.00108036646273,
+          "player_cluster_95_low": -0.0055243527368205,
+          "pooled_delta_variant_minus_incumbent": -0.0032940943538251,
+          "season_bootstrap_95_high": -0.0003536694013337,
+          "season_bootstrap_95_low": -0.0063730571245219,
+          "season_count": 9,
+          "season_wins": 7,
+          "variant_rmse": 3.1045990893664057
+        },
+        "raw_percentile": {
+          "player_cluster_95_high": 0.0015854484326764,
+          "player_cluster_95_low": -0.0023257994374489,
+          "pooled_delta_variant_minus_incumbent": -0.0003526366694321,
+          "season_bootstrap_95_high": 0.003023017686083,
+          "season_bootstrap_95_low": -0.0034633344760943,
+          "season_count": 9,
+          "season_wins": 6,
+          "variant_rmse": 3.107540547050798
+        },
+        "raw_percentile_coverage": {
+          "player_cluster_95_high": 0.0008318510297859,
+          "player_cluster_95_low": -0.0036312594897744,
+          "pooled_delta_variant_minus_incumbent": -0.0013830310890172,
+          "season_bootstrap_95_high": 0.0023623049231994,
+          "season_bootstrap_95_low": -0.0051440123678143,
+          "season_count": 9,
+          "season_wins": 6,
+          "variant_rmse": 3.1065101526312136
+        }
+      },
+      "production_surface": {
+        "normalized_scoring_specific": {
+          "player_cluster_95_high": -0.0005010118609555,
+          "player_cluster_95_low": -0.0048259705626075,
+          "pooled_delta_variant_minus_incumbent": -0.0026432708043877,
+          "season_bootstrap_95_high": -0.0002636798305598,
+          "season_bootstrap_95_low": -0.004946576318632,
+          "season_count": 9,
+          "season_wins": 7,
+          "variant_rmse": 3.104914330916605
+        },
+        "raw_available_median": {
+          "player_cluster_95_high": 0.0030513529205273,
+          "player_cluster_95_low": -0.0027079161835037,
+          "pooled_delta_variant_minus_incumbent": 0.0001844085804219,
+          "season_bootstrap_95_high": 0.0039567995407612,
+          "season_bootstrap_95_low": -0.00308676732599,
+          "season_count": 9,
+          "season_wins": 4,
+          "variant_rmse": 3.107742010301415
+        },
+        "raw_log": {
+          "player_cluster_95_high": -0.0008319578138423,
+          "player_cluster_95_low": -0.0061101779474844,
+          "pooled_delta_variant_minus_incumbent": -0.0034408422686329,
+          "season_bootstrap_95_high": 2.8987931603824068e-05,
+          "season_bootstrap_95_low": -0.0075783722753122,
+          "season_count": 9,
+          "season_wins": 6,
+          "variant_rmse": 3.10411675945236
+        },
+        "raw_percentile": {
+          "player_cluster_95_high": 0.0014012808724992,
+          "player_cluster_95_low": -0.0035009017507021,
+          "pooled_delta_variant_minus_incumbent": -0.0010331137761894,
+          "season_bootstrap_95_high": 0.0019918871624414,
+          "season_bootstrap_95_low": -0.0039148800621218,
+          "season_count": 9,
+          "season_wins": 6,
+          "variant_rmse": 3.1065244879448035
+        },
+        "raw_percentile_coverage": {
+          "player_cluster_95_high": 0.0003298941000591,
+          "player_cluster_95_low": -0.0050072549776545,
+          "pooled_delta_variant_minus_incumbent": -0.0022978455484619,
+          "season_bootstrap_95_high": 0.0022469941842021,
+          "season_bootstrap_95_low": -0.0068778111454288,
+          "season_count": 9,
+          "season_wins": 6,
+          "variant_rmse": 3.105259756172531
+        }
+      },
+      "raw_log_vs_normalized": [
+        {
+          "baseline_rmse": 3.104780945800746,
+          "baseline_variant": "normalized_scoring_specific",
+          "challenger_rmse": 3.1045990893664057,
+          "challenger_variant": "raw_log",
+          "delta_challenger_minus_baseline": -0.00018185643434032173,
+          "method": "controlled_equal_thirds",
+          "player_cluster_95_high": 0.0023049367023146084,
+          "player_cluster_95_low": -0.0026691518570154727,
+          "season_bootstrap_95_high": 0.002298911008515702,
+          "season_bootstrap_95_low": -0.00265538751614125,
+          "season_count": 9,
+          "season_wins": 5
+        },
+        {
+          "baseline_rmse": 3.104914330916605,
+          "baseline_variant": "normalized_scoring_specific",
+          "challenger_rmse": 3.10411675945236,
+          "challenger_variant": "raw_log",
+          "delta_challenger_minus_baseline": -0.0007975714642451948,
+          "method": "equal_thirds",
+          "player_cluster_95_high": 0.0018669873137958058,
+          "player_cluster_95_low": -0.0034891734451848564,
+          "season_bootstrap_95_high": 0.002435794772755351,
+          "season_bootstrap_95_low": -0.004343800498932726,
+          "season_count": 9,
+          "season_wins": 5
+        }
+      ]
+    }
+  },
+  "next_action": "retain_outside_production",
+  "shared_model_spec_sha256": "E1D0F896690E9ABFEEE73995C0C1E0E998D5DFBDF403335FD60E4A33AF5E9F3F"
+}

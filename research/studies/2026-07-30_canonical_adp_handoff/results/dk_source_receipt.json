@@ -1,0 +1,196 @@
+{
+  "receipt_version": "draftkings_adp_source_v1",
+  "fetched_at_utc": "2026-07-30T22:13:28+00:00",
+  "published_at_utc": "2026-07-30T22:13:29+00:00",
+  "endpoint": "https://www.occupyfantasyapi.com/best_ball/adps?site=draftkings&contest=all",
+  "response_sha256": "ea1fe095cbd914263f7f35c514d0ee6d12d8fad165596037373be02eabc63905",
+  "response_row_count": 416,
+  "usable_api_row_count": 416,
+  "nffc_offensive_reference_row_count": 431,
+  "nffc_distribution_match_count": 396,
+  "nffc_distribution_fallback_count": 20,
+  "nffc_position_mismatch_count": 1,
+  "nffc_position_mismatches": [
+    {
+      "player": "Eli Heidenreich",
+      "pos": "WR",
+      "nffc_pos": "RB"
+    }
+  ],
+  "unmatched_api_player_count": 20,
+  "unmatched_nffc_player_count": 35,
+  "unmatched_api_players": [
+    "Aidan O'Connell",
+    "Brandin Cooks",
+    "Cade Klubnik",
+    "Deandre Hopkins",
+    "Drew Allar",
+    "Hakeem Butler",
+    "J'Mari Taylor",
+    "Jack Endries",
+    "Jalen Milroe",
+    "Jeff Caldwell",
+    "Juju Smith Schuster",
+    "Kaden Wetjen",
+    "Marquez Valdes Scantling",
+    "Matt Hibner",
+    "Mitchell Evans",
+    "Nate Boerkircher",
+    "Roman Hemby",
+    "Sione Vaki",
+    "Tanner Koziol",
+    "Taylen Green"
+  ],
+  "unmatched_nffc_players": [
+    "Aj Dillon",
+    "Albert Okwuegbunam",
+    "Andy Dalton",
+    "Arian Smith",
+    "Austin Hooper",
+    "Bam Knight",
+    "Brock Wright",
+    "Carson Wentz",
+    "Derek Carr",
+    "Drew Lock",
+    "Frank Gore",
+    "Isaiah Hodgins",
+    "Isaiah Williams",
+    "Jacob Saylors",
+    "Jake Bobo",
+    "Jaleel Mclaughlin",
+    "Jeremy Mcnichols",
+    "Jimmy Garoppolo",
+    "Jordan Watkins",
+    "Josh Oliver",
+    "Kendre Miller",
+    "Kenny Mcintosh",
+    "Mason Rudolph",
+    "Michael Carter",
+    "Myles Montgomery",
+    "Nathan Carter",
+    "Pierre Strong",
+    "Raheem Mostert",
+    "Raheim Sanders",
+    "Roschon Johnson",
+    "Sam Howell",
+    "Tim Patrick",
+    "Tommy Devito",
+    "Tyler Badie",
+    "Will Levis"
+  ],
+  "database": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-30_canonical_adp_handoff\\staging\\Season_Stats_New.sqlite3",
+  "year": 2026,
+  "league": "dk",
+  "published_snapshot_sha256": "c958690c517587d88db861ed84dd83e7d770d041f6b51a20b5e6cb4ee890380e",
+  "distribution_method": "NFFC min/max ratios scaled to DK avg_pick; unmatched API rows use the governed 20% fallback; invalid sparse-source bounds use the governed +/-20% side fallback; std_dev=(scaled max_pick-scaled min_pick)/5 with the governed 20% fallback below 0.1",
+  "repaired_lower_bound_count": 28,
+  "repaired_upper_bound_count": 0,
+  "small_dispersion_fallback_count": 0,
+  "previous_row_count": 394,
+  "published_row_count": 416,
+  "matched_previous_row_count": 393,
+  "changed_avg_pick_count": 0,
+  "mean_absolute_avg_pick_move": 0.0,
+  "max_absolute_avg_pick_move": 0.0,
+  "added_players": [
+    {
+      "player": "Aidan O'Connell",
+      "pos": "QB"
+    },
+    {
+      "player": "Brandin Cooks",
+      "pos": "WR"
+    },
+    {
+      "player": "Cade Klubnik",
+      "pos": "QB"
+    },
+    {
+      "player": "Deandre Hopkins",
+      "pos": "WR"
+    },
+    {
+      "player": "Drew Allar",
+      "pos": "QB"
+    },
+    {
+      "player": "Eli Heidenreich",
+      "pos": "WR"
+    },
+    {
+      "player": "Hakeem Butler",
+      "pos": "WR"
+    },
+    {
+      "player": "J'Mari Taylor",
+      "pos": "RB"
+    },
+    {
+      "player": "Jack Endries",
+      "pos": "TE"
+    },
+    {
+      "player": "Jalen Milroe",
+      "pos": "QB"
+    },
+    {
+      "player": "Jaydn Ott",
+      "pos": "RB"
+    },
+    {
+      "player": "Jeff Caldwell",
+      "pos": "WR"
+    },
+    {
+      "player": "Juju Smith Schuster",
+      "pos": "WR"
+    },
+    {
+      "player": "Kaden Wetjen",
+      "pos": "WR"
+    },
+    {
+      "player": "Marquez Valdes Scantling",
+      "pos": "WR"
+    },
+    {
+      "player": "Matt Hibner",
+      "pos": "TE"
+    },
+    {
+      "player": "Mitchell Evans",
+      "pos": "TE"
+    },
+    {
+      "player": "Nate Boerkircher",
+      "pos": "TE"
+    },
+    {
+      "player": "Nicholas Singleton",
+      "pos": "RB"
+    },
+    {
+      "player": "Roman Hemby",
+      "pos": "RB"
+    },
+    {
+      "player": "Sione Vaki",
+      "pos": "RB"
+    },
+    {
+      "player": "Tanner Koziol",
+      "pos": "TE"
+    },
+    {
+      "player": "Taylen Green",
+      "pos": "QB"
+    }
+  ],
+  "removed_players": [
+    {
+      "player": "Eli Heidenreich",
+      "pos": "RB"
+    }
+  ],
+  "raw_response_path": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-30_canonical_adp_handoff\\results\\dk_source_response.json"
+}

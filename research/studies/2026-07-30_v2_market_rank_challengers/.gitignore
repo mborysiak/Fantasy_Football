@@ -1,0 +1,17 @@
+# Rebuildable row-level artifacts; keep compact scores, audits, and findings.
+artifacts/local/
+results/pre_promotion_*/
+results/expert_rank_*/normalized_expert_rank_features.csv
+results/expert_rank_*/oof_predictions.csv
+results/expert_rank_*/shadow_predictions.csv
+results/next_year_*/next_year_2027_shadow_predictions.csv
+results/next_year_*/next_year_targets.csv
+results/next_year_*/next_year_template_handoff.csv
+results/next_year_*/next_year_whole_season_predictions.csv
+results/nffc_only_*/locked_2026_shadow_predictions.csv
+results/nffc_only_*/locked_residual_intervals.csv
+results/nffc_only_*/locked_template_handoff.csv
+results/nffc_only_*/locked_whole_season_predictions.csv
+results/raw_rank_*/raw_rank_features.csv
+results/raw_rank_*/oof_predictions.csv
+results/raw_rank_*/shadow_predictions.csv

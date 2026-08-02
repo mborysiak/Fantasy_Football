@@ -517,29 +517,12 @@ preds = enforce_resid_order(preds, [f'{c}_ny' for c in resid_cols])
 
 #%%
 
-yoe = pd.DataFrame()
-for pos in ['QB', 'RB', 'WR', 'TE']:
-    df_pos = dm.read(f'''SELECT player, year_exp Years_of_Experience
-                         FROM {pos}_{set_year}_ProjOnly 
-                         WHERE year={set_year}
-                               AND pos='{pos}' ''', f'Model_Inputs')
-    
-    yoe = pd.concat([yoe, df_pos], ignore_index=True).fillna(0)
+# Avg_ADPs has one governed owner. Route this legacy ensemble workflow through
+# the canonical keyed publisher so it cannot replace the table with the old
+# name-only schema or discard exact ETR ranks/NFFC draft units.
+from Scripts.V2.production_handoff import publish_current_avg_adps
 
-adps = dm.read(f"SELECT * FROM ADP_Averages WHERE year={set_year}", 'Season_Stats_New')
-adps = pd.merge(adps, yoe, on='player', how='left')
-adps = adps.drop('pos', axis=1)
-dm.delete_from_db('Simulation', 'Avg_ADPs', f"year={set_year}", create_backup=True)
-dm.write_to_db(adps, 'Simulation', 'Avg_ADPs', if_exist='append')
-
-etr = dm.read(f'''SELECT player, etr_rank as avg_pick, 'etr' as league, year
-                  FROM ETR_Ranks 
-                  WHERE year={set_year}''', 
-                  'Season_Stats_New')
-dm.write_to_db(etr, 'Simulation', 'Avg_ADPs', if_exist='append')
-
-# %%
-import shutil
+publish_current_avg_adps(year=set_year)
 
 final_resid_table = 'Final_Predictions_Resid'
 final_resid_exists = dm.read(f'''
@@ -617,14 +600,9 @@ with sqlite3.connect(f'{db_path}/Validations.sqlite3') as validation_conn:
            (version, model_spec_asof_year, season, player, pos)
     ''')
 
-src = f'{root_path}/Data/Databases/Simulation.sqlite3'
-dst = f'/Users/borys/OneDrive/Documents/Github/Fantasy_Football_App/app/Simulation.sqlite3'
-shutil.copyfile(src, dst)
-
-
-src = f'{root_path}/Data/Databases/Simulation.sqlite3'
-dst = f'/Users/borys/OneDrive/Documents/Github/Fantasy_Football_Snake/app/Simulation.sqlite3'
-shutil.copyfile(src, dst)
+# Consumer synchronization is intentionally not performed by this modeling
+# script. Publish governed artifacts through the V2 production handoff, then use
+# s4's generated-table synchronization so app-owned database state is preserved.
 
 #%%
 

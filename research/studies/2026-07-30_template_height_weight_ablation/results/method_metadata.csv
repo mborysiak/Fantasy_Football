@@ -1,0 +1,7 @@
+method,height_weight,weight_weight,positions,primary,recency_half_life,total_match_weight,qb_feature_count,rb_feature_count,wr_feature_count,te_feature_count
+production,0.0,0.0,,0,12.0,58.25,13,16,13,13
+height_w025_all,0.25,0.0,"QB,RB,WR,TE",0,12.0,59.25,14,17,14,14
+weight_w025_all,0.0,0.25,"QB,RB,WR,TE",0,12.0,59.25,14,17,14,14
+height_weight_w025_all,0.25,0.25,"QB,RB,WR,TE",1,12.0,60.25,15,18,15,15
+height_weight_w050_all,0.5,0.5,"QB,RB,WR,TE",0,12.0,62.25,15,18,15,15
+height_weight_w025_skill,0.25,0.25,"RB,WR,TE",0,12.0,59.75,13,18,15,15

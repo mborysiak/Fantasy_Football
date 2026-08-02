@@ -126,6 +126,13 @@ defense rows from positionless sources cannot enter the feature universe.
 One row exists per `player_key, season, source`. It retains normalized ADP,
 expert rank, and provider position rank plus source table and identity context.
 
+NFFC contributes one modeled ADP row per player-season:
+`adp_average_nffc`, the existing player-level composite of Rotowire Online,
+Best Ball Overall, Best Ball $25/$50, and Cutline. The four underlying
+`NFFC_ADP` contest rows remain candidate/identity evidence but do not enter
+`player_season_market_values`; this prevents one correlated provider family
+from receiving five votes in the cross-market ADP consensus.
+
 Neither long table contains realized NFL outcomes. These tables are the
 rebuildable source for future feature challengers even when those challengers
 are not admitted to the reviewed wide mart.
@@ -356,7 +363,7 @@ The corrected and fully replayed 2026-07-29 builds contain, per league:
 - 6,655 identities and 55,914 aliases, identical between DK and beta;
 - 13,909 spine and feature rows;
 - 31,798 normalized provider projection rows;
-- 31,834 normalized market/rank rows;
+- 28,801 normalized market/rank rows after enforcing one NFFC-family ADP vote;
 - 160 cataloged features;
 - 31 incumbent residual, 13 history-gap residual challenger, 12
   legacy-inspired residual challenger, 19 participation, 26 projection

@@ -1,0 +1,10 @@
+method,one_year_weight,three_year_weight,prior_available_weight,history_depth_weight,primary,recency_half_life,wr_feature_count,wr_total_match_weight
+production,0.0,0.0,0.0,0.0,0,12.0,13,13.25
+one_year_w025_wr,0.25,0.0,0.0,0.0,0,12.0,14,13.5
+one_year_w050_wr,0.5,0.0,0.0,0.0,0,12.0,14,13.75
+three_year_w025_wr,0.0,0.25,0.0,0.0,0,12.0,14,13.5
+three_year_w050_wr,0.0,0.5,0.0,0.0,0,12.0,14,13.75
+both_w025_wr,0.25,0.25,0.0,0.0,0,12.0,15,13.75
+both_w050_wr,0.5,0.5,0.0,0.0,0,12.0,15,14.25
+full_w025_wr,0.25,0.25,0.25,0.25,1,12.0,17,14.25
+full_w050_wr,0.5,0.5,0.25,0.25,0,12.0,17,14.75

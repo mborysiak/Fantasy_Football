@@ -7,16 +7,30 @@
 `year` and `league` slice, then the normal database copy makes the table
 available to `Fantasy_Football_App`.
 
+The active season comes from `Scripts.config.YEAR`, whose default can be set by
+`FF_CURRENT_SEASON`; the approved production runner sets it from `--year`.
+Keeper contracts are an explicit annual input, not source-code constants. The
+script reads `FF_KEEPERS_FILE` when provided and otherwise requires
+`Data/OtherData/Keepers/keepers_<year>_<league>.csv` with `player` and
+`keeper_salary` columns. A missing file, blank player, or non-numeric salary
+fails the build so a future season cannot silently inherit 2026 keepers.
+
 | Column | Type | Meaning |
 | --- | --- | --- |
 | `year` | INTEGER | Auction season |
 | `league` | TEXT | League identifier such as `beta` or `nv` |
+| `player_key` | TEXT | Canonical V2 identity; required and unique within an active V2 league slice |
 | `player` | TEXT | Cleaned player name used by simulation joins |
 | `keeper_salary` | REAL | Actual salary committed to the keeper |
 
 The primary key is `(year, league, player)`. All keepers in the active league
 must be present before rebuilding salary predictions because the same input
-drives keeper inflation and position-specific keeper-value features.
+drives keeper inflation and position-specific keeper-value features. The active
+2026 beta slice has 14 keepers, all with canonical keys; a unique
+`(year, league, player_key)` index prevents identity duplication.
+The corresponding annual salary input remains
+`Data/OtherData/Salaries/salaries_<year>_<league>.csv`; both files are hashed
+at production-refresh snapshot and rechecked before promotion.
 
 ## `Salaries_Pred` Calibration
 
@@ -182,7 +196,7 @@ player-year MAE/RMSE slightly versus the prior proportional rule. A fresh v4
 pipeline build and paired optimizer replay are still required to evaluate the
 new input features and selected-roster affordability.
 
-## Experimental v5 Compact Salary Features
+## Superseded v5 Compact Salary Features
 
 `current_locked_spec_v5_compact_salary_features` retains v4 keeper-market
 inputs and additive calibration but narrows the fitted feature surface from 155
@@ -220,12 +234,43 @@ The subsequent full rebuild and replay under
 MAE/RMSE of `$4.271`/`$6.197`, better than both preserved v1 and feature-rich
 v3. In the identical-seed optimizer replay, v5 raised historical affordability
 from 15.5% to 19.0% in development and from 12.0% to 18.5% in 2025 while
-reducing average overage. It remains the leading/current salary surface.
+reducing average overage. It was the prior production salary surface.
 However, selection-weighted actual-minus-point residual remains `+$1.35` per
 selected player and the actual-minus-scenario roster gap remains approximately
 `$25-$27`, so the next calibration experiment must still target
 selection-conditioned error. These are rolling-data development comparisons,
 not a fresh method holdout.
+
+## Current v6 V2-Population Salary Surface
+
+The live salary method is
+`current_locked_spec_v6_v2_population_11f`. It keeps v5's additive
+keeper-market calibration and all compact features except
+`ensemble_pred_resid_90`, leaving 11 fitted fields. A strict rolling comparison
+slightly favors the 11-field surface: MAE is `$4.2975` versus `$4.2991` for the
+12-field version.
+
+The removed feature mixed two incompatible uncertainty meanings. Historical
+rows used legacy projection-residual p90, while current V2 uncertainty comes
+from a centered matched weekly donor; current QB donor p90 standard deviation
+was 9.35 times the historical projection-residual value. The centered donor p90
+remains available as a diagnostic, not a salary-model input.
+
+The current beta salary slice is keyed to exactly the 328-player production
+population. It contains 326 direct `ProjOnly` rows plus governed V2 fallbacks
+for Stefon Diggs and Deebo Samuel. All 14 keepers have canonical keys. After
+keeper commitments, the highest 142 non-keeper point salaries total exactly
+the `$3,071` available market budget.
+
+`Salaries_Pred` retains canonical `player_key`,
+`salary_population_source`, `ensemble_uncertainty_feature_source`, and
+`salary_method_version` provenance. Name-only or independently pruned salary
+populations are not valid production inputs.
+
+League-scored yardage bonuses and beta sacks flow through weekly
+`active_ppg`, matched donor paths, and optimizer selection. They are not forced
+into the preseason salary point estimate. Two-point conversions and
+special-teams touchdowns remain omitted by explicit modeling decision.
 
 ## Auction App Consumption
 
@@ -300,9 +345,18 @@ therefore keeps Market `$` separate from Reserve `$` and Decision `$`.
 For Target candidate Buy/Pass rebasing, only the candidate's sampled Market `$`
 reduces remaining league money; the personal Buy coefficient still uses Market
 `$` plus Reserve `$`.
-The default-on `Use Selection Reserve` control can set every active reserve to
-zero for an immediate baseline comparison; it does not modify the persisted
-premium table.
+The default-off `Use Selection Reserve` control starts every active reserve at
+zero. Enabling it applies the persisted reserve for an immediate comparison;
+the control never modifies the premium table.
+
+The 2026 v6 refresh completed 1,000/1,000 premium-free Target rosters and
+published 314 non-keeper rows. Its expected 13-player roster reserve is
+`$8.5598`. Historical calibrator rows remain on the validated v5 surface while
+the current seed uses v6; this transfer is explicitly labeled
+`historical_v5_selection_surface_to_current_v6_v1`. On common current players,
+v5/v6 point salaries have correlation `0.99957` and MAE `$0.274`, supporting
+the transfer as a closely aligned current-population update rather than a
+claim of fresh historical v6 validation.
 
 ## Current Nomination Evaluation
 

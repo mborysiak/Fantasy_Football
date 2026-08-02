@@ -24,13 +24,21 @@ import pandas as pd
 from zData_Functions import *
 pd.options.mode.chained_assignment = None
 import numpy as np
+try:
+    from IPython.display import display
+except ImportError:
+    def display(obj):
+        print(obj)
 import warnings
 warnings.simplefilter(action='ignore', category=pd.errors.PerformanceWarning)
 pd.set_option('display.max_columns', 999)
 
 # set the root path and database management object
 root_path = general.get_main_path('Fantasy_Football')
-db_path = f'{root_path}/Data/Databases/'
+db_path = os.getenv(
+    'FF_MODEL_DATABASE_DIR',
+    f'{root_path}/Data/Databases/',
+)
 dm = DataManage(db_path)
 
 def name_cleanup(df):
@@ -1192,6 +1200,14 @@ for pos in POSITIONS:
             dm.write_to_db(df_cur, f'Model_Inputs{lbl}', f'{pos}_{YEAR}_Rookie', if_exist='replace')
 
 #%%
+
+# The cells below are interactive model diagnostics, not part of the canonical
+# Model_Inputs build.  The production refresh runner sets this flag so the
+# notebook can remain useful interactively without executing exploratory
+# fitting during an automated release.
+if os.getenv('FF_CANONICAL_INPUTS_ONLY', '0') == '1':
+    print('Canonical Model_Inputs build complete; skipping notebook diagnostics.')
+    raise SystemExit(0)
 
 pos = 'WR'
 year=2026

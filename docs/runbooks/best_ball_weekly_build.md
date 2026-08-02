@@ -1,6 +1,6 @@
 # Best-Ball Weekly Build Runbook
 
-Last updated: 2026-07-29
+Last updated: 2026-07-31
 
 ## Entry Point
 
@@ -10,11 +10,18 @@ Publish the locked current/next V2 projection handoff first:
 .venv_ff_312\Scripts\python.exe -m Scripts.V2.production_handoff
 ```
 
+That command atomically refreshes the keyed DK/NFFC/ETR `Avg_ADPs` snapshot
+and its publication audit/receipt in the same transaction as the projection
+handoff. To refresh only the market tables during a legacy s3 workflow, call
+`Scripts.V2.production_handoff.publish_current_avg_adps`; do not write
+`Avg_ADPs` directly.
+
 Then rebuild each supported league slice:
 
 ```powershell
 .venv_ff_312\Scripts\python.exe Scripts\Modeling\s4_Best_Ball_Weekly.py --league beta --v2-db Data\Databases\Projection_V2_beta.sqlite3
 .venv_ff_312\Scripts\python.exe Scripts\Modeling\s4_Best_Ball_Weekly.py --league dk --v2-db Data\Databases\Projection_V2.sqlite3
+.venv_ff_312\Scripts\python.exe Scripts\Modeling\s4_Best_Ball_Weekly.py --league nffc --v2-db Data\Databases\Projection_V2_nffc.sqlite3
 ```
 
 Use the active repo environment if `.venv_ff_312` is not available.
@@ -29,16 +36,17 @@ Historical template rows are keyed by `league`.
 
 The selected V2 database must contain an active locked handoff whose
 `locked_candidate_runs.metadata_json.scoring_objective` exactly matches the
-requested league. The builder rejects a DK/beta database swap.
+requested league. The builder rejects a cross-league V2 database swap.
 
 ## Staged Rebuild
 
 For corrective, schema, or scoring work, copy the V2 and Simulation databases
-to a dedicated staging directory and build both slices there:
+to a dedicated staging directory and build all registered slices there:
 
 ```powershell
 .venv_ff_312\Scripts\python.exe Scripts\Modeling\s4_Best_Ball_Weekly.py --league beta --simulation-db <staging>\Simulation.sqlite3 --v2-db <staging>\Projection_V2_beta.sqlite3 --no-app-sync
 .venv_ff_312\Scripts\python.exe Scripts\Modeling\s4_Best_Ball_Weekly.py --league dk --simulation-db <staging>\Simulation.sqlite3 --v2-db <staging>\Projection_V2.sqlite3 --no-app-sync
+.venv_ff_312\Scripts\python.exe Scripts\Modeling\s4_Best_Ball_Weekly.py --league nffc --simulation-db <staging>\Simulation.sqlite3 --v2-db <staging>\Projection_V2_nffc.sqlite3 --no-app-sync
 ```
 
 A custom `--simulation-db` requires both an explicit staged `--v2-db` and
@@ -56,6 +64,7 @@ after all gates pass, then synchronize apps from the promoted source database.
 - `Data/Databases/Validations.sqlite3`
 - `Data/Databases/Projection_V2.sqlite3`
 - `Data/Databases/Projection_V2_beta.sqlite3`
+- `Data/Databases/Projection_V2_nffc.sqlite3`
 - Daily fantasy data repo databases, especially `FastR_Beta`
 - Settings from `Scripts/config.py`
 
@@ -72,12 +81,22 @@ The script writes these tables to the `Simulation` database:
 - `Best_Ball_Weekly_Bucket_Audit`
 - `Best_Ball_ADP_Audit`
 
-It synchronizes the eight generated best-ball tables plus
-`Final_Predictions_Resid`, `V2_Production_Projection_Handoff`, and
-`V2_Production_Projection_Audit` into the auction app while preserving
-app-owned keeper/salary scenarios, and copies the complete source
-`Simulation.sqlite3` to Snake. Export is skipped when any retained template
-slice has null played/managed-week fields or the V2 handoff is incomplete.
+It synchronizes the eight generated best-ball tables, four production
+projection/handoff tables, and the three canonical market publication tables
+(`Avg_ADPs`, its row audit, and its receipt) into the auction app while
+preserving app-owned keeper/salary scenarios, and copies the complete source
+`Simulation.sqlite3` to Snake. The existing Auction database is updated in one
+transaction with exact row and explicit-index parity checks. Full-file copies
+(Snake and initial Auction setup) are written to a sibling temporary file,
+checked for SQLite integrity and exact source size/SHA-256, then installed with
+an atomic replace; non-empty WAL/journal sidecars fail closed. Both app
+artifacts are prepared from one immutable verified source snapshot before
+either live file changes. Promotion retains reversible sibling backups and
+restores the first app if the second promotion fails, while the shared source
+SHA-256 is printed as the release receipt. A requested export raises rather
+than leaving stale app data behind when the keyed current market contract
+fails, any retained template slice has null played/managed-week fields, or the
+V2 handoff is incomplete.
 
 ## Checks
 
@@ -90,9 +109,14 @@ After a build, review:
 - paired beta/DK template rows have nonzero scoring differences in
   `active_ppg` and/or weekly paths; full equality is a scoring-routing failure
 - historical projection source mix
-- `historical_pred_fp_per_game` equals
+- for DK/beta, `historical_pred_fp_per_game` equals
   `legacy_historical_pred_fp_per_game`, V2 diagnostic-center availability is
   reported explicitly, and `v2_recenter_promoted = 0`
+- for NFFC, `projection_context_source` is
+  `v2_nffc_scoring_matched_preseason`,
+  `historical_pred_fp_per_game` equals the NFFC-scored expert team-game PPG,
+  `historical_center_policy` is `nffc_scored_expert_consensus`, and the
+  DK-scored `model_input_*` context is audit-only
 - the only missing V2 diagnostics are governed beta 2018 QB rows with a joined
   locked-handoff `template_center_available = 0`, the current FFToday
   quarantine receipt, and the exact
@@ -103,11 +127,11 @@ After a build, review:
   RB, and Ty Montgomery 2022 template RB to locked WR; every other mismatch
   fails closed
 - zero/low-active template exposure
-- `played_week_1` through `played_week_16` contain only 0/1, sum to
+- `played_week_1` through the selected league horizon contain only 0/1, sum to
   `played_games`, preserve source-observed zero/negative outcomes, and retain
   QB appearances removed from performance profiles by the greater-than-15-play
   filter
-- `managed_week_1` through `managed_week_16` are complete and retain the
+- `managed_week_1` through the selected league horizon are complete and retain the
   unfiltered score profile for those short QB appearances
 - player pool levels and minimum pool sizes
 - declared template exclusions are present in the audit table and have zero
@@ -124,6 +148,8 @@ After a build, review:
 - beta actual weekly outcomes reflect beta reception, touchdown, sack, and
   cumulative yardage-bonus rules; yardage bonuses are already included in
   `active_ppg`
+- NFFC actual weekly outcomes reflect NFFC scoring and every retained template
+  has 17 populated weekly, managed-week, and played-week fields
 - known scoring sentinels reconcile: Amon-Ra St. Brown's 2024 beta season is
   256.7 points/17.1133 PPG versus 302.2/20.1467 DK, while Josh Allen's 2024
   beta score is 378.16 points and removing his 14 sacks raises it by exactly
@@ -134,6 +160,10 @@ After a build, review:
 - current V2 rows have complete canonical keys/provenance and appearance
   probabilities, zero current residual quantiles, and
   `independent_current_residual_draw_allowed = 0`
+- current `Avg_ADPs` has exactly the current DK/NFFC/ETR source row counts,
+  complete unique `draft_entity_key`, complete unique offensive `player_key`,
+  null `player_key` only for NFFC `TK`/`TDSP`, exact ETR overall/position
+  ranks, and matching publication receipt digests
 - `Best_Ball_ADP_Audit` rows with `needs_review = 1`
 - a few player-level template match queries for high-value rookies, unclear ADP
   joins, and unusual role profiles
@@ -170,20 +200,16 @@ Do not replace the auction app database wholesale during this build: its
 comparison scenario. Only the generated best-ball tables are source-owned for
 this export.
 
-## Temporary NFFC Snake Setup Preview
+## NFFC Candidate Evidence
 
-While NFFC model runs are incomplete, create an isolated app database with:
+The completed staged NFFC build has 1,509 scoring-matched templates from
+2021-2025, 17 populated weeks per template, and a 385-player current map. The
+strict 2023-2025, 540-target donor-center replay retained
+`nffc_scored_expert_consensus`: the locked OOF alternative worsened PPG CRPS by
+`0.002901`, lost all three seasons, and failed the three promotion gates despite
+passing six of ten total gates. See
+`research/studies/2026-07-31_nffc_template_center_replay/`.
 
-```powershell
-python Scripts\Modeling\create_snake_nffc_preview.py
-```
-
-The command copies the stable Snake app database to
-`Fantasy_Football_Snake/app/Simulation_nffc_preview.sqlite3`, clones the 2026
-DK `Final_Predictions_Resid` and three runtime weekly-template tables under
-NFFC-safe league keys/template IDs, and retains the real NFFC `Avg_ADPs` rows.
-It does not modify the source `Simulation.sqlite3`.
-
-This database is for app wiring and draft-flow testing only. Its projections
-and weekly scores still use DK scoring/calibration and must be replaced by a
-normal NFFC s3/s4 build before recommendations are evaluated.
+Do not use or recreate the superseded DK-clone preview path. The staged NFFC
+candidate is independently scored, but it remains unpromoted and is still an
+offense-only 3RR adapter without K/DST or alternate contest formats.

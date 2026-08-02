@@ -1,6 +1,6 @@
 # Session Notes Landing
 
-Last updated: 2026-07-29
+Last updated: 2026-07-31
 
 ## Project Objective
 
@@ -10,6 +10,73 @@ template tables consumed by downstream draft apps.
 
 ## Current Focus
 
+- Raw provider exports remain a manual step in
+  `Scripts/Data_Generation/1_Update_Projections.py`. After that boundary,
+  `python -m Scripts.V2.refresh_production --year 2026` owns the complete
+  downstream build in an isolated, resumable stage: canonical current/next
+  Model_Inputs, separate DK/NFFC/beta V2 foundations and locked shadows,
+  annual file-backed keepers, the idempotent ADP/projection handoff, three
+  weekly surfaces/template audits, salaries, a fresh 1,000-trial selection
+  reserve, release validation, and both app candidates. The approved-cycle
+  registry binds exact annual runners, versions, floors, horizons, and template
+  eras; its receipt/hash is immutable through resume and promotion. Only
+  current season 2026 is approved, so current season 2027 fails closed until
+  new annual inputs and evidence are registered. The NFFC candidate uses the
+  core plus top-360 canonical offensive ADP union, NFFC scoring, and 17-week
+  2021-forward templates. Snake labels it offense-only 3RR: canonical TK/TDSP
+  remain audit rows, while K/DST and alternate contest formats are unsupported.
+  The complete 24-step 2026 rehearsal passed without promotion: all four exact
+  NFFC raw-feed labels/depth floors, the 385-player 17-week NFFC surface, and
+  both staged app smokes passed. The run required recorded bounded native
+  retries, so the Windows host is not described as fully stable. No NFFC
+  release has been promoted.
+- The NFFC weekly matcher now takes all scoring-sensitive historical and
+  current preseason context from the NFFC-scored V2 consensus; DK-scored
+  `Model_Inputs` values are audit-only. Receiver environment uses the selected
+  QB1's NFFC passing-point component rather than total QB fantasy PPG.
+  Historical donors use
+  `nffc_scored_expert_consensus`. A strict 540-target 2023-2025 replay rejects
+  the locked OOF center: locked-minus-expert PPG CRPS is +0.002901, it loses
+  3/3 seasons, its player-cluster interval is [-0.004914, +0.010748], and it
+  passes 6/10 gates while failing all three promotion gates. The staged
+  candidate has 1,509 2021-2025 templates with 17 populated weeks and a
+  385-player map. Annual rebuilds remove older active-league pool/map rows and
+  Snake exposes only prediction slices backed by the current map, preventing
+  regenerated template IDs from being paired to stale years. DK/beta are
+  unchanged, and no NFFC artifacts were promoted.
+- A strict 1,620-target/league height/weight ablation joins the existing
+  nflverse player master through exact V2 IDs and covers every rolling target
+  plus 5,291/5,298 historical templates. The 0.25+0.25 primary size arm changes
+  about 9% of donors overall and 12% for WR, but does not transport: beta
+  modestly improves PPG, contribution, played-games, and impact while DK
+  slightly worsens PPG, contribution, and impact discrimination. Height alone
+  is essentially neutral in DK and weakly favorable in beta; removing QB and
+  increasing size weight do not resolve the disagreement. Keep production
+  unchanged and defer combine acquisition unless a separate prespecified
+  athletic-testing hypothesis justifies its lower coverage and missingness.
+- NFFC now contributes exactly one modeled ADP observation per player-season:
+  the existing `ADP_Averages(league='nffc')` composite of its four contest
+  feeds. The raw `NFFC_ADP` rows remain identity/candidate evidence but no
+  longer receive four additional votes in the market consensus. The live
+  DK/beta marts each contain 28,801 market/rank rows and a maximum of eight ADP
+  sources. The locked replay improves modestly to 3.1076 DK and 2.8841 beta
+  RMSE. ETR overall rank remains the beta top-180 eligibility ordering.
+  A leakage-safe expert-rank challenger normalizes each source within
+  season/position before taking a median. A full-column-forest control removes
+  the locked forest's feature-subsampling confound. Rank level improves that
+  blend by 0.0022 DK and 0.0019 beta RMSE with seven of nine season wins; DK's
+  two intervals exclude zero, while beta's season interval excludes zero and
+  its player interval ends essentially at zero. The locked-production-surface
+  sensitivity is smaller and uncertain, and the expert-minus-projection gap is
+  neutral. A scoring-matched raw-rank follow-up rejects
+  percentile-after-median plus coverage: controlled gains are 0.00138 DK and
+  0.00016 beta, both intervals cross zero, and it trails the normalized
+  comparator by 0.00173/0.00213. `log1p(raw median)` is not distinguishable
+  from the normalized comparator in this study, so raw rank stays audit-only
+  and normalized rank stays unpromoted pending future-season confirmation.
+  The source,
+  Simulation, Auction, and Snake cutover passed all population,
+  app-owned-table, and integrity gates.
 - A strict 2017-2025 QB target-decomposition study now compares identical
   QB-only Lasso/RF/LightGBM models fit directly to total conditional PPG versus
   fit separately to passing and rushing PPG. The component sum plus a
@@ -45,38 +112,57 @@ template tables consumed by downstream draft apps.
   Corrected 1,620-target/league replays retain current match weights and keep
   next-year fields out of the matcher: their small PPG gains do not survive the
   joint contribution/played-games gates. The promoted V2/Simulation artifacts
-  match staging byte-for-byte; all 11 auction generated tables match source,
-  Snake equals source by SHA-256, and app-owned auction content is unchanged.
-- The V2 production handoff is active for 2026 DK (268 players) and beta (180).
+  match staging byte-for-byte; all 20 Auction generated tables match source,
+  all six app-owned tables are unchanged, and every Snake table matches.
+- The V2 production handoff is active for 2026 DK (351 players:
+  56 QB/101 RB/143 WR/51 TE) and beta (328:
+  50 QB/95 RB/133 WR/50 TE). DK is the 326-player core plus the top-280 market
+  union after eight governed market-only/no-center exclusions (Tyreek Hill,
+  Joe Mixon, DeAndre Hopkins, Nick Chubb, Austin Ekeler, Kareem Hunt, Brandin
+  Cooks, and Taysom Hill); beta is the
+  core plus top-180 ETR overall-rank ordering and all keepers. The 1,490-row
+  eligibility audit retains every inclusion and exclusion decision.
   Current `pred_fp_per_game` uses the locked league-specific V2 center; current
   residual quantiles are zero and the joint matched donor supplies the only
   PPG residual plus weekly/played path. Next-year `pred_fp_per_game_ny` is
   conditional on appearing and `pred_appear_ny` supplies the separate
   Bernoulli risk; the auction keeper path zeros future market value on no
-  appearance. Historical donor residuals retain the validated legacy OOS
-  centers. V2 donor centers remain diagnostic with
+  appearance. DK/beta historical donor residuals retain the validated legacy
+  OOS centers; NFFC uses the scoring-matched expert consensus described above.
+  Legacy current/next fields are audit-only, while V2 is the production
+  authority. DK/beta V2 historical donor centers remain diagnostic with
   `v2_recenter_promoted = 0`: recentering worsened PPG CRPS by 0.0057 DK and
-  0.0051 beta, with both player-cluster intervals above zero. Final source,
-  auction, and Snake databases have 448 keyed current rows and 10,596 keyed
-  templates with no handoff mismatch.
+  0.0051 beta, with both player-cluster intervals above zero.
 - Weekly template and current player-map tables now require canonical V2
   `player_key` plus match provenance. Governed source aliases resolve first,
   confirmed identities beat redundant provisional aliases, team disambiguates
   true same-name collisions, and pre-play rookies retain stable provisional
-  keys. Coverage is 10,596/10,596 historical beta+DK templates and 448/448
-  current rows in the source, auction-app, and Snake databases. DK and beta V2
-  audits now join both historical and current league populations at 100%.
+  keys. Coverage is 10,596/10,596 historical beta+DK templates and 679/679
+  current rows. Every player receives 80 donors. Required current context joins
+  are key-first: DK has 343 exact ADP matches and eight governed fallbacks;
+  beta has 238 exact matches and 90 governed fallbacks, with zero generic
+  default/review rows. `LA`/`LAR` and `ARZ`/`ARI` are canonicalized only for
+  room features, outward labels remain unchanged, and `FA` room features are
+  zero. Tetairoa McMillan and Amon-Ra St. Brown retain their canonical
+  identities.
+- The canonical current ADP handoff publishes 416 live DK rows, 497 NFFC rows
+  (431 offense, 33 `TK`, and 33 `TDSP`), and 243 ETR rows. The latest local
+  NFFC and ETR exports are dated 2026-07-27. All eight governed handoff hashes
+  are unchanged on the second publish. Final gates pass 187 main, 69 strict
+  release, 49 Auction, and 16 Snake tests plus Snake `AppTest` with zero
+  exceptions. Backups live under
+  `research/studies/2026-07-30_canonical_adp_handoff/results/pre_promotion/`.
 - Beta has a separate rebuilt `Projection_V2_beta.sqlite3` lineage with exactly
   the same 6,655 identities and 13,909 player-season keys as DK but independent
   outcomes, provider scoring, consensus features, fits, and hyperparameters.
-  `v2_conditional_ppg_2026_candidate_beta_v1` scores 2.8845 RMSE versus 2.9600
+  `v2_conditional_ppg_2026_candidate_beta_v1` scores 2.8841 RMSE versus 2.9600
   for expert recalibration and wins 9/9 seasons. The no-history route remains
   an unpromoted secondary diagnostic; its pre-quarantine exact metric is
   superseded. Prior-only point calibration is rejected. The beta fit publishes
   745 shadow rows, 673 PPG centers, and 745 participation probabilities.
 - Projection V2 now has a versioned DK shadow lock:
   `v2_conditional_ppg_2026_candidate_v1`. A complete-season, strictly-prior
-  2017-2025 replay scores 3.1078 RMSE versus 3.1951 for expert recalibration
+  2017-2025 replay scores 3.1076 RMSE versus 3.1951 for expert recalibration
   and wins all nine seasons. The primary remains fixed pooled
   Lasso/RF/LightGBM equal thirds with the five preseason trajectory fields;
   participation remains pooled LightGBM. Point calibration is rejected because
@@ -218,9 +304,10 @@ template tables consumed by downstream draft apps.
   whole-season/template finalist; the global point model remains unchanged.
 - Current active workstream: best-ball weekly template generation and Snake app
   integration.
-- An isolated NFFC Snake setup preview can be generated from the stable DK app
-  database while NFFC projections are still running. It uses real NFFC ADP but
-  cloned DK projections/templates and must not be treated as calibrated output.
+- The earlier isolated NFFC setup preview with cloned DK
+  projections/templates is superseded. Do not promote or present that database
+  as NFFC output; use only the independently scored, approved-cycle candidate
+  after its release gates pass.
 - The modeling repo owns the source `Simulation.sqlite3`. The weekly builder
   syncs generated best-ball tables to the auction app without replacing its
   keeper/salary scenarios, and copies the complete database to Snake.
@@ -228,6 +315,31 @@ template tables consumed by downstream draft apps.
   disagreement, uncapped experience, and full-universe workload-room structure.
   Adaptive capped donor weights retain broad ESS, ordinary zero-active outcomes
   remain eligible, and the declared Bell 2018 holdout is audit-only.
+- A strict 1,620-target/league receiver-rate ablation now tests preseason
+  projected yards/reception and receiving TDs/reception. The primary 0.50
+  WR/TE arm changes about nine of 80 donors and modestly improves PPG and
+  contribution point estimates, but it worsens WR played-games or impact
+  guardrails; RB contribution also worsens. Keep both rates outside the global
+  matcher. TE yards/reception improves full-period contribution CRPS by 0.0649
+  DK and 0.0459 beta with season/player intervals below zero, but remains a
+  same-evidence future-origin challenger because DK recent played-games safety
+  fails.
+- A 648-WR/league follow-up jointly tested the requested tighter 2.25 PPG
+  weight with the projected rate profiles. It tightens Ladd McConkey's current
+  beta donor PPG gap by 20.8% for 0.135 fewer expected games, but worsens DK
+  held-out PPG CRPS and does not transport in the combined arms. Terrelle Pryor
+  remains top-three and usually gains probability because his preseason YPR
+  and raw TD/rec are close to Ladd's. Keep production unchanged; a direct,
+  historically complete route/usage variable is the appropriate next
+  archetype test, not an ad hoc measurable added to remove one low-weight comp.
+- A second 648-WR/league follow-up tested one-year and recency-weighted
+  three-year preseason projection trajectory at 0.25/0.50 weights. It fixes
+  the visible comp semantics—one-year 0.50 moves Pryor from beta rank 3/2.23%
+  to rank 12/1.43%—but every arm worsens PPG CRPS in both leagues over both
+  full and recent periods. Three-year 0.25 improves contribution/impact
+  diagnostics but still fails the PPG-first requirement. Explicit history
+  availability/depth is harmful. Keep trajectory audit-only and production
+  unchanged.
 - The managed auction app now samples the matched donor's centered active-PPG
   residual and managed weekly path jointly around the current calibrated point
   forecast. It no longer combines an independent current-year model residual
@@ -271,14 +383,15 @@ template tables consumed by downstream draft apps.
   rolling-data/current-method provenance. Historical pools are defined by
   preseason projection availability rather than the realized roster or manual
   ESPN copy; raw and keeper-budget-normalized predictions are both retained.
-- The experimental salary surface is now
-  `current_locked_spec_v5_compact_salary_features`: it keeps v4 keeper-market
-  inputs and additive calibration but reduces the fitted matrix to 12
-  substantive features. The full rebuild produced the best v1/v3/v5 rolling
-  MAE/RMSE. Its identical-seed 4,000-cell replay improved historical
-  affordability and reduced the selected-roster salary gap, so v5 remains the
-  leading/current surface; selection-conditioned residual bias is still the
-  next salary-methodology target.
+- The live salary surface is
+  `current_locked_spec_v6_v2_population_11f`. It keeps v5's compact
+  keeper-market/additive-calibration structure but drops
+  `ensemble_pred_resid_90`: the 11-field rolling MAE is `$4.2975` versus
+  `$4.2991` for 12 fields, and the current weekly-donor QB p90 scale was 9.35
+  times the historical projection-residual scale. Centered donor p90 remains
+  diagnostic only. The beta salary slice has exactly 328 canonical keys:
+  326 `ProjOnly` rows plus V2 fallbacks for Stefon Diggs and Deebo Samuel;
+  all 14 keepers are keyed and the top 142 non-keepers total `$3,071`.
 - A strictly rolling second-stage v5 selection-surcharge replay now tests that
   target directly. A ridge model uses only prior-origin actual-minus-v5 residuals
   with position, point salary, and preseason optimizer selection frequency.
@@ -300,10 +413,12 @@ template tables consumed by downstream draft apps.
   should improve spending efficiency rather than declare salary bias solved.
 - `s5_Auction_Selection_Premium.py` persists premium-free selection seeds and
   ridge coefficients, refreshes realized prior-season salaries, and publishes
-  `Salary_Selection_Premium` to both source and auction-app databases. The 2026
-  beta convergence-policy refresh completed 1,000/1,000 rosters, trained on 518
-  observed 2022-2025 rows, and assigned RJ Harvey a `$3.79` half-strength
-  reserve under seed method `app_target_selection_only_converged_v2`.
+  `Salary_Selection_Premium` to both source and auction-app databases. The live
+  v6-population refresh completed 1,000/1,000 rosters across 314 non-keepers
+  and produces an expected 13-player reserve of `$8.5598`. The governed
+  historical-v5/current-v6 transfer is
+  `historical_v5_selection_surface_to_current_v6_v1`; current common-player
+  salaries have correlation `0.99957` and MAE `$0.274`.
 - Fantasy_Football_App has a managed-league weekly auction ILP that uses weekly
   templates, lineup decision scores, waiver baselines, bootstrapped managed
   values, keeper-table inputs, draw-level remaining-market salary normalization,
@@ -482,14 +597,12 @@ template tables consumed by downstream draft apps.
   decline in current-season mean or p10 on the complete live construction bank;
   there are no age, role, or option-count quotas. Next-year residuals are
   separate from current draws and use player common-factor `rho=0.25`. Forced
-  Target Buy/Pass and Current Nomination remain current-year estimands. The v3
-  selection reserve must be refreshed before treating live affordability as
-  aligned with the new organic policy.
+  Target Buy/Pass and Current Nomination remain current-year estimands. The
+  keeper-aware reserve has been refreshed against the live v6 population.
 - The fresh keeper-aware annual reserve completed 1,000/1,000 optimal Target
-  seeds in 133.5 seconds across eight workers. The 166 active player rows sum to
-  13 roster slots, train only through 2025, and match exactly between source and
-  app databases. The republished half-strength reserve averages `$0.68` per
-  selection, `$8.79` per roster, and caps at `$3.71`.
+  seeds across 314 non-keepers, sums to 13 roster slots, trains only through
+  2025, and matches exactly between source and app databases. Its expected
+  roster reserve is `$8.5598`.
 - The sequential `$5` versus `$10` fixed-price recourse replay completed 1,024
   policy paths but did not pass its buffer-selection gate. In the primary strict
   `p + 1` development slice, `$5` completed 44/72 paths, `$10` completed 42/72,
@@ -523,15 +636,15 @@ template tables consumed by downstream draft apps.
   components were roughly `$22-$23` and `$9-$10`. Anchor future risk rules to
   the point salary row and learn a prior-only, shrinkage selection-propensity
   surcharge rather than hardcoding a `$29` haircut.
-- The salary model now has an experimental
+- The archived salary-v2 study used an experimental
   `current_locked_spec_v2_ensemble_features` feature path that joins the
   optimizer-aligned OOS validation point ensemble for historical seasons and
   `Final_Predictions_Resid` for the current season. It adds positional ensemble
   strength, ensemble-versus-consensus and ensemble-versus-ESPN-price rank gaps,
   ensemble PPG per source dollar, and selected position interactions. The join
-  covers all 2,696 validation-era projection rows exactly; current deep players
-  outside the 180-row final ensemble retain a consensus-PPG fallback. Preserve
-  the v1 validation slice.
+  covered all 2,696 validation-era projection rows exactly; deep players
+  outside the then-180-row final ensemble retained a consensus-PPG fallback.
+  The v1 validation slice remains preserved for that historical comparison.
 - The preserved v1/v2 salary ablation found that v2 reduced mean normalized
   residual bias from `-$0.71` to `-$0.48` across 644 common observed
   player-years and reduced the old optimizer's strongest-value-quintile
@@ -543,7 +656,8 @@ template tables consumed by downstream draft apps.
   worsened `$1.09`; 2025 lost 1.79 forecast points while feasibility improved
   1.2 percentage points and overage improved `$0.46`. Keep v1 as the current
   comparison/default surface and test a causal shrinkage blend or restricted
-  optimizer-tail correction before another full replay.
+  optimizer-tail correction before another full replay. That decision is
+  historical and does not describe the live v6 population.
 - Projection validation rows now carry horizon-aware, strict-prior-origin
   empirical residual quantiles and explicit donor/target provenance. A one-time
   backfill preserved all 42,351 `Model_Validations_Resid` rows and created 6,006

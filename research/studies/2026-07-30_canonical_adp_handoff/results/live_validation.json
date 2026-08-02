@@ -1,0 +1,100 @@
+{
+  "validated_date": "2026-07-30",
+  "release": "canonical_adp_handoff",
+  "sources": {
+    "dk": {
+      "row_count": 416,
+      "source_kind": "live_api",
+      "fetched_at_utc": "2026-07-30T22:13:28+00:00",
+      "source_max_date": "2026-07-29",
+      "response_sha256": "ea1fe095cbd914263f7f35c514d0ee6d12d8fad165596037373be02eabc63905",
+      "nffc_distribution_matches": 396,
+      "governed_distribution_fallbacks": 20
+    },
+    "nffc": {
+      "row_count": 497,
+      "offensive_row_count": 431,
+      "tk_row_count": 33,
+      "tdsp_row_count": 33,
+      "latest_local_export_date": "2026-07-27"
+    },
+    "etr": {
+      "row_count": 243,
+      "latest_local_export_date": "2026-07-27",
+      "invalid_year_rows_removed": 476
+    }
+  },
+  "canonical_publication": {
+    "all_season_row_count": 2220,
+    "current_row_count": 1156,
+    "duplicate_current_offensive_keys": 0,
+    "unkeyed_current_rows": 66,
+    "unkeyed_current_rows_reason": "33 NFFC TK and 33 NFFC TDSP draft units"
+  },
+  "production": {
+    "dk": {
+      "row_count": 351,
+      "positions": {
+        "QB": 56,
+        "RB": 101,
+        "WR": 143,
+        "TE": 51
+      },
+      "exact_adp_matches": 343,
+      "governed_adp_fallbacks": 8,
+      "weekly_pool_rows": 28080
+    },
+    "beta": {
+      "row_count": 328,
+      "positions": {
+        "QB": 50,
+        "RB": 95,
+        "WR": 133,
+        "TE": 50
+      },
+      "exact_adp_matches": 238,
+      "governed_adp_fallbacks": 90,
+      "weekly_pool_rows": 26240
+    }
+  },
+  "dk_no_center_exclusions": [
+    "Tyreek Hill",
+    "Joe Mixon",
+    "DeAndre Hopkins",
+    "Nick Chubb",
+    "Austin Ekeler",
+    "Kareem Hunt",
+    "Brandin Cooks",
+    "Taysom Hill"
+  ],
+  "idempotence": {
+    "governed_table_count": 8,
+    "all_hashes_unchanged": true
+  },
+  "apps": {
+    "auction": {
+      "generated_table_count": 20,
+      "app_owned_table_count": 6,
+      "generated_tables_match_staging": true,
+      "app_owned_tables_unchanged": true
+    },
+    "snake": {
+      "tables_match_source": true
+    }
+  },
+  "integrity": {
+    "main_simulation": "ok",
+    "main_validations": "ok",
+    "season_source": "ok",
+    "auction_simulation": "ok",
+    "snake_simulation": "ok"
+  },
+  "tests": {
+    "main": 187,
+    "strict_release": 69,
+    "auction": 49,
+    "snake": 16,
+    "snake_app_test_exceptions": 0
+  },
+  "backup_path": "research/studies/2026-07-30_canonical_adp_handoff/results/pre_promotion"
+}

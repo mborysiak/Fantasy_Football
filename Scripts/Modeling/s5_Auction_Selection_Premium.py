@@ -61,10 +61,16 @@ BOOTSTRAP_CANDIDATES = (
 SEED_TABLE = "Salary_Selection_Seeds"
 CALIBRATOR_TABLE = "Salary_Selection_Calibrator"
 PREMIUM_TABLE = "Salary_Selection_Premium"
-SALARY_METHOD_VERSION = "current_locked_spec_v5_compact_salary_features"
+SALARY_METHOD_VERSION = "current_locked_spec_v6_v2_population_11f"
+HISTORICAL_SALARY_METHOD_VERSION = (
+    "current_locked_spec_v5_compact_salary_features"
+)
 HISTORICAL_SEED_METHOD = "target_managed_baseline_298_reconstructed_v1"
 CURRENT_SEED_METHOD = "app_target_selection_only_keeper_portfolio_v3"
 PREMIUM_METHOD_VERSION = "ridge_a100_positive_cap10_v1"
+CALIBRATION_TRANSFER_POLICY = (
+    "historical_v5_selection_surface_to_current_v6_v1"
+)
 RIDGE_ALPHA = 100.0
 PREMIUM_CAP = 10.0
 
@@ -209,7 +215,10 @@ def reconstruct_historical_seeds(league: str) -> pd.DataFrame:
         seeds.actual_salary_recorded.fillna(0).astype(int)
     )
     seeds["league"] = league
-    seeds["salary_method_version"] = SALARY_METHOD_VERSION
+    # The bundled replay was generated from the v5 salary surface. Preserve
+    # that provenance; relabeling these rows as v6 would make the calibration
+    # look same-surface when it is an explicit prior-surface transfer.
+    seeds["salary_method_version"] = HISTORICAL_SALARY_METHOD_VERSION
     seeds["seed_method_version"] = HISTORICAL_SEED_METHOD
     seeds["seed_random_seed"] = np.nan
     seeds["generated_at"] = datetime.now(timezone.utc).isoformat()
@@ -318,6 +327,22 @@ def fit_calibrator(
         raise ValueError(f"No observed prior-origin premium training rows for {target_year}.")
     if training.year.max() >= target_year:
         raise AssertionError("Premium calibration crossed the target season.")
+    training_salary_methods = sorted(
+        training.salary_method_version.dropna().astype(str).unique().tolist()
+    )
+    training_seed_methods = sorted(
+        training.seed_method_version.dropna().astype(str).unique().tolist()
+    )
+    if training_salary_methods != [HISTORICAL_SALARY_METHOD_VERSION]:
+        raise ValueError(
+            "Premium calibration expected the governed historical v5 salary "
+            f"surface, found {training_salary_methods}."
+        )
+    if training_seed_methods != [HISTORICAL_SEED_METHOD]:
+        raise ValueError(
+            "Premium calibration expected the governed historical Target "
+            f"seed method, found {training_seed_methods}."
+        )
 
     x_train = calibration_features(training)
     x_target = calibration_features(target)
@@ -366,11 +391,23 @@ def fit_calibrator(
     coefficient_rows["ridge_alpha"] = RIDGE_ALPHA
     coefficient_rows["premium_cap"] = PREMIUM_CAP
     coefficient_rows["premium_method_version"] = PREMIUM_METHOD_VERSION
+    coefficient_rows["calibration_transfer_policy"] = (
+        CALIBRATION_TRANSFER_POLICY
+    )
+    coefficient_rows["training_salary_method_versions"] = ",".join(
+        training_salary_methods
+    )
+    coefficient_rows["training_seed_method_versions"] = ",".join(
+        training_seed_methods
+    )
     coefficient_rows["generated_at"] = datetime.now(timezone.utc).isoformat()
     metadata = {
         "training_rows": int(len(training)),
         "training_through_year": int(training.year.max()),
         "training_origins": sorted(training.year.unique().astype(int).tolist()),
+        "training_salary_method_versions": training_salary_methods,
+        "training_seed_method_versions": training_seed_methods,
+        "calibration_transfer_policy": CALIBRATION_TRANSFER_POLICY,
     }
     return output, coefficient_rows, metadata
 
@@ -387,9 +424,19 @@ def load_simulation_class():
 def keeper_state(year: int, league: str) -> pd.DataFrame:
     with sqlite3.connect(SIMULATION_DB) as conn:
         if not table_exists(conn, "League_Keepers"):
-            return pd.DataFrame(columns=["player", "keeper_salary"])
+            return pd.DataFrame(
+                columns=["player_key", "player", "keeper_salary"]
+            )
+        keeper_columns = {
+            row[1]
+            for row in conn.execute('PRAGMA table_info("League_Keepers")')
+        }
+        player_key_select = (
+            "player_key," if "player_key" in keeper_columns else ""
+        )
         keepers = pd.read_sql_query(
-            """SELECT player, keeper_salary
+            f"""SELECT {player_key_select}
+                        player, keeper_salary
                  FROM League_Keepers
                 WHERE year=? AND league=?""",
             conn,
@@ -433,8 +480,27 @@ def run_current_seed(
             roster_size=ROSTER_SIZE,
         )
 
-        all_players = sim.player_data.player.to_numpy(dtype=object)
-        available_mask = ~np.isin(all_players, keeper_players)
+        if (
+            "player_key" in keepers
+            and keepers.player_key.notna().all()
+        ):
+            keeper_keys = keepers.player_key.astype(str).tolist()
+            key_to_player = sim.player_data.set_index("player_key").player
+            unknown_keepers = set(keeper_keys) - set(
+                sim.player_data.player_key.astype(str)
+            )
+            if unknown_keepers:
+                raise ValueError(
+                    "Keeper keys are outside the canonical simulation pool: "
+                    f"{sorted(unknown_keepers)}"
+                )
+            keeper_players = key_to_player.loc[keeper_keys].tolist()
+            available_mask = ~sim.player_data.player_key.astype(str).isin(
+                keeper_keys
+            ).to_numpy()
+        else:
+            all_players = sim.player_data.player.to_numpy(dtype=object)
+            available_mask = ~np.isin(all_players, keeper_players)
         point_salary = sim.normalize_salary_market_values(
             sim.player_data.salary.to_numpy(dtype=float),
             available_mask,
@@ -442,7 +508,7 @@ def run_current_seed(
             remaining_market_slots=remaining_slots,
         )
         current_surface = sim.player_data.loc[
-            available_mask, ["player", "pos"]
+            available_mask, ["player_key", "player", "pos"]
         ].copy()
         current_surface["point_salary"] = point_salary[available_mask]
 
@@ -495,12 +561,18 @@ def run_current_seed(
     current_surface["selection_slots"] = np.rint(
         current_surface.selection_rate * success_trials
     ).astype(int)
-    current_surface["player_key"] = current_surface.player.map(player_key)
-    if current_surface.player_key.duplicated().any():
+    if (
+        current_surface.player_key.isna().any()
+        or current_surface.player_key.duplicated().any()
+    ):
         duplicated = current_surface.loc[
-            current_surface.player_key.duplicated(False), "player"
+            current_surface.player_key.isna()
+            | current_surface.player_key.duplicated(False),
+            "player",
         ].tolist()
-        raise ValueError(f"Current seed player keys collide: {duplicated}")
+        raise ValueError(
+            f"Current seed canonical player keys are incomplete: {duplicated}"
+        )
     market = {
         "keeper_count": int(len(keepers)),
         "keeper_spend": keeper_spend,
@@ -574,6 +646,15 @@ def build_premium_rows(
     output["salary_method_version"] = SALARY_METHOD_VERSION
     output["seed_method_version"] = CURRENT_SEED_METHOD
     output["premium_method_version"] = PREMIUM_METHOD_VERSION
+    output["calibration_transfer_policy"] = metadata[
+        "calibration_transfer_policy"
+    ]
+    output["training_salary_method_versions"] = ",".join(
+        metadata["training_salary_method_versions"]
+    )
+    output["training_seed_method_versions"] = ",".join(
+        metadata["training_seed_method_versions"]
+    )
     output["seed_trials"] = int(requested_trials)
     output["seed_success_trials"] = int(success_trials)
     output["generated_at"] = datetime.now(timezone.utc).isoformat()
@@ -598,6 +679,9 @@ def build_premium_rows(
         "salary_method_version",
         "seed_method_version",
         "premium_method_version",
+        "calibration_transfer_policy",
+        "training_salary_method_versions",
+        "training_seed_method_versions",
         "seed_trials",
         "seed_success_trials",
         "generated_at",
@@ -620,6 +704,24 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--random-seed", type=int, default=20260716)
     parser.add_argument("--premium-strength", type=float, default=0.5)
     parser.add_argument(
+        "--simulation-db",
+        type=Path,
+        default=SIMULATION_DB,
+        help="Simulation database to read and update.",
+    )
+    parser.add_argument(
+        "--validations-db",
+        type=Path,
+        default=VALIDATIONS_DB,
+        help="Validation database to read and update.",
+    )
+    parser.add_argument(
+        "--app-simulation-db",
+        type=Path,
+        default=APP_SIMULATION_DB,
+        help="Auction app database updated unless --no-app-sync is set.",
+    )
+    parser.add_argument(
         "--reuse-current-seed",
         action="store_true",
         help="Refit/re-publish from the saved active-season seed without rerunning Target.",
@@ -633,7 +735,40 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    global SIMULATION_DB
+    global VALIDATIONS_DB
+    global APP_SIMULATION_DB
+
     args = parse_args()
+    default_simulation_db = SIMULATION_DB.resolve()
+    default_validations_db = VALIDATIONS_DB.resolve()
+    SIMULATION_DB = args.simulation_db.resolve()
+    VALIDATIONS_DB = args.validations_db.resolve()
+    APP_SIMULATION_DB = args.app_simulation_db.resolve()
+    custom_simulation = SIMULATION_DB != default_simulation_db
+    custom_validations = VALIDATIONS_DB != default_validations_db
+    if custom_simulation != custom_validations:
+        raise ValueError(
+            "Custom reserve builds must provide both --simulation-db and "
+            "--validations-db so live and staged surfaces cannot be mixed."
+        )
+    if custom_simulation and SIMULATION_DB.parent != VALIDATIONS_DB.parent:
+        raise ValueError(
+            "Custom Simulation and Validations databases must share one "
+            "staging directory."
+        )
+    if custom_simulation and not args.no_app_sync:
+        raise ValueError(
+            "Custom staged reserve builds require --no-app-sync."
+        )
+    for database_name, database_path in (
+        ("Simulation", SIMULATION_DB),
+        ("Validations", VALIDATIONS_DB),
+    ):
+        if not database_path.exists():
+            raise FileNotFoundError(
+                f"{database_name} database not found: {database_path}"
+            )
     if args.trials <= 0 or args.workers <= 0:
         raise ValueError("Trials and workers must be positive integers.")
     if not 0.0 <= args.premium_strength <= 1.0:
@@ -650,6 +785,22 @@ def main() -> None:
     if args.reuse_current_seed:
         if saved_current.empty:
             raise ValueError("No saved current-season seed exists to reuse.")
+        saved_salary_methods = set(
+            saved_current.salary_method_version.dropna().astype(str)
+        )
+        saved_seed_methods = set(
+            saved_current.seed_method_version.dropna().astype(str)
+        )
+        if saved_salary_methods != {SALARY_METHOD_VERSION}:
+            raise ValueError(
+                "Saved current-season seed does not match the active salary "
+                f"method: {sorted(saved_salary_methods)}."
+            )
+        if saved_seed_methods != {CURRENT_SEED_METHOD}:
+            raise ValueError(
+                "Saved current-season seed does not match the active Target "
+                f"method: {sorted(saved_seed_methods)}."
+            )
         current_surface = saved_current[
             [
                 "player",

@@ -508,11 +508,11 @@ MARKET_VALUE_SPECS = {
         "source": "fantasypros_best_ball_adp",
         "metrics": {"adp": "pick_best_ball"},
     },
-    "NFFC_ADP": {
-        "source_column": "source",
-        "source_prefix": "",
-        "metrics": {"adp": "pick_nffc"},
-    },
+    # ADP_Averages already contains one player-level NFFC composite built from
+    # the four contest feeds in NFFC_ADP.  Keep those raw contest rows as
+    # candidate/identity evidence above, but do not admit them here: ingesting
+    # both the four rows and their composite would give one provider family
+    # five votes in the cross-market ADP consensus.
     "FFA_Projections": {
         "source": "ffa_projection",
         "metrics": {

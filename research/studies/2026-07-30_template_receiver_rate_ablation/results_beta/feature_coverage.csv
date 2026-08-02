@@ -1,0 +1,9 @@
+population,pos,rows,rate_available,rate_missing,coverage
+historical_templates,QB,706,0,706,0.0
+historical_templates,RB,1549,1548,1,0.9993544222078761
+historical_templates,TE,833,833,0,1.0
+historical_templates,WR,2210,2210,0,1.0
+rolling_targets,QB,216,0,216,0.0
+rolling_targets,RB,540,540,0,1.0
+rolling_targets,TE,216,216,0,1.0
+rolling_targets,WR,648,648,0,1.0

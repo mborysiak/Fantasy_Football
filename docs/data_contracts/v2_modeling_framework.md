@@ -1,12 +1,17 @@
 # V2 Modeling Framework Contract
 
+Last updated: 2026-07-31
+
 ## Scope
 
 V2 Milestone 4A began as a shadow comparison of conditional-PPG and
 participation models. Its deterministic out-of-fold evidence remains in
 `Data/Databases/Projection_V2.sqlite3`, while the locked 2026 current and 2027
-next-season forecasts are now published to production through
-`Scripts/V2/production_handoff.py`.
+next-season DK/beta forecasts are published to production through
+`Scripts/V2/production_handoff.py`. The approved 2026 refresh also builds a
+separate offense-only NFFC candidate; it is not live evidence until its
+league-specific acceptance and release gates pass and explicit promotion
+completes.
 
 Run the initial comparison with:
 
@@ -271,6 +276,27 @@ pooled correlation alone does not.
 13. Any foundation identity, effective-season, source-row-quarantine, or
     provider-scoring correction invalidates downstream performance claims
     until locked, calibration, template, and next-year replays are rerun.
+14. A production league must have an explicit scoring contract. Unknown or
+    misspelled league names fail rather than inheriting NFFC defaults.
+
+## Approved Production Cycles
+
+`Scripts/V2/production_cycle.py` is the sole registry for annual production
+contracts. A cycle binds:
+
+- current and following seasons plus exact shadow table names;
+- exact accepted model versions for DK, NFFC, and beta;
+- the locked-current, following-season, and template-audit runners;
+- source, model-input, and league/position production floors; and
+- league weekly horizons and minimum template seasons.
+
+`Scripts/V2/refresh_production.py --year 2026` selects the only approved cycle.
+The runner stores a deterministic receipt and hash in its stage manifest and
+rechecks both on resume and promotion. A requested 2027 current-season run
+fails closed even though the 2026 cycle produces a following-season 2027
+forecast. Approving 2027 requires new annual validation runners, exact lock
+versions, current inputs, population/exclusion reviews, and a new registry
+entry; changing an environment variable cannot reuse 2026 evidence.
 
 ## Locked 2026 Production Candidate
 
@@ -287,7 +313,7 @@ specification:
   hyperparameter decision, route, calibration estimate, and interval using
   only earlier seasons.
 
-The latest source-quarantine-corrected whole-season primary scores 3.1078 RMSE
+The latest source-quarantine-corrected, one-vote-NFFC replay scores 3.1076 RMSE
 versus 3.1951 for expert recalibration and wins all nine seasons. Do not add a
 point-calibration overlay: every tested strictly-prior policy worsens pooled
 RMSE. The projection-anchored gap route remains a locked secondary component
@@ -297,12 +323,26 @@ superseded; no secondary promotion is made from this data correction.
 
 The locked template handoff supplies a strict-OOS V2 historical point center,
 not a second residual distribution. Production retains it as
-`v2_historical_pred_fp_per_game` for diagnostics. It does not replace the
-previously validated historical donor center: a 2017-2025 rolling replay found
-that V2 recentering worsened PPG CRPS by 0.0057 in DK and 0.0051 in beta, with
-both player-cluster 95% intervals entirely above zero. Production therefore
-keeps `historical_center_policy = legacy_validated_oos` and
-`v2_recenter_promoted = 0`.
+`v2_historical_pred_fp_per_game` for diagnostics. For DK and beta, it does not
+replace the previously validated historical donor center: a 2017-2025 rolling
+replay found that V2 recentering worsened PPG CRPS by 0.0057 in DK and 0.0051
+in beta, with both player-cluster 95% intervals entirely above zero. DK/beta
+therefore keep `v2_recenter_promoted = 0`. Rows with a real validation-ensemble
+center record `historical_center_policy = legacy_validated_oos`; rows without
+one use and disclose `preseason_projection_fallback`.
+
+NFFC has a separate scoring-context and center contract because the legacy
+`Model_Inputs` projection context is DK-scored. Its historical and current
+scoring-sensitive matcher fields are authoritative from the NFFC-scored V2
+`player_season_features` preseason consensus; the old context is audit-only.
+Historical NFFC donors use the expert team-game PPG with
+`historical_center_policy = nffc_scored_expert_consensus`. A strict 540-target
+2023-2025 replay retained that center: locked-minus-expert PPG CRPS was
+`+0.002901`, the locked center lost all three seasons, and its player-cluster
+95% interval was `[-0.004914, +0.010748]`. The locked arm passed six of ten
+gates but failed pooled PPG improvement, a nonpositive interval upper bound,
+and two-season wins, so its OOF center remains diagnostic. This NFFC decision
+does not alter DK/beta behavior.
 
 The FFToday quarantine can make a beta 2018 QB V2 diagnostic center unavailable
 when the leaked future-vintage row was the only apparent sack donor. Preserve
@@ -314,23 +354,76 @@ the validated legacy OOS value. The corrected beta template population has
 
 `v2_conditional_ppg_2026_candidate_beta_v1` is the separately fitted
 beta-scored counterpart. It uses the same primary feature hashes and
-equal-third architecture, scores 2.8845 RMSE versus 2.9600 for beta expert
+equal-third architecture, scores 2.8841 RMSE versus 2.9600 for beta expert
 recalibration, and wins all nine seasons. The beta no-history route remains a
 secondary diagnostic rather than changing the published primary during a
 data-lineage correction. Exact pre-quarantine secondary metrics are
 superseded. Every tested prior-only calibration policy worsens pooled RMSE.
 
-Both locks are active for the 2026 production player population: 268 DK rows
-and 180 beta rows. `production_handoff.py` joins each league lock by canonical
+`v2_conditional_ppg_2026_candidate_nffc_v1` is the separately fitted
+NFFC-scored candidate registered for the 2026 production cycle. Its scoring
+hash, feature lineage, current-model comparisons, and following-season
+comparisons must pass the same fail-closed acceptance checks before release.
+NFFC eligibility is the core population unioned with the top-360 canonical
+NFFC ADP rows after filtering to QB/RB/WR/TE. Canonical `TK` and `TDSP` market
+units remain audit data; they are not model targets. This offense-only lock
+does not assert K/DST or complete contest support.
+
+The staged NFFC weekly handoff contains 1,509 2021-2025 templates with 17
+populated weeks and a 385-player current map. Neither these artifacts nor the
+NFFC model database have been promoted live.
+
+Raw provider rank numbers remain audit-only because provider list depths and
+objectives are not commensurate. A strict-prior challenger normalizes each
+expert source within season and position, takes the cross-source median, and
+lets ETR contribute one rank vote. Controlled attribution uses a full-column
+random forest on both sides because adding a feature changes the incumbent
+forest's locked 50% feature subsample. The normalized rank level improves its
+controlled blend by 0.0022 RMSE in DK and 0.0019 in beta, with seven of nine
+season wins in each league. DK's season and player-cluster intervals exclude
+zero; beta's season interval excludes zero and its player interval ends
+essentially at zero. The production-surface sensitivity remains smaller:
+0.0017 DK and 0.0014 beta, with both intervals crossing zero. The
+expert-minus-projection rank gap is neutral and unstable. Neither feature is
+promoted because the gain is tiny, the controlled forest is not the locked
+production architecture, and rank-provider coverage changes sharply in
+2024-2025. The normalized level remains a governed challenger for
+future-season confirmation.
+
+The DK and beta locks are active for the expanded 2026 production population:
+351 DK rows (56 QB, 101 RB, 143 WR, and 51 TE) and 328 beta rows (50 QB,
+95 RB, 133 WR, and 50 TE). DK is the 326-player core plus the top-280 DK
+market union after eight governed market-only/no-center exclusions: Tyreek
+Hill, Joe Mixon,
+DeAndre Hopkins, Nick Chubb, Austin Ekeler, Kareem Hunt, Brandin Cooks, and
+Taysom Hill. Beta is the core plus the top-180 ETR overall-rank union and all
+keepers. `production_handoff.py` joins each league lock by canonical
 `player_key`, fails closed on incomplete coverage or scoring-hash mismatches,
 and publishes `Final_Predictions_Resid`,
 `V2_Production_Projection_Handoff`, and
-`V2_Production_Projection_Audit`. The original rows are retained once in
+`V2_Production_Projection_Audit`. The 1,490-row
+`V2_Production_Eligibility_Audit` records the complete reviewed inclusion and
+exclusion population. The original rows are retained once in
 `V2_Projection_Legacy_Backup`.
 
-The corrected fit-through-2025 shadows contain 745 candidates per league, 715
-DK point centers, 673 beta point centers, and 745 participation probabilities.
-Production coverage remains 100% for the 268/180 app populations.
+The NFFC population and its audit rows become production data only through a
+complete approved-cycle stage and explicit promotion. They must not be
+described as part of the earlier live DK/beta release merely because canonical
+NFFC ADP already exists.
+
+The canonical current market snapshot contains 416 live DK rows, 497 NFFC
+rows (431 offense plus 33 `TK` and 33 `TDSP` draft units), and 243 ETR rows.
+The latest local NFFC and ETR exports are dated 2026-07-27. ETR's exact source
+ranks remain the beta population ordering, while NFFC contributes one
+composite market vote. DK resolves 343 production rows to exact canonical ADP
+and uses eight governed fallbacks; beta resolves 238 exactly and uses 90
+governed fallbacks. Neither league permits a generic default or review route.
+
+The corrected live DK/beta fit-through-2025 shadows contain 745 candidates in
+each league, 715 DK point centers, 673 beta point centers, and 745
+participation probabilities. Production coverage is 100% for the 351/328 app
+populations. Tetairoa McMillan and Amon-Ra St. Brown retain their governed
+canonical identities.
 `production_handoff.py` is refresh-safe: a republish replaces its governed key
 and metadata columns from the canonical weekly map rather than creating merge
 suffixes. A second identical publish must produce zero point deltas.
@@ -340,9 +433,21 @@ The production current residual quantiles are exactly zero,
 `current_uncertainty_source = joint_weekly_template_only`. A consumer must add
 the sampled donor's centered `active_ppg_resid` directly to the V2 point center
 and use that same donor's weekly path. It must not scale that residual to the
-zeroed legacy model spread. DK and beta retain separate V2 databases and
+zeroed legacy model spread. DK, NFFC, and beta retain separate V2 databases and
 scoring hashes, and every join is by league plus canonical key rather than
 display name.
+
+For current and following-season production, the locked V2 shadow is the point
+and appearance authority. Legacy current/next fields are audit-only and must
+not silently fill a missing locked center. This current/next rule is separate
+from the historical donor-center contract: validated legacy OOS for DK/beta
+and scoring-matched preseason expert consensus for NFFC.
+The second production handoff reproduced unchanged hashes for all eight
+governed handoff/audit tables. The canonical release passed 187
+main-repository, 69 strict-release, 49 Auction, and 16 Snake tests; Snake
+`AppTest` reported zero exceptions. Durable evidence and recoverable
+pre-promotion copies live under
+`research/studies/2026-07-30_canonical_adp_handoff/`.
 
 The original replay lives under
 `research/studies/2026-07-29_v2_locked_final_validation/`. Its data-lineage
@@ -401,8 +506,11 @@ The output databases publish:
 The complete corrected 2027 shadow contains 745 canonical candidates per
 league, 715 DK and 673 beta conditional PPG centers, and 745 appearance
 probabilities per league. The production handoff publishes the intersection
-with the current app population: 268 DK and 180 beta rows. DK and beta use
-independent scoring-specific features and fits.
+with the current app population: 351 DK and 328 beta rows. DK and beta use
+independent scoring-specific features and fits. The approved NFFC refresh runs
+the same embargoed following-season methodology under NFFC scoring, but its
+output is not covered by the historical DK/beta metrics in the table above and
+must clear its own acceptance gate.
 
 The rolling weekly-template replay does not promote the two next-year fields
 as donor-matching features. Residual rank improves weekly-PPG CRPS by only

@@ -85,6 +85,40 @@ def test_component_scoring_reconciles_to_total():
     assert np.allclose(components, scored["fantasy_points_configured"])
 
 
+def test_nffc_component_scoring_has_full_ppr_and_no_yardage_bonuses():
+    weekly = pd.DataFrame(
+        [
+            _weekly_row(
+                "qb-2",
+                "NFFC Scorer",
+                "QB",
+                2025,
+                1,
+                passing_yards=400,
+                passing_tds=2,
+                passing_interceptions=1,
+                sacks_suffered=2,
+                carries=1,
+                rushing_yards=100,
+                rushing_tds=1,
+                targets=10,
+                receptions=10,
+                receiving_yards=200,
+                receiving_tds=1,
+                fumbles_lost_total=1,
+            )
+        ]
+    )
+
+    scored = score_weekly_stats(weekly, "nffc")
+
+    assert scored.loc[0, "passing_points"] == 30
+    assert scored.loc[0, "rushing_points"] == 16
+    assert scored.loc[0, "receiving_points"] == 36
+    assert scored.loc[0, "fumble_points"] == -1
+    assert scored.loc[0, "fantasy_points_configured"] == 81
+
+
 def test_all_valid_trey_mcbride_weeks_are_retained():
     weekly = pd.DataFrame(
         [

@@ -1,0 +1,15 @@
+{
+  "league": "dk",
+  "v2_database": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\Data\\Databases\\Projection_V2.sqlite3",
+  "nflverse_players_url": "https://github.com/nflverse/nflverse-data/releases/download/players/players.csv",
+  "max_template_season": 2025,
+  "target_rows": 1620,
+  "prediction_rows": 9720,
+  "method_count": 6,
+  "baseline_method": "production",
+  "primary_method": "height_weight_w025_all",
+  "recency_half_life": 12.0,
+  "bootstrap_samples": 2000,
+  "runtime_seconds": 31.585562599997502,
+  "production_changed": false
+}

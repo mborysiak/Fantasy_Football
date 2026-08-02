@@ -15,7 +15,12 @@ from typing import Mapping
 
 import pandas as pd
 
-from Scripts.config import get_scoring_dict
+from Scripts.config import (
+    PASSING_SCORING,
+    RECEIVING_SCORING,
+    RUSH_SCORING,
+    get_scoring_dict,
+)
 from Scripts.V2.config import SOURCE_ROW_EXCLUSIONS, SOURCE_SEASON_OVERRIDES
 
 
@@ -491,6 +496,17 @@ def stable_player_key(identity_signature: str) -> str:
 
 
 def configured_scoring(league: str) -> dict[str, dict[str, float]]:
+    league = str(league).strip().lower()
+    valid_leagues = (
+        set(PASSING_SCORING)
+        & set(RUSH_SCORING)
+        & set(RECEIVING_SCORING)
+    )
+    if league not in valid_leagues:
+        raise ValueError(
+            f"Unknown scoring league {league!r}; expected one of "
+            f"{sorted(valid_leagues)}"
+        )
     return {
         "passing": get_scoring_dict("passing", league),
         "rushing": get_scoring_dict("rush", league),
@@ -953,6 +969,63 @@ def publish_tables_atomic(
                     "(run_id, target_name, model_name, slice_type, "
                     "slice_value, metric)"
                 )
+            if "Avg_ADPs" in existing_tables:
+                avg_adp_columns = {
+                    str(row[1])
+                    for row in connection.execute(
+                        'PRAGMA table_info("Avg_ADPs")'
+                    )
+                }
+                if {
+                    "player_key",
+                    "draft_entity_key",
+                    "year",
+                    "league",
+                }.issubset(avg_adp_columns):
+                    connection.execute(
+                        "CREATE UNIQUE INDEX IF NOT EXISTS "
+                        "ux_avg_adps_player_year_league "
+                        "ON Avg_ADPs(player_key, year, league) "
+                        "WHERE player_key IS NOT NULL"
+                    )
+                    connection.execute(
+                        "CREATE UNIQUE INDEX IF NOT EXISTS "
+                        "ux_avg_adps_entity_year_league "
+                        "ON Avg_ADPs(draft_entity_key, year, league) "
+                        "WHERE draft_entity_key IS NOT NULL"
+                    )
+            if "Avg_ADPs_Publication_Audit" in existing_tables:
+                audit_columns = {
+                    str(row[1])
+                    for row in connection.execute(
+                        'PRAGMA table_info("Avg_ADPs_Publication_Audit")'
+                    )
+                }
+                if {
+                    "draft_entity_key",
+                    "year",
+                    "league",
+                }.issubset(audit_columns):
+                    connection.execute(
+                        "CREATE UNIQUE INDEX IF NOT EXISTS "
+                        "ux_avg_adps_audit_entity_year_league "
+                        "ON Avg_ADPs_Publication_Audit"
+                        "(draft_entity_key, year, league) "
+                        "WHERE draft_entity_key IS NOT NULL"
+                    )
+            if "Avg_ADPs_Publication_Receipt" in existing_tables:
+                receipt_columns = {
+                    str(row[1])
+                    for row in connection.execute(
+                        'PRAGMA table_info("Avg_ADPs_Publication_Receipt")'
+                    )
+                }
+                if {"year", "league"}.issubset(receipt_columns):
+                    connection.execute(
+                        "CREATE UNIQUE INDEX IF NOT EXISTS "
+                        "ux_avg_adps_receipt_year_league "
+                        "ON Avg_ADPs_Publication_Receipt(year, league)"
+                    )
             connection.commit()
         except Exception:
             connection.rollback()

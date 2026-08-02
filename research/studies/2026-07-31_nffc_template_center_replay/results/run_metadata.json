@@ -1,0 +1,44 @@
+{
+  "league": "nffc",
+  "current_season": 2026,
+  "v2_database": "C:\\Users\\borys\\AppData\\Local\\Temp\\ff-nffc-verify-2deb92708c534d27bbaae77f143c9c2a\\Projection_V2_nffc.sqlite3",
+  "feature_context": {
+    "feature_run_id": "milestone_3_20260731T045941Z_8671a3f3",
+    "league": "nffc",
+    "scoring_hash": "e769f60ca6d28bd0441da49c3b9ae78a781478069d768702e75629bd01d379ea",
+    "rows": 4205,
+    "min_season": 2021,
+    "max_season": 2025
+  },
+  "locked_centers": {
+    "lock_version": "v2_conditional_ppg_2026_candidate_nffc_v1",
+    "model_run_id": "v2_locked_final_nffc_20260731T050239Z_4e912d8b",
+    "rows": 4205,
+    "available_rows": 4070
+  },
+  "week_count": 17,
+  "donor_start": 2021,
+  "origin_start": 2023,
+  "origin_end": 2025,
+  "target_rows": 540,
+  "prediction_rows": 1080,
+  "center_policies": [
+    "expert_donor_center",
+    "locked_oof_donor_center"
+  ],
+  "match_feature_count": {
+    "QB": 13,
+    "RB": 16,
+    "WR": 13,
+    "TE": 13
+  },
+  "recency_half_life": 12.0,
+  "minimum_pool_size": 40,
+  "maximum_pool_size": 80,
+  "maximum_sample_probability": 0.05,
+  "bootstrap_samples": 2000,
+  "recommendation": "expert_donor_center",
+  "all_decision_gates_passed": false,
+  "runtime_seconds": 4.547225199989043,
+  "production_changed": false
+}

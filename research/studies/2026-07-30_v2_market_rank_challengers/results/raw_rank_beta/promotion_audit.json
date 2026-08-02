@@ -1,0 +1,32 @@
+{
+  "advancement_variant": "raw_percentile_coverage",
+  "all_single_league_gates_pass": false,
+  "candidate_minus_normalized_rank_rmse": 0.0021264575199935187,
+  "controlled_candidate_rmse": 2.8853035019349176,
+  "decision_scope": "single_league_advance_to_nested_retune_not_production_promotion",
+  "gates": {
+    "beats_normalized_rank_by_0_001": false,
+    "early_era_nonworse": false,
+    "expanded_era_nonworse": true,
+    "incomplete_coverage_nonworse": true,
+    "no_history_slice_worse_by_0_01": true,
+    "no_position_worse_by_0_01": true,
+    "player_interval_upper_nonpositive": false,
+    "pooled_delta_negative": true,
+    "production_surface_delta_negative": true,
+    "production_surface_player_interval_upper_nonpositive": false,
+    "production_surface_recent_delta_negative": true,
+    "production_surface_season_interval_upper_nonpositive": false,
+    "production_surface_season_wins_at_least_6": false,
+    "recent_delta_negative": true,
+    "season_interval_upper_nonpositive": false,
+    "season_wins_at_least_6": false,
+    "shallow_omission_nonworse_by_0_01": true,
+    "three_of_four_positions_nonworse": false
+  },
+  "incomplete_coverage_delta": -0.0015895934786165355,
+  "max_history_delta": 0.007104919495696027,
+  "max_position_delta": 0.005694620183115617,
+  "normalized_rank_level_rmse": 2.883177044414924,
+  "shallow_omission_delta": -0.0015895934786165355
+}

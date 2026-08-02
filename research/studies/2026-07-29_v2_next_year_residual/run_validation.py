@@ -13,7 +13,6 @@ from typing import Mapping, Sequence
 
 import numpy as np
 import pandas as pd
-from lightgbm import LGBMClassifier, LGBMRegressor
 from scipy.stats import spearmanr
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.impute import SimpleImputer
@@ -27,6 +26,9 @@ from sklearn.metrics import (
 )
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
+# Keep LightGBM after scikit-learn: on Windows this makes both packages use
+# one vcomp runtime instead of loading separate copies of vcomp140.dll.
+from lightgbm import LGBMClassifier, LGBMRegressor
 
 
 STUDY_DIR = Path(__file__).resolve().parent
@@ -45,6 +47,7 @@ from Scripts.V2.contracts import (  # noqa: E402
     scoring_hash,
     utc_now,
 )
+from Scripts.V2.native_runtime import assert_single_openmp_runtime  # noqa: E402
 from Scripts.V2.locked_candidates import LOCKED_RANDOM_SEED  # noqa: E402
 from Scripts.V2.modeling import add_modeling_features  # noqa: E402
 from Scripts.V2.next_year import (  # noqa: E402
@@ -1112,6 +1115,7 @@ Runtime: {runtime_seconds:.1f} seconds.
 
 
 def main() -> None:
+    assert_single_openmp_runtime()
     args = parse_args()
     output_db = args.output_db.resolve()
     results_dir = args.results_dir.resolve()

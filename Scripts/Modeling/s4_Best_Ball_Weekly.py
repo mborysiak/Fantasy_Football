@@ -7,6 +7,8 @@ import re
 import shutil
 import sqlite3
 import sys
+import tempfile
+from contextlib import closing
 from pathlib import Path
 
 import numpy as np
@@ -25,8 +27,19 @@ from Scripts.V2.config import (
     OUTPUT_DB_PATH as V2_IDENTITY_DB_PATH,
     SOURCE_ROW_EXCLUSIONS,
 )
-from Scripts.V2.contracts import source_row_exclusion_policy_receipt
-from Scripts.V2.production_handoff import V2_DATABASES
+from Scripts.V2.contracts import (
+    publish_tables_atomic,
+    scoring_hash,
+    source_row_exclusion_policy_receipt,
+)
+from Scripts.V2.production_handoff import (
+    AVG_ADP_AUDIT_TABLE,
+    AVG_ADP_RECEIPT_TABLE,
+    AVG_ADP_TABLE,
+    V2_DATABASES,
+    validate_avg_adp_publication,
+)
+from Scripts.V2.production_cycle import get_production_cycle
 from Scripts.V2.template_identity import attach_v2_player_keys
 
 
@@ -35,10 +48,29 @@ from Scripts.V2.template_identity import attach_v2_player_keys
 #==========
 
 POSITIONS = ["QB", "RB", "WR", "TE"]
-WEEK_COUNT = 16
+WEEK_COUNT_BY_LEAGUE = {
+    "beta": 16,
+    "dk": 16,
+    "nffc": 17,
+    "nv": 16,
+}
+TEMPLATE_SEASON_MIN_BY_LEAGUE = {
+    "beta": 2008,
+    "dk": 2008,
+    # A 17-week NFFC profile cannot treat pre-2021 16-game schedules as if a
+    # missing Week 17 were an observed zero. Use direct 17-week-era donors.
+    "nffc": 2021,
+    "nv": 2008,
+}
+_PRODUCTION_CYCLE = get_production_cycle(YEAR)
+WEEK_COUNT_BY_LEAGUE.update(_PRODUCTION_CYCLE.weekly_horizons)
+TEMPLATE_SEASON_MIN_BY_LEAGUE.update(
+    _PRODUCTION_CYCLE.template_min_seasons
+)
+WEEK_COUNT = WEEK_COUNT_BY_LEAGUE.get(LEAGUE, 16)
 WEEKS = list(range(1, WEEK_COUNT + 1))
 
-TEMPLATE_SEASON_MIN = 2008
+TEMPLATE_SEASON_MIN = TEMPLATE_SEASON_MIN_BY_LEAGUE.get(LEAGUE, 2008)
 MIN_TEMPLATE_POOL_SIZE = 40
 MAX_TEMPLATE_POOL_SIZE = 80
 TEMPLATE_KERNEL_BANDWIDTH = {
@@ -78,7 +110,10 @@ EXPERIENCE_DRAFT_YEAR_OVERRIDES = {
 TEAM_ALIASES = {
     "ARI": "ARI",
     "ARZ": "ARI",
+    "BLT": "BAL",
+    "CLV": "CLE",
     "GB": "GNB",
+    "HST": "HOU",
     "JAC": "JAX",
     "KC": "KAN",
     "LA": "LAR",
@@ -89,6 +124,7 @@ TEAM_ALIASES = {
     "SD": "LAC",
     "SF": "SFO",
     "STL": "LAR",
+    "TAM": "TB",
     "WSH": "WAS",
 }
 
@@ -168,6 +204,28 @@ PROJECTION_COMPONENT_COLS = [
 PROJECTION_UNCERTAINTY_SOURCE_COLS = [
     "std_proj_points",
     "std_pos_rank",
+]
+V2_SCORED_PROJECTION_CONTEXT_COLUMNS = [
+    "expert_points_median",
+    "expert_ppg_team_game_median",
+    "expert_ppg_team_game_std",
+    "projected_pass_point_share",
+    "projected_rush_point_share",
+    "projected_receiving_point_share",
+    "team_qb1_ppg",
+]
+V2_SCORED_PROJECTION_CONTEXT_AUDIT_COLUMNS = [
+    "projection_context_source",
+    "projection_context_scoring_hash",
+    "projection_context_run_id",
+    "model_input_avg_proj_points",
+    "model_input_preseason_proj_ppg",
+    "model_input_avg_proj_pass_points",
+    "model_input_avg_proj_rush_points",
+    "model_input_avg_proj_rec_points",
+    "model_input_qb_avg_proj_pass_points",
+    "model_input_std_proj_points",
+    "projection_context_avg_proj_points_delta",
 ]
 MATCH_FILL_VALUE = 0.5
 QB_RANK_DISTANCE_ORDER = {
@@ -267,6 +325,35 @@ MATCH_OUTPUT_COLS = [
     "team_qb_pass_points",
     "team_qb_pass_proj_rank_pct",
 ] + PROJECTION_COMPONENT_COLS + PROJECTION_UNCERTAINTY_SOURCE_COLS
+NFFC_SCORING_SENSITIVE_CURRENT_CONTEXT_COLS = {
+    "current_avg_proj_points",
+    "avg_proj_points",
+    "avg_proj_pass_points",
+    "avg_proj_rush_points",
+    "avg_proj_rec_points",
+    "qb_avg_proj_pass_points",
+    "std_proj_points",
+    *MATCH_OUTPUT_COLS,
+}
+
+# These fields are the minimum non-neutral context required to match a current
+# production player to historical weekly templates. Position-specific room
+# fields may be genuinely unavailable (for example, an unsigned player); those
+# remain explicitly auditable through current_context_missing_optional_fields.
+CURRENT_CONTEXT_REQUIRED_COLS = [
+    "team",
+    "current_avg_proj_points",
+    "avg_pick",
+    "year_exp",
+]
+CURRENT_CONTEXT_PROVENANCE_COLS = [
+    "current_context_source",
+    "current_context_match_method",
+    "current_adp_source",
+    "current_context_fallback_fields",
+    "current_context_missing_fields",
+    "current_context_missing_optional_fields",
+]
 
 
 #==========
@@ -308,9 +395,39 @@ def resolve_league(league=None):
 
 
 def set_active_league(league):
-    global LEAGUE
+    global LEAGUE, WEEK_COUNT, WEEKS, TEMPLATE_SEASON_MIN
     LEAGUE = resolve_league(league)
+    WEEK_COUNT = WEEK_COUNT_BY_LEAGUE[LEAGUE]
+    WEEKS = list(range(1, WEEK_COUNT + 1))
+    TEMPLATE_SEASON_MIN = TEMPLATE_SEASON_MIN_BY_LEAGUE[LEAGUE]
     return LEAGUE
+
+
+def current_adp_source_league(league=None):
+    """Return the market source that governs the active population policy."""
+    league = resolve_league(LEAGUE if league is None else league)
+    return "etr" if league == "beta" else league
+
+
+def validate_published_avg_adp_keys(frame, source_name):
+    """Validate keys supplied by the canonical Avg_ADPs publication."""
+
+    if "player_key" not in frame:
+        raise ValueError(
+            f"{source_name} does not contain published player_key"
+        )
+    output = frame.copy()
+    keys = output["player_key"].astype("string").str.strip()
+    if keys.isna().any() or keys.eq("").any():
+        raise ValueError(
+            f"{source_name} contains missing published player_key"
+        )
+    output["player_key"] = keys
+    if output["player_key"].duplicated().any():
+        raise ValueError(
+            f"{source_name} contains duplicate published player_key"
+        )
+    return output
 
 
 def set_simulation_db(simulation_db):
@@ -322,10 +439,15 @@ def set_simulation_db(simulation_db):
             f"Simulation database does not exist: {simulation_db}"
         )
 
-    global SIMULATION_DB_PATH, SIMULATION_DB_NAME, simulation_dm
+    global SIMULATION_DB_PATH, SIMULATION_DB_NAME, simulation_dm, db_path, dm
     SIMULATION_DB_PATH = simulation_db
     SIMULATION_DB_NAME = simulation_db.stem
-    simulation_dm = DataManage(str(simulation_db.parent))
+    db_path = str(simulation_db.parent)
+    simulation_dm = DataManage(db_path)
+    # A staged Simulation database must consume the sibling staged
+    # Model_Inputs/Validations databases as well.  Keeping ``dm`` pointed at
+    # the live directory would silently mix refreshed and stale artifacts.
+    dm = DataManage(db_path)
     return SIMULATION_DB_PATH
 
 
@@ -649,6 +771,15 @@ def qb_team_rank_bucket(rank):
     return "qb3_plus"
 
 
+def has_current_team(values):
+    teams = pd.Series(values).astype("string").str.strip().str.upper()
+    return (
+        teams.notna()
+        & teams.ne("")
+        & ~teams.isin({"FA", "UNK", "UNKNOWN", "NONE", "NAN", "NULL"})
+    )
+
+
 def add_qb_team_rank_fields(df, year_col, projection_col):
     df = df.copy()
     df["qb_team_rank"] = -1
@@ -658,7 +789,7 @@ def add_qb_team_rank_fields(df, year_col, projection_col):
         df.loc[df["pos"].eq("QB"), "qb_team_rank_bucket"] = "unknown"
         return df
 
-    qb_mask = df["pos"].eq("QB") & df["team"].notnull()
+    qb_mask = df["pos"].eq("QB") & has_current_team(df["team"]).to_numpy()
     if qb_mask.any():
         qb_rank = (
             df.loc[qb_mask]
@@ -916,7 +1047,8 @@ def add_template_match_features(
     df["team_rb_rec_points"] = 0.0
     df["team_rec_points"] = 0.0
 
-    rb_mask = df["pos"].eq("RB") & df["team"].notnull()
+    valid_team = has_current_team(df["team"]).to_numpy()
+    rb_mask = df["pos"].eq("RB") & valid_team
     if rb_mask.any():
         df.loc[rb_mask, "team_rb_rush_points"] = (
             df.loc[rb_mask].groupby(team_group_cols)["avg_proj_rush_points"].transform("sum")
@@ -925,7 +1057,7 @@ def add_template_match_features(
             df.loc[rb_mask].groupby(team_group_cols)["avg_proj_rec_points"].transform("sum")
         )
 
-    receiver_mask = df["pos"].isin(["RB", "WR", "TE"]) & df["team"].notnull()
+    receiver_mask = df["pos"].isin(["RB", "WR", "TE"]) & valid_team
     if receiver_mask.any():
         df.loc[receiver_mask, "team_rec_points"] = (
             df.loc[receiver_mask].groupby(team_group_cols)["avg_proj_rec_points"].transform("sum")
@@ -974,7 +1106,7 @@ def add_template_match_features(
         "pass_catcher",
     )
 
-    qb_mask = df["pos"].eq("QB") & df["team"].notnull()
+    qb_mask = df["pos"].eq("QB") & valid_team
     df["team_qb_proj_points"] = 0.0
     df["qb_room_share"] = 0.0
     df["team_qb1_proj_points"] = 0.0
@@ -1018,7 +1150,7 @@ def add_template_match_features(
     df["team_qb_pass_points"] = pd.to_numeric(
         df["qb_avg_proj_pass_points"], errors="coerce"
     ).fillna(0)
-    qb_mask = df["pos"].eq("QB") & df["team"].notnull()
+    qb_mask = df["pos"].eq("QB") & valid_team
     if qb_mask.any():
         qb_pass = (
             df.loc[qb_mask, team_group_cols + ["avg_proj_pass_points"]]
@@ -1199,13 +1331,7 @@ def replace_table_slice(table_name, new_df, keep_existing_mask_func):
     ordered_cols = list(new_df.columns) + [
         col for col in combined.columns if col not in new_df.columns
     ]
-    combined = combined[ordered_cols]
-    simulation_dm.write_to_db(
-        combined,
-        SIMULATION_DB_NAME,
-        table_name,
-        "replace",
-    )
+    return combined[ordered_cols]
 
 
 def keep_not_current_league(df):
@@ -1216,7 +1342,6 @@ def keep_not_current_pool_slice(df):
     return ~rows_matching(
         df,
         {
-            "pool_year": YEAR,
             "pool_version": LEAGUE,
             "pool_dataset": PRED_VERSION,
         },
@@ -1227,7 +1352,6 @@ def keep_not_current_prediction_slice(df):
     return ~rows_matching(
         df,
         {
-            "year": YEAR,
             "version": LEAGUE,
             "dataset": PRED_VERSION,
         },
@@ -1259,8 +1383,111 @@ def write_best_ball_tables(
         (ADP_AUDIT_TABLE, adp_audit, keep_not_current_prediction_slice),
     ]
 
-    for table_name, df, keep_existing in table_writes:
-        replace_table_slice(table_name, df, keep_existing)
+    tables = {
+        table_name: replace_table_slice(
+            table_name,
+            df,
+            keep_existing,
+        )
+        for table_name, df, keep_existing in table_writes
+    }
+    publish_tables_atomic(SIMULATION_DB_PATH, tables)
+
+
+def validate_existing_v2_player_keys(
+    frame,
+    identity_database,
+    *,
+    position_column="pos",
+):
+    """Validate and preserve canonical keys already supplied by production.
+
+    The production handoff owns current-player identity. Re-resolving those
+    rows from a display name would recreate the handoff/player-map circularity
+    and can fail for suffix or provider-name differences.
+    """
+
+    output = frame.copy()
+    if "player_key" not in output.columns:
+        raise ValueError("Current production rows do not contain player_key")
+    present = output["player_key"].notna()
+    if present.any() and not present.all():
+        raise ValueError(
+            "Current production rows mix keyed and unkeyed player identities"
+        )
+    if not present.any():
+        raise ValueError("Current production rows contain no canonical player keys")
+
+    output["player_key"] = output["player_key"].astype("string")
+    with sqlite3.connect(identity_database) as connection:
+        tables = {
+            str(row[0])
+            for row in connection.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            )
+        }
+        identities = pd.read_sql_query(
+            "SELECT player_key, position identity_position "
+            "FROM player_identity",
+            connection,
+        )
+        current_shadow_table = f"locked_{YEAR}_shadow_predictions"
+        if current_shadow_table in tables:
+            shadow_positions = pd.read_sql_query(
+                "SELECT player_key, position shadow_position "
+                f'FROM "{current_shadow_table}"',
+                connection,
+            )
+            identities = identities.merge(
+                shadow_positions,
+                on="player_key",
+                how="left",
+                validate="one_to_one",
+            )
+            identities["position"] = identities["shadow_position"].combine_first(
+                identities["identity_position"]
+            )
+        else:
+            identities["position"] = identities["identity_position"]
+    identities["player_key"] = identities["player_key"].astype("string")
+    identities["position"] = identities["position"].astype("string").str.upper()
+    if identities["player_key"].duplicated().any():
+        raise ValueError("V2 identity validation contains duplicate player keys")
+
+    validation = output[["player_key", position_column]].merge(
+        identities,
+        on="player_key",
+        how="left",
+        validate="many_to_one",
+        indicator=True,
+    )
+    missing = validation["_merge"].ne("both")
+    if missing.any():
+        preview = validation.loc[missing, "player_key"].drop_duplicates().head(10)
+        raise ValueError(
+            "Current production rows reference unknown V2 player keys: "
+            f"{preview.tolist()}"
+        )
+    position_mismatch = (
+        validation[position_column].astype("string").str.upper()
+        != validation["position"]
+    )
+    if position_mismatch.any():
+        preview = validation.loc[
+            position_mismatch,
+            ["player_key", position_column, "position"],
+        ].head(10)
+        raise ValueError(
+            "Current production player positions disagree with V2 identity: "
+            f"{preview.to_dict('records')}"
+        )
+    if "player_key_match_method" not in output.columns:
+        output["player_key_match_method"] = "production_handoff_player_key"
+    else:
+        output["player_key_match_method"] = output[
+            "player_key_match_method"
+        ].fillna("production_handoff_player_key")
+    return output
 
 
 def attach_weekly_handoff_player_keys(
@@ -1275,11 +1502,17 @@ def attach_weekly_handoff_player_keys(
         v2_database,
         season_column="season",
     )
-    player_map = attach_v2_player_keys(
-        player_map,
-        v2_database,
-        season_column="year",
-    )
+    if "player_key" in player_map and player_map["player_key"].notna().any():
+        player_map = validate_existing_v2_player_keys(
+            player_map,
+            v2_database,
+        )
+    else:
+        player_map = attach_v2_player_keys(
+            player_map,
+            v2_database,
+            season_column="year",
+        )
     return templates, player_map
 
 
@@ -1399,6 +1632,611 @@ def load_validation_ensemble_predictions(max_template_season):
     return validation_preds
 
 
+def load_v2_scored_projection_context(
+    v2_database,
+    *,
+    min_season,
+    max_season,
+):
+    """Load leakage-safe, scoring-matched preseason context from the V2 mart."""
+
+    if LEAGUE != "nffc":
+        raise ValueError(
+            "The V2 scored projection-context override is governed only for "
+            "the NFFC weekly-template build."
+        )
+    v2_database = resolve_v2_database(v2_database)
+    required_columns = {
+        "player_key",
+        "season",
+        "position",
+        "team",
+        "league",
+        "scoring_hash",
+        "run_id",
+        "feature_cutoff_season",
+        "preseason_source_season",
+        *V2_SCORED_PROJECTION_CONTEXT_COLUMNS,
+    }
+    with sqlite3.connect(v2_database) as connection:
+        available_columns = {
+            str(row[1])
+            for row in connection.execute(
+                'PRAGMA table_info("player_season_features")'
+            )
+        }
+        missing_columns = sorted(required_columns - available_columns)
+        if missing_columns:
+            raise ValueError(
+                "V2 player_season_features lacks NFFC scored projection "
+                f"context columns: {missing_columns}"
+            )
+        context = pd.read_sql_query(
+            """
+            SELECT player_key,
+                   CAST(season AS INTEGER) season,
+                   position feature_context_position,
+                   team feature_context_team,
+                   league projection_context_league,
+                   scoring_hash projection_context_scoring_hash,
+                   run_id projection_context_run_id,
+                   CAST(feature_cutoff_season AS INTEGER)
+                       feature_context_cutoff_season,
+                   CAST(preseason_source_season AS INTEGER)
+                       feature_context_source_season,
+                   expert_points_median,
+                   expert_ppg_team_game_median,
+                   expert_ppg_team_game_std,
+                   projected_pass_point_share,
+                   projected_rush_point_share,
+                   projected_receiving_point_share,
+                   team_qb1_ppg
+            FROM player_season_features
+            WHERE season BETWEEN ? AND ?
+            """,
+            connection,
+            params=(int(min_season), int(max_season)),
+        )
+        locked_feature_runs = {
+            str(row[0]).strip()
+            for row in connection.execute(
+                """
+                SELECT DISTINCT runs.feature_run_id
+                FROM locked_template_handoff handoff
+                JOIN locked_candidate_runs runs
+                  ON runs.model_run_id=handoff.model_run_id
+                WHERE runs.feature_run_id IS NOT NULL
+                """
+            )
+            if str(row[0]).strip()
+        }
+
+    if context.empty:
+        raise ValueError(
+            "V2 player_season_features contains no NFFC scored projection "
+            f"context for {min_season}-{max_season}."
+        )
+    if context.duplicated(["player_key", "season"]).any():
+        preview = context.loc[
+            context.duplicated(["player_key", "season"], keep=False),
+            ["player_key", "season"],
+        ].head(10)
+        raise ValueError(
+            "V2 NFFC scored projection context contains duplicate keys: "
+            f"{preview.to_dict('records')}"
+        )
+
+    expected_hash = scoring_hash("nffc")
+    context_league = (
+        context["projection_context_league"]
+        .astype("string")
+        .str.strip()
+        .str.lower()
+    )
+    context_hash = (
+        context["projection_context_scoring_hash"]
+        .astype("string")
+        .str.strip()
+    )
+    context_run = (
+        context["projection_context_run_id"]
+        .astype("string")
+        .str.strip()
+    )
+    if context_league.isna().any() or not context_league.eq("nffc").all():
+        observed_leagues = sorted(set(context_league.dropna().astype(str)))
+        raise ValueError(
+            "V2 NFFC scored projection context has unexpected leagues: "
+            f"{observed_leagues}"
+        )
+    if context_hash.isna().any() or not context_hash.eq(expected_hash).all():
+        observed_hashes = sorted(set(context_hash.dropna().astype(str)))
+        raise ValueError(
+            "V2 NFFC scored projection context has an unexpected scoring "
+            f"hash: {observed_hashes}"
+        )
+    if context_run.isna().any() or context_run.eq("").any():
+        raise ValueError(
+            "V2 NFFC scored projection context contains a missing run_id."
+        )
+    observed_feature_runs = set(context_run.astype(str))
+    if not locked_feature_runs or observed_feature_runs != locked_feature_runs:
+        raise ValueError(
+            "V2 NFFC scored projection context is not the exact feature run "
+            "referenced by the active locked handoff: "
+            f"context={sorted(observed_feature_runs)}, "
+            f"locked={sorted(locked_feature_runs)}"
+        )
+
+    season = pd.to_numeric(context["season"], errors="coerce")
+    cutoff = pd.to_numeric(
+        context["feature_context_cutoff_season"], errors="coerce"
+    )
+    source_season = pd.to_numeric(
+        context["feature_context_source_season"], errors="coerce"
+    )
+    invalid_time = (
+        season.isna()
+        | cutoff.ne(season - 1)
+        | source_season.ne(season)
+    )
+    if invalid_time.any():
+        preview = context.loc[
+            invalid_time,
+            [
+                "player_key",
+                "season",
+                "feature_context_cutoff_season",
+                "feature_context_source_season",
+            ],
+        ].head(10)
+        raise ValueError(
+            "V2 NFFC scored projection context violates the preseason "
+            f"cutoff contract: {preview.to_dict('records')}"
+        )
+
+    # ``team_qb1_ppg`` is the QB1's total fantasy PPG.  Receiver matching
+    # needs the team's projected QB passing points, so derive that value from
+    # the actual QB1 row rather than relabeling total QB fantasy points.
+    context["_feature_context_team_normalized"] = (
+        context["feature_context_team"]
+        .astype("string")
+        .str.strip()
+        .str.upper()
+        .replace(TEAM_ALIASES)
+    )
+    assigned_qb = (
+        context["feature_context_position"].eq("QB")
+        & has_current_team(context["_feature_context_team_normalized"])
+    )
+    qb_context = context.loc[
+        assigned_qb,
+        [
+            "player_key",
+            "season",
+            "_feature_context_team_normalized",
+            "expert_points_median",
+            "expert_ppg_team_game_median",
+            "projected_pass_point_share",
+        ],
+    ].copy()
+    qb_context["_qb_total_points"] = pd.to_numeric(
+        qb_context["expert_points_median"], errors="coerce"
+    )
+    qb_context["_qb_pass_share"] = pd.to_numeric(
+        qb_context["projected_pass_point_share"], errors="coerce"
+    )
+    qb_context = qb_context.sort_values(
+        [
+            "season",
+            "_feature_context_team_normalized",
+            "_qb_total_points",
+            "player_key",
+        ],
+        ascending=[True, True, False, True],
+        na_position="last",
+    ).drop_duplicates(
+        ["season", "_feature_context_team_normalized"],
+        keep="first",
+    )
+    invalid_qb1 = (
+        qb_context["_qb_total_points"].isna()
+        | ~np.isfinite(qb_context["_qb_total_points"])
+        | qb_context["_qb_total_points"].lt(0)
+        | (
+            qb_context["_qb_total_points"].gt(0)
+            & (
+                qb_context["_qb_pass_share"].isna()
+                | ~np.isfinite(qb_context["_qb_pass_share"])
+                | qb_context["_qb_pass_share"].lt(0)
+                | qb_context["_qb_pass_share"].gt(1)
+            )
+        )
+    )
+    if invalid_qb1.any():
+        preview = qb_context.loc[
+            invalid_qb1,
+            [
+                "player_key",
+                "season",
+                "_feature_context_team_normalized",
+                "expert_points_median",
+                "projected_pass_point_share",
+            ],
+        ].head(20)
+        raise ValueError(
+            "V2 NFFC scored projection context has an invalid team QB1 "
+            f"passing share: {preview.to_dict('records')}"
+        )
+    qb_context["team_qb1_pass_points"] = np.where(
+        qb_context["_qb_total_points"].gt(0),
+        qb_context["_qb_total_points"] * qb_context["_qb_pass_share"],
+        0.0,
+    )
+    qb_context["derived_team_qb1_ppg"] = pd.to_numeric(
+        qb_context["expert_ppg_team_game_median"], errors="coerce"
+    )
+    context = context.merge(
+        qb_context[
+            [
+                "season",
+                "_feature_context_team_normalized",
+                "team_qb1_pass_points",
+                "derived_team_qb1_ppg",
+            ]
+        ],
+        on=["season", "_feature_context_team_normalized"],
+        how="left",
+        validate="many_to_one",
+    )
+    return context
+
+
+def apply_v2_scored_projection_context(
+    projections,
+    *,
+    v2_database,
+    season_column,
+    use_expert_donor_center=False,
+):
+    """Replace NFFC scoring-sensitive Model_Inputs fields by canonical key."""
+
+    if LEAGUE != "nffc":
+        return projections.copy()
+    projections = projections.copy()
+    required_keys = {"player_key", "pos", "team", season_column}
+    missing_keys = sorted(required_keys - set(projections.columns))
+    if missing_keys:
+        raise ValueError(
+            "NFFC projection context lacks canonical join columns: "
+            f"{missing_keys}"
+        )
+    if projections["player_key"].isna().any():
+        raise ValueError(
+            "NFFC projection context contains a null player_key before the "
+            "scoring-context join."
+        )
+    if projections.duplicated(["player_key", season_column]).any():
+        raise ValueError(
+            "NFFC projection context contains duplicate player-season keys."
+        )
+
+    seasons = pd.to_numeric(projections[season_column], errors="coerce")
+    if seasons.isna().any():
+        raise ValueError("NFFC projection context contains an invalid season.")
+    scored = load_v2_scored_projection_context(
+        v2_database,
+        min_season=int(seasons.min()),
+        max_season=int(seasons.max()),
+    )
+    if season_column != "season":
+        scored = scored.rename(columns={"season": season_column})
+    projections["player_key"] = projections["player_key"].astype("string")
+    scored["player_key"] = scored["player_key"].astype("string")
+    projections = projections.merge(
+        scored,
+        on=["player_key", season_column],
+        how="left",
+        validate="one_to_one",
+        indicator="_v2_scored_context_join",
+    )
+    missing_context = projections["_v2_scored_context_join"].ne("both")
+    if missing_context.any():
+        preview = projections.loc[
+            missing_context,
+            ["player", "player_key", "pos", season_column],
+        ].head(20)
+        raise ValueError(
+            "NFFC scoring-matched projection context coverage is incomplete: "
+            f"{preview.to_dict('records')}"
+        )
+
+    projection_team = (
+        projections["team"]
+        .astype("string")
+        .str.strip()
+        .str.upper()
+        .replace(TEAM_ALIASES)
+    )
+    feature_team = (
+        projections["feature_context_team"]
+        .astype("string")
+        .str.strip()
+        .str.upper()
+        .replace(TEAM_ALIASES)
+    )
+    team_mismatch = (
+        has_current_team(projection_team)
+        & has_current_team(feature_team)
+        & projection_team.ne(feature_team)
+    )
+    if team_mismatch.any():
+        preview = projections.loc[
+            team_mismatch,
+            [
+                "player",
+                "player_key",
+                "pos",
+                "team",
+                "feature_context_team",
+                season_column,
+            ],
+        ].head(20)
+        raise ValueError(
+            "NFFC scoring-matched projection context has unexpected team "
+            f"mismatches: {preview.to_dict('records')}"
+        )
+
+    position_mismatch = projections["feature_context_position"].ne(
+        projections["pos"]
+    )
+    governed_position_mismatch = pd.Series(
+        False,
+        index=projections.index,
+        dtype=bool,
+    )
+    for mismatch_key in GOVERNED_V2_TEMPLATE_CENTER_POSITION_MISMATCHES:
+        player_key, season, template_position, feature_position = mismatch_key
+        governed_position_mismatch |= (
+            position_mismatch
+            & projections["player_key"].astype(str).eq(player_key)
+            & pd.to_numeric(
+                projections[season_column], errors="coerce"
+            ).eq(season)
+            & projections["pos"].eq(template_position)
+            & projections["feature_context_position"].eq(feature_position)
+        )
+    unexpected_position_mismatch = (
+        position_mismatch & ~governed_position_mismatch
+    )
+    if unexpected_position_mismatch.any():
+        preview = projections.loc[
+            unexpected_position_mismatch,
+            [
+                "player",
+                "player_key",
+                "pos",
+                "feature_context_position",
+                season_column,
+            ],
+        ].head(20)
+        raise ValueError(
+            "NFFC scoring-matched projection context has unexpected position "
+            f"mismatches: {preview.to_dict('records')}"
+        )
+
+    required_numeric = [
+        "expert_points_median",
+        "expert_ppg_team_game_median",
+        "expert_ppg_team_game_std",
+    ]
+    for column in required_numeric:
+        values = pd.to_numeric(projections[column], errors="coerce")
+        invalid = values.isna() | ~np.isfinite(values) | values.lt(0)
+        if invalid.any():
+            preview = projections.loc[
+                invalid,
+                ["player", "player_key", "pos", season_column, column],
+            ].head(20)
+            raise ValueError(
+                f"NFFC scored projection context has invalid {column}: "
+                f"{preview.to_dict('records')}"
+            )
+        projections[column] = values
+
+    expected_ppg = projections["expert_points_median"] / WEEK_COUNT
+    inconsistent_ppg = ~np.isclose(
+        expected_ppg,
+        projections["expert_ppg_team_game_median"],
+        rtol=0,
+        atol=1e-9,
+    )
+    if inconsistent_ppg.any():
+        preview = projections.loc[
+            inconsistent_ppg,
+            [
+                "player",
+                "player_key",
+                season_column,
+                "expert_points_median",
+                "expert_ppg_team_game_median",
+            ],
+        ].head(20)
+        raise ValueError(
+            "NFFC scored projection total and team-game PPG disagree with the "
+            f"{WEEK_COUNT}-week contract: {preview.to_dict('records')}"
+        )
+
+    share_columns = [
+        "projected_pass_point_share",
+        "projected_rush_point_share",
+        "projected_receiving_point_share",
+    ]
+    positive_total = projections["expert_points_median"].gt(0)
+    for column in share_columns:
+        values = pd.to_numeric(projections[column], errors="coerce")
+        invalid = positive_total & (
+            values.isna()
+            | ~np.isfinite(values)
+            | values.lt(0)
+            | values.gt(1)
+        )
+        if invalid.any():
+            preview = projections.loc[
+                invalid,
+                ["player", "player_key", "pos", season_column, column],
+            ].head(20)
+            raise ValueError(
+                f"NFFC scored projection context has invalid {column}: "
+                f"{preview.to_dict('records')}"
+            )
+        projections[column] = values.where(positive_total, 0.0)
+    share_sum = projections[share_columns].sum(axis=1)
+    inconsistent_shares = positive_total & ~np.isclose(
+        share_sum,
+        1.0,
+        rtol=0,
+        atol=1e-9,
+    )
+    if inconsistent_shares.any():
+        preview = projections.loc[
+            inconsistent_shares,
+            ["player", "player_key", "pos", season_column, *share_columns],
+        ].head(20)
+        raise ValueError(
+            "NFFC scored projection component shares do not sum to one: "
+            f"{preview.to_dict('records')}"
+        )
+    team_qb1_ppg = pd.to_numeric(
+        projections["team_qb1_ppg"], errors="coerce"
+    )
+    team_qb1_pass_points = pd.to_numeric(
+        projections["team_qb1_pass_points"], errors="coerce"
+    )
+    derived_team_qb1_ppg = pd.to_numeric(
+        projections["derived_team_qb1_ppg"], errors="coerce"
+    )
+    assigned_team = has_current_team(projections["team"])
+    invalid_team_qb = (
+        (
+            team_qb1_ppg.isna()
+            | ~np.isfinite(team_qb1_ppg)
+            | team_qb1_ppg.lt(0)
+            | team_qb1_pass_points.isna()
+            | ~np.isfinite(team_qb1_pass_points)
+            | team_qb1_pass_points.lt(0)
+            | derived_team_qb1_ppg.isna()
+            | ~np.isfinite(derived_team_qb1_ppg)
+            | ~np.isclose(
+                team_qb1_ppg,
+                derived_team_qb1_ppg,
+                rtol=0,
+                atol=1e-9,
+            )
+        )
+        & assigned_team
+    )
+    if invalid_team_qb.any():
+        preview = projections.loc[
+            invalid_team_qb,
+            [
+                "player",
+                "player_key",
+                "pos",
+                "team",
+                season_column,
+                "team_qb1_ppg",
+                "team_qb1_pass_points",
+                "derived_team_qb1_ppg",
+            ],
+        ].head(20)
+        raise ValueError(
+            "NFFC scored projection context lacks valid team-QB context for "
+            f"an assigned player: {preview.to_dict('records')}"
+        )
+    projections["team_qb1_ppg"] = team_qb1_ppg
+    projections["team_qb1_pass_points"] = team_qb1_pass_points
+
+    original_columns = {
+        "avg_proj_points": "model_input_avg_proj_points",
+        "preseason_proj_ppg": "model_input_preseason_proj_ppg",
+        "avg_proj_pass_points": "model_input_avg_proj_pass_points",
+        "avg_proj_rush_points": "model_input_avg_proj_rush_points",
+        "avg_proj_rec_points": "model_input_avg_proj_rec_points",
+        "qb_avg_proj_pass_points": "model_input_qb_avg_proj_pass_points",
+        "std_proj_points": "model_input_std_proj_points",
+    }
+    for source, audit_column in original_columns.items():
+        projections[audit_column] = (
+            projections[source] if source in projections else np.nan
+        )
+
+    projections["avg_proj_points"] = projections["expert_points_median"]
+    projections["preseason_proj_ppg"] = projections[
+        "expert_ppg_team_game_median"
+    ]
+    for destination, share_column in (
+        ("avg_proj_pass_points", "projected_pass_point_share"),
+        ("avg_proj_rush_points", "projected_rush_point_share"),
+        ("avg_proj_rec_points", "projected_receiving_point_share"),
+    ):
+        projections[destination] = (
+            projections[share_column]
+            * projections["expert_points_median"]
+        )
+    projections["qb_avg_proj_pass_points"] = (
+        projections["team_qb1_pass_points"]
+    )
+    projections["std_proj_points"] = (
+        projections["expert_ppg_team_game_std"] * WEEK_COUNT
+    )
+    projections["projection_context_source"] = (
+        _PRODUCTION_CYCLE.template_context_sources["nffc"]
+    )
+    projections["projection_context_avg_proj_points_delta"] = (
+        projections["avg_proj_points"]
+        - pd.to_numeric(
+            projections["model_input_avg_proj_points"],
+            errors="coerce",
+        )
+    )
+    if use_expert_donor_center:
+        approved_policies = (
+            _PRODUCTION_CYCLE.template_center_policies["nffc"]
+        )
+        if approved_policies != ("nffc_scored_expert_consensus",):
+            raise ValueError(
+                "The approved NFFC donor-center contract is not the "
+                "scoring-matched expert consensus."
+            )
+        projections["historical_pred_fp_per_game"] = projections[
+            "expert_ppg_team_game_median"
+        ]
+        projections["historical_projection_source"] = (
+            "v2_nffc_expert_consensus"
+        )
+        projections["historical_center_policy"] = (
+            approved_policies[0]
+        )
+        projections["v2_recenter_promoted"] = 0
+
+    return projections.drop(
+        columns=[
+            "_v2_scored_context_join",
+            "feature_context_position",
+            "projection_context_league",
+            "feature_context_cutoff_season",
+            "feature_context_source_season",
+            "feature_context_team",
+            "_feature_context_team_normalized",
+            "team_qb1_pass_points",
+            "derived_team_qb1_ppg",
+            *V2_SCORED_PROJECTION_CONTEXT_COLUMNS,
+        ],
+        errors="ignore",
+    )
+
+
 def load_historical_projection_context(
     max_template_season,
     *,
@@ -1425,11 +2263,13 @@ def load_historical_projection_context(
         ascending=[True, True, True, False],
     ).drop_duplicates(["season", "pos", "player"])
     proj = attach_uncapped_template_experience(proj, season_col="season")
-    proj = add_qb_team_rank_fields(
-        proj,
-        year_col="season",
-        projection_col="avg_proj_points",
-    )
+    if LEAGUE != "nffc":
+        # Preserve the previously validated DK/beta matcher path exactly.
+        proj = add_qb_team_rank_fields(
+            proj,
+            year_col="season",
+            projection_col="avg_proj_points",
+        )
 
     validation_preds = load_validation_ensemble_predictions(max_template_season)
 
@@ -1453,6 +2293,18 @@ def load_historical_projection_context(
         max_template_season=max_template_season,
         v2_database=v2_database,
     )
+    if LEAGUE == "nffc":
+        proj = apply_v2_scored_projection_context(
+            proj,
+            v2_database=v2_database,
+            season_column="season",
+            use_expert_donor_center=True,
+        )
+        proj = add_qb_team_rank_fields(
+            proj,
+            year_col="season",
+            projection_col="avg_proj_points",
+        )
     proj = add_projection_buckets(
         proj,
         value_col="historical_pred_fp_per_game",
@@ -1624,7 +2476,18 @@ def attach_locked_v2_historical_centers(
     projections[V2_TEMPLATE_CENTER_POSITION_COLUMN] = pd.NA
     projections[V2_TEMPLATE_CENTER_POSITION_MISMATCH_COLUMN] = 0
     projections[V2_TEMPLATE_CENTER_POSITION_MISMATCH_REASON_COLUMN] = pd.NA
-    projections["historical_center_policy"] = "legacy_validated_oos"
+    validated_center = (
+        projections["validation_pred_fp_per_game"].notna()
+        if "validation_pred_fp_per_game" in projections
+        else ~projections["historical_projection_source"].eq(
+            "preseason_projection_fallback"
+        )
+    )
+    projections["historical_center_policy"] = np.where(
+        validated_center,
+        "legacy_validated_oos",
+        "preseason_projection_fallback",
+    )
     projections["v2_recenter_promoted"] = 0
     if LEAGUE not in V2_DATABASES:
         projections["historical_projection_source"] = (
@@ -1960,6 +2823,11 @@ def build_weekly_templates(proj, weekly, league=None):
         "projection_decile",
         "projection_tier",
     ]
+    base_cols.extend(
+        column
+        for column in V2_SCORED_PROJECTION_CONTEXT_AUDIT_COLUMNS
+        if column in proj.columns and column not in base_cols
+    )
     template_cols = base_cols + [
         col for col in MATCH_OUTPUT_COLS if col in proj.columns and col not in base_cols
     ]
@@ -2149,6 +3017,11 @@ def build_weekly_templates(proj, weekly, league=None):
         "template_eligible",
         "template_exclusion_reason",
     ]
+    front_cols.extend(
+        column
+        for column in V2_SCORED_PROJECTION_CONTEXT_AUDIT_COLUMNS
+        if column in templates.columns and column not in front_cols
+    )
     match_cols = [
         col for col in MATCH_OUTPUT_COLS if col in templates.columns and col not in front_cols
     ]
@@ -2805,10 +3678,18 @@ def validate_weekly_template_audits(player_pool_audit, template_audit=None):
 
     if template_audit is not None:
         excluded = template_audit[template_audit["template_eligible"].eq(0)]
+        observed_seasons = pd.to_numeric(
+            template_audit["season"],
+            errors="coerce",
+        ).dropna()
+        if observed_seasons.empty:
+            raise ValueError("Weekly template audit contains no valid seasons")
+        min_observed_season = int(observed_seasons.min())
+        max_observed_season = int(observed_seasons.max())
         expected_exclusions = {
             key: reason
             for key, reason in TEMPLATE_OUTCOME_EXCLUSIONS.items()
-            if key[2] <= template_audit["season"].max()
+            if min_observed_season <= key[2] <= max_observed_season
         }
         actual_exclusions = {
             (row.player, row.pos, int(row.season)): row.template_exclusion_reason
@@ -2844,7 +3725,40 @@ def validate_weekly_template_audits(player_pool_audit, template_audit=None):
             )
 
 
-def load_current_player_context():
+def load_published_current_adp_context():
+    """Load the canonical current feed used by both context routes."""
+
+    adp_league = current_adp_source_league()
+    adp = simulation_dm.read(
+        f"""
+        SELECT player_key,
+               player,
+               CAST(year AS INTEGER) year,
+               league,
+               avg_pick adp_avg_pick,
+               Years_of_Experience adp_year_exp,
+               identity_match_method
+        FROM Avg_ADPs
+        WHERE year={YEAR}
+              AND league='{adp_league}'
+              AND pos IN ('QB', 'RB', 'WR', 'TE')
+        """,
+        SIMULATION_DB_NAME,
+    )
+    adp = validate_published_avg_adp_keys(
+        adp,
+        f"{LEAGUE}_{adp_league}_weekly_context",
+    )
+    adp = (
+        adp.sort_values(["player_key", "adp_avg_pick"])
+        .drop_duplicates(["player_key"])
+        .rename(columns={"player": "adp_source_player"})
+    )
+    return adp
+
+
+def load_current_player_context(v2_database=None):
+    v2_database = resolve_v2_database(v2_database)
     current_context = pd.DataFrame()
 
     for pos in POSITIONS:
@@ -2870,38 +3784,54 @@ def load_current_player_context():
         ["pos", "player", "current_avg_proj_points"],
         ascending=[True, True, False],
     ).drop_duplicates(["pos", "player"])
+    current_context = attach_v2_player_keys(
+        current_context,
+        v2_database,
+        season_column="year",
+        require_complete=True,
+    ).rename(
+        columns={
+            "player_key_match_method": "current_context_match_method"
+        }
+    )
     current_context = add_qb_team_rank_fields(
         current_context,
         year_col="year",
         projection_col="current_avg_proj_points",
     )
 
-    adp = simulation_dm.read(
-        f"""
-        SELECT player,
-               CAST(year AS INTEGER) year,
-               league,
-               avg_pick adp_avg_pick,
-               Years_of_Experience adp_year_exp
-        FROM Avg_ADPs
-        WHERE year={YEAR}
-              AND league='{LEAGUE}'
-        """,
-        SIMULATION_DB_NAME,
-    )
-    adp = clean_player_names(adp)
-    adp = adp.sort_values(["player", "adp_avg_pick"]).drop_duplicates(["player"])
+    adp = load_published_current_adp_context()
 
     current_context = current_context.merge(
-        adp[["player", "year", "adp_avg_pick", "adp_year_exp"]],
-        on=["player", "year"],
+        adp[[
+            "player_key",
+            "year",
+            "adp_source_player",
+            "adp_avg_pick",
+            "adp_year_exp",
+        ]],
+        on=["player_key", "year"],
         how="left",
+        validate="one_to_one",
     )
-    current_context["year_exp"] = current_context["year_exp"].combine_first(
-        current_context["adp_year_exp"]
+    current_context["year_exp"] = current_context["year_exp"].where(
+        current_context["year_exp"].notna(),
+        current_context["adp_year_exp"],
     )
-    current_context["avg_pick"] = current_context["model_input_avg_pick"].combine_first(
-        current_context["adp_avg_pick"]
+    current_context["avg_pick"] = current_context["adp_avg_pick"].where(
+        current_context["adp_avg_pick"].notna(),
+        current_context["model_input_avg_pick"],
+    )
+    current_context["current_adp_source"] = np.select(
+        [
+            current_context["adp_avg_pick"].notna(),
+            current_context["model_input_avg_pick"].notna(),
+        ],
+        [
+            "canonical_avg_adps",
+            "model_inputs_fallback",
+        ],
+        default="missing",
     )
     current_context = attach_uncapped_template_experience(
         current_context,
@@ -2926,10 +3856,938 @@ def load_current_player_context():
         total_points_col="current_avg_proj_points",
         projection_ppg_col="current_projection_ppg",
     )
+    current_context["current_context_source"] = (
+        "model_inputs_projection_context"
+    )
+    current_context["current_context_missing_optional_fields"] = ""
+    current_context = current_context.sort_values(
+        ["player_key", "pos", "year", "current_avg_proj_points"],
+        ascending=[True, True, True, False],
+        na_position="last",
+    )
+    current_context = current_context.drop_duplicates(
+        ["player_key", "pos", "year"],
+        keep="first",
+    )
     return current_context
 
 
-def build_player_map_base():
+def attach_fallback_team_qb1_passing_context(fallback):
+    """Derive team QB1 passing points from the full V2 feature population."""
+
+    fallback = fallback.copy()
+    required_columns = {
+        "player_key",
+        "season",
+        "position",
+        "team",
+        "expert_points_median",
+        "expert_ppg_team_game_median",
+        "projected_pass_point_share",
+        "team_qb1_ppg",
+    }
+    missing_columns = sorted(required_columns - set(fallback.columns))
+    if missing_columns:
+        raise ValueError(
+            "V2 current fallback lacks team-QB context columns: "
+            f"{missing_columns}"
+        )
+
+    normalized_team_column = "_fallback_team_normalized"
+    fallback[normalized_team_column] = (
+        fallback["team"]
+        .astype("string")
+        .str.strip()
+        .str.upper()
+        .replace(TEAM_ALIASES)
+    )
+    assigned_qb = (
+        fallback["position"].astype("string").str.upper().eq("QB")
+        & has_current_team(fallback[normalized_team_column])
+    )
+    qb_context = fallback.loc[
+        assigned_qb,
+        [
+            "player_key",
+            "season",
+            normalized_team_column,
+            "expert_points_median",
+            "expert_ppg_team_game_median",
+            "projected_pass_point_share",
+        ],
+    ].copy()
+    qb_context["_qb_total_points"] = pd.to_numeric(
+        qb_context["expert_points_median"], errors="coerce"
+    )
+    qb_context["_qb_ppg"] = pd.to_numeric(
+        qb_context["expert_ppg_team_game_median"], errors="coerce"
+    )
+    qb_context["_qb_pass_share"] = pd.to_numeric(
+        qb_context["projected_pass_point_share"], errors="coerce"
+    )
+    qb_context = qb_context.sort_values(
+        [
+            "season",
+            normalized_team_column,
+            "_qb_total_points",
+            "player_key",
+        ],
+        ascending=[True, True, False, True],
+        na_position="last",
+    ).drop_duplicates(
+        ["season", normalized_team_column],
+        keep="first",
+    )
+    invalid_qb1 = (
+        qb_context["_qb_total_points"].isna()
+        | ~np.isfinite(qb_context["_qb_total_points"])
+        | qb_context["_qb_total_points"].lt(0)
+        | qb_context["_qb_ppg"].isna()
+        | ~np.isfinite(qb_context["_qb_ppg"])
+        | qb_context["_qb_ppg"].lt(0)
+        | (
+            qb_context["_qb_total_points"].gt(0)
+            & (
+                qb_context["_qb_pass_share"].isna()
+                | ~np.isfinite(qb_context["_qb_pass_share"])
+                | qb_context["_qb_pass_share"].lt(0)
+                | qb_context["_qb_pass_share"].gt(1)
+            )
+        )
+    )
+    if invalid_qb1.any():
+        preview = qb_context.loc[
+            invalid_qb1,
+            [
+                "player_key",
+                "season",
+                normalized_team_column,
+                "expert_points_median",
+                "expert_ppg_team_game_median",
+                "projected_pass_point_share",
+            ],
+        ].head(20)
+        raise ValueError(
+            "V2 current fallback has an invalid team QB1 passing context: "
+            f"{preview.to_dict('records')}"
+        )
+    qb_context["team_qb1_pass_points"] = np.where(
+        qb_context["_qb_total_points"].gt(0),
+        (
+            qb_context["_qb_total_points"]
+            * qb_context["_qb_pass_share"]
+        ),
+        0.0,
+    )
+    qb_context["derived_team_qb1_ppg"] = qb_context["_qb_ppg"]
+    fallback = fallback.merge(
+        qb_context[
+            [
+                "season",
+                normalized_team_column,
+                "team_qb1_pass_points",
+                "derived_team_qb1_ppg",
+            ]
+        ],
+        on=["season", normalized_team_column],
+        how="left",
+        validate="many_to_one",
+    )
+
+    assigned_team = has_current_team(fallback[normalized_team_column])
+    expected_team_qb1_ppg = pd.to_numeric(
+        fallback["team_qb1_ppg"], errors="coerce"
+    )
+    derived_team_qb1_ppg = pd.to_numeric(
+        fallback["derived_team_qb1_ppg"], errors="coerce"
+    )
+    team_qb1_pass_points = pd.to_numeric(
+        fallback["team_qb1_pass_points"], errors="coerce"
+    )
+    invalid_existing_team_qb1_ppg = expected_team_qb1_ppg.notna() & (
+        ~np.isfinite(expected_team_qb1_ppg)
+        | expected_team_qb1_ppg.lt(0)
+        | ~np.isclose(
+            expected_team_qb1_ppg,
+            derived_team_qb1_ppg,
+            rtol=0,
+            atol=1e-9,
+        )
+    )
+    invalid_assigned_team = assigned_team & (
+        invalid_existing_team_qb1_ppg
+        | derived_team_qb1_ppg.isna()
+        | ~np.isfinite(derived_team_qb1_ppg)
+        | team_qb1_pass_points.isna()
+        | ~np.isfinite(team_qb1_pass_points)
+        | team_qb1_pass_points.lt(0)
+    )
+    if invalid_assigned_team.any():
+        preview = fallback.loc[
+            invalid_assigned_team,
+            [
+                "player_key",
+                "season",
+                "position",
+                "team",
+                "team_qb1_ppg",
+                "team_qb1_pass_points",
+                "derived_team_qb1_ppg",
+            ],
+        ].head(20)
+        raise ValueError(
+            "V2 current fallback lacks consistent team-QB context for an "
+            f"assigned player: {preview.to_dict('records')}"
+        )
+    fallback["team_qb1_ppg"] = expected_team_qb1_ppg.where(
+        expected_team_qb1_ppg.notna(),
+        derived_team_qb1_ppg,
+    )
+    fallback["team_qb1_pass_points"] = team_qb1_pass_points
+    return fallback.drop(columns=[normalized_team_column])
+
+
+def load_v2_current_player_context(
+    v2_database=None,
+    selected_player_keys=None,
+):
+    """Build an auditable context fallback from the current V2 feature mart."""
+
+    v2_database = resolve_v2_database(v2_database)
+    required_columns = {
+        "player_key",
+        "display_name",
+        "season",
+        "position",
+        "team",
+        "league",
+        "scoring_hash",
+        "run_id",
+        "feature_cutoff_season",
+        "preseason_source_season",
+        "expert_points_median",
+        "expert_ppg_team_game_median",
+        "expert_ppg_team_game_std",
+        "expert_points_iqr",
+        "adp_median",
+        "year_exp",
+        "projected_pass_point_share",
+        "projected_rush_point_share",
+        "projected_receiving_point_share",
+        "team_qb1_ppg",
+    }
+    optional_columns = {
+        "consensus_room_share",
+        "consensus_room_gap_to_next",
+        "consensus_room_hhi",
+        "team_target_share",
+        "team_reception_share",
+        "team_rush_attempt_share",
+        "pass_catcher_room_share",
+    }
+    with sqlite3.connect(v2_database) as connection:
+        available_columns = {
+            str(row[1])
+            for row in connection.execute(
+                'PRAGMA table_info("player_season_features")'
+            )
+        }
+        missing_columns = sorted(required_columns - available_columns)
+        if missing_columns:
+            raise ValueError(
+                "V2 player_season_features lacks current-context fallback "
+                f"columns: {missing_columns}"
+            )
+        select_columns = sorted(
+            required_columns | optional_columns.intersection(available_columns)
+        )
+        fallback = pd.read_sql_query(
+            "SELECT "
+            + ", ".join(f'"{column}"' for column in select_columns)
+            + ' FROM "player_season_features" WHERE season=?',
+            connection,
+            params=(int(YEAR),),
+        )
+    if fallback.empty:
+        raise ValueError(
+            f"V2 player_season_features has no current rows for {YEAR}"
+        )
+    if fallback["player_key"].duplicated().any():
+        raise ValueError(
+            f"V2 player_season_features has duplicate {YEAR} player keys"
+        )
+    if LEAGUE != "nffc":
+        # The V2 mart stores ``team_qb1_ppg`` as the QB1's total fantasy
+        # scoring rate. Receiver matching needs the QB1's passing component,
+        # so derive it from the full feature population before filtering to
+        # the selected production universe. This keeps V2-only receivers
+        # valid even when their quarterback is not itself selected.
+        fallback = attach_fallback_team_qb1_passing_context(fallback)
+    if selected_player_keys is not None:
+        selected_player_keys = {
+            str(player_key) for player_key in selected_player_keys
+        }
+        fallback = fallback[
+            fallback["player_key"].astype(str).isin(selected_player_keys)
+        ].copy()
+        observed_keys = set(fallback["player_key"].astype(str))
+        if observed_keys != selected_player_keys:
+            raise ValueError(
+                "Selected production keys are missing from the V2 current "
+                "feature context: "
+                f"{sorted(selected_player_keys - observed_keys)[:20]}"
+            )
+    if LEAGUE == "nffc":
+        # Validate the table lineage against the active lock before any of its
+        # fields can become authoritative in the NFFC matcher.
+        scored_context = load_v2_scored_projection_context(
+            v2_database,
+            min_season=YEAR,
+            max_season=YEAR,
+        )
+        fallback = fallback.merge(
+            scored_context[
+                [
+                    "player_key",
+                    "season",
+                    "team_qb1_pass_points",
+                    "derived_team_qb1_ppg",
+                ]
+            ],
+            on=["player_key", "season"],
+            how="left",
+            validate="one_to_one",
+        )
+
+        total = pd.to_numeric(
+            fallback["expert_points_median"], errors="coerce"
+        )
+        ppg = pd.to_numeric(
+            fallback["expert_ppg_team_game_median"], errors="coerce"
+        )
+        point_std = pd.to_numeric(
+            fallback["expert_ppg_team_game_std"], errors="coerce"
+        )
+        invalid_required = (
+            total.isna()
+            | ppg.isna()
+            | point_std.isna()
+            | ~np.isfinite(total)
+            | ~np.isfinite(ppg)
+            | ~np.isfinite(point_std)
+            | total.lt(0)
+            | ppg.lt(0)
+            | point_std.lt(0)
+        )
+        inconsistent_ppg = ~np.isclose(
+            total / WEEK_COUNT,
+            ppg,
+            rtol=0,
+            atol=1e-9,
+        )
+        if (invalid_required | inconsistent_ppg).any():
+            preview = fallback.loc[
+                invalid_required | inconsistent_ppg,
+                [
+                    "player_key",
+                    "display_name",
+                    "position",
+                    "expert_points_median",
+                    "expert_ppg_team_game_median",
+                    "expert_ppg_team_game_std",
+                ],
+            ].head(20)
+            raise ValueError(
+                "Selected NFFC current scoring context has invalid or "
+                "inconsistent expert points: "
+                f"{preview.to_dict('records')}"
+            )
+        share_columns = [
+            "projected_pass_point_share",
+            "projected_rush_point_share",
+            "projected_receiving_point_share",
+        ]
+        shares = fallback[share_columns].apply(
+            pd.to_numeric,
+            errors="coerce",
+        )
+        positive_total = total.gt(0)
+        invalid_shares = positive_total & (
+            shares.isna().any(axis=1)
+            | (~np.isfinite(shares)).any(axis=1)
+            | shares.lt(0).any(axis=1)
+            | shares.gt(1).any(axis=1)
+            | ~np.isclose(
+                shares.sum(axis=1),
+                1.0,
+                rtol=0,
+                atol=1e-9,
+            )
+        )
+        if invalid_shares.any():
+            preview = fallback.loc[
+                invalid_shares,
+                [
+                    "player_key",
+                    "display_name",
+                    "position",
+                    "expert_points_median",
+                    *share_columns,
+                ],
+            ].head(20)
+            raise ValueError(
+                "Selected NFFC current scoring context has invalid component "
+                f"shares: {preview.to_dict('records')}"
+            )
+        team_qb1_ppg = pd.to_numeric(
+            fallback["team_qb1_ppg"], errors="coerce"
+        )
+        team_qb1_pass_points = pd.to_numeric(
+            fallback["team_qb1_pass_points"], errors="coerce"
+        )
+        derived_team_qb1_ppg = pd.to_numeric(
+            fallback["derived_team_qb1_ppg"], errors="coerce"
+        )
+        invalid_team_qb = (
+            (
+                ~np.isfinite(team_qb1_ppg)
+                | team_qb1_ppg.lt(0)
+                | ~np.isfinite(team_qb1_pass_points)
+                | team_qb1_pass_points.lt(0)
+                | ~np.isfinite(derived_team_qb1_ppg)
+                | ~np.isclose(
+                    team_qb1_ppg,
+                    derived_team_qb1_ppg,
+                    rtol=0,
+                    atol=1e-9,
+                )
+            )
+            & has_current_team(fallback["team"])
+        )
+        if invalid_team_qb.any():
+            preview = fallback.loc[
+                invalid_team_qb,
+                [
+                    "player_key",
+                    "display_name",
+                    "position",
+                    "team",
+                    "team_qb1_ppg",
+                    "team_qb1_pass_points",
+                    "derived_team_qb1_ppg",
+                ],
+            ].head(20)
+            raise ValueError(
+                "Selected NFFC current scoring context lacks valid team-QB "
+                f"context for an assigned player: {preview.to_dict('records')}"
+            )
+
+    fallback = fallback.rename(
+        columns={
+            "display_name": "player",
+            "position": "pos",
+            "season": "year",
+            "scoring_hash": "projection_context_scoring_hash",
+            "run_id": "projection_context_run_id",
+            "expert_points_median": "current_avg_proj_points",
+            "adp_median": "feature_adp_median",
+        }
+    )
+    fallback["player_key"] = fallback["player_key"].astype("string")
+    fallback["pos"] = fallback["pos"].astype("string").str.upper()
+    fallback["current_avg_proj_points"] = pd.to_numeric(
+        fallback["current_avg_proj_points"],
+        errors="coerce",
+    )
+    fallback["avg_proj_points"] = fallback["current_avg_proj_points"]
+    fallback["model_input_avg_pick"] = np.nan
+    published_adp = load_published_current_adp_context().rename(
+        columns={
+            "adp_avg_pick": "published_adp_avg_pick",
+            "adp_year_exp": "published_adp_year_exp",
+        }
+    )
+    fallback = fallback.merge(
+        published_adp[
+            [
+                "player_key",
+                "year",
+                "published_adp_avg_pick",
+                "published_adp_year_exp",
+            ]
+        ],
+        on=["player_key", "year"],
+        how="left",
+        validate="one_to_one",
+    )
+    fallback["feature_adp_median"] = pd.to_numeric(
+        fallback["feature_adp_median"],
+        errors="coerce",
+    )
+    fallback["published_adp_avg_pick"] = pd.to_numeric(
+        fallback["published_adp_avg_pick"],
+        errors="coerce",
+    )
+    fallback["adp_avg_pick"] = fallback[
+        "published_adp_avg_pick"
+    ].where(
+        fallback["published_adp_avg_pick"].notna(),
+        fallback["feature_adp_median"],
+    )
+    fallback["current_adp_source"] = np.select(
+        [
+            fallback["published_adp_avg_pick"].notna(),
+            fallback["feature_adp_median"].notna(),
+        ],
+        [
+            "canonical_avg_adps",
+            "v2_feature_mart_fallback",
+        ],
+        default="missing",
+    )
+    fallback["avg_pick"] = fallback["adp_avg_pick"]
+    fallback["published_adp_year_exp"] = pd.to_numeric(
+        fallback["published_adp_year_exp"],
+        errors="coerce",
+    )
+    fallback["adp_year_exp"] = fallback[
+        "published_adp_year_exp"
+    ].where(
+        fallback["published_adp_year_exp"].notna(),
+        pd.to_numeric(fallback["year_exp"], errors="coerce"),
+    )
+    fallback["source_year_exp"] = fallback["adp_year_exp"]
+    fallback["year_exp_source"] = "v2_player_season_features"
+    fallback["year_exp_uncapped_delta"] = 0.0
+
+    point_share_map = {
+        "avg_proj_pass_points": "projected_pass_point_share",
+        "avg_proj_rush_points": "projected_rush_point_share",
+        "avg_proj_rec_points": "projected_receiving_point_share",
+    }
+    for destination, source in point_share_map.items():
+        fallback[destination] = (
+            pd.to_numeric(fallback[source], errors="coerce")
+            * fallback["current_avg_proj_points"]
+        )
+    fallback["qb_avg_proj_pass_points"] = (
+        pd.to_numeric(
+            fallback["team_qb1_pass_points"], errors="coerce"
+        )
+    )
+    fallback["std_proj_points"] = (
+        pd.to_numeric(
+            fallback["expert_ppg_team_game_std"],
+            errors="coerce",
+        )
+        * WEEK_COUNT
+    )
+    # The V2 mart has point dispersion but no directly comparable provider
+    # position-rank standard deviation. Leave that optional field explicit so
+    # add_template_match_features uses its governed group fallback.
+    fallback["std_pos_rank"] = np.nan
+
+    optional_raw_fields = sorted(
+        {
+            "expert_ppg_team_game_std",
+            "expert_points_iqr",
+            "projected_pass_point_share",
+            "projected_rush_point_share",
+            "projected_receiving_point_share",
+            "team_qb1_ppg",
+            "team_qb1_pass_points",
+            *optional_columns,
+        }.intersection(fallback.columns)
+    )
+    fallback["current_context_missing_optional_fields"] = fallback.apply(
+        lambda row: ",".join(
+            column
+            for column in optional_raw_fields
+            if pd.isna(row[column])
+        ),
+        axis=1,
+    )
+
+    # Rows without a projection center cannot supply a meaningful fallback.
+    # Keep them out so a selected high-impact production row fails explicitly
+    # in attach_current_context_by_player_key.
+    fallback = fallback[
+        fallback["current_avg_proj_points"].notna()
+    ].reset_index(drop=True)
+    fallback = add_qb_team_rank_fields(
+        fallback,
+        year_col="year",
+        projection_col="current_avg_proj_points",
+    )
+    fallback = add_exp_fields(fallback)
+    fallback["current_projection_ppg"] = (
+        pd.to_numeric(
+            fallback["expert_ppg_team_game_median"],
+            errors="coerce",
+        )
+    )
+    fallback = add_projection_buckets(
+        fallback,
+        value_col="current_projection_ppg",
+        group_cols=["year", "pos"],
+        pct_col="context_projection_rank_pct",
+    )
+    fallback = add_template_match_features(
+        fallback,
+        group_cols=["year", "pos"],
+        rank_pct_col="context_projection_rank_pct",
+        total_points_col="current_avg_proj_points",
+        projection_ppg_col="current_projection_ppg",
+    )
+    fallback["current_context_source"] = (
+        "v2_player_season_features_scoring_context"
+        if LEAGUE == "nffc"
+        else "v2_player_season_features_fallback"
+    )
+    fallback["current_context_match_method"] = "v2_feature_player_key"
+    return fallback
+
+
+def _missing_context_fields(row, columns):
+    missing = []
+    for column in columns:
+        value = row.get(column)
+        if pd.isna(value) or (
+            isinstance(value, str) and not value.strip()
+        ):
+            missing.append(column)
+    return ",".join(missing)
+
+
+def attach_current_context_by_player_key(
+    predictions,
+    model_input_context,
+    v2_fallback_context,
+):
+    """Attach current context without relying on the production display name."""
+
+    predictions = predictions.copy()
+    required_prediction_columns = {
+        "player_key",
+        "player",
+        "pos",
+        "year",
+        "version",
+        "dataset",
+        "pred_fp_per_game",
+    }
+    missing_prediction_columns = sorted(
+        required_prediction_columns - set(predictions.columns)
+    )
+    if missing_prediction_columns:
+        raise ValueError(
+            "Current predictions lack key-first context columns: "
+            f"{missing_prediction_columns}"
+        )
+    if predictions["player_key"].isna().any():
+        raise ValueError(
+            "Current predictions contain null player_key before context join"
+        )
+    if predictions["player_key"].duplicated().any():
+        raise ValueError(
+            "Current predictions contain duplicate player_key before context join"
+        )
+
+    key_columns = ["player_key", "pos", "year"]
+    context_value_columns = [
+        "team",
+        "current_avg_proj_points",
+        "avg_proj_points",
+        "model_input_avg_pick",
+        "adp_avg_pick",
+        "avg_pick",
+        "year_exp",
+        "adp_year_exp",
+        "source_year_exp",
+        "year_exp_source",
+        "year_exp_uncapped_delta",
+        "qb_team_rank",
+        "qb_team_rank_bucket",
+        "current_adp_source",
+        "current_context_missing_optional_fields",
+        "projection_context_scoring_hash",
+        "projection_context_run_id",
+        *MATCH_OUTPUT_COLS,
+    ]
+
+    def prepare_context(frame, marker):
+        frame = frame.copy()
+        missing_keys = [column for column in key_columns if column not in frame]
+        if missing_keys:
+            raise ValueError(
+                f"{marker} current context lacks key columns: {missing_keys}"
+            )
+        frame = frame[frame["player_key"].notna()].copy()
+        frame["player_key"] = frame["player_key"].astype("string")
+        frame["pos"] = frame["pos"].astype("string").str.upper()
+        if frame.duplicated(key_columns).any():
+            preview = frame.loc[
+                frame.duplicated(key_columns, keep=False),
+                key_columns,
+            ].head(10)
+            raise ValueError(
+                f"{marker} current context has duplicate canonical keys: "
+                f"{preview.to_dict('records')}"
+            )
+        keep_columns = key_columns + [
+            column
+            for column in context_value_columns
+            if column in frame.columns
+        ]
+        for provenance_column in (
+            "current_context_source",
+            "current_context_match_method",
+        ):
+            if provenance_column in frame:
+                keep_columns.append(provenance_column)
+        prepared = frame[keep_columns].copy()
+        prepared[f"_{marker}_context_match"] = 1
+        return prepared
+
+    model_context = prepare_context(model_input_context, "model_input")
+    fallback_context = prepare_context(v2_fallback_context, "v2_fallback")
+    output = predictions.merge(
+        model_context,
+        on=key_columns,
+        how="left",
+        validate="one_to_one",
+        suffixes=("", "_model_input"),
+    )
+    # Ensure every model-input context value receives an unambiguous suffix
+    # before the fallback merge, including columns absent from predictions.
+    rename_model = {
+        column: f"{column}_model_input"
+        for column in context_value_columns
+        if column in output.columns
+    }
+    rename_model.update(
+        {
+            column: f"{column}_model_input"
+            for column in (
+                "current_context_source",
+                "current_context_match_method",
+            )
+            if column in output.columns
+        }
+    )
+    output = output.rename(columns=rename_model)
+    output = output.merge(
+        fallback_context,
+        on=key_columns,
+        how="left",
+        validate="one_to_one",
+        suffixes=("", "_v2_fallback"),
+    )
+    rename_fallback = {
+        column: f"{column}_v2_fallback"
+        for column in context_value_columns
+        if column in output.columns
+    }
+    rename_fallback.update(
+        {
+            column: f"{column}_v2_fallback"
+            for column in (
+                "current_context_source",
+                "current_context_match_method",
+            )
+            if column in output.columns
+        }
+    )
+    output = output.rename(columns=rename_fallback)
+
+    fallback_fields = [[] for _ in range(len(output))]
+    prefer_v2_scoring_context = LEAGUE == "nffc"
+    used_v2_scoring_context = pd.Series(
+        False,
+        index=output.index,
+        dtype=bool,
+    )
+    for column in context_value_columns:
+        model_column = f"{column}_model_input"
+        fallback_column = f"{column}_v2_fallback"
+        model_values = (
+            output[model_column]
+            if model_column in output
+            else pd.Series(pd.NA, index=output.index)
+        )
+        fallback_values = (
+            output[fallback_column]
+            if fallback_column in output
+            else pd.Series(pd.NA, index=output.index)
+        )
+        if (
+            prefer_v2_scoring_context
+            and column in NFFC_SCORING_SENSITIVE_CURRENT_CONTEXT_COLS
+        ):
+            # The Model_Inputs projections are DK-scored. They cannot fill or
+            # override an NFFC-sensitive matcher field, even when non-null.
+            use_fallback = fallback_values.notna()
+            output[column] = fallback_values
+            used_v2_scoring_context |= use_fallback
+        else:
+            use_fallback = model_values.isna() & fallback_values.notna()
+            output[column] = model_values.where(
+                model_values.notna(),
+                fallback_values,
+            )
+        for index in np.flatnonzero(use_fallback.to_numpy()):
+            fallback_fields[index].append(column)
+
+    model_match = output["_model_input_context_match"].eq(1)
+    fallback_match = output["_v2_fallback_context_match"].eq(1)
+    used_fallback = pd.Series(
+        [bool(fields) for fields in fallback_fields],
+        index=output.index,
+    )
+    output["current_context_source"] = np.select(
+        [
+            model_match & used_v2_scoring_context,
+            ~model_match & fallback_match & prefer_v2_scoring_context,
+            model_match & used_fallback,
+            model_match,
+            ~model_match & fallback_match,
+        ],
+        [
+            "model_inputs_with_v2_scoring_context",
+            "v2_player_season_features_scoring_context",
+            "model_inputs_with_v2_feature_fill",
+            "model_inputs_projection_context",
+            "v2_player_season_features_fallback",
+        ],
+        default="missing",
+    )
+    model_method = output.get(
+        "current_context_match_method_model_input",
+        pd.Series(pd.NA, index=output.index),
+    )
+    fallback_method = output.get(
+        "current_context_match_method_v2_fallback",
+        pd.Series(pd.NA, index=output.index),
+    )
+    output["current_context_match_method"] = model_method.where(
+        model_method.notna(),
+        fallback_method,
+    ).fillna("unresolved")
+    output["current_context_fallback_fields"] = [
+        ",".join(fields) for fields in fallback_fields
+    ]
+    output["current_context_missing_fields"] = output.apply(
+        _missing_context_fields,
+        columns=CURRENT_CONTEXT_REQUIRED_COLS,
+        axis=1,
+    )
+    if "current_context_missing_optional_fields" not in output:
+        output["current_context_missing_optional_fields"] = ""
+    output["current_context_missing_optional_fields"] = output[
+        "current_context_missing_optional_fields"
+    ].fillna("")
+
+    missing_required = output["current_context_missing_fields"].ne("")
+    if missing_required.any():
+        preview = output.loc[
+            missing_required,
+            [
+                "player",
+                "player_key",
+                "pos",
+                "pred_fp_per_game",
+                "current_context_source",
+                "current_context_missing_fields",
+            ],
+        ].head(20)
+        raise ValueError(
+            "Recommendation-eligible production rows lack required key-first "
+            f"template context: {preview.to_dict('records')}"
+        )
+
+    drop_columns = [
+        column
+        for column in output.columns
+        if column.endswith("_model_input")
+        or column.endswith("_v2_fallback")
+        or column
+        in {
+            "_model_input_context_match",
+            "_v2_fallback_context_match",
+        }
+    ]
+    return output.drop(columns=drop_columns)
+
+
+def recompute_selected_universe_match_features(player_map):
+    """Rebuild relative features with one canonical, temporary team key.
+
+    Current source tables use a mix of provider team labels (for example,
+    ``LA``/``LAR`` and ``ARZ``/``ARI``).  Team-room and quarterback-depth
+    features must treat those aliases as one franchise, while the outward
+    player-map contract continues to expose the source label.  Free-agent
+    sentinels remain ineligible for team grouping through ``has_current_team``.
+    """
+
+    player_map = player_map.copy()
+    regenerated_match_columns = sorted(
+        set(MATCH_OUTPUT_COLS)
+        - set(PROJECTION_COMPONENT_COLS)
+        - set(PROJECTION_UNCERTAINTY_SOURCE_COLS)
+    )
+    regenerated_auxiliary_columns = [
+        "team_rb_rush_points",
+        "team_rb_rec_points",
+        "team_rec_points",
+        "pass_catcher_share_of_room",
+    ]
+    player_map = player_map.drop(
+        columns=(
+            regenerated_match_columns
+            + regenerated_auxiliary_columns
+        ),
+        errors="ignore",
+    )
+
+    outward_team_column = "__outward_team_label"
+    if outward_team_column in player_map:
+        raise ValueError(
+            f"Selected-universe context already contains {outward_team_column}"
+        )
+    player_map[outward_team_column] = player_map["team"]
+    player_map["team"] = player_map["team"].map(canonical_team)
+
+    player_map = add_qb_team_rank_fields(
+        player_map,
+        year_col="year",
+        projection_col="current_avg_proj_points",
+    )
+    player_map["current_projection_ppg"] = (
+        pd.to_numeric(
+            player_map["current_avg_proj_points"],
+            errors="coerce",
+        )
+        / WEEK_COUNT
+    )
+    player_map["context_projection_rank_pct"] = (
+        player_map.groupby(["year", "pos"])[
+            "current_projection_ppg"
+        ]
+        .rank(method="first", pct=True, ascending=True)
+        .astype(float)
+    )
+    player_map = add_template_match_features(
+        player_map,
+        group_cols=["year", "pos"],
+        rank_pct_col="context_projection_rank_pct",
+        total_points_col="current_avg_proj_points",
+        projection_ppg_col="current_projection_ppg",
+    )
+    player_map["team"] = player_map.pop(outward_team_column)
+    return player_map
+
+
+def build_player_map_base(v2_database=None):
     preds = simulation_dm.read(
         f"""
         SELECT *
@@ -2940,7 +4798,27 @@ def build_player_map_base():
         """,
         SIMULATION_DB_NAME,
     )
-    preds = clean_player_names(preds)
+    v2_database = resolve_v2_database(v2_database)
+    if "player_key" not in preds.columns or preds["player_key"].isna().all():
+        # Name cleaning remains a compatibility path for legacy, unkeyed
+        # publications. Keyed V2 rows already carry the canonical display name;
+        # cleaning them would turn names such as Tetairoa McMillan back into a
+        # source alias even though identity resolution is already complete.
+        preds = clean_player_names(preds)
+        preds = attach_v2_player_keys(
+            preds,
+            v2_database,
+            season_column="year",
+        )
+    elif preds["player_key"].isna().any():
+        raise ValueError(
+            "Current production prediction slice mixes keyed and unkeyed rows"
+        )
+    preds["player_key"] = preds["player_key"].astype("string")
+    if preds["player_key"].duplicated().any():
+        raise ValueError(
+            "Current production prediction slice has duplicate player_key"
+        )
     preds = add_projection_buckets(
         preds,
         value_col="pred_fp_per_game",
@@ -2948,32 +4826,29 @@ def build_player_map_base():
         pct_col="prediction_rank_pct",
     )
 
-    current_context = load_current_player_context()
-    context_cols = [
-        "player",
-        "pos",
-        "year",
-        "team",
-        "current_avg_proj_points",
-        "avg_proj_points",
-        "avg_pick",
-        "year_exp",
-        "source_year_exp",
-        "year_exp_source",
-        "year_exp_uncapped_delta",
-        "qb_team_rank",
-        "qb_team_rank_bucket",
-    ] + MATCH_OUTPUT_COLS
-    context_cols = [col for col in context_cols if col in current_context.columns]
-    player_map = preds.merge(
-        current_context[context_cols],
-        on=["player", "pos", "year"],
-        how="left",
+    current_context = load_current_player_context(
+        v2_database=v2_database,
+    )
+    fallback_context = load_v2_current_player_context(
+        v2_database=v2_database,
+        selected_player_keys=preds["player_key"],
+    )
+    player_map = attach_current_context_by_player_key(
+        preds,
+        current_context,
+        fallback_context,
     )
     player_map = add_exp_fields(player_map)
-    # Team workload structure is computed on the complete preseason universe
-    # before the final prediction table is pruned. Only projection-level fields
-    # are rebased to the final model here.
+    # Recompute every relative rank and team-room field on the one governed
+    # production universe. This keeps V2-only additions comparable with core
+    # ProjOnly rows and prevents a larger fallback mart from changing their
+    # percentile scale. Team aliases are canonicalized only while those
+    # relative features are built; outward source labels remain unchanged.
+    player_map = recompute_selected_universe_match_features(
+        player_map,
+    )
+    # Projection-level matching is anchored to the final V2 center after the
+    # shared-universe context has been rebuilt.
     player_map["match_projection_rank_pct"] = player_map[
         "prediction_rank_pct"
     ]
@@ -2994,6 +4869,7 @@ def build_player_map_base():
     player_map["template_pool_key"] = player_map.apply(player_pool_key, axis=1)
 
     cols = [
+        "player_key",
         "player",
         "pos",
         "year",
@@ -3012,7 +4888,13 @@ def build_player_map_base():
         "next_projection_source",
         "next_uncertainty_source",
         "v2_scoring_hash",
+        "projection_context_scoring_hash",
+        "projection_context_run_id",
         "current_avg_proj_points",
+        "avg_proj_points",
+        "model_input_avg_pick",
+        "adp_avg_pick",
+        "adp_year_exp",
         "avg_pick",
         "year_exp",
         "source_year_exp",
@@ -3027,6 +4909,7 @@ def build_player_map_base():
         "projection_decile",
         "projection_tier",
         "template_pool_key",
+        *CURRENT_CONTEXT_PROVENANCE_COLS,
     ]
     cols = [column for column in cols if column in player_map]
     cols = cols + [col for col in MATCH_OUTPUT_COLS if col in player_map.columns and col not in cols]
@@ -3088,8 +4971,9 @@ def finalize_player_map(player_map, pool_summary):
     return player_map
 
 
-def build_adp_audit(player_map):
+def build_adp_audit(player_map, v2_database=None):
     audit_cols = [
+        "player_key",
         "player",
         "pos",
         "team",
@@ -3102,57 +4986,51 @@ def build_adp_audit(player_map):
         "prediction_rank_pct",
         "projection_decile",
         "projection_tier",
+        "model_input_avg_pick",
+        "adp_avg_pick",
+        "adp_year_exp",
+        "year_exp",
+        *CURRENT_CONTEXT_PROVENANCE_COLS,
     ]
     audit_cols = [col for col in audit_cols if col in player_map.columns]
     audit = player_map[audit_cols].copy()
     audit = audit.rename(columns={"avg_pick": "player_map_avg_pick"})
-    audit["player_join_key"] = player_join_key(audit["player"]).values
+    audit["player_join_key"] = audit["player_key"].astype("string")
     audit["pos_pred_rank"] = (
         audit.groupby(["year", "version", "dataset", "pos"])["pred_fp_per_game"]
         .rank(method="first", ascending=False)
         .astype(int)
     )
 
-    current_context = load_current_player_context()
-    context_cols = [
-        "player",
-        "pos",
-        "year",
+    audit["projection_avg_pick"] = audit.get(
         "model_input_avg_pick",
+        np.nan,
+    )
+    audit["pipeline_exact_adp_avg_pick"] = audit.get(
         "adp_avg_pick",
-        "avg_pick",
-        "year_exp",
-        "adp_year_exp",
-    ]
-    context_cols = [col for col in context_cols if col in current_context.columns]
-    current_context = current_context[context_cols].rename(
-        columns={
-            "model_input_avg_pick": "projection_avg_pick",
-            "adp_avg_pick": "pipeline_exact_adp_avg_pick",
-            "avg_pick": "pipeline_context_avg_pick",
-            "year_exp": "pipeline_year_exp",
-            "adp_year_exp": "avg_adp_year_exp",
-        }
+        np.nan,
     )
-    audit = audit.merge(
-        current_context,
-        on=["player", "pos", "year"],
-        how="left",
-    )
+    audit["pipeline_context_avg_pick"] = audit["player_map_avg_pick"]
+    audit["pipeline_year_exp"] = audit.get("year_exp", np.nan)
+    audit["avg_adp_year_exp"] = audit.get("adp_year_exp", np.nan)
 
+    adp_league = current_adp_source_league()
     avg_adp = simulation_dm.read(
         f"""
-        SELECT player avg_adp_player,
+        SELECT player_key,
+               player avg_adp_player,
                CAST(year AS INTEGER) year,
                league,
                avg_pick avg_adp_pick,
                std_dev avg_adp_std_dev,
                min_pick avg_adp_min_pick,
                max_pick avg_adp_max_pick,
-               Years_of_Experience avg_adp_year_exp_app_match
+               Years_of_Experience avg_adp_year_exp_app_match,
+               identity_match_method avg_adp_key_match_method
         FROM Avg_ADPs
         WHERE year={YEAR}
-              AND league='{LEAGUE}'
+              AND league='{adp_league}'
+              AND pos IN ('QB', 'RB', 'WR', 'TE')
         """,
         SIMULATION_DB_NAME,
     )
@@ -3160,6 +5038,7 @@ def build_adp_audit(player_map):
     if len(avg_adp) == 0:
         avg_adp = pd.DataFrame(
             columns=[
+                "player_key",
                 "avg_adp_player",
                 "year",
                 "league",
@@ -3170,10 +5049,17 @@ def build_adp_audit(player_map):
                 "avg_adp_year_exp_app_match",
                 "avg_adp_join_key",
                 "avg_adp_join_key_match_count",
+                "avg_adp_key_match_method",
             ]
         )
     else:
-        avg_adp["avg_adp_join_key"] = player_join_key(avg_adp["avg_adp_player"]).values
+        avg_adp = validate_published_avg_adp_keys(
+            avg_adp,
+            f"{LEAGUE}_{adp_league}_adp_audit",
+        )
+        avg_adp["avg_adp_join_key"] = avg_adp[
+            "player_key"
+        ].astype("string")
         avg_adp_counts = (
             avg_adp.groupby("avg_adp_join_key", as_index=False)
             .agg(avg_adp_join_key_match_count=("avg_adp_player", "count"))
@@ -3185,10 +5071,11 @@ def build_adp_audit(player_map):
         )
 
     audit = audit.merge(
-        avg_adp.drop(columns=["year"], errors="ignore"),
-        left_on="player_join_key",
-        right_on="avg_adp_join_key",
+        avg_adp.drop(columns=["player_key"], errors="ignore"),
+        left_on=["player_join_key", "year"],
+        right_on=["avg_adp_join_key", "year"],
         how="left",
+        validate="one_to_one",
     )
 
     for col in [
@@ -3239,6 +5126,20 @@ def build_adp_audit(player_map):
     audit["missing_avg_adp_match"] = ~audit["has_avg_adp_match"]
     audit["using_player_map_fallback"] = audit["adp_source"].eq("player_map_fallback")
     audit["using_default_adp"] = audit["adp_source"].eq("default_240")
+    audit["governed_context_adp_fallback"] = (
+        audit["using_player_map_fallback"]
+        & audit["player_map_avg_pick"].gt(0)
+        & audit["player_map_avg_pick_source"].isin(
+            [
+                "model_input_projection",
+                "pipeline_exact_avg_adp",
+            ]
+        )
+        & audit.get(
+            "current_context_source",
+            pd.Series("missing", index=audit.index),
+        ).ne("missing")
+    )
     audit["duplicate_avg_adp_join_key"] = (
         audit["avg_adp_join_key_match_count"].fillna(0).astype(int).gt(1)
     )
@@ -3252,8 +5153,12 @@ def build_adp_audit(player_map):
     audit["high_impact_missing_avg_adp"] = (
         audit["missing_avg_adp_match"] & audit["high_projection_player"]
     )
-    audit["needs_review"] = (
+    audit["high_impact_unresolved_adp"] = (
         audit["high_impact_missing_avg_adp"]
+        & ~audit["governed_context_adp_fallback"]
+    )
+    audit["needs_review"] = (
+        audit["high_impact_unresolved_adp"]
         | (audit["using_default_adp"] & audit["pred_fp_per_game"].gt(0))
         | audit["duplicate_avg_adp_join_key"]
     )
@@ -3262,8 +5167,10 @@ def build_adp_audit(player_map):
         issues = []
         if row.using_default_adp:
             issues.append("missing_avg_adp_default_240")
+        elif row.governed_context_adp_fallback:
+            issues.append("governed_context_adp_fallback")
         elif row.using_player_map_fallback:
-            issues.append("missing_avg_adp_player_map_fallback")
+            issues.append("unresolved_player_map_adp_fallback")
         if row.duplicate_avg_adp_join_key:
             issues.append("duplicate_avg_adp_join_key")
         if len(issues) == 0:
@@ -3273,6 +5180,7 @@ def build_adp_audit(player_map):
     audit["issue_type"] = audit.apply(issue_type, axis=1)
 
     ordered_cols = [
+        "player_key",
         "player",
         "pos",
         "team",
@@ -3301,14 +5209,18 @@ def build_adp_audit(player_map):
         "player_join_key",
         "avg_adp_join_key",
         "avg_adp_join_key_match_count",
+        "avg_adp_key_match_method",
         "missing_avg_adp_match",
         "using_player_map_fallback",
         "using_default_adp",
+        "governed_context_adp_fallback",
         "duplicate_avg_adp_join_key",
         "high_projection_player",
         "high_impact_missing_avg_adp",
+        "high_impact_unresolved_adp",
         "needs_review",
         "issue_type",
+        *CURRENT_CONTEXT_PROVENANCE_COLS,
     ]
     ordered_cols = [col for col in ordered_cols if col in audit.columns]
     return audit[ordered_cols].sort_values(
@@ -3322,12 +5234,590 @@ def build_adp_audit(player_map):
     ).reset_index(drop=True)
 
 
+def _file_sha256(path, chunk_size=1024 * 1024):
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as handle:
+        for chunk in iter(lambda: handle.read(chunk_size), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _validate_sqlite_file_integrity(database_path):
+    database_path = Path(database_path).resolve()
+    try:
+        with closing(
+            sqlite3.connect(
+                f"file:{database_path.as_posix()}?mode=ro",
+                uri=True,
+            )
+        ) as connection:
+            results = [
+                str(row[0])
+                for row in connection.execute("PRAGMA integrity_check")
+            ]
+    except sqlite3.DatabaseError as exc:
+        raise ValueError(
+            f"SQLite integrity check failed for {database_path}: {exc}"
+        ) from exc
+    if results != ["ok"]:
+        raise ValueError(
+            f"SQLite integrity check failed for {database_path}: {results}"
+        )
+
+
+def _assert_no_active_sqlite_sidecars(database_path):
+    database_path = Path(database_path).resolve()
+    active = []
+    for suffix in ("-wal", "-journal"):
+        sidecar = Path(f"{database_path}{suffix}")
+        try:
+            size_bytes = sidecar.stat().st_size
+        except FileNotFoundError:
+            continue
+        if size_bytes > 0:
+            active.append(f"{sidecar.name} ({size_bytes} bytes)")
+    if active:
+        raise ValueError(
+            "Cannot byte-copy SQLite while an active sidecar exists: "
+            + ", ".join(active)
+        )
+
+
+def copy_sqlite_database_atomic(source, destination):
+    """Replace a live SQLite file only after an exact verified sibling copy."""
+
+    source = Path(source).resolve()
+    destination = Path(destination).resolve()
+    if source == destination:
+        raise ValueError("SQLite source and destination must differ")
+    if not source.is_file():
+        raise FileNotFoundError(f"SQLite source does not exist: {source}")
+    if not destination.parent.is_dir():
+        raise FileNotFoundError(
+            "SQLite destination directory does not exist: "
+            f"{destination.parent}"
+        )
+
+    _assert_no_active_sqlite_sidecars(source)
+    _assert_no_active_sqlite_sidecars(destination)
+    _validate_sqlite_file_integrity(source)
+    source_size_before = source.stat().st_size
+    source_sha256_before = _file_sha256(source)
+    descriptor, temp_name = tempfile.mkstemp(
+        prefix=f".{destination.name}.",
+        suffix=".tmp",
+        dir=destination.parent,
+    )
+    os.close(descriptor)
+    temp_path = Path(temp_name)
+    try:
+        shutil.copyfile(source, temp_path)
+        with temp_path.open("r+b") as copied_file:
+            copied_file.flush()
+            os.fsync(copied_file.fileno())
+
+        copied_size = temp_path.stat().st_size
+        copied_sha256 = _file_sha256(temp_path)
+        source_size_after = source.stat().st_size
+        source_sha256_after = _file_sha256(source)
+        _assert_no_active_sqlite_sidecars(source)
+        if not (
+            source_size_before
+            == copied_size
+            == source_size_after
+        ):
+            raise ValueError(
+                "SQLite copy size verification failed: "
+                f"source_before={source_size_before}, copied={copied_size}, "
+                f"source_after={source_size_after}"
+            )
+        if not (
+            source_sha256_before
+            == copied_sha256
+            == source_sha256_after
+        ):
+            raise ValueError(
+                "SQLite copy SHA-256 verification failed; the source changed "
+                "during copy or the sibling copy differs"
+            )
+        _validate_sqlite_file_integrity(temp_path)
+        _assert_no_active_sqlite_sidecars(destination)
+        os.replace(temp_path, destination)
+        return {
+            "size_bytes": copied_size,
+            "sha256": copied_sha256,
+        }
+    finally:
+        if temp_path.exists():
+            temp_path.unlink()
+
+
+def synchronize_sqlite_tables_atomic(source, destination, table_names):
+    """Atomically replace selected app tables and verify exact row parity."""
+
+    source = Path(source).resolve()
+    destination = Path(destination).resolve()
+    table_names = tuple(dict.fromkeys(table_names))
+    if not table_names:
+        raise ValueError("At least one SQLite table is required for sync")
+    if not source.is_file():
+        raise FileNotFoundError(f"SQLite source does not exist: {source}")
+    if not destination.is_file():
+        raise FileNotFoundError(
+            f"SQLite destination does not exist: {destination}"
+        )
+
+    _validate_sqlite_file_integrity(source)
+    row_counts = {}
+    with closing(sqlite3.connect(destination)) as app_conn:
+        app_conn.execute("ATTACH DATABASE ? AS source_db", (str(source),))
+        app_conn.execute("BEGIN IMMEDIATE")
+        try:
+            placeholders = ", ".join("?" for _ in table_names)
+            source_table_rows = {
+                str(row[0]): str(row[1])
+                for row in app_conn.execute(
+                    "SELECT name, sql FROM source_db.sqlite_master "
+                    f"WHERE type='table' AND name IN ({placeholders})",
+                    table_names,
+                )
+            }
+            missing_tables = sorted(
+                set(table_names).difference(source_table_rows)
+            )
+            if missing_tables:
+                raise ValueError(
+                    "SQLite table sync source is missing: "
+                    + ", ".join(missing_tables)
+                )
+            source_index_rows = {
+                str(row[0]): (str(row[1]), str(row[2]))
+                for row in app_conn.execute(
+                    "SELECT name, tbl_name, sql "
+                    "FROM source_db.sqlite_master "
+                    "WHERE type='index' AND sql IS NOT NULL "
+                    f"AND tbl_name IN ({placeholders}) "
+                    "ORDER BY name",
+                    table_names,
+                )
+            }
+
+            for table_name in table_names:
+                create_sql = source_table_rows[table_name]
+                app_conn.execute(
+                    f'DROP TABLE IF EXISTS main."{table_name}"'
+                )
+                app_conn.execute(create_sql)
+                app_conn.execute(
+                    f'INSERT INTO main."{table_name}" '
+                    f'SELECT * FROM source_db."{table_name}"'
+                )
+
+                source_count = int(
+                    app_conn.execute(
+                        f'SELECT COUNT(*) FROM source_db."{table_name}"'
+                    ).fetchone()[0]
+                )
+                destination_count = int(
+                    app_conn.execute(
+                        f'SELECT COUNT(*) FROM main."{table_name}"'
+                    ).fetchone()[0]
+                )
+                if destination_count != source_count:
+                    raise ValueError(
+                        "SQLite table sync row-count mismatch for "
+                        f"{table_name}: source={source_count}, "
+                        f"destination={destination_count}"
+                    )
+
+                columns = [
+                    str(row[1])
+                    for row in app_conn.execute(
+                        f'PRAGMA source_db.table_info("{table_name}")'
+                    )
+                ]
+                if not columns:
+                    raise ValueError(
+                        f"SQLite table sync source has no columns: {table_name}"
+                    )
+                quoted_columns = ", ".join(
+                    '"' + column.replace('"', '""') + '"'
+                    for column in columns
+                )
+                grouped_values = f"{quoted_columns}, COUNT(*)"
+                mismatch = app_conn.execute(
+                    "SELECT EXISTS("
+                    f"SELECT {grouped_values} "
+                    f'FROM source_db."{table_name}" '
+                    f"GROUP BY {quoted_columns} "
+                    "EXCEPT "
+                    f"SELECT {grouped_values} "
+                    f'FROM main."{table_name}" '
+                    f"GROUP BY {quoted_columns}"
+                    ")"
+                ).fetchone()[0]
+                if mismatch:
+                    raise ValueError(
+                        f"SQLite table sync content mismatch for {table_name}"
+                    )
+                row_counts[table_name] = source_count
+
+            for _, index_sql in source_index_rows.values():
+                app_conn.execute(index_sql)
+            destination_index_rows = {
+                str(row[0]): (str(row[1]), str(row[2]))
+                for row in app_conn.execute(
+                    "SELECT name, tbl_name, sql "
+                    "FROM main.sqlite_master "
+                    "WHERE type='index' AND sql IS NOT NULL "
+                    f"AND tbl_name IN ({placeholders}) "
+                    "ORDER BY name",
+                    table_names,
+                )
+            }
+            if destination_index_rows != source_index_rows:
+                raise ValueError(
+                    "SQLite table sync explicit-index parity mismatch: "
+                    f"source={source_index_rows}, "
+                    f"destination={destination_index_rows}"
+                )
+
+            integrity_results = [
+                str(row[0])
+                for row in app_conn.execute("PRAGMA main.integrity_check")
+            ]
+            if integrity_results != ["ok"]:
+                raise ValueError(
+                    "Auction SQLite integrity check failed before commit: "
+                    f"{integrity_results}"
+                )
+            app_conn.commit()
+        except Exception:
+            app_conn.rollback()
+            raise
+
+    _validate_sqlite_file_integrity(destination)
+    return row_counts
+
+
+def _reserve_sibling_path(destination, marker):
+    destination = Path(destination).resolve()
+    descriptor, reserved_name = tempfile.mkstemp(
+        prefix=f".{destination.name}.{marker}.",
+        suffix=".tmp",
+        dir=destination.parent,
+    )
+    os.close(descriptor)
+    reserved_path = Path(reserved_name)
+    reserved_path.unlink()
+    return reserved_path
+
+
+def _capture_sqlite_file_state(database_path):
+    database_path = Path(database_path).resolve()
+    if not database_path.exists():
+        return {"destination_existed": False}
+    if not database_path.is_file():
+        raise ValueError(
+            f"SQLite destination is not a regular file: {database_path}"
+        )
+    _assert_no_active_sqlite_sidecars(database_path)
+    _validate_sqlite_file_integrity(database_path)
+    size_before = database_path.stat().st_size
+    sha256 = _file_sha256(database_path)
+    size_after = database_path.stat().st_size
+    _assert_no_active_sqlite_sidecars(database_path)
+    if size_before != size_after:
+        raise ValueError(
+            f"SQLite destination changed while it was fingerprinted: "
+            f"{database_path}"
+        )
+    return {
+        "destination_existed": True,
+        "prior_destination_size_bytes": size_after,
+        "prior_destination_sha256": sha256,
+    }
+
+
+def _assert_sqlite_destination_unchanged(artifact):
+    destination = artifact["destination"]
+    label = artifact["label"]
+    expected_exists = artifact["destination_existed"]
+    if destination.exists() != expected_exists:
+        raise ValueError(
+            f"{label} live SQLite existence changed since staging"
+        )
+    if not expected_exists:
+        return
+    _assert_no_active_sqlite_sidecars(destination)
+    actual_size = destination.stat().st_size
+    actual_sha256 = _file_sha256(destination)
+    _assert_no_active_sqlite_sidecars(destination)
+    if (
+        actual_size != artifact["prior_destination_size_bytes"]
+        or actual_sha256 != artifact["prior_destination_sha256"]
+    ):
+        raise ValueError(
+            f"{label} live SQLite changed since staging; refusing to "
+            "overwrite newer app-owned state"
+        )
+
+
+def promote_sqlite_artifacts_with_rollback(artifacts):
+    """Promote prepared app databases and restore earlier files on failure."""
+
+    normalized = []
+    for artifact in artifacts:
+        label = str(artifact["label"])
+        staged = Path(artifact["staged"]).resolve()
+        destination = Path(artifact["destination"]).resolve()
+        expected_size = int(artifact["size_bytes"])
+        expected_sha256 = str(artifact["sha256"])
+        if "destination_existed" not in artifact:
+            raise ValueError(
+                f"{label} artifact lacks its staged destination state"
+            )
+        destination_existed = bool(artifact["destination_existed"])
+        prior_destination_size = artifact.get(
+            "prior_destination_size_bytes"
+        )
+        prior_destination_sha256 = artifact.get(
+            "prior_destination_sha256"
+        )
+        if destination_existed and (
+            prior_destination_size is None
+            or prior_destination_sha256 is None
+        ):
+            raise ValueError(
+                f"{label} artifact lacks its prior destination fingerprint"
+            )
+        if not staged.is_file():
+            raise FileNotFoundError(
+                f"{label} staged SQLite artifact does not exist: {staged}"
+            )
+        _assert_no_active_sqlite_sidecars(staged)
+        _validate_sqlite_file_integrity(staged)
+        if staged.stat().st_size != expected_size:
+            raise ValueError(
+                f"{label} staged SQLite size changed before promotion"
+            )
+        if _file_sha256(staged) != expected_sha256:
+            raise ValueError(
+                f"{label} staged SQLite SHA-256 changed before promotion"
+            )
+        normalized.append(
+            {
+                "label": label,
+                "staged": staged,
+                "destination": destination,
+                "size_bytes": expected_size,
+                "sha256": expected_sha256,
+                "destination_existed": destination_existed,
+                "prior_destination_size_bytes": (
+                    None
+                    if prior_destination_size is None
+                    else int(prior_destination_size)
+                ),
+                "prior_destination_sha256": (
+                    None
+                    if prior_destination_sha256 is None
+                    else str(prior_destination_sha256)
+                ),
+            }
+        )
+
+    promoted = []
+    try:
+        # Preflight every target before changing either app, then repeat the
+        # check immediately before each individual promotion to narrow the
+        # optimistic-concurrency window.
+        for artifact in normalized:
+            _assert_sqlite_destination_unchanged(artifact)
+        for artifact in normalized:
+            label = artifact["label"]
+            staged = artifact["staged"]
+            destination = artifact["destination"]
+            _assert_sqlite_destination_unchanged(artifact)
+            backup = None
+            if destination.exists():
+                backup = _reserve_sibling_path(
+                    destination,
+                    "pre_release_backup",
+                )
+                os.replace(destination, backup)
+                backup_size = backup.stat().st_size
+                backup_sha256 = _file_sha256(backup)
+                if (
+                    backup_size
+                    != artifact["prior_destination_size_bytes"]
+                    or backup_sha256
+                    != artifact["prior_destination_sha256"]
+                ):
+                    os.replace(backup, destination)
+                    raise ValueError(
+                        f"{label} live SQLite changed during promotion; "
+                        "restored the newer app state"
+                    )
+            try:
+                os.replace(staged, destination)
+            except Exception:
+                if backup is not None and backup.exists():
+                    os.replace(backup, destination)
+                raise
+            promoted.append(
+                {
+                    **artifact,
+                    "backup": backup,
+                }
+            )
+
+        for artifact in promoted:
+            destination = artifact["destination"]
+            _validate_sqlite_file_integrity(destination)
+            if destination.stat().st_size != artifact["size_bytes"]:
+                raise ValueError(
+                    f"{artifact['label']} promoted SQLite size mismatch"
+                )
+            if _file_sha256(destination) != artifact["sha256"]:
+                raise ValueError(
+                    f"{artifact['label']} promoted SQLite SHA-256 mismatch"
+                )
+    except Exception as promotion_error:
+        rollback_errors = []
+        for artifact in reversed(promoted):
+            destination = artifact["destination"]
+            backup = artifact["backup"]
+            try:
+                if backup is not None and backup.exists():
+                    os.replace(backup, destination)
+                elif destination.exists():
+                    destination.unlink()
+            except Exception as rollback_error:
+                rollback_errors.append(
+                    f"{artifact['label']}: {rollback_error}"
+                )
+        if rollback_errors:
+            raise RuntimeError(
+                "App database promotion failed and rollback was incomplete; "
+                "preserved sibling backups require manual recovery: "
+                + "; ".join(rollback_errors)
+            ) from promotion_error
+        raise
+
+    for artifact in promoted:
+        backup = artifact["backup"]
+        if backup is not None and backup.exists():
+            try:
+                backup.unlink()
+            except OSError as cleanup_error:
+                print(
+                    "Warning: app database promotion succeeded but a temporary "
+                    f"backup could not be removed: {backup} ({cleanup_error})"
+                )
+
+
+def validate_weekly_template_export(connection):
+    """Validate every retained league against its own weekly horizon."""
+
+    template_cols = {
+        row[1]
+        for row in connection.execute(
+            f'PRAGMA table_info("{TEMPLATE_TABLE}")'
+        )
+    }
+    missing_base_cols = sorted({"league", "player_key"} - template_cols)
+    if missing_base_cols:
+        raise ValueError(
+            "Production app export weekly-template schema is incomplete: "
+            + ", ".join(missing_base_cols)
+        )
+
+    missing_league_rows = int(
+        connection.execute(
+            f"""
+            SELECT COUNT(*)
+            FROM "{TEMPLATE_TABLE}"
+            WHERE league IS NULL
+               OR TRIM(CAST(league AS TEXT))=''
+            """
+        ).fetchone()[0]
+    )
+    if missing_league_rows:
+        raise ValueError(
+            "Production app export is incomplete because "
+            f"{missing_league_rows} retained template rows lack league."
+        )
+
+    retained_leagues = {
+        str(row[0]).strip().lower()
+        for row in connection.execute(
+            f'SELECT DISTINCT league FROM "{TEMPLATE_TABLE}"'
+        )
+    }
+    unsupported_leagues = sorted(
+        retained_leagues - set(WEEK_COUNT_BY_LEAGUE)
+    )
+    if unsupported_leagues:
+        raise ValueError(
+            "Production app export contains weekly templates for unsupported "
+            "leagues: "
+            + ", ".join(unsupported_leagues)
+        )
+
+    validated_horizons = {}
+    for league in sorted(retained_leagues):
+        horizon = int(WEEK_COUNT_BY_LEAGUE[league])
+        week_cols = (
+            [f"managed_week_{week}" for week in range(1, horizon + 1)]
+            + [f"played_week_{week}" for week in range(1, horizon + 1)]
+        )
+        required_cols = ["player_key", *week_cols]
+        missing_cols = sorted(set(required_cols) - template_cols)
+        if missing_cols:
+            raise ValueError(
+                "Production app export weekly-template schema is incomplete "
+                f"for {league}: "
+                + ", ".join(missing_cols)
+            )
+        null_predicate = " OR ".join(
+            f'"{column}" IS NULL' for column in week_cols
+        )
+        incomplete_rows = int(
+            connection.execute(
+                f"""
+                SELECT COUNT(*)
+                FROM "{TEMPLATE_TABLE}"
+                WHERE LOWER(TRIM(CAST(league AS TEXT)))=?
+                  AND (
+                      player_key IS NULL
+                      OR TRIM(CAST(player_key AS TEXT))=''
+                      OR {null_predicate}
+                  )
+                """,
+                (league,),
+            ).fetchone()[0]
+        )
+        if incomplete_rows:
+            raise ValueError(
+                "Production app export is incomplete because "
+                f"{incomplete_rows} retained {league} template rows lack "
+                f"canonical-key or played/managed-week fields through week "
+                f"{horizon}."
+            )
+        validated_horizons[league] = horizon
+    return validated_horizons
+
+
 def copy_simulation_db_to_apps():
     src = SIMULATION_DB_PATH
     generated_tables = [
+        AVG_ADP_TABLE,
+        AVG_ADP_AUDIT_TABLE,
+        AVG_ADP_RECEIPT_TABLE,
         "Final_Predictions_Resid",
         "V2_Production_Projection_Handoff",
         "V2_Production_Projection_Audit",
+        "V2_Production_Eligibility_Audit",
         TEMPLATE_TABLE,
         POOL_TABLE,
         POOL_SUMMARY_TABLE,
@@ -3337,12 +5827,7 @@ def copy_simulation_db_to_apps():
         BUCKET_AUDIT_TABLE,
         ADP_AUDIT_TABLE,
     ]
-    required_template_cols = (
-        ["player_key"]
-        + [f"managed_week_{week}" for week in WEEKS]
-        + [f"played_week_{week}" for week in WEEKS]
-    )
-    with sqlite3.connect(src) as source_conn:
+    with closing(sqlite3.connect(src)) as source_conn:
         source_tables = {
             row[0]
             for row in source_conn.execute(
@@ -3357,33 +5842,12 @@ def copy_simulation_db_to_apps():
                 "Production app export is missing required generated tables: "
                 + ", ".join(missing_generated)
             )
-        template_cols = {
-            row[1]
-            for row in source_conn.execute(
-                f'PRAGMA table_info("{TEMPLATE_TABLE}")'
-            )
-        }
-        missing_cols = sorted(set(required_template_cols) - template_cols)
-        if missing_cols:
-            print(
-                "Skipped app database export because the weekly-template schema "
-                f"is incomplete: {', '.join(missing_cols)}"
-            )
-            return
-        null_predicate = " OR ".join(
-            f'"{column}" IS NULL' for column in required_template_cols
+        avg_adps = pd.read_sql_query(
+            f'SELECT * FROM "{AVG_ADP_TABLE}"',
+            source_conn,
         )
-        incomplete_rows = source_conn.execute(
-            f'SELECT COUNT(*) FROM "{TEMPLATE_TABLE}" WHERE {null_predicate}'
-        ).fetchone()[0]
-        if incomplete_rows:
-            print(
-                "Skipped app database export because "
-                f"{incomplete_rows} retained template rows still have null "
-                "canonical-key or played/managed-week fields. Rebuild every "
-                "retained league slice."
-            )
-            return
+        validate_avg_adp_publication(avg_adps, year=YEAR)
+        validate_weekly_template_export(source_conn)
         player_map_cols = {
             row[1]
             for row in source_conn.execute(
@@ -3391,22 +5855,21 @@ def copy_simulation_db_to_apps():
             )
         }
         if "player_key" not in player_map_cols:
-            print(
-                "Skipped app database export because the current player map "
+            raise ValueError(
+                "Production app export is incomplete because the current "
+                "player map "
                 "does not contain player_key."
             )
-            return
         missing_player_map_keys = source_conn.execute(
             f'SELECT COUNT(*) FROM "{PLAYER_MAP_TABLE}" '
             'WHERE "player_key" IS NULL'
         ).fetchone()[0]
         if missing_player_map_keys:
-            print(
-                "Skipped app database export because "
+            raise ValueError(
+                "Production app export is incomplete because "
                 f"{missing_player_map_keys} current player-map rows have null "
                 "player_key."
             )
-            return
         final_prediction_cols = {
             row[1]
             for row in source_conn.execute(
@@ -3434,7 +5897,7 @@ def copy_simulation_db_to_apps():
             FROM Final_Predictions_Resid
             WHERE year=?
               AND dataset=?
-              AND version IN ('dk', 'beta')
+              AND version IN ('dk', 'nffc', 'beta')
               AND (
                     player_key IS NULL
                  OR pred_fp_per_game IS NULL
@@ -3448,7 +5911,7 @@ def copy_simulation_db_to_apps():
         ).fetchone()[0]
         if incomplete_projection_rows:
             raise ValueError(
-                f"{incomplete_projection_rows} DK/beta projection rows violate "
+                f"{incomplete_projection_rows} DK/NFFC/beta projection rows violate "
                 "the V2 production handoff"
             )
 
@@ -3459,47 +5922,122 @@ def copy_simulation_db_to_apps():
             "/Users/borys/OneDrive/Documents/Github/"
             "Fantasy_Football_App/app/Simulation.sqlite3"
         )
-    if auction_dst.parent.exists():
-        if not auction_dst.exists():
-            shutil.copyfile(src, auction_dst)
-            print(f"Copied Simulation.sqlite3 to {auction_dst}")
-        else:
-            with sqlite3.connect(auction_dst) as app_conn:
-                app_conn.execute("ATTACH DATABASE ? AS source_db", (str(src),))
-                app_conn.execute("BEGIN IMMEDIATE")
-                try:
-                    for table_name in generated_tables:
-                        create_sql = app_conn.execute(
-                            "SELECT sql FROM source_db.sqlite_master "
-                            "WHERE type='table' AND name=?",
-                            (table_name,),
-                        ).fetchone()[0]
-                        app_conn.execute(
-                            f'DROP TABLE IF EXISTS main."{table_name}"'
-                        )
-                        app_conn.execute(create_sql)
-                        app_conn.execute(
-                            f'INSERT INTO main."{table_name}" '
-                            f'SELECT * FROM source_db."{table_name}"'
-                        )
-                    app_conn.commit()
-                except Exception:
-                    app_conn.rollback()
-                    raise
-            print(
-                f"Synchronized {len(generated_tables)} generated best-ball "
-                f"tables to {auction_dst}"
-            )
-
     snake_dst = sibling_root / "Fantasy_Football_Snake" / "app" / "Simulation.sqlite3"
     if not snake_dst.parent.exists():
         snake_dst = Path(
             "/Users/borys/OneDrive/Documents/Github/"
             "Fantasy_Football_Snake/app/Simulation.sqlite3"
         )
-    if snake_dst.parent.exists():
-        shutil.copyfile(src, snake_dst)
-        print(f"Copied Simulation.sqlite3 to {snake_dst}")
+    app_targets = []
+    staged_paths = []
+    with tempfile.TemporaryDirectory(
+        prefix="ff_simulation_release_"
+    ) as snapshot_directory:
+        source_snapshot = (
+            Path(snapshot_directory) / "Simulation.sqlite3"
+        )
+        source_receipt = copy_sqlite_database_atomic(
+            src,
+            source_snapshot,
+        )
+        auction_row_counts = None
+        try:
+            if auction_dst.parent.exists():
+                auction_stage = _reserve_sibling_path(
+                    auction_dst,
+                    "release_stage",
+                )
+                staged_paths.append(auction_stage)
+                if auction_dst.exists():
+                    prior_auction_receipt = copy_sqlite_database_atomic(
+                        auction_dst,
+                        auction_stage,
+                    )
+                    prior_auction_state = {
+                        "destination_existed": True,
+                        "prior_destination_size_bytes": (
+                            prior_auction_receipt["size_bytes"]
+                        ),
+                        "prior_destination_sha256": (
+                            prior_auction_receipt["sha256"]
+                        ),
+                    }
+                    auction_row_counts = synchronize_sqlite_tables_atomic(
+                        source_snapshot,
+                        auction_stage,
+                        generated_tables,
+                    )
+                else:
+                    prior_auction_state = {
+                        "destination_existed": False,
+                    }
+                    copy_sqlite_database_atomic(
+                        source_snapshot,
+                        auction_stage,
+                    )
+                app_targets.append(
+                    {
+                        "label": "Auction",
+                        "staged": auction_stage,
+                        "destination": auction_dst,
+                        "size_bytes": auction_stage.stat().st_size,
+                        "sha256": _file_sha256(auction_stage),
+                        **prior_auction_state,
+                    }
+                )
+
+            if snake_dst.parent.exists():
+                prior_snake_state = _capture_sqlite_file_state(snake_dst)
+                snake_stage = _reserve_sibling_path(
+                    snake_dst,
+                    "release_stage",
+                )
+                staged_paths.append(snake_stage)
+                snake_receipt = copy_sqlite_database_atomic(
+                    source_snapshot,
+                    snake_stage,
+                )
+                app_targets.append(
+                    {
+                        "label": "Snake",
+                        "staged": snake_stage,
+                        "destination": snake_dst,
+                        **snake_receipt,
+                        **prior_snake_state,
+                    }
+                )
+
+            # Probe/promote Snake first because it is a full-file replacement
+            # and is the destination most likely to be held open by an app.
+            app_targets.sort(
+                key=lambda artifact: artifact["label"] != "Snake"
+            )
+            promote_sqlite_artifacts_with_rollback(app_targets)
+        finally:
+            for staged_path in staged_paths:
+                if staged_path.exists():
+                    staged_path.unlink()
+
+    for artifact in app_targets:
+        if artifact["label"] == "Auction" and auction_row_counts is not None:
+            print(
+                f"Synchronized {len(generated_tables)} generated production "
+                f"tables ({sum(auction_row_counts.values())} rows) to "
+                f"{artifact['destination']}"
+            )
+        else:
+            print(
+                "Copied and verified Simulation.sqlite3 to "
+                f"{artifact['destination']} "
+                f"({artifact['size_bytes']} bytes, "
+                f"sha256={artifact['sha256']})"
+            )
+    if app_targets:
+        print(
+            "App release source snapshot: "
+            f"{source_receipt['size_bytes']} bytes, "
+            f"sha256={source_receipt['sha256']}"
+        )
 
 
 def parse_args(argv=None):
@@ -3603,7 +6141,9 @@ def main(
         league=active_league,
     )
     template_audit = build_template_join_audit(templates)
-    player_map_base = build_player_map_base()
+    player_map_base = build_player_map_base(
+        v2_database=active_v2_database,
+    )
     bucket_audit = build_bucket_comparability_audit(proj, player_map_base)
     pool_members, pool_summary = build_pool_tables(templates, player_map_base)
     player_map = finalize_player_map(player_map_base, pool_summary)
@@ -3613,7 +6153,10 @@ def main(
         v2_database=active_v2_database,
     )
     player_pool_audit = build_player_pool_audit(player_map, pool_members, templates)
-    adp_audit = build_adp_audit(player_map)
+    adp_audit = build_adp_audit(
+        player_map,
+        v2_database=active_v2_database,
+    )
     validate_weekly_template_audits(player_pool_audit, template_audit)
 
     write_best_ball_tables(
@@ -3766,6 +6309,8 @@ def main(
         .agg(
             players=("player", "count"),
             needs_review=("needs_review", "sum"),
+            governed_fallback=("governed_context_adp_fallback", "sum"),
+            unresolved=("high_impact_unresolved_adp", "sum"),
             high_impact_missing_avg_adp=("high_impact_missing_avg_adp", "sum"),
             default_240=("using_default_adp", "sum"),
         )

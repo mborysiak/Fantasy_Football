@@ -9,11 +9,21 @@ from pathlib import Path
 
 # Add Scripts directory to path to import config
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.append(
+    os.path.dirname(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    )
+)
 from config import YEAR, DB_NAME, POSITIONS, LEAGUE
 
 from ff.db_operations import DataManage
 from ff import general
 import ff.data_clean as dc
+from Scripts.V2.refresh_dk_adp import (
+    build_dk_adp_rows,
+    parse_dk_payload,
+    replace_current_dk_rows,
+)
 
 # set the root path and database management object
 root_path = general.get_main_path('Fantasy_Football')
@@ -101,17 +111,7 @@ def pull_draftkings_best_ball_adp():
     if not rows:
         raise ValueError("DraftKings best ball ADP data was not found in the Occupy Fantasy API response")
 
-    df = pd.DataFrame(rows)
-    required_cols = {'player_name', 'curr_adp'}
-    missing_cols = required_cols - set(df.columns)
-    if missing_cols:
-        raise ValueError(f"DraftKings best ball ADP response is missing columns: {missing_cols}")
-
-    df = df.rename(columns={'player_name': 'player', 'curr_adp': 'pick_dk'})
-    df = df[['player', 'pick_dk']].dropna()
-    df['pick_dk'] = df.pick_dk.astype('float')
-
-    return df
+    return parse_dk_payload(data)
 
 def split_fantasypros_best_ball_player(player_value):
     if pd.isna(player_value):
@@ -541,23 +541,12 @@ nffc = dm.read(f'''SELECT *
                 ''', f'Season_Stats_New')
 
 dk = pull_draftkings_best_ball_adp()
-dk.player = dk.player.apply(dc.name_clean)
-dk = dk.assign(year=YEAR)
-
-dk = pd.merge(nffc, dk, on=['player', 'year'], how='inner')
-
-dk['min_ratio'] = dk.min_pick / dk.avg_pick
-dk['max_ratio'] = dk.max_pick / dk.avg_pick
-dk['min_pick_dk'] = dk.min_ratio * dk.pick_dk
-dk['max_pick_dk'] = dk.max_ratio * dk.pick_dk
-
-dk = dk.drop(['avg_pick', 'min_pick', 'max_pick', 'min_ratio', 'max_ratio'], axis=1)
-dk = dk.rename(columns={'pick_dk': 'avg_pick', 'min_pick_dk': 'min_pick', 'max_pick_dk': 'max_pick'})
-dk = dk[nffc.columns]
-dk['league'] = 'dk'
-dk = dk.sort_values(by='avg_pick', ascending=True)
-dm.delete_from_db(DB_NAME, 'ADP_Averages', f"year={YEAR} AND league='dk'", create_backup=False)
-dm.write_to_db(dk, DB_NAME, 'ADP_Averages', 'append')
+dk = build_dk_adp_rows(nffc, dk, year=YEAR)
+replace_current_dk_rows(
+    Path(db_path) / f"{DB_NAME}.sqlite3",
+    dk,
+    year=YEAR,
+)
 
 #%%
 

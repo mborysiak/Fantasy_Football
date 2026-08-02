@@ -1,0 +1,10 @@
+method,ppg_weight,ypr_weight,td_rate_weight,primary,recency_half_life,wr_feature_count,wr_total_match_weight
+production,1.5,0.0,0.0,0,12.0,13,13.25
+ppg225_wr,2.25,0.0,0.0,0,12.0,13,14.0
+ypr050_wr,1.5,0.5,0.0,0,12.0,14,13.75
+tdrate050_wr,1.5,0.0,0.5,0,12.0,14,13.75
+both050_wr,1.5,0.5,0.5,0,12.0,15,14.25
+ppg225_ypr050_wr,2.25,0.5,0.0,1,12.0,14,14.5
+ppg225_tdrate050_wr,2.25,0.0,0.5,0,12.0,14,14.5
+ppg225_both025_wr,2.25,0.25,0.25,0,12.0,15,14.5
+ppg225_both050_wr,2.25,0.5,0.5,0,12.0,15,15.0

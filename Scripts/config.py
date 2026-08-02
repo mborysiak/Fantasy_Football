@@ -7,13 +7,16 @@ Update these values to change settings across all scripts without editing each f
 """
 
 import datetime as dt
+import os
 
 # =============================================================================
 # GENERAL SETTINGS
 # =============================================================================
 
-# Current year for projections and analysis
-YEAR = 2026
+# Current year for projections and analysis. Interactive/notebook runs retain
+# the latest approved default; the governed refresh sets FF_CURRENT_SEASON so
+# every importable downstream script follows its selected production cycle.
+YEAR = int(os.getenv("FF_CURRENT_SEASON", "2026"))
 
 # Primary league/version for analysis
 LEAGUE = 'dk'  # Options: 'nffc', 'beta', 'dk', 'nv'

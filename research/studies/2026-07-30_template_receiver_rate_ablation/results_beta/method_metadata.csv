@@ -1,0 +1,8 @@
+method,ypr_weight,td_rate_weight,positions,primary,recency_half_life,reception_shrinkage,total_match_weight,qb_feature_count,rb_feature_count,wr_feature_count,te_feature_count
+production,0.0,0.0,,0,12.0,10.0,58.25,13,16,13,13
+ypr_w050_wrte,0.5,0.0,"WR,TE",0,12.0,10.0,59.25,13,16,14,14
+tdrate_w050_wrte,0.0,0.5,"WR,TE",0,12.0,10.0,59.25,13,16,14,14
+both_w025_wrte,0.25,0.25,"WR,TE",0,12.0,10.0,59.25,13,16,15,15
+both_w050_wrte,0.5,0.5,"WR,TE",1,12.0,10.0,60.25,13,16,15,15
+both_w100_wrte,1.0,1.0,"WR,TE",0,12.0,10.0,62.25,13,16,15,15
+both_w050_rbwrte,0.5,0.5,"RB,WR,TE",0,12.0,10.0,61.25,13,18,15,15

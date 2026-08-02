@@ -8,6 +8,12 @@ import numpy as np
 import os
 import sqlite3
 from pathlib import Path
+
+# Staged/automated rebuilds must not pause on notebook diagnostic figures.
+# Set this before importing zModel_Functions, which imports pyplot.
+if os.getenv('FF_MODEL_DATABASE_DIR'):
+    os.environ.setdefault('MPLBACKEND', 'Agg')
+
 import zModel_Functions as mf
 import joblib
 from sklearn.base import clone
@@ -18,6 +24,12 @@ from skmodel import SciKitModel
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.model_selection import cross_val_predict
 from sklearn.metrics import r2_score, mean_squared_error
+from Scripts.V2.template_identity import attach_v2_player_keys
+from Scripts.V2.production_handoff import (
+    load_identity_frames,
+    resolve_source_player_keys,
+)
+from Scripts.config import YEAR
 
 from sklearn.preprocessing import StandardScaler
 from zFix_Standard_Dev import *
@@ -41,12 +53,14 @@ warnings.filterwarnings("ignore", category=UserWarning)
 
 # set the root path and database management object
 root_path = general.get_main_path('Fantasy_Football')
-db_path = f'{root_path}/Data/Databases/'
+db_path = os.getenv(
+    'FF_MODEL_DATABASE_DIR',
+    f'{root_path}/Data/Databases/',
+)
 dm = DataManage(db_path)
 
 # set core path
 PATH = f'{root_path}/Data/'
-YEAR = 2026
 LEAGUE = 'beta'
 NUM_TEAMS = 12
 TEAM_BUDGET = 298
@@ -61,8 +75,24 @@ SALARY_VALIDATION_TABLE = 'Salary_Validations_Resid'
 SALARY_BACKTEST_TABLE = 'Salary_Backtest_Predictions'
 SALARY_BACKTEST_START_YEAR = 2022
 SALARY_CALIBRATION_START_YEAR = 2021
-SALARY_METHOD_VERSION = 'current_locked_spec_v5_compact_salary_features'
+SALARY_METHOD_VERSION = 'current_locked_spec_v6_v2_population_11f'
 VALIDATION_DATASETS_ONLY = os.getenv('SALARY_VALIDATION_DATASETS_ONLY', '0') == '1'
+KEEPERS_ONLY = os.getenv('SALARY_KEEPERS_ONLY', '0') == '1'
+IS_STAGED_DATABASE_RUN = (
+    Path(db_path).resolve()
+    != (Path(root_path) / 'Data' / 'Databases').resolve()
+)
+V2_BETA_DATABASE = Path(
+    os.getenv(
+        'FF_V2_BETA_DATABASE',
+        str(
+            Path(root_path)
+            / 'Data'
+            / 'Databases'
+            / 'Projection_V2_beta.sqlite3'
+        ),
+    )
+)
 ENSEMBLE_FALLBACK_GAMES = 16.5
 SALARY_OPTUNA_ITERATIONS = 15
 SALARY_OPTUNA_TIMEOUT = 45
@@ -74,10 +104,12 @@ SALARY_MODEL_FEATURES = [
     # rolling ablation.
     'budget_adjusted_source_salary',
     'avg_pick_log',
-    # Projection level, projection/source disagreement, and upside.
+    # Projection level and projection/source disagreement. Weekly donor-tail
+    # width remains an audited simulation diagnostic, not a salary-model
+    # feature: it is a different construct from the historical OOS residual
+    # interval and did not improve strict rolling validation.
     'ensemble_pred_ppg',
     'ensemble_vs_price_gap',
-    'ensemble_pred_resid_90',
     # Role and breakout context.
     'pos_proj_points_share',
     'rb_pos_rush_share',
@@ -150,65 +182,56 @@ PROJECTION_SHARE_STD_FEATURES = [
 ]
 
 
-ty_keepers = {
-    'Bhayshul Tuten': [11],
-    'Chase Brown': [34],
-
-    'Cam Skattebo': [18],
-    'George Pickens': [39],
-
-    'Nico Collins': [42],
-
-    'Quinshon Judkins': [20],
-    'Garrett Wilson': [37],
-
-    'Javonte Williams': [17],
-
-    'Jaxon Smith Njigba': [42],
-    'Christian Mccaffrey': [72],
-
-    'Travis Etienne': [20],
-    'Mike Evans': [11],
-
-    'James Cook': [67],
-    'Puka Nacua': [75]
-}
-# ty_keepers = {
-#     "Devon Achane": [27],
-#     'Jayden Daniels': [36],
-
-#     'Baker Mayfield': [13],
-#     'Bucky Irving': [20],
-
-#     'Bo Nix': [11],
-#     'Tee Higgins': [27],
-
-#     'Rashee Rice': [10],
-#     'Chris Olave': [13],
-
-#     'Bijan Robinson': [107],
-#     'Brock Bowers': [11],
-    
-#     'Brian Thomas': [12],
-#     'Joe Burrow': [29],
-
-#     "Ja'Marr Chase": [71],
-#     'Ladd Mcconkey': [11],
-    
-#     'Chase Brown': [23],
-
-#     'Josh Jacobs': [42]
-# }
-
-ty_keepers = pd.DataFrame(
-    [(player, salary[0]) for player, salary in ty_keepers.items()],
-    columns=['player', 'ty_keeper_sal'],
+KEEPERS_FILE = Path(
+    os.getenv(
+        'FF_KEEPERS_FILE',
+        str(
+            Path(root_path)
+            / 'Data'
+            / 'OtherData'
+            / 'Keepers'
+            / f'keepers_{YEAR}_{LEAGUE}.csv'
+        ),
+    )
+).expanduser().resolve()
+if not KEEPERS_FILE.is_file():
+    raise FileNotFoundError(
+        f'Missing required {YEAR} {LEAGUE} keeper input: {KEEPERS_FILE}'
+    )
+ty_keepers = pd.read_csv(KEEPERS_FILE)
+required_keeper_columns = {'player', 'keeper_salary'}
+missing_keeper_columns = sorted(
+    required_keeper_columns.difference(ty_keepers.columns)
 )
+if missing_keeper_columns:
+    raise ValueError(
+        f'{KEEPERS_FILE} is missing keeper columns: '
+        f'{missing_keeper_columns}'
+    )
+ty_keepers = ty_keepers[['player', 'keeper_salary']].rename(
+    columns={'keeper_salary': 'ty_keeper_sal'}
+)
+ty_keepers['ty_keeper_sal'] = pd.to_numeric(
+    ty_keepers['ty_keeper_sal'],
+    errors='raise',
+)
+if (
+    ty_keepers['player'].isna().any()
+    or ty_keepers['player'].astype(str).str.strip().eq('').any()
+):
+    raise ValueError(f'{KEEPERS_FILE} contains blank keeper names')
 ty_keepers['player'] = ty_keepers.player.apply(dc.name_clean)
 ty_keepers['year'] = YEAR
 
 
-def write_league_keepers(keepers, db_file, year, league):
+def write_league_keepers(
+    keepers,
+    db_file,
+    year,
+    league,
+    *,
+    v2_database=None,
+):
     keeper_output = keepers[['player', 'ty_keeper_sal']].copy()
     keeper_output['player'] = keeper_output.player.apply(dc.name_clean)
     keeper_output['keeper_salary'] = pd.to_numeric(
@@ -217,7 +240,6 @@ def write_league_keepers(keepers, db_file, year, league):
     )
     keeper_output['year'] = int(year)
     keeper_output['league'] = league
-    keeper_output = keeper_output[['year', 'league', 'player', 'keeper_salary']]
 
     if keeper_output.player.duplicated().any():
         duplicates = keeper_output.loc[keeper_output.player.duplicated(), 'player'].tolist()
@@ -225,22 +247,84 @@ def write_league_keepers(keepers, db_file, year, league):
 
     conn = sqlite3.connect(db_file)
     try:
+        if v2_database is not None:
+            aliases, identities = load_identity_frames(Path(v2_database))
+            projection_keys = resolve_source_player_keys(
+                keeper_output[['player']].copy(),
+                aliases,
+                identities,
+                year=int(year),
+                source_name=f'{league}_league_keepers',
+            )
+            projection_keys = projection_keys[['player', 'player_key']]
+        else:
+            projection_keys = pd.read_sql_query(
+                '''SELECT player_key, player
+                     FROM Final_Predictions_Resid
+                    WHERE year=? AND version=? AND dataset='final_ensemble' ''',
+                conn,
+                params=(int(year), league),
+            )
+            projection_keys['player'] = projection_keys.player.apply(dc.name_clean)
+            if (
+                projection_keys.player_key.isna().any()
+                or projection_keys.player_key.duplicated().any()
+                or projection_keys.player.duplicated().any()
+            ):
+                raise ValueError(
+                    'Active production projections do not provide a unique '
+                    'keeper player-key bridge.'
+                )
+        keeper_output = keeper_output.merge(
+            projection_keys,
+            on='player',
+            how='left',
+            validate='one_to_one',
+        )
+        if keeper_output.player_key.isna().any():
+            missing = keeper_output.loc[
+                keeper_output.player_key.isna(), 'player'
+            ].tolist()
+            raise ValueError(
+                f'Keepers are outside the canonical production pool: {missing}'
+            )
+        keeper_output = keeper_output[[
+            'year',
+            'league',
+            'player_key',
+            'player',
+            'keeper_salary',
+        ]]
         with conn:
             conn.execute(
                 '''CREATE TABLE IF NOT EXISTS League_Keepers (
                        year INTEGER NOT NULL,
                        league TEXT NOT NULL,
+                       player_key TEXT,
                        player TEXT NOT NULL,
                        keeper_salary REAL NOT NULL,
                        PRIMARY KEY (year, league, player)
                    )'''
             )
+            keeper_columns = {
+                row[1]
+                for row in conn.execute('PRAGMA table_info("League_Keepers")')
+            }
+            if 'player_key' not in keeper_columns:
+                conn.execute(
+                    'ALTER TABLE League_Keepers ADD COLUMN player_key TEXT'
+                )
             conn.execute(
                 'DELETE FROM League_Keepers WHERE year=? AND league=?',
                 (int(year), league),
             )
             if len(keeper_output) > 0:
                 keeper_output.to_sql('League_Keepers', conn, if_exists='append', index=False)
+            conn.execute(
+                '''CREATE UNIQUE INDEX IF NOT EXISTS
+                       ux_league_keepers_slice_player_key
+                   ON League_Keepers(year, league, player_key)'''
+            )
     finally:
         conn.close()
 
@@ -256,7 +340,12 @@ else:
         Path(db_path) / 'Simulation.sqlite3',
         YEAR,
         LEAGUE,
+        v2_database=V2_BETA_DATABASE,
     )
+
+if KEEPERS_ONLY:
+    print('Keeper publication complete; skipping salary-model cells.')
+    raise SystemExit(0)
 
 
 #%%
@@ -309,7 +398,12 @@ salaries.player = salaries.player.apply(dc.name_clean)
 if VALIDATION_DATASETS_ONLY:
     print('Validation-only run: leaving the current Simulation.Salaries slice unchanged.')
 else:
-    dm.delete_from_db('Simulation', 'Salaries', f"year='{YEAR}' AND league='{LEAGUE}'")
+    dm.delete_from_db(
+        'Simulation',
+        'Salaries',
+        f"year='{YEAR}' AND league='{LEAGUE}'",
+        create_backup=not IS_STAGED_DATABASE_RUN,
+    )
     dm.write_to_db(salaries, 'Simulation', 'Salaries', 'append')
 
 #%%
@@ -426,6 +520,7 @@ def get_adp():
         base_columns = [
             'player',
             'year',
+            'team',
             'avg_pick',
             'avg_pick_log',
             'avg_proj_points',
@@ -450,7 +545,188 @@ def get_adp():
         )
         stats = _aggregate_projection_share_sources(stats, family_columns)
         stats['pos'] = pos
+        stats['player_key'] = pd.NA
+        stats['player_key_match_method'] = pd.NA
+        stats['salary_population_source'] = 'model_inputs_projonly'
+        current_mask = pd.to_numeric(
+            stats.year,
+            errors='coerce',
+        ).eq(YEAR)
+        if current_mask.any():
+            current = attach_v2_player_keys(
+                stats.loc[current_mask].copy(),
+                V2_BETA_DATABASE,
+                season_column='year',
+                require_complete=True,
+            )
+            stats.loc[current_mask, 'player_key'] = (
+                current.player_key.to_numpy()
+            )
+            stats.loc[current_mask, 'player_key_match_method'] = (
+                current.player_key_match_method.to_numpy()
+            )
         all_stats = pd.concat([all_stats, stats], axis=0)
+
+    production_population = dm.read(
+        f'''SELECT player_key, player, pos, year
+              FROM Final_Predictions_Resid
+             WHERE version='{LEAGUE}'
+                   AND year={YEAR}
+                   AND dataset='final_ensemble' ''',
+        'Simulation',
+    )
+    if (
+        production_population.player_key.isna().any()
+        or production_population.player_key.duplicated().any()
+    ):
+        raise ValueError(
+            'Current production salary population lacks unique player keys.'
+        )
+    production_labels = (
+        production_population.assign(
+            internal_player=production_population.player.apply(dc.name_clean)
+        )
+        .set_index('player_key')
+        .internal_player
+    )
+    current_rows = pd.to_numeric(
+        all_stats.year,
+        errors='coerce',
+    ).eq(YEAR)
+    all_stats.loc[current_rows, 'salary_source_player_label'] = (
+        all_stats.loc[current_rows, 'player']
+    )
+    all_stats.loc[current_rows, 'player'] = (
+        all_stats.loc[current_rows, 'player_key'].map(production_labels)
+    )
+    if all_stats.loc[current_rows, 'player'].isna().any():
+        missing = all_stats.loc[
+            current_rows & all_stats.player.isna(),
+            'player_key',
+        ].tolist()
+        raise ValueError(
+            'Current ProjOnly salary rows are outside canonical production: '
+            f'{missing[:20]}'
+        )
+    current_core_keys = set(
+        all_stats.loc[
+            pd.to_numeric(all_stats.year, errors='coerce').eq(YEAR),
+            'player_key',
+        ].dropna().astype(str)
+    )
+    missing_population = production_population.loc[
+        ~production_population.player_key.astype(str).isin(current_core_keys)
+    ].copy()
+    if len(missing_population) > 0:
+        with sqlite3.connect(V2_BETA_DATABASE) as connection:
+            v2_features = pd.read_sql_query(
+                f'''SELECT player_key,
+                           display_name,
+                           season,
+                           position,
+                           team,
+                           year_exp,
+                           adp_median,
+                           adp_log,
+                           expert_points_median,
+                           expert_points_iqr,
+                           expert_rank_median,
+                           expert_ppg_exp_diff,
+                           consensus_room_share
+                      FROM player_season_features
+                     WHERE season=?
+                           AND player_key IN (
+                               {', '.join('?' for _ in missing_population.player_key)}
+                           )''',
+                connection,
+                params=(
+                    int(YEAR),
+                    *missing_population.player_key.astype(str).tolist(),
+                ),
+            )
+        fallback = missing_population.merge(
+            v2_features,
+            on='player_key',
+            how='left',
+            validate='one_to_one',
+        )
+        required_fallback = [
+            'position',
+            'team',
+            'year_exp',
+            'adp_median',
+            'adp_log',
+            'expert_points_median',
+        ]
+        if fallback[required_fallback].isna().any().any():
+            missing = fallback.loc[
+                fallback[required_fallback].isna().any(axis=1),
+                ['player_key', 'player', *required_fallback],
+            ].to_dict('records')
+            raise ValueError(
+                'V2 salary population fallback lacks required context: '
+                f'{missing}'
+            )
+        fallback['pos'] = fallback.pop('position')
+        fallback['player'] = fallback.player.apply(dc.name_clean)
+        fallback['year'] = YEAR
+        fallback['avg_pick'] = fallback.pop('adp_median')
+        fallback['avg_pick_log'] = fallback.pop('adp_log')
+        fallback['avg_proj_points'] = fallback.pop(
+            'expert_points_median'
+        )
+        fallback['std_proj_points'] = (
+            pd.to_numeric(
+                fallback.pop('expert_points_iqr'),
+                errors='coerce',
+            ).fillna(0)
+            / 1.349
+        )
+        fallback['avg_pos_rank'] = fallback.pop('expert_rank_median')
+        fallback['avg_proj_points_exp_diff'] = (
+            pd.to_numeric(
+                fallback.pop('expert_ppg_exp_diff'),
+                errors='coerce',
+            ).fillna(0)
+            * 17
+        )
+        for feature in PROJECTION_SHARE_FEATURES:
+            fallback[feature] = np.nan
+        fallback['pos_proj_points_share'] = fallback.pop(
+            'consensus_room_share'
+        )
+        for feature in PROJECTION_SHARE_STD_FEATURES:
+            fallback[feature] = np.nan
+        fallback['player_key_match_method'] = (
+            'production_final_player_key'
+        )
+        fallback['salary_source_player_label'] = fallback[
+            'display_name'
+        ]
+        fallback['salary_population_source'] = (
+            'v2_player_season_features_fallback'
+        )
+        all_stats = pd.concat(
+            [all_stats, fallback[all_stats.columns]],
+            ignore_index=True,
+            sort=False,
+        )
+
+    current_salary_keys = set(
+        all_stats.loc[
+            pd.to_numeric(all_stats.year, errors='coerce').eq(YEAR),
+            'player_key',
+        ].dropna().astype(str)
+    )
+    expected_salary_keys = set(
+        production_population.player_key.astype(str)
+    )
+    if current_salary_keys != expected_salary_keys:
+        raise ValueError(
+            'Salary candidate population does not match canonical production: '
+            f'missing={sorted(expected_salary_keys - current_salary_keys)[:10]}, '
+            f'extra={sorted(current_salary_keys - expected_salary_keys)[:10]}'
+        )
 
     share_cols = PROJECTION_SHARE_FEATURES + PROJECTION_SHARE_STD_FEATURES
     all_stats['projection_share_fallback'] = all_stats[
@@ -474,6 +750,126 @@ def get_adp():
     )
     all_stats['log_avg_points'] = np.log(all_stats.avg_proj_points)
     return all_stats
+
+
+def _weighted_quantile(values, weights, quantile):
+    values = np.asarray(values, dtype=float)
+    weights = np.asarray(weights, dtype=float)
+    valid = np.isfinite(values) & np.isfinite(weights) & (weights > 0)
+    values = values[valid]
+    weights = weights[valid]
+    if len(values) == 0 or weights.sum() <= 0:
+        return np.nan
+    order = np.argsort(values, kind='mergesort')
+    values = values[order]
+    cumulative = np.cumsum(weights[order])
+    cumulative = cumulative / cumulative[-1]
+    index = min(
+        int(np.searchsorted(cumulative, quantile, side='left')),
+        len(values) - 1,
+    )
+    return float(values[index])
+
+
+def get_current_weekly_residual_quantiles():
+    """Return centered current upside from the app's joint weekly donor pools."""
+    with sqlite3.connect(
+        Path(db_path) / 'Simulation.sqlite3'
+    ) as connection:
+        required_tables = {
+            row[0]
+            for row in connection.execute(
+                """SELECT name
+                     FROM sqlite_master
+                    WHERE type='table'
+                          AND name IN (
+                              'Best_Ball_Weekly_Template_Pools',
+                              'Best_Ball_Weekly_Templates'
+                          )"""
+            )
+        }
+        if required_tables != {
+            'Best_Ball_Weekly_Template_Pools',
+            'Best_Ball_Weekly_Templates',
+        }:
+            raise ValueError(
+                'Joint weekly template pools must be rebuilt before salaries.'
+            )
+        rows = pd.read_sql_query(
+            '''SELECT p.pool_player player,
+                      p.pool_year year,
+                      p.pos,
+                      t.active_ppg_resid,
+                      p.template_sample_prob
+                 FROM Best_Ball_Weekly_Template_Pools p
+                 INNER JOIN Best_Ball_Weekly_Templates t
+                    ON t.league = p.template_league
+                   AND t.template_id = p.template_id
+                WHERE p.pool_year = ?
+                      AND p.pool_version = ?
+                      AND p.pool_dataset = 'final_ensemble' ''',
+            connection,
+            params=(int(YEAR), LEAGUE),
+        )
+    if rows.empty:
+        raise ValueError(
+            f'No weekly template residual pools exist for {YEAR} {LEAGUE}.'
+        )
+    invalid = (
+        ~np.isfinite(
+            pd.to_numeric(rows.active_ppg_resid, errors='coerce')
+        )
+        | ~np.isfinite(
+            pd.to_numeric(rows.template_sample_prob, errors='coerce')
+        )
+        | pd.to_numeric(
+            rows.template_sample_prob,
+            errors='coerce',
+        ).le(0)
+    )
+    if invalid.any():
+        raise ValueError(
+            'Weekly salary uncertainty input contains invalid residual weights.'
+        )
+
+    records = []
+    for keys, group in rows.groupby(
+        ['player', 'year', 'pos'],
+        sort=True,
+    ):
+        record = dict(zip(['player', 'year', 'pos'], keys))
+        residuals = pd.to_numeric(
+            group.active_ppg_resid,
+            errors='coerce',
+        ).to_numpy(dtype=float)
+        weights = pd.to_numeric(
+            group.template_sample_prob,
+            errors='coerce',
+        ).to_numpy(dtype=float)
+        weights = weights / weights.sum()
+        # The auction simulation adds a sampled donor residual to the locked
+        # V2 point projection only after subtracting this weighted pool mean.
+        # Salary upside must use that same centered distribution; otherwise
+        # donor-pool level bias is mislabeled as player upside.
+        centered_residuals = residuals - float(
+            np.sum(weights * residuals)
+        )
+        for percentile in ENSEMBLE_RESID_PERCENTILES:
+            record[f'pred_resid_{percentile}'] = _weighted_quantile(
+                centered_residuals,
+                weights,
+                percentile / 100,
+            )
+        records.append(record)
+    quantiles = pd.DataFrame(records)
+    if quantiles[ENSEMBLE_SOURCE_RESID_COLS].isna().any().any():
+        raise ValueError(
+            'Weekly salary uncertainty quantiles are incomplete.'
+        )
+    quantiles['ensemble_uncertainty_feature_source'] = (
+        'joint_weekly_template_centered_active_ppg_residual'
+    )
+    return quantiles
 
 
 def get_ensemble_projection_predictions():
@@ -506,13 +902,15 @@ def get_ensemble_projection_predictions():
         keys,
         as_index=False,
     )[projection_columns].mean()
+    historical['ensemble_uncertainty_feature_source'] = (
+        'oos_ensemble_residual_quantiles'
+    )
 
     current = dm.read(f'''
         SELECT player,
                year,
                pos,
-               pred_fp_per_game,
-               {', '.join(ENSEMBLE_SOURCE_RESID_COLS)}
+               pred_fp_per_game
         FROM Final_Predictions_Resid
         WHERE version='{LEAGUE}'
               AND year={YEAR}
@@ -523,22 +921,66 @@ def get_ensemble_projection_predictions():
     ).copy()
     current['player'] = current.player.apply(dc.name_clean)
     current['year'] = current.year.astype(int)
-    current = current.groupby(keys, as_index=False)[projection_columns].mean()
+    current = current.groupby(
+        keys,
+        as_index=False,
+    )[['pred_fp_per_game']].mean()
+    weekly_uncertainty = get_current_weekly_residual_quantiles()
+    weekly_uncertainty['player'] = weekly_uncertainty.player.apply(
+        dc.name_clean
+    )
+    current = current.merge(
+        weekly_uncertainty,
+        on=keys,
+        how='left',
+        validate='one_to_one',
+    )
+    if current[
+        [
+            *ENSEMBLE_SOURCE_RESID_COLS,
+            'ensemble_uncertainty_feature_source',
+        ]
+    ].isna().any().any():
+        missing = current.loc[
+            current[ENSEMBLE_SOURCE_RESID_COLS].isna().any(axis=1),
+            keys,
+        ].to_dict('records')
+        raise ValueError(
+            'Current salary rows lack joint weekly upside features: '
+            f'{missing[:20]}'
+        )
 
     ensemble = pd.concat([historical, current], ignore_index=True)
-    ensemble = (
-        ensemble.groupby(keys, as_index=False)[projection_columns].mean()
-        .rename(columns={
-            'pred_fp_per_game': 'ensemble_pred_ppg',
-            **{
-                source_col: feature_col
-                for source_col, feature_col in zip(
-                    ENSEMBLE_SOURCE_RESID_COLS,
-                    ENSEMBLE_FEATURE_RESID_COLS,
-                )
-            },
-        })
+    source_counts = ensemble.groupby(keys)[
+        'ensemble_uncertainty_feature_source'
+    ].nunique()
+    if source_counts.gt(1).any():
+        raise ValueError(
+            'A salary player-season has multiple uncertainty feature sources.'
+        )
+    uncertainty_sources = (
+        ensemble.groupby(keys, as_index=False)[
+            'ensemble_uncertainty_feature_source'
+        ].first()
     )
+    ensemble = ensemble.groupby(
+        keys,
+        as_index=False,
+    )[projection_columns].mean().merge(
+        uncertainty_sources,
+        on=keys,
+        how='left',
+        validate='one_to_one',
+    ).rename(columns={
+        'pred_fp_per_game': 'ensemble_pred_ppg',
+        **{
+            source_col: feature_col
+            for source_col, feature_col in zip(
+                ENSEMBLE_SOURCE_RESID_COLS,
+                ENSEMBLE_FEATURE_RESID_COLS,
+            )
+        },
+    })
     if ensemble.duplicated(keys).any():
         raise ValueError('Duplicate ensemble player-season-position rows remain.')
     return ensemble
@@ -781,6 +1223,59 @@ def add_keeper_budget_context(salaries):
     )
     return salaries
 
+def _canonicalize_current_salary_source_labels(source, source_name):
+    source = source.copy()
+    current_mask = pd.to_numeric(
+        source.year,
+        errors='coerce',
+    ).eq(YEAR)
+    if not current_mask.any():
+        return source
+    aliases, identities = load_identity_frames(V2_BETA_DATABASE)
+    resolved = resolve_source_player_keys(
+        source.loc[current_mask].copy(),
+        aliases,
+        identities,
+        year=YEAR,
+        source_name=source_name,
+        # Auction source files also contain kickers and defenses, which are
+        # deliberately outside the V2 QB/RB/WR/TE identity surface. Resolve
+        # every supported skill player, retain the unrelated source labels,
+        # and enforce exact V2 population parity on the final candidate output.
+        require_complete=False,
+    )
+    canonical_names = identities.set_index('player_key').display_name
+    resolved_names = resolved.player_key.map(canonical_names).map(
+        lambda value: dc.name_clean(value)
+        if pd.notna(value)
+        else pd.NA
+    )
+    resolved_mask = resolved.player_key.notna()
+    if resolved_names.loc[resolved_mask].isna().any():
+        missing = resolved.loc[
+            resolved_mask & resolved_names.isna(), 'player'
+        ].tolist()
+        raise ValueError(
+            f'{source_name} lacks canonical V2 display labels: {missing}'
+        )
+    current_names = (
+        source.loc[current_mask, 'player']
+        .reset_index(drop=True)
+    )
+    current_names.loc[resolved_mask] = resolved_names.loc[
+        resolved_mask
+    ].to_numpy()
+    source.loc[current_mask, 'player'] = current_names.to_numpy()
+    unresolved_count = int((~resolved_mask).sum())
+    if unresolved_count:
+        print(
+            f'{source_name}: retained {unresolved_count} current non-V2 '
+            'source rows (for example kickers/defenses); final salary '
+            'candidates remain key-gated.'
+        )
+    return source
+
+
 def get_salaries():
     actual_sal = dm.read(f'''SELECT *
                             FROM Actual_Salaries 
@@ -796,6 +1291,11 @@ def get_salaries():
     # projection universe's position history without one-off aliases.
     for source_name, source in [('Actual_Salaries', actual_sal), ('Salaries', base_sal)]:
         source['player'] = source.player.apply(dc.name_clean)
+        canonicalized = _canonicalize_current_salary_source_labels(
+            source,
+            source_name,
+        )
+        source.loc[:, 'player'] = canonicalized.player
         duplicate_keys = source.duplicated(['player', 'year'], keep=False)
         if duplicate_keys.any():
             duplicates = (
@@ -2197,7 +2697,10 @@ pred_sal = final_pred.mean(axis=1)
 #%%
 
 pred_results = pd.concat([salaries.loc[salaries.year==YEAR,[
-                              'player', 'pos', 'year', 'salary', 'is_keeper', 'y_act',
+                              'player_key', 'player', 'pos', 'year', 'salary',
+                              'is_keeper', 'y_act',
+                              'salary_population_source',
+                              'ensemble_uncertainty_feature_source',
                               'keeper_count', 'keeper_spend', 'available_slots', 'available_budget',
                               *SALARY_KEEPER_MARKET_FEATURE_COLS,
                           ]].reset_index(drop=True),
@@ -2278,31 +2781,124 @@ pred_results.sort_values(by='std_dev', ascending=False).iloc[:25]
 
 #%%
 pred_results['league'] = LEAGUE + 'pred'
-output = pred_results[['player', 'pred_salary', 'year', 'league', 'std_dev', 'min_score', 'max_score', *SALARY_RESID_COLS]]
+pred_results['salary_method_version'] = SALARY_METHOD_VERSION
+output = pred_results[[
+    'player_key',
+    'player',
+    'pred_salary',
+    'year',
+    'league',
+    'std_dev',
+    'min_score',
+    'max_score',
+    *SALARY_RESID_COLS,
+    'salary_population_source',
+    'ensemble_uncertainty_feature_source',
+    'salary_method_version',
+]]
 output = output.rename(columns={'pred_salary': 'salary'})
+canonical_salary_labels = dm.read(
+    f'''SELECT player_key, player
+          FROM Final_Predictions_Resid
+         WHERE version='{LEAGUE}'
+               AND year={YEAR}
+               AND dataset='final_ensemble' ''',
+    'Simulation',
+).set_index('player_key').player
+output['player'] = output.player_key.map(canonical_salary_labels)
+if output.player.isna().any():
+    raise ValueError(
+        'Salary output could not restore canonical production labels.'
+    )
 
 if VALIDATION_DATASETS_ONLY:
     print('Validation-only run: leaving Simulation.Salaries_Pred unchanged.')
 else:
-    ensure_table_columns(Path(db_path) / 'Simulation.sqlite3', 'Salaries_Pred', SALARY_RESID_SCHEMA)
-    dm.delete_from_db('Simulation', 'Salaries_Pred', f"year={YEAR} AND league='{LEAGUE}pred'", create_backup=True)
+    ensure_table_columns(
+        Path(db_path) / 'Simulation.sqlite3',
+        'Salaries_Pred',
+        {
+            **SALARY_RESID_SCHEMA,
+            'player_key': 'TEXT',
+            'salary_population_source': 'TEXT',
+            'ensemble_uncertainty_feature_source': 'TEXT',
+            'salary_method_version': 'TEXT',
+        },
+    )
+    if output.player_key.isna().any() or output.player_key.duplicated().any():
+        raise ValueError(
+            'Current salary output lacks unique canonical player keys.'
+        )
+    dm.delete_from_db(
+        'Simulation',
+        'Salaries_Pred',
+        f"year={YEAR} AND league='{LEAGUE}pred'",
+        create_backup=not IS_STAGED_DATABASE_RUN,
+    )
     dm.write_to_db(output, 'Simulation', 'Salaries_Pred', 'append')
 
 #%%
 
-if VALIDATION_DATASETS_ONLY:
+if VALIDATION_DATASETS_ONLY or IS_STAGED_DATABASE_RUN:
     print('Validation-only run: skipping the Fantasy_Football_App database copy.')
 else:
-    import shutil
-
-    src = f'{root_path}/Data/Databases/Simulation.sqlite3'
+    src = Path(root_path) / 'Data' / 'Databases' / 'Simulation.sqlite3'
     dst = Path(root_path).parent / 'Fantasy_Football_App' / 'app' / 'Simulation.sqlite3'
-    if dst.parent.exists():
-        shutil.copyfile(src, dst)
-    else:
+    generated_salary_tables = [
+        'Salaries',
+        'Salaries_Pred',
+        'League_Keepers',
+    ]
+    if not dst.parent.exists():
         print(f'Skipping app DB copy; destination folder does not exist: {dst.parent}')
+    elif not dst.exists():
+        raise FileNotFoundError(
+            'Auction app Simulation database does not exist; refusing to '
+            f'create it from the modeling database: {dst}'
+        )
+    else:
+        # The auction database owns UI/evidence/cache tables that do not belong
+        # to this repository. Synchronize only salary-owned generated tables.
+        with sqlite3.connect(dst) as app_connection:
+            app_connection.execute(
+                'ATTACH DATABASE ? AS salary_source',
+                (str(src),),
+            )
+            app_connection.execute('BEGIN IMMEDIATE')
+            try:
+                for table_name in generated_salary_tables:
+                    create_sql = app_connection.execute(
+                        '''SELECT sql
+                             FROM salary_source.sqlite_master
+                            WHERE type='table' AND name=?''',
+                        (table_name,),
+                    ).fetchone()
+                    if create_sql is None:
+                        raise ValueError(
+                            f'Missing generated salary table: {table_name}'
+                        )
+                    app_connection.execute(
+                        f'DROP TABLE IF EXISTS main."{table_name}"'
+                    )
+                    app_connection.execute(create_sql[0])
+                    app_connection.execute(
+                        f'INSERT INTO main."{table_name}" '
+                        f'SELECT * FROM salary_source."{table_name}"'
+                    )
+                app_connection.commit()
+            except Exception:
+                app_connection.rollback()
+                raise
+        print(
+            f'Synchronized {len(generated_salary_tables)} generated salary '
+            f'tables to {dst}'
+        )
 
 # %%
+
+if IS_STAGED_DATABASE_RUN:
+    print('Staged salary build complete; skipping notebook diagnostics.')
+    raise SystemExit(0)
 
 pred = dm.read("SELECT * FROM Salaries_Pred WHERE year=2025 AND league='betapred'", 'Simulation')
 actual = dm.read("SELECT * FROM Actual_Salaries WHERE year=2025 AND league='beta' AND is_keeper=0", 'Simulation')

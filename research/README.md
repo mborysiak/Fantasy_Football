@@ -14,6 +14,29 @@ reproducible bundles.
   data contract/runbook.
 
 ## Current Study Types
+- Projection V2 NFFC-market and expert-rank challengers. The 2026-07-30 replay
+  reduces the NFFC family from its composite plus four correlated contest rows
+  to the single existing `ADP_Averages` composite. The live market/rank mart
+  falls from 31,834 to 28,801 rows, and locked RMSE improves slightly from
+  3.10783 to 3.10756 DK and from 2.88446 to 2.88411 beta. A strictly-prior
+  expert-rank study converts every source to a season-position percentile
+  before taking a cross-source median. A full-column-forest attribution control
+  removes the locked forest's feature-subsampling confound: normalized rank
+  level improves the corresponding blend by 0.00221 DK and 0.00186 beta with
+  seven of nine season wins. DK's two intervals exclude zero; beta's season
+  interval excludes zero and its player interval ends essentially at zero. The
+  locked-production-surface sensitivity is smaller and uncertain, and the
+  expert-minus-projection gap is neutral. A scoring-matched raw-rank follow-up
+  rejects percentile-after-median plus coverage: controlled gains are only
+  0.00138 DK and 0.00016 beta, all intervals cross zero, and it trails the
+  normalized comparator by 0.00173/0.00213. `log1p(raw median)` is not
+  distinguishable from normalized rank in this study's direct paired
+  comparisons, so it remains a diagnostic rather than a post-hoc promotion.
+  Promote the one-vote NFFC
+  contract; retain normalized expert rank as a challenger and raw rank as
+  audit-only.
+  ETR overall rank remains the beta top-180 eligibility ordering. See
+  `studies/2026-07-30_v2_market_rank_challengers/`.
 - Projection V2 QB target decomposition. The 2026-07-29 strict rolling study
   fits the same QB-only Lasso/RF/LightGBM surface to total conditional PPG and
   to realized passing/rushing PPG separately, then sums the component
@@ -66,7 +89,7 @@ reproducible bundles.
   study freezes exact feature hashes, compact grids, and the fixed pooled
   Lasso/RF/LightGBM blend, then forecasts every 2017-2025 season using only
   earlier-season fitting, selection, routing, and calibration evidence. The
-  latest quarantined-lineage replay scores 3.1078 DK and 2.8845 beta RMSE
+  latest one-vote-NFFC replay scores 3.1076 DK and 2.8841 beta RMSE
   versus 3.1951/2.9600 expert recalibration, both with nine of nine wins;
   prior-only point calibration remains rejected. Each fit-through-2025 run
   publishes 745
@@ -192,6 +215,15 @@ reproducible bundles.
   whole-season/template validation rather than changing the point model. See
   `studies/2026-07-29_v2_team_environment/`.
 - Best-ball weekly template calibration.
+- NFFC weekly-template center calibration. The 2026-07-31 strict rolling replay
+  uses NFFC-scored V2 preseason matcher context, 2021-forward donors, a 17-week
+  horizon, and 540 held-out targets from 2023-2025. The locked OOF donor center
+  worsens PPG CRPS by 0.002901, loses all three seasons, and has a
+  player-cluster interval of `[-0.004914, +0.010748]`; it passes six of ten
+  gates but fails all three promotion gates. Retain
+  `nffc_scored_expert_consensus`; keep the DK-scored `Model_Inputs` context and
+  locked OOF center diagnostic only. See
+  `studies/2026-07-31_nffc_template_center_replay/`.
 - Template residual blend calibration.
 - ADP availability and pruning audits.
 - Projection/ADP/name-cleaning join audits.
@@ -278,6 +310,46 @@ reproducible bundles.
   bump worsened every metric is superseded. See
   `studies/2026-07-29_v2_weekly_fftoday_correction/` and the original
   `studies/2026-07-29_template_projection_weight_bump/`.
+- Weekly-template receiver-rate ablation. The 2026-07-30 strict rolling study
+  tests preseason projected receiving yards/reception and TDs/reception on
+  1,620 targets per league. The primary WR/TE arm changes roughly nine of 80
+  donors and modestly improves PPG/contribution point estimates, but fails
+  played-games or impact guardrails; RB does not benefit. Do not add the rates
+  globally. TE yards/reception is the useful same-evidence hypothesis, with
+  full-period contribution gains and intervals below zero in both leagues, but
+  DK recent played-games safety fails, so require independent TE-only
+  confirmation. See
+  `studies/2026-07-30_template_receiver_rate_ablation/`.
+- Weekly-template height/weight ablation. The 2026-07-30 strict rolling study
+  joins the existing nflverse player master by exact governed IDs and tests
+  season-position height and weight percentiles on 1,620 targets per league.
+  Coverage is complete for rolling targets and 5,291/5,298 historical
+  templates. The primary arm changes about 9% of donors overall and 12% for
+  WR, but beta's small broad improvements reverse to DK PPG, contribution, and
+  impact losses. Height alone is essentially neutral in DK and weakly
+  favorable in beta. Keep production unchanged and defer combine acquisition
+  unless a separate athletic-testing hypothesis is prespecified. See
+  `studies/2026-07-30_template_height_weight_ablation/`.
+- WR template PPG/profile trade-off. The 2026-07-30 follow-up jointly tests a
+  WR-only 2.25 PPG weight with projected YPR and TD/reception on 648 held-out
+  WR targets per league. The tighter weight reduces Ladd McConkey's current
+  beta donor PPG gap by 20.8% for 0.135 fewer expected games, but worsens
+  held-out DK PPG CRPS and does not transport with the rate terms. Terrelle
+  Pryor remains a top-three donor and gains probability because his preseason
+  YPR/TD-rate projections are close to Ladd's. Keep production unchanged; a
+  historically complete direct role signal such as aDOT or alignment is the
+  cleaner next archetype test. See
+  `studies/2026-07-30_wr_template_ppg_profile_tradeoff/`.
+- Weekly-template projection trajectory. The 2026-07-30 WR-only study tests
+  signed current-minus-prior preseason projection gaps at 0.25/0.50 weights,
+  including one-year, recency-weighted three-year, combined, and explicit
+  history variants. Trajectory demotes Pryor from rank 3 to 12 in Ladd's beta
+  pool at the one-year 0.50 weight, but every arm worsens held-out WR PPG CRPS
+  in both leagues over both full and recent periods. Three-year 0.25 improves
+  several contribution/impact diagnostics but fails the PPG-first requirement;
+  history availability/depth is harmful. Retain trajectory as an explanation
+  field, not a production distance criterion. See
+  `studies/2026-07-30_template_projection_trajectory/`.
 - Additive salary normalization. The 2026-07-16 audit holds v3 raw rolling
   predictions fixed and compares the prior proportional-above-floor market
   reconciliation with an exact additive `$1`-floor projection. The additive
