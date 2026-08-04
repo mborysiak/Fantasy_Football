@@ -450,6 +450,11 @@ zero room features rather than being grouped into a synthetic team room.
   explicit staged V2 copy and `--no-app-sync`; it may not read a live V2
   database. These asymmetric guards prevent staged evidence from reaching live
   output and live evidence from contaminating a staged audit.
+- After every governed production build finishes writing Simulation outputs,
+  the staged source `Simulation.sqlite3` is vacuumed before validation, app
+  copies, and promotion. The compaction receipt must report SQLite integrity
+  and foreign keys `ok` with `freelist_count=0`; only that compacted artifact
+  may become the live repository database.
 - Treat role-share features as projected fantasy-point shares unless a column
   name explicitly says attempts, targets, or another raw volume unit.
 - Compute current room shares/ranks/concentration on the complete preseason

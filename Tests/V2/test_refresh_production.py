@@ -134,6 +134,7 @@ def test_release_plan_covers_every_downstream_surface():
         "template_audit_beta",
         "salary",
         "selection_premium",
+        "compact_simulation",
         "validate",
         "prepare_apps",
         "app_smoke",
@@ -193,6 +194,40 @@ def test_vacuum_sqlite_reclaims_pages_without_changing_content(tmp_path):
     assert receipt["after"]["size_bytes"] < receipt["before"]["size_bytes"]
     assert receipt["after_pages"]["freelist_count"] == 0
     assert refresh.stable_table_digest(database, "values_table") == before_digest
+
+
+def test_compact_simulation_vacuums_staged_source_and_records_receipt(
+    tmp_path,
+    monkeypatch,
+):
+    simulation = tmp_path / "staged" / "Simulation.sqlite3"
+    simulation.parent.mkdir(parents=True)
+    with closing(sqlite3.connect(simulation)) as connection:
+        connection.execute(
+            "CREATE TABLE values_table (value INTEGER, payload BLOB)"
+        )
+        connection.executemany(
+            "INSERT INTO values_table VALUES (?, ?)",
+            [(index, b"x" * 8192) for index in range(200)],
+        )
+        connection.execute("DELETE FROM values_table WHERE value > 0")
+        connection.commit()
+    before_digest = refresh.stable_table_digest(simulation, "values_table")
+    monkeypatch.setattr(
+        refresh,
+        "_resolved_paths",
+        lambda _manifest: {"staged": {"simulation": simulation}},
+    )
+
+    result = refresh.step_compact_simulation({})
+
+    assert result["database"] == "simulation"
+    assert result["integrity"] == "ok"
+    assert result["foreign_keys"] == "ok"
+    assert result["freelist_count"] == 0
+    assert result["compaction"]["reclaimed_bytes"] > 0
+    assert result["final_state"] == result["compaction"]["after"]
+    assert refresh.stable_table_digest(simulation, "values_table") == before_digest
 
 
 def test_app_artifact_size_gate_rejects_oversized_database(tmp_path):

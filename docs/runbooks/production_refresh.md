@@ -227,6 +227,7 @@ template_audit_nffc
 template_audit_beta
 salary
 selection_premium
+compact_simulation
 validate
 prepare_apps
 app_smoke
@@ -260,6 +261,11 @@ app_smoke
   outputs and salary validation tables.
 - `selection_premium` writes a fresh beta reserve surface plus its seed and
   calibrator.
+- `compact_simulation` runs SQLite `VACUUM` on the staged source
+  `Simulation.sqlite3` after every data-writing step and before release
+  validation or app-copy preparation. It requires integrity/foreign-key checks
+  to pass and the final freelist count to be zero, and records before/after
+  file and page usage plus reclaimed bytes in the refresh manifest.
 - `validate`, `prepare_apps`, and `app_smoke` gate the candidate release.
 
 ## Staged and Promoted Artifacts
@@ -436,10 +442,12 @@ Before preparing app candidates, validation requires:
   least one successful seed trial
 - an idempotent production handoff across all eight governed tables
 
-`prepare_apps` runs `VACUUM` on both the Auction and Snake candidate databases,
-then validates their table content. The manifest records before/after file and
-page usage plus reclaimed bytes. Both candidates must have an empty SQLite
-freelist after compaction and remain at or below GitHub's 100 MiB blob limit;
+`compact_simulation` first runs `VACUUM` on the source Simulation candidate;
+`prepare_apps` then runs `VACUUM` on both the Auction and Snake candidate
+databases and validates their table content. The manifest records before/after
+file and page usage plus reclaimed bytes for all three artifacts. All three
+must have an empty SQLite freelist after compaction; the app candidates must
+also remain at or below GitHub's 100 MiB blob limit;
 an oversized artifact fails staging before app smoke or promotion. Compaction
 changes only the physical SQLite layout: Auction app-owned/generated-table
 parity and full Snake table/content parity are checked afterward.

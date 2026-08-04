@@ -24,10 +24,18 @@ template tables consumed by downstream draft apps.
   `20260804T193416Z_4136d153` completed all governed build/validation/app steps
   with 348 DK, 382 NFFC, and 326 beta rows, 80 donors/player, 1,000/1,000
   reserve trials, exact app parity, and zero smoke errors. It was promoted at
-  `2026-08-04T20:27:28Z`; all ten installed digests match the manifest, every
-  durable pre-refresh backup exists under
+  `2026-08-04T20:27:28Z`; all ten installed digests matched the manifest at
+  promotion, every durable pre-refresh backup exists under
   `Data/Production_Refresh_Backups/20260804T193416Z_b6992d72/`, and promotion
-  reported no cleanup warnings.
+  reported no cleanup warnings. The repository Simulation digest changed only
+  through the separately receipted post-promotion vacuum described below.
+- Every governed refresh now runs `compact_simulation` after the final
+  Simulation writer and before validation, app copies, and promotion. The step
+  records before/after file and page receipts and requires integrity/foreign
+  keys `ok` plus a zero freelist. The just-promoted live source was compacted
+  once under the same rule from 114,450,432 to 62,353,408 bytes, with all 26
+  table digests unchanged; its pre-vacuum copy and JSON receipt are retained in
+  the current release backup folder.
 - The frozen Ridge `alpha=10` replacement completed full corrected-lineage
   downstream validation. Annual 2017-2025 refits improve pooled RMSE by only
   0.001401 DK and 0.001264 beta with both player-cluster intervals crossing

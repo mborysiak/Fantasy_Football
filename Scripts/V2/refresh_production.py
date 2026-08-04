@@ -250,6 +250,7 @@ PIPELINE_STEPS = (
     "template_audit_beta",
     "salary",
     "selection_premium",
+    "compact_simulation",
     "validate",
     "prepare_apps",
     "app_smoke",
@@ -1438,6 +1439,21 @@ def step_selection_premium(manifest: dict[str, Any]) -> dict[str, Any]:
             year=int(manifest["options"]["year"]),
         ),
     )
+
+
+def step_compact_simulation(manifest: dict[str, Any]) -> dict[str, Any]:
+    """VACUUM the staged source Simulation database before release gates."""
+
+    simulation = _resolved_paths(manifest)["staged"]["simulation"]
+    compaction = vacuum_sqlite(simulation)
+    return {
+        "database": "simulation",
+        "compaction": compaction,
+        "integrity": compaction["after"]["integrity"],
+        "foreign_keys": compaction["after"]["foreign_keys"],
+        "freelist_count": compaction["after_pages"]["freelist_count"],
+        "final_state": compaction["after"],
+    }
 
 
 def _fetch_set(
@@ -3256,6 +3272,8 @@ def execute_step(step: str, manifest: dict[str, Any]) -> dict[str, Any]:
         return step_salary(manifest)
     if step == "selection_premium":
         return step_selection_premium(manifest)
+    if step == "compact_simulation":
+        return step_compact_simulation(manifest)
     if step == "validate":
         return step_validate(manifest)
     if step == "prepare_apps":
