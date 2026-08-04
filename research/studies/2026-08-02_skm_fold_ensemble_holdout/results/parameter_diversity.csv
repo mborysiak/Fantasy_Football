@@ -1,0 +1,7 @@
+league,model_family,current_candidate_id,fold_unique_candidates,folds_matching_current,fold_candidate_ids
+beta,conditional_ppg_lasso,2,2,4,"2,2,4,2,2"
+beta,conditional_ppg_lightgbm,7,2,3,"7,3,7,3,7"
+beta,conditional_ppg_random_forest,0,2,4,"0,2,0,0,0"
+dk,conditional_ppg_lasso,2,2,3,"2,2,3,3,2"
+dk,conditional_ppg_lightgbm,7,1,5,"7,7,7,7,7"
+dk,conditional_ppg_random_forest,0,2,4,"0,0,0,0,6"

@@ -1,0 +1,5 @@
+gate,passed,detail
+point_ppg,False,pooled_both=True; recent_wins=4/6; position_guardrail=True
+player_distribution,True,crps_both=True; coverage=True
+weekly_template_transport,True,"all core/depth PPG, contribution, and played CRPS relative deltas <= +0.25%"
+fixed_roster_snake,False,margin=False; nonworse_cells=1/4

@@ -11,7 +11,7 @@ from ff.db_operations import DataManage
 from ff import general, data_clean as dc
 
 # set the root path and database management object
-root_path = f'/Users/borys/OneDrive/Documents/Github/Fantasy_Football'
+root_path = general.get_main_path('Fantasy_Football')
 db_path = f'{root_path}/Data/Databases/'
 dm = DataManage(db_path)
 

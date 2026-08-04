@@ -1,0 +1,5 @@
+method,primary,weight_mtf_per_reception,weight_yac_per_route,affected_position
+production,0,0.0,0.0,none
+te_pff_mtf_w025,1,0.25,0.0,TE
+te_pff_mtf_w050,0,0.5,0.0,TE
+te_pff_yac_w025,0,0.0,0.25,TE

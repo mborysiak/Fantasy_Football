@@ -1,0 +1,16 @@
+league,model_family,fold,fold_seed,held_rows,held_start_season,held_end_season
+dk,conditional_ppg_lasso,0,133,782,2013,2022
+dk,conditional_ppg_lasso,1,133,782,2013,2022
+dk,conditional_ppg_lasso,2,133,782,2013,2022
+dk,conditional_ppg_lasso,3,133,782,2013,2022
+dk,conditional_ppg_lasso,4,133,781,2013,2022
+dk,conditional_ppg_random_forest,0,170,782,2013,2022
+dk,conditional_ppg_random_forest,1,170,782,2013,2022
+dk,conditional_ppg_random_forest,2,170,782,2013,2022
+dk,conditional_ppg_random_forest,3,170,782,2013,2022
+dk,conditional_ppg_random_forest,4,170,781,2013,2022
+dk,conditional_ppg_lightgbm,0,201,782,2013,2022
+dk,conditional_ppg_lightgbm,1,201,782,2013,2022
+dk,conditional_ppg_lightgbm,2,201,782,2013,2022
+dk,conditional_ppg_lightgbm,3,201,782,2013,2022
+dk,conditional_ppg_lightgbm,4,201,781,2013,2022

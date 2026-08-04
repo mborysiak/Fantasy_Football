@@ -1,0 +1,17 @@
+{
+  "league": "beta",
+  "v2_database": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\Data\\Databases\\Projection_V2_beta.sqlite3",
+  "max_template_season": 2025,
+  "target_rows": 2647,
+  "prediction_rows": 10588,
+  "methods": [
+    "production",
+    "te_pff_mtf_w025",
+    "te_pff_mtf_w050",
+    "te_pff_yac_w025"
+  ],
+  "primary_method": "te_pff_mtf_w025",
+  "non_te_parity_max_abs": 0.0,
+  "runtime_seconds": 65.79082709999989,
+  "production_changed": false
+}

@@ -32,11 +32,13 @@ from Scripts.V2.contracts import (
     SOURCE_MANIFEST_COLUMNS,
     align_columns,
     assert_no_source_row_exclusions,
+    assert_no_untrusted_source_team_labels,
     create_run_id,
     publish_tables_atomic,
     read_existing_table,
     scoring_hash,
     source_row_exclusion_policy_receipt,
+    source_team_trust_policy_receipt,
     utc_now,
 )
 
@@ -140,12 +142,46 @@ def _active_foundation(
             "does not match the current governed policy"
         )
 
+    expected_team_receipt = source_team_trust_policy_receipt(
+        foundation_run_id
+    )
+    team_receipts = source_manifest[
+        source_manifest["run_id"].eq(foundation_run_id)
+        & source_manifest["component"].eq(
+            expected_team_receipt["component"]
+        )
+        & source_manifest["source_name"].eq(
+            expected_team_receipt["source_name"]
+        )
+    ]
+    if len(team_receipts) != 1:
+        raise ValueError(
+            "The active Milestone 2 foundation has no unique source-team "
+            "trust policy receipt and must be rebuilt"
+        )
+    team_receipt = team_receipts.iloc[0]
+    if (
+        str(team_receipt["source_sha256"])
+        != expected_team_receipt["source_sha256"]
+        or pd.isna(team_receipt["row_count"])
+        or int(team_receipt["row_count"])
+        != expected_team_receipt["row_count"]
+    ):
+        raise ValueError(
+            "The active Milestone 2 foundation source-team trust policy "
+            "does not match the current governed policy"
+        )
+
     aliases = read_existing_table(output_database, "player_aliases")
     spine = read_existing_table(output_database, "player_season_spine")
     sources = read_existing_table(output_database, "player_season_sources")
     if aliases.empty or spine.empty or sources.empty:
         raise ValueError("The active Milestone 2 foundation tables are missing")
     assert_no_source_row_exclusions(
+        aliases,
+        "active Milestone 2 player_aliases",
+    )
+    assert_no_untrusted_source_team_labels(
         aliases,
         "active Milestone 2 player_aliases",
     )

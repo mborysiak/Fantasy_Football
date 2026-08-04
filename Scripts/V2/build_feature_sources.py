@@ -36,7 +36,10 @@ from Scripts.V2.contracts import (
     align_columns,
     apply_source_row_exclusions,
     apply_source_season_overrides,
+    apply_source_team_trust_policy,
     assert_no_source_row_exclusions,
+    assert_no_ungoverned_identical_team_conflicts,
+    assert_no_untrusted_source_team_labels,
     configured_scoring,
     normalize_player_name,
     normalize_source_position,
@@ -235,6 +238,10 @@ def resolve_source_rows(
         identity_rows,
         "source feature identity rows",
     )
+    identity_rows = apply_source_team_trust_policy(
+        identity_rows,
+        "source feature identity rows",
+    )
     aliases = player_aliases[
         player_aliases["source_table"].isin(
             identity_rows["source_table"].dropna().unique()
@@ -250,6 +257,10 @@ def resolve_source_rows(
         aliases["season"], errors="coerce"
     ).astype("Int64")
     aliases = apply_source_season_overrides(
+        aliases,
+        "player_aliases for feature resolution",
+    )
+    aliases = apply_source_team_trust_policy(
         aliases,
         "player_aliases for feature resolution",
     )
@@ -384,17 +395,28 @@ def _read_resolved_value_rows(
         identity_rows,
         player_aliases,
     )
-    resolved = identity_rows["player_key"].notna()
-    output = identity_rows[resolved].reset_index(drop=True)
-    raw = raw[resolved].reset_index(drop=True)
     for target, source_column in value_spec.get("metrics", {}).items():
         source_column = str(source_column)
         if source_column in raw.columns:
-            output[target] = pd.to_numeric(
+            identity_rows[target] = pd.to_numeric(
                 raw[source_column], errors="coerce"
             )
         else:
-            output[target] = np.nan
+            identity_rows[target] = np.nan
+    assert_no_ungoverned_identical_team_conflicts(
+        identity_rows,
+        f"{table} value rows",
+    )
+    identity_rows = apply_source_team_trust_policy(
+        identity_rows,
+        f"{table} value rows",
+    )
+    assert_no_untrusted_source_team_labels(
+        identity_rows,
+        f"{table} value rows after team policy",
+    )
+    resolved = identity_rows["player_key"].notna()
+    output = identity_rows[resolved].reset_index(drop=True)
     return (
         output,
         len(identity_rows),
@@ -403,12 +425,18 @@ def _read_resolved_value_rows(
     )
 
 
-def _deterministic_mode(values: Iterable[object]) -> object:
+def _deterministic_mode(
+    values: Iterable[object],
+    fail_closed_on_tie: bool = False,
+) -> object:
     cleaned = [str(value) for value in values if pd.notna(value) and str(value)]
     if not cleaned:
         return pd.NA
     counts = pd.Series(cleaned).value_counts()
-    return sorted(counts[counts.eq(counts.max())].index)[0]
+    leaders = sorted(counts[counts.eq(counts.max())].index)
+    if fail_closed_on_tie and len(leaders) > 1:
+        return pd.NA
+    return leaders[0]
 
 
 def _audit_pipe(values: Iterable[object]) -> object:
@@ -449,6 +477,10 @@ def _season_context_maps(
         aliases,
         "player_aliases for feature context",
     )
+    aliases = apply_source_team_trust_policy(
+        aliases,
+        "player_aliases for feature context",
+    )
     aliases["season"] = pd.to_numeric(
         aliases["season"], errors="coerce"
     ).astype("Int64")
@@ -462,7 +494,10 @@ def _season_context_maps(
         position = _deterministic_mode(
             group.loc[group["position"].isin(POSITIONS), "position"]
         )
-        team = _deterministic_mode(group["team"])
+        team = _deterministic_mode(
+            group["team"],
+            fail_closed_on_tie=True,
+        )
         key = (str(player_key), int(season))
         if pd.notna(position):
             positions[key] = str(position)
@@ -794,7 +829,13 @@ def build_projection_values(
             _audit_pipe,
         ),
         position=("position", _deterministic_mode),
-        team=("team", _deterministic_mode),
+        team=(
+            "team",
+            lambda values: _deterministic_mode(
+                values,
+                fail_closed_on_tie=True,
+            ),
+        ),
     )
     for column in (
         "source_stored_seasons",
@@ -916,7 +957,13 @@ def build_market_values(
     grouped = raw_values.groupby(keys, sort=True, dropna=False)
     metadata = grouped.agg(
         position=("position", _deterministic_mode),
-        team=("team", _deterministic_mode),
+        team=(
+            "team",
+            lambda values: _deterministic_mode(
+                values,
+                fail_closed_on_tie=True,
+            ),
+        ),
     )
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", RuntimeWarning)

@@ -191,11 +191,12 @@ APPROVED_PRODUCTION_CYCLES: Mapping[int, ProductionCycle] = {
             "nffc": ("nffc_scored_expert_consensus",),
             "beta": (
                 "legacy_validated_oos",
-                "preseason_projection_fallback",
+                "beta_scored_expert_fallback",
             ),
         },
         template_context_sources={
             "nffc": "v2_nffc_scoring_matched_preseason",
+            "beta": "v2_beta_scoring_matched_preseason",
         },
     ),
 }

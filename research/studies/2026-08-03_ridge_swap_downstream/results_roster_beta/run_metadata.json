@@ -1,0 +1,24 @@
+{
+  "league": "beta",
+  "v2_database": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Databases\\Projection_V2_beta.sqlite3",
+  "template_results_dir": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\research\\studies\\2026-08-03_ridge_swap_downstream\\results_template_beta",
+  "target_rows_per_method": 2017,
+  "rooms_per_origin": 12,
+  "teams_per_room": 12,
+  "roster_size": 20,
+  "scenarios": 384,
+  "seasons": [
+    2019,
+    2020,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025
+  ],
+  "rooms": 84,
+  "prediction_rows": 2016,
+  "roster_policy": "production drafts frozen and shared across methods",
+  "runtime_seconds": 34.01201740000033,
+  "production_changed": false
+}

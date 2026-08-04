@@ -28,6 +28,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Iterable, Mapping, Sequence
 
+from Scripts.Modeling.salary_source_parser import governed_salary_source_specs
 from Scripts.V2.contracts import scoring_hash
 from Scripts.V2.production_cycle import (
     APPROVED_PRODUCTION_CYCLES,
@@ -77,6 +78,11 @@ WINDOWS_NATIVE_CRASH_CLASSES = {
     -1073740940: "windows_heap_corruption",
 }
 MAX_NATIVE_CRASH_ATTEMPTS = 5
+BETA_SCORING_CONTEXT_UNAVAILABLE_REASON = (
+    "legacy_validated_oos_fallback:"
+    "fftoday_qb_stored_2018_2019_vintage_quarantine_v1:"
+    "no_valid_beta_qb_sack_donor"
+)
 
 PIPELINE_CODE_ROOTS = {
     "main_scripts": REPO_ROOT / "Scripts",
@@ -129,14 +135,19 @@ STATIC_EXTERNAL_FILE_INPUTS = {
 def external_file_inputs(year: int) -> dict[str, Path]:
     """Resolve every mutable non-SQLite input for the selected cycle."""
 
+    salary_inputs = {
+        (
+            "current_auction_salaries"
+            if spec.year == int(year) and spec.league == "beta"
+            else f"historical_auction_salaries_{spec.year}_{spec.league}"
+        ): spec.path
+        for spec in governed_salary_source_specs(
+            REPO_ROOT / "Data",
+            int(year),
+        )
+    }
     return {
-        "current_auction_salaries": (
-            REPO_ROOT
-            / "Data"
-            / "OtherData"
-            / "Salaries"
-            / f"salaries_{int(year)}_beta.csv"
-        ),
+        **salary_inputs,
         "current_beta_keepers": (
             REPO_ROOT
             / "Data"
@@ -1896,9 +1907,133 @@ def _count_invalid_nffc_template_context_rows(
     )
 
 
+def _count_invalid_beta_template_context_rows(
+    connection: sqlite3.Connection,
+    *,
+    expected_context_source: str,
+    expected_scoring_hash: str,
+) -> int:
+    """Count beta rows violating the promoted scored-context contract."""
+
+    return int(
+        connection.execute(
+            """
+            SELECT COUNT(*)
+            FROM Best_Ball_Weekly_Templates
+            WHERE league='beta'
+              AND (
+                  scoring_context_available IS NULL
+                  OR scoring_context_available NOT IN (0, 1)
+                  OR projection_context_scoring_hash IS NULL
+                  OR projection_context_scoring_hash<>?
+                  OR projection_context_run_id IS NULL
+                  OR TRIM(projection_context_run_id)=''
+                  OR model_input_avg_proj_points IS NULL
+                  OR projection_context_avg_proj_points_delta IS NULL
+                  OR avg_proj_points IS NULL
+                  OR historical_pred_fp_per_game IS NULL
+                  OR COALESCE(v2_recenter_promoted, -1)<>0
+                  OR team_qb_scoring_context_available IS NULL
+                  OR team_qb_scoring_context_available NOT IN (0, 1)
+                  OR (
+                      team_qb_scoring_context_available=0
+                      AND (
+                          team_qb_scoring_context_unavailable_reason IS NULL
+                          OR team_qb_scoring_context_unavailable_reason<>?
+                          OR ABS(
+                              team_qb_pass_proj_rank_pct - 0.5
+                          ) > 0.000000001
+                      )
+                  )
+                  OR (
+                      team_qb_scoring_context_available=1
+                      AND team_qb_scoring_context_unavailable_reason IS NOT NULL
+                      AND TRIM(
+                          team_qb_scoring_context_unavailable_reason
+                      )<>''
+                  )
+                  OR (
+                      scoring_context_available=1
+                      AND (
+                          projection_context_source IS NULL
+                          OR projection_context_source<>?
+                          OR scoring_context_unavailable_reason IS NOT NULL
+                             AND TRIM(scoring_context_unavailable_reason)<>''
+                          OR avg_proj_pass_points IS NULL
+                          OR avg_proj_rush_points IS NULL
+                          OR avg_proj_rec_points IS NULL
+                          OR ABS(
+                              avg_proj_pass_points +
+                              avg_proj_rush_points +
+                              avg_proj_rec_points -
+                              avg_proj_points
+                          ) > 0.000000001
+                          OR ABS(
+                              avg_proj_points -
+                              model_input_avg_proj_points -
+                              projection_context_avg_proj_points_delta
+                          ) > 0.000000001
+                          OR historical_center_policy IS NULL
+                          OR historical_center_policy NOT IN (
+                              'legacy_validated_oos',
+                              'beta_scored_expert_fallback'
+                          )
+                          OR (
+                              historical_center_policy=
+                                  'legacy_validated_oos'
+                              AND historical_projection_source<>
+                                  'validation_ensemble'
+                          )
+                          OR (
+                              historical_center_policy=
+                                  'beta_scored_expert_fallback'
+                              AND (
+                                  historical_projection_source<>
+                                      'v2_beta_expert_consensus_fallback'
+                                  OR ABS(
+                                      avg_proj_points /
+                                          CASE WHEN season>=2021
+                                               THEN 17.0 ELSE 16.0 END -
+                                      historical_pred_fp_per_game
+                                  ) > 0.000000001
+                              )
+                          )
+                      )
+                  )
+                  OR (
+                      scoring_context_available=0
+                      AND (
+                          season<>2018
+                          OR pos<>'QB'
+                          OR projection_context_source<>
+                              'v2_beta_scoring_context_unavailable'
+                          OR scoring_context_unavailable_reason<>?
+                          OR historical_center_policy<>
+                              'legacy_validated_oos'
+                          OR historical_projection_source<>
+                              'validation_ensemble'
+                          OR COALESCE(template_eligible, -1)<>0
+                          OR template_exclusion_reason<>
+                              'scoring_context_unavailable:' || ?
+                      )
+                  )
+              )
+            """,
+            (
+                expected_scoring_hash,
+                BETA_SCORING_CONTEXT_UNAVAILABLE_REASON,
+                expected_context_source,
+                BETA_SCORING_CONTEXT_UNAVAILABLE_REASON,
+                BETA_SCORING_CONTEXT_UNAVAILABLE_REASON,
+            ),
+        ).fetchone()[0]
+    )
+
+
 def _count_invalid_nffc_player_map_context_rows(
     connection: sqlite3.Connection,
     *,
+    league: str = "nffc",
     year: int,
     dataset: str,
     expected_scoring_hash: str,
@@ -1911,7 +2046,7 @@ def _count_invalid_nffc_player_map_context_rows(
             """
             SELECT COUNT(*)
             FROM Best_Ball_Weekly_Player_Map
-            WHERE version='nffc'
+            WHERE version=?
               AND year=?
               AND dataset=?
               AND (
@@ -1937,6 +2072,7 @@ def _count_invalid_nffc_player_map_context_rows(
               )
             """,
             (
+                league,
                 year,
                 dataset,
                 expected_scoring_hash,
@@ -2303,6 +2439,106 @@ def _validate_simulation(
                         cycle.template_center_policies["nffc"][0]
                     ),
                 }
+            if league == "beta":
+                required_beta_context_columns = {
+                    "projection_context_source",
+                    "projection_context_scoring_hash",
+                    "projection_context_run_id",
+                    "scoring_context_available",
+                    "scoring_context_unavailable_reason",
+                    "team_qb_scoring_context_available",
+                    "team_qb_scoring_context_unavailable_reason",
+                    "team_qb_pass_proj_rank_pct",
+                    "model_input_avg_proj_points",
+                    "projection_context_avg_proj_points_delta",
+                    "template_eligible",
+                    "template_exclusion_reason",
+                }
+                missing_beta_context_columns = sorted(
+                    required_beta_context_columns - template_columns
+                )
+                if missing_beta_context_columns:
+                    raise ValueError(
+                        "Beta templates lack scored-context audit columns: "
+                        f"{missing_beta_context_columns}"
+                    )
+                expected_context_source = (
+                    cycle.template_context_sources["beta"]
+                )
+                expected_scoring_hash = scoring_hash("beta")
+                invalid_beta_context = (
+                    _count_invalid_beta_template_context_rows(
+                        connection,
+                        expected_context_source=expected_context_source,
+                        expected_scoring_hash=expected_scoring_hash,
+                    )
+                )
+                if invalid_beta_context:
+                    raise ValueError(
+                        "Beta scored template context/center contract failed "
+                        f"for {invalid_beta_context} rows"
+                    )
+                beta_context_runs = {
+                    str(row[0])
+                    for row in connection.execute(
+                        """
+                        SELECT DISTINCT projection_context_run_id
+                        FROM Best_Ball_Weekly_Templates
+                        WHERE league='beta'
+                        """
+                    )
+                }
+                if len(beta_context_runs) != 1:
+                    raise ValueError(
+                        "Beta templates do not have one feature-context run: "
+                        f"{sorted(beta_context_runs)}"
+                    )
+                player_map_columns = {
+                    str(row[1])
+                    for row in connection.execute(
+                        'PRAGMA table_info("Best_Ball_Weekly_Player_Map")'
+                    )
+                }
+                required_beta_map_columns = {
+                    "current_context_source",
+                    "projection_context_scoring_hash",
+                    "projection_context_run_id",
+                }
+                missing_beta_map_columns = sorted(
+                    required_beta_map_columns - player_map_columns
+                )
+                if missing_beta_map_columns:
+                    raise ValueError(
+                        "Beta player map lacks scored-context audit columns: "
+                        f"{missing_beta_map_columns}"
+                    )
+                expected_feature_run_id = next(iter(beta_context_runs))
+                invalid_beta_map_context = (
+                    _count_invalid_nffc_player_map_context_rows(
+                        connection,
+                        league="beta",
+                        year=year,
+                        dataset=dataset,
+                        expected_scoring_hash=expected_scoring_hash,
+                        expected_feature_run_id=expected_feature_run_id,
+                    )
+                )
+                if invalid_beta_map_context:
+                    raise ValueError(
+                        "Beta current player-map scoring context failed for "
+                        f"{invalid_beta_map_context} rows"
+                    )
+                results["beta_template_context"] = {
+                    "source": expected_context_source,
+                    "scoring_hash": expected_scoring_hash,
+                    "feature_run_id": expected_feature_run_id,
+                    "center_policies": list(
+                        cycle.template_center_policies["beta"]
+                    ),
+                    "unavailable_reason": (
+                        BETA_SCORING_CONTEXT_UNAVAILABLE_REASON
+                    ),
+                }
 
         league_placeholders = ", ".join("?" for _ in cycle.leagues)
         bad_adp = connection.execute(
@@ -2587,16 +2823,19 @@ def validate_release(manifest: Mapping[str, Any]) -> dict[str, Any]:
         dataset=str(manifest["options"]["dataset"]),
         selection_trials=int(manifest["options"]["selection_trials"]),
     )
-    nffc_template_context = simulation.get("nffc_template_context", {})
-    if nffc_template_context.get("feature_run_id") != lineage["nffc"].get(
-        "feature_run_id"
-    ):
-        raise ValueError(
-            "NFFC template context does not reference the active locked "
-            "feature run: "
-            f"template={nffc_template_context.get('feature_run_id')!r}, "
-            f"locked={lineage['nffc'].get('feature_run_id')!r}"
+    for league in ("nffc", "beta"):
+        template_context = simulation.get(
+            f"{league}_template_context", {}
         )
+        if template_context.get("feature_run_id") != lineage[league].get(
+            "feature_run_id"
+        ):
+            raise ValueError(
+                f"{league.upper()} template context does not reference the "
+                "active locked feature run: "
+                f"template={template_context.get('feature_run_id')!r}, "
+                f"locked={lineage[league].get('feature_run_id')!r}"
+            )
     return {
         "integrity": integrity,
         "source_market_counts": source,

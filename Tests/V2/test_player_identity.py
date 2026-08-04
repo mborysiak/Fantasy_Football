@@ -107,6 +107,7 @@ def test_fftoday_2018_qb_quarantine_reaches_identity_lineage_and_manifest(
         ("unaffected running back", "RB", 2018),
         ("unaffected quarterback", "QB", 2019),
     }
+
     quarantine = manifest[manifest["component"].eq("identity_quarantine")]
     assert len(quarantine) == 1
     assert quarantine.iloc[0]["source_name"] == (
@@ -177,6 +178,131 @@ def test_fftoday_2018_qb_quarantine_reaches_identity_lineage_and_manifest(
         "corrupt quarterback"
     ).any()
     assert len(fail_safe_aliases) == 2
+
+
+def test_identity_loader_collapses_governed_team_only_duplicates(tmp_path):
+    raw = pd.DataFrame(
+        [
+            {
+                "ffa_id": "hopkins",
+                "player": "DeAndre Hopkins",
+                "position": "WR",
+                "team": team,
+                "year": 2019,
+            }
+            for team in ("HOU", "ARI")
+        ]
+    )
+    source_database = tmp_path / "identity_team_policy.sqlite3"
+    with sqlite3.connect(source_database) as connection:
+        raw.to_sql("FFA_RawStats", connection, index=False)
+    table_specs = {
+        "FFA_RawStats": {
+            "source": "ffa_raw",
+            "source_kind": "projection",
+            "source_player_id": "ffa_id",
+            "player": "player",
+            "position": "position",
+            "team": "team",
+            "season": "year",
+        }
+    }
+
+    records, manifest = load_identity_source_records(
+        source_database,
+        table_specs=table_specs,
+    )
+
+    assert len(records) == 1
+    record = records.iloc[0]
+    assert record["source"] == "ffa_raw"
+    assert record["normalized_name"] == "deandre hopkins"
+    assert record["season"] == 2019
+    assert pd.isna(record["team"])
+    assert manifest.iloc[0]["row_count"] == 2
+
+    canonical = canonicalize_nflverse_players(
+        pd.DataFrame(
+            [
+                {
+                    "gsis_id": "00-hopkins",
+                    "display_name": "DeAndre Hopkins",
+                    "position_group": "WR",
+                    "rookie_season": 2013,
+                    "last_season": 2025,
+                    "draft_year": 2013,
+                    "draft_round": 1,
+                    "draft_pick": 27,
+                    "draft_team": "HOU",
+                    "latest_team": "BAL",
+                }
+            ]
+        )
+    )
+    _, aliases = resolve_source_records(canonical, records)
+
+    assert len(aliases) == 1
+    assert aliases.iloc[0]["player_key"] == canonical.iloc[0]["player_key"]
+    assert aliases.iloc[0]["source"] == "ffa_raw"
+    assert pd.isna(aliases.iloc[0]["team"])
+
+
+def test_identity_loader_canonicalizes_trusted_team_aliases(tmp_path):
+    raw = pd.DataFrame(
+        [
+            {
+                "player": "Trevor Lawrence",
+                "pos": "QB",
+                "team": team,
+                "year": 2023,
+            }
+            for team in ("JAC", "JAX")
+        ]
+    )
+    source_database = tmp_path / "identity_team_aliases.sqlite3"
+    with sqlite3.connect(source_database) as connection:
+        raw.to_sql("FFToday_Projections", connection, index=False)
+    table_specs = {
+        "FFToday_Projections": {
+            "source": "fftoday",
+            "source_kind": "projection",
+            "player": "player",
+            "position": "pos",
+            "team": "team",
+            "season": "year",
+        }
+    }
+
+    records, _ = load_identity_source_records(
+        source_database,
+        table_specs=table_specs,
+    )
+
+    assert len(records) == 1
+    assert records.iloc[0]["team"] == "JAC"
+
+    canonical = canonicalize_nflverse_players(
+        pd.DataFrame(
+            [
+                {
+                    "gsis_id": "00-trevor",
+                    "display_name": "Trevor Lawrence",
+                    "position_group": "QB",
+                    "rookie_season": 2021,
+                    "last_season": 2025,
+                    "draft_year": 2021,
+                    "draft_round": 1,
+                    "draft_pick": 1,
+                    "draft_team": "JAX",
+                    "latest_team": "JAC",
+                }
+            ]
+        )
+    )
+    _, aliases = resolve_source_records(canonical, records)
+
+    assert len(aliases) == 1
+    assert aliases.iloc[0]["team"] == "JAC"
 
 
 def test_same_name_players_resolve_by_draft_year():

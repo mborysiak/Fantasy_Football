@@ -164,6 +164,24 @@ BETA_2018_QB_CENTER_FALLBACK_REASON = (
 )
 GOVERNED_V2_TEMPLATE_CENTER_POSITION_MISMATCHES = {
     (
+        "d83694cb-a6dc-508c-b95c-c5b653de068a",
+        2012,
+        "RB",
+        "WR",
+    ): "canonical_hybrid_role_shift:dexter_mccluster",
+    (
+        "d83694cb-a6dc-508c-b95c-c5b653de068a",
+        2013,
+        "RB",
+        "WR",
+    ): "canonical_hybrid_role_shift:dexter_mccluster",
+    (
+        "8f059112-f544-512f-8b98-64e31802a4fc",
+        2015,
+        "RB",
+        "WR",
+    ): "canonical_hybrid_role_shift:deanthony_thomas",
+    (
         "b16d3ba0-39d4-5a4b-bca8-ad15e147c96b",
         2019,
         "WR",
@@ -218,6 +236,13 @@ V2_SCORED_PROJECTION_CONTEXT_AUDIT_COLUMNS = [
     "projection_context_source",
     "projection_context_scoring_hash",
     "projection_context_run_id",
+    "scoring_context_available",
+    "scoring_context_unavailable_reason",
+    "scoring_context_position",
+    "scoring_context_position_mismatch",
+    "scoring_context_position_mismatch_reason",
+    "team_qb_scoring_context_available",
+    "team_qb_scoring_context_unavailable_reason",
     "model_input_avg_proj_points",
     "model_input_preseason_proj_ppg",
     "model_input_avg_proj_pass_points",
@@ -225,6 +250,7 @@ V2_SCORED_PROJECTION_CONTEXT_AUDIT_COLUMNS = [
     "model_input_avg_proj_rec_points",
     "model_input_qb_avg_proj_pass_points",
     "model_input_std_proj_points",
+    "model_input_std_pos_rank",
     "projection_context_avg_proj_points_delta",
 ]
 MATCH_FILL_VALUE = 0.5
@@ -325,7 +351,7 @@ MATCH_OUTPUT_COLS = [
     "team_qb_pass_points",
     "team_qb_pass_proj_rank_pct",
 ] + PROJECTION_COMPONENT_COLS + PROJECTION_UNCERTAINTY_SOURCE_COLS
-NFFC_SCORING_SENSITIVE_CURRENT_CONTEXT_COLS = {
+V2_SCORING_SENSITIVE_CURRENT_CONTEXT_COLS = {
     "current_avg_proj_points",
     "avg_proj_points",
     "avg_proj_pass_points",
@@ -335,6 +361,8 @@ NFFC_SCORING_SENSITIVE_CURRENT_CONTEXT_COLS = {
     "std_proj_points",
     *MATCH_OUTPUT_COLS,
 }
+V2_SCORING_CONTEXT_CAPABLE_LEAGUES = frozenset({"beta", "nffc"})
+SIGNED_PROJECTION_COMPONENT_SHARE_LEAGUES = frozenset({"beta"})
 
 # These fields are the minimum non-neutral context required to match a current
 # production player to historical weekly templates. Position-specific room
@@ -402,6 +430,44 @@ def set_active_league(league):
     WEEKS = list(range(1, WEEK_COUNT + 1))
     TEMPLATE_SEASON_MIN = TEMPLATE_SEASON_MIN_BY_LEAGUE[LEAGUE]
     return LEAGUE
+
+
+def resolve_scoring_matched_context(
+    scoring_matched_context=None,
+    *,
+    league=None,
+):
+    """Resolve whether the active matcher must use league-scored V2 context."""
+
+    league = resolve_league(LEAGUE if league is None else league)
+    if scoring_matched_context is None:
+        enabled = league in _PRODUCTION_CYCLE.template_context_sources
+    else:
+        enabled = bool(scoring_matched_context)
+    if enabled and league not in V2_SCORING_CONTEXT_CAPABLE_LEAGUES:
+        raise ValueError(
+            f"League {league} has no governed V2 scoring-context implementation."
+        )
+    return enabled
+
+
+def scoring_matched_context_source(league=None):
+    league = resolve_league(LEAGUE if league is None else league)
+    return _PRODUCTION_CYCLE.template_context_sources.get(
+        league,
+        f"v2_{league}_scoring_matched_preseason",
+    )
+
+
+def projection_schedule_games(seasons):
+    """Return the NFL team-game projection horizon for each source season."""
+
+    values = pd.to_numeric(seasons, errors="coerce")
+    return pd.Series(
+        np.where(values.ge(2021), 17.0, 16.0),
+        index=values.index,
+        dtype=float,
+    )
 
 
 def current_adp_source_league(league=None):
@@ -1017,6 +1083,8 @@ def add_template_match_features(
     rank_pct_col,
     total_points_col,
     projection_ppg_col,
+    *,
+    preserve_signed_team_qb_context=False,
 ):
     df = add_projection_component_cols(df)
     df = add_projection_uncertainty_cols(df, total_points_col, group_cols)
@@ -1177,9 +1245,12 @@ def add_template_match_features(
             columns=["team_qb1_proj_points_calc", "team_qb2_proj_points_calc"]
         )
 
-    df["team_qb_pass_points"] = pd.to_numeric(
+    df["__provided_team_qb_pass_points"] = pd.to_numeric(
         df["qb_avg_proj_pass_points"], errors="coerce"
-    ).fillna(0)
+    )
+    df["team_qb_pass_points"] = df[
+        "__provided_team_qb_pass_points"
+    ].fillna(0)
     qb_mask = df["pos"].eq("QB") & valid_team
     if qb_mask.any():
         qb_pass = (
@@ -1188,12 +1259,34 @@ def add_template_match_features(
             .agg(team_qb_pass_points_calc=("avg_proj_pass_points", "max"))
         )
         df = df.merge(qb_pass, on=team_group_cols, how="left")
+        provided_team_qb_context = df[
+            "__provided_team_qb_pass_points"
+        ].notna()
+        if not preserve_signed_team_qb_context:
+            provided_team_qb_context &= df[
+                "__provided_team_qb_pass_points"
+            ].gt(0)
         df["team_qb_pass_points"] = np.where(
-            df["team_qb_pass_points"].gt(0),
-            df["team_qb_pass_points"],
+            provided_team_qb_context,
+            df["__provided_team_qb_pass_points"],
             df["team_qb_pass_points_calc"].fillna(0),
         )
         df = df.drop(columns=["team_qb_pass_points_calc"])
+
+    if (
+        preserve_signed_team_qb_context
+        and "team_qb_scoring_context_available" in df
+    ):
+        unavailable_team_qb_context = pd.to_numeric(
+            df["team_qb_scoring_context_available"],
+            errors="coerce",
+        ).eq(0)
+        df.loc[
+            unavailable_team_qb_context,
+            "team_qb_pass_points",
+        ] = np.nan
+
+    df = df.drop(columns=["__provided_team_qb_pass_points"])
 
     df = add_group_rank_pct(
         df,
@@ -1670,11 +1763,11 @@ def load_v2_scored_projection_context(
 ):
     """Load leakage-safe, scoring-matched preseason context from the V2 mart."""
 
-    if LEAGUE != "nffc":
+    if LEAGUE not in V2_SCORING_CONTEXT_CAPABLE_LEAGUES:
         raise ValueError(
-            "The V2 scored projection-context override is governed only for "
-            "the NFFC weekly-template build."
+            f"The V2 scored projection-context override is not governed for {LEAGUE}."
         )
+    context_label = LEAGUE.upper()
     v2_database = resolve_v2_database(v2_database)
     required_columns = {
         "player_key",
@@ -1698,7 +1791,7 @@ def load_v2_scored_projection_context(
         missing_columns = sorted(required_columns - available_columns)
         if missing_columns:
             raise ValueError(
-                "V2 player_season_features lacks NFFC scored projection "
+                f"V2 player_season_features lacks {context_label} scored projection "
                 f"context columns: {missing_columns}"
             )
         context = pd.read_sql_query(
@@ -1727,6 +1820,46 @@ def load_v2_scored_projection_context(
             connection,
             params=(int(min_season), int(max_season)),
         )
+        if LEAGUE == "beta":
+            projection_value_columns = {
+                str(row[1])
+                for row in connection.execute(
+                    'PRAGMA table_info("player_season_projection_values")'
+                )
+            }
+            required_projection_value_columns = {
+                "player_key",
+                "season",
+                "provider",
+                "position",
+                "configured_points_complete",
+                "provider_projected_points",
+                "run_id",
+            }
+            missing_projection_value_columns = sorted(
+                required_projection_value_columns - projection_value_columns
+            )
+            if missing_projection_value_columns:
+                raise ValueError(
+                    "V2 beta projection values lack scored rank-context "
+                    f"columns: {missing_projection_value_columns}"
+                )
+            beta_rank_values = pd.read_sql_query(
+                """
+                SELECT player_key,
+                       CAST(season AS INTEGER) season,
+                       provider,
+                       position,
+                       provider_projected_points,
+                       run_id
+                FROM player_season_projection_values
+                WHERE season BETWEEN ? AND ?
+                      AND configured_points_complete=1
+                      AND provider_projected_points IS NOT NULL
+                """,
+                connection,
+                params=(int(min_season), int(max_season)),
+            )
         locked_feature_runs = {
             str(row[0]).strip()
             for row in connection.execute(
@@ -1743,7 +1876,7 @@ def load_v2_scored_projection_context(
 
     if context.empty:
         raise ValueError(
-            "V2 player_season_features contains no NFFC scored projection "
+            f"V2 player_season_features contains no {context_label} scored projection "
             f"context for {min_season}-{max_season}."
         )
     if context.duplicated(["player_key", "season"]).any():
@@ -1752,11 +1885,11 @@ def load_v2_scored_projection_context(
             ["player_key", "season"],
         ].head(10)
         raise ValueError(
-            "V2 NFFC scored projection context contains duplicate keys: "
+            f"V2 {context_label} scored projection context contains duplicate keys: "
             f"{preview.to_dict('records')}"
         )
 
-    expected_hash = scoring_hash("nffc")
+    expected_hash = scoring_hash(LEAGUE)
     context_league = (
         context["projection_context_league"]
         .astype("string")
@@ -1773,30 +1906,131 @@ def load_v2_scored_projection_context(
         .astype("string")
         .str.strip()
     )
-    if context_league.isna().any() or not context_league.eq("nffc").all():
+    if context_league.isna().any() or not context_league.eq(LEAGUE).all():
         observed_leagues = sorted(set(context_league.dropna().astype(str)))
         raise ValueError(
-            "V2 NFFC scored projection context has unexpected leagues: "
+            f"V2 {context_label} scored projection context has unexpected leagues: "
             f"{observed_leagues}"
         )
     if context_hash.isna().any() or not context_hash.eq(expected_hash).all():
         observed_hashes = sorted(set(context_hash.dropna().astype(str)))
         raise ValueError(
-            "V2 NFFC scored projection context has an unexpected scoring "
+            f"V2 {context_label} scored projection context has an unexpected scoring "
             f"hash: {observed_hashes}"
         )
     if context_run.isna().any() or context_run.eq("").any():
         raise ValueError(
-            "V2 NFFC scored projection context contains a missing run_id."
+            f"V2 {context_label} scored projection context contains a missing run_id."
         )
     observed_feature_runs = set(context_run.astype(str))
     if not locked_feature_runs or observed_feature_runs != locked_feature_runs:
         raise ValueError(
-            "V2 NFFC scored projection context is not the exact feature run "
+            f"V2 {context_label} scored projection context is not the exact feature run "
             "referenced by the active locked handoff: "
             f"context={sorted(observed_feature_runs)}, "
             f"locked={sorted(locked_feature_runs)}"
         )
+
+    if LEAGUE == "beta":
+        if beta_rank_values.empty:
+            raise ValueError(
+                "V2 beta projection values contain no scored provider ranks "
+                f"for {min_season}-{max_season}."
+            )
+        if beta_rank_values.duplicated(
+            ["player_key", "season", "provider"]
+        ).any():
+            preview = beta_rank_values.loc[
+                beta_rank_values.duplicated(
+                    ["player_key", "season", "provider"],
+                    keep=False,
+                ),
+                ["player_key", "season", "provider"],
+            ].head(10)
+            raise ValueError(
+                "V2 beta scored provider rank context contains duplicate "
+                f"keys: {preview.to_dict('records')}"
+            )
+        beta_rank_values["provider_projected_points"] = pd.to_numeric(
+            beta_rank_values["provider_projected_points"],
+            errors="coerce",
+        )
+        invalid_rank_points = (
+            beta_rank_values["provider_projected_points"].isna()
+            | ~np.isfinite(beta_rank_values["provider_projected_points"])
+        )
+        if invalid_rank_points.any():
+            raise ValueError(
+                "V2 beta scored provider rank context contains invalid points."
+            )
+        beta_rank_runs = {
+            str(run_id).strip()
+            for run_id in beta_rank_values["run_id"].dropna()
+            if str(run_id).strip()
+        }
+        if beta_rank_runs != observed_feature_runs:
+            raise ValueError(
+                "V2 beta scored provider ranks are not from the exact feature "
+                "run used by player_season_features: "
+                f"ranks={sorted(beta_rank_runs)}, "
+                f"features={sorted(observed_feature_runs)}"
+            )
+        beta_rank_values["position"] = (
+            beta_rank_values["position"]
+            .astype("string")
+            .str.strip()
+            .str.upper()
+        )
+        beta_rank_values["_beta_scored_position_rank"] = (
+            beta_rank_values.groupby(
+                ["season", "provider", "position"]
+            )["provider_projected_points"]
+            .rank(method="average", ascending=False)
+        )
+        beta_rank_context = (
+            beta_rank_values.groupby(
+                ["player_key", "season"],
+                as_index=False,
+            )
+            .agg(
+                beta_scored_position_rank_std=(
+                    "_beta_scored_position_rank",
+                    lambda values: (
+                        float(values.std(ddof=0))
+                        if values.notna().sum() >= 2
+                        else np.nan
+                    ),
+                ),
+                beta_scored_position_rank_source_count=(
+                    "_beta_scored_position_rank",
+                    "count",
+                ),
+            )
+        )
+        context = context.merge(
+            beta_rank_context,
+            on=["player_key", "season"],
+            how="left",
+            validate="one_to_one",
+        )
+        missing_rank_context = (
+            pd.to_numeric(
+                context["expert_points_median"], errors="coerce"
+            ).notna()
+            & context["beta_scored_position_rank_source_count"].isna()
+        )
+        if missing_rank_context.any():
+            preview = context.loc[
+                missing_rank_context,
+                ["player_key", "season", "feature_context_position"],
+            ].head(20)
+            raise ValueError(
+                "V2 beta scored provider-rank coverage is incomplete: "
+                f"{preview.to_dict('records')}"
+            )
+    else:
+        context["beta_scored_position_rank_std"] = np.nan
+        context["beta_scored_position_rank_source_count"] = np.nan
 
     season = pd.to_numeric(context["season"], errors="coerce")
     cutoff = pd.to_numeric(
@@ -1821,7 +2055,7 @@ def load_v2_scored_projection_context(
             ],
         ].head(10)
         raise ValueError(
-            "V2 NFFC scored projection context violates the preseason "
+            f"V2 {context_label} scored projection context violates the preseason "
             f"cutoff contract: {preview.to_dict('records')}"
         )
 
@@ -1856,6 +2090,9 @@ def load_v2_scored_projection_context(
     qb_context["_qb_pass_share"] = pd.to_numeric(
         qb_context["projected_pass_point_share"], errors="coerce"
     )
+    qb_context = qb_context[
+        qb_context["_qb_total_points"].notna()
+    ].copy()
     qb_context = qb_context.sort_values(
         [
             "season",
@@ -1878,11 +2115,17 @@ def load_v2_scored_projection_context(
             & (
                 qb_context["_qb_pass_share"].isna()
                 | ~np.isfinite(qb_context["_qb_pass_share"])
-                | qb_context["_qb_pass_share"].lt(0)
-                | qb_context["_qb_pass_share"].gt(1)
             )
         )
     )
+    if LEAGUE not in SIGNED_PROJECTION_COMPONENT_SHARE_LEAGUES:
+        invalid_qb1 |= (
+            qb_context["_qb_total_points"].gt(0)
+            & (
+                qb_context["_qb_pass_share"].lt(0)
+                | qb_context["_qb_pass_share"].gt(1)
+            )
+        )
     if invalid_qb1.any():
         preview = qb_context.loc[
             invalid_qb1,
@@ -1895,7 +2138,7 @@ def load_v2_scored_projection_context(
             ],
         ].head(20)
         raise ValueError(
-            "V2 NFFC scored projection context has an invalid team QB1 "
+            f"V2 {context_label} scored projection context has an invalid team QB1 "
             f"passing share: {preview.to_dict('records')}"
         )
     qb_context["team_qb1_pass_points"] = np.where(
@@ -1928,39 +2171,66 @@ def apply_v2_scored_projection_context(
     v2_database,
     season_column,
     use_expert_donor_center=False,
+    use_expert_fallback_center=False,
 ):
-    """Replace NFFC scoring-sensitive Model_Inputs fields by canonical key."""
+    """Replace scoring-sensitive Model_Inputs fields by canonical V2 key."""
 
-    if LEAGUE != "nffc":
-        return projections.copy()
+    if LEAGUE not in V2_SCORING_CONTEXT_CAPABLE_LEAGUES:
+        raise ValueError(
+            f"League {LEAGUE} has no governed V2 scoring-context implementation."
+        )
+    context_label = LEAGUE.upper()
+    if use_expert_donor_center and use_expert_fallback_center:
+        raise ValueError(
+            "Expert donor-center policies must select either all rows or fallback rows."
+        )
     projections = projections.copy()
     required_keys = {"player_key", "pos", "team", season_column}
     missing_keys = sorted(required_keys - set(projections.columns))
     if missing_keys:
         raise ValueError(
-            "NFFC projection context lacks canonical join columns: "
+            f"{context_label} projection context lacks canonical join columns: "
             f"{missing_keys}"
         )
     if projections["player_key"].isna().any():
         raise ValueError(
-            "NFFC projection context contains a null player_key before the "
+            f"{context_label} projection context contains a null player_key before the "
             "scoring-context join."
         )
     if projections.duplicated(["player_key", season_column]).any():
         raise ValueError(
-            "NFFC projection context contains duplicate player-season keys."
+            f"{context_label} projection context contains duplicate player-season keys."
         )
 
     seasons = pd.to_numeric(projections[season_column], errors="coerce")
     if seasons.isna().any():
-        raise ValueError("NFFC projection context contains an invalid season.")
+        raise ValueError(
+            f"{context_label} projection context contains an invalid season."
+        )
     scored = load_v2_scored_projection_context(
         v2_database,
         min_season=int(seasons.min()),
         max_season=int(seasons.max()),
     )
+    scored_team_qb = scored.loc[
+        scored["feature_context_position"].eq("QB")
+        & pd.to_numeric(
+            scored["expert_points_median"], errors="coerce"
+        ).notna(),
+        [
+            "season",
+            "_feature_context_team_normalized",
+            "team_qb1_pass_points",
+            "derived_team_qb1_ppg",
+        ],
+    ].drop_duplicates(
+        ["season", "_feature_context_team_normalized"]
+    )
     if season_column != "season":
         scored = scored.rename(columns={"season": season_column})
+        scored_team_qb = scored_team_qb.rename(
+            columns={"season": season_column}
+        )
     projections["player_key"] = projections["player_key"].astype("string")
     scored["player_key"] = scored["player_key"].astype("string")
     projections = projections.merge(
@@ -1977,9 +2247,27 @@ def apply_v2_scored_projection_context(
             ["player", "player_key", "pos", season_column],
         ].head(20)
         raise ValueError(
-            "NFFC scoring-matched projection context coverage is incomplete: "
+            f"{context_label} scoring-matched projection context coverage is incomplete: "
             f"{preview.to_dict('records')}"
         )
+
+    unavailable_reason = (
+        projections.get(
+            V2_TEMPLATE_CENTER_UNAVAILABLE_REASON_COLUMN,
+            pd.Series("", index=projections.index),
+        )
+        .astype("string")
+        .fillna("")
+        .str.strip()
+    )
+    governed_context_unavailable_candidate = (
+        (LEAGUE == "beta")
+        & projections["pos"].eq("QB")
+        & pd.to_numeric(
+            projections[season_column], errors="coerce"
+        ).eq(2018)
+        & unavailable_reason.eq(BETA_2018_QB_CENTER_FALLBACK_REASON)
+    )
 
     projection_team = (
         projections["team"]
@@ -1988,6 +2276,46 @@ def apply_v2_scored_projection_context(
         .str.upper()
         .replace(TEAM_ALIASES)
     )
+    projections["_projection_context_team_normalized"] = projection_team
+    if LEAGUE == "beta":
+        scored_team_qb = scored_team_qb.rename(
+            columns={
+                "_feature_context_team_normalized": (
+                    "_projection_context_team_normalized"
+                ),
+                "team_qb1_pass_points": (
+                    "_projection_team_qb1_pass_points"
+                ),
+                "derived_team_qb1_ppg": "_projection_team_qb1_ppg",
+            }
+        )
+        projections = projections.merge(
+            scored_team_qb,
+            on=[season_column, "_projection_context_team_normalized"],
+            how="left",
+            validate="many_to_one",
+        )
+        assigned_projection_team = has_current_team(
+            projections["_projection_context_team_normalized"]
+        )
+        projections["team_qb1_pass_points"] = projections[
+            "_projection_team_qb1_pass_points"
+        ].where(
+            assigned_projection_team,
+            projections["team_qb1_pass_points"],
+        )
+        projections["derived_team_qb1_ppg"] = projections[
+            "_projection_team_qb1_ppg"
+        ].where(
+            assigned_projection_team,
+            projections["derived_team_qb1_ppg"],
+        )
+        projections["team_qb1_ppg"] = projections[
+            "_projection_team_qb1_ppg"
+        ].where(
+            assigned_projection_team,
+            projections["team_qb1_ppg"],
+        )
     feature_team = (
         projections["feature_context_team"]
         .astype("string")
@@ -1999,6 +2327,7 @@ def apply_v2_scored_projection_context(
         has_current_team(projection_team)
         & has_current_team(feature_team)
         & projection_team.ne(feature_team)
+        & ~governed_context_unavailable_candidate
     )
     if team_mismatch.any():
         preview = projections.loc[
@@ -2013,21 +2342,30 @@ def apply_v2_scored_projection_context(
             ],
         ].head(20)
         raise ValueError(
-            "NFFC scoring-matched projection context has unexpected team "
+            f"{context_label} scoring-matched projection context has unexpected team "
             f"mismatches: {preview.to_dict('records')}"
         )
 
     position_mismatch = projections["feature_context_position"].ne(
         projections["pos"]
     )
+    projections["scoring_context_position"] = projections[
+        "feature_context_position"
+    ]
+    projections["scoring_context_position_mismatch"] = (
+        position_mismatch.astype(np.int8)
+    )
+    projections["scoring_context_position_mismatch_reason"] = ""
     governed_position_mismatch = pd.Series(
         False,
         index=projections.index,
         dtype=bool,
     )
-    for mismatch_key in GOVERNED_V2_TEMPLATE_CENTER_POSITION_MISMATCHES:
+    for mismatch_key, mismatch_reason in (
+        GOVERNED_V2_TEMPLATE_CENTER_POSITION_MISMATCHES.items()
+    ):
         player_key, season, template_position, feature_position = mismatch_key
-        governed_position_mismatch |= (
+        governed_row = (
             position_mismatch
             & projections["player_key"].astype(str).eq(player_key)
             & pd.to_numeric(
@@ -2036,8 +2374,15 @@ def apply_v2_scored_projection_context(
             & projections["pos"].eq(template_position)
             & projections["feature_context_position"].eq(feature_position)
         )
+        governed_position_mismatch |= governed_row
+        projections.loc[
+            governed_row,
+            "scoring_context_position_mismatch_reason",
+        ] = mismatch_reason
     unexpected_position_mismatch = (
-        position_mismatch & ~governed_position_mismatch
+        position_mismatch
+        & ~governed_position_mismatch
+        & ~governed_context_unavailable_candidate
     )
     if unexpected_position_mismatch.any():
         preview = projections.loc[
@@ -2051,7 +2396,7 @@ def apply_v2_scored_projection_context(
             ],
         ].head(20)
         raise ValueError(
-            "NFFC scoring-matched projection context has unexpected position "
+            f"{context_label} scoring-matched projection context has unexpected position "
             f"mismatches: {preview.to_dict('records')}"
         )
 
@@ -2060,22 +2405,59 @@ def apply_v2_scored_projection_context(
         "expert_ppg_team_game_median",
         "expert_ppg_team_game_std",
     ]
+    invalid_required_context = pd.Series(
+        False,
+        index=projections.index,
+        dtype=bool,
+    )
     for column in required_numeric:
         values = pd.to_numeric(projections[column], errors="coerce")
-        invalid = values.isna() | ~np.isfinite(values) | values.lt(0)
-        if invalid.any():
-            preview = projections.loc[
-                invalid,
-                ["player", "player_key", "pos", season_column, column],
-            ].head(20)
-            raise ValueError(
-                f"NFFC scored projection context has invalid {column}: "
-                f"{preview.to_dict('records')}"
-            )
+        invalid = values.isna() | ~np.isfinite(values)
+        if (
+            column == "expert_ppg_team_game_std"
+            or LEAGUE not in SIGNED_PROJECTION_COMPONENT_SHARE_LEAGUES
+        ):
+            invalid |= values.lt(0)
+        invalid_required_context |= invalid
         projections[column] = values
 
-    expected_ppg = projections["expert_points_median"] / WEEK_COUNT
-    inconsistent_ppg = ~np.isclose(
+    governed_unavailable = governed_context_unavailable_candidate
+    scoring_context_unavailable = (
+        invalid_required_context & governed_unavailable
+    )
+    unexpected_invalid_context = (
+        invalid_required_context & ~scoring_context_unavailable
+    )
+    if unexpected_invalid_context.any():
+        preview = projections.loc[
+            unexpected_invalid_context,
+            [
+                "player",
+                "player_key",
+                "pos",
+                season_column,
+                *required_numeric,
+            ],
+        ].head(20)
+        raise ValueError(
+            f"{context_label} scored projection context has invalid required "
+            f"values: {preview.to_dict('records')}"
+        )
+    scoring_context_available = ~scoring_context_unavailable
+    projections["scoring_context_available"] = (
+        scoring_context_available.astype(np.int8)
+    )
+    projections["scoring_context_unavailable_reason"] = np.where(
+        scoring_context_unavailable,
+        unavailable_reason,
+        "",
+    )
+
+    source_schedule_games = projection_schedule_games(
+        projections[season_column]
+    )
+    expected_ppg = projections["expert_points_median"] / source_schedule_games
+    inconsistent_ppg = scoring_context_available & ~np.isclose(
         expected_ppg,
         projections["expert_ppg_team_game_median"],
         rtol=0,
@@ -2093,8 +2475,9 @@ def apply_v2_scored_projection_context(
             ],
         ].head(20)
         raise ValueError(
-            "NFFC scored projection total and team-game PPG disagree with the "
-            f"{WEEK_COUNT}-week contract: {preview.to_dict('records')}"
+            f"{context_label} scored projection total and team-game PPG disagree "
+            "with the source-season schedule contract: "
+            f"{preview.to_dict('records')}"
         )
 
     share_columns = [
@@ -2102,27 +2485,40 @@ def apply_v2_scored_projection_context(
         "projected_rush_point_share",
         "projected_receiving_point_share",
     ]
-    positive_total = projections["expert_points_median"].gt(0)
+    if LEAGUE in SIGNED_PROJECTION_COMPONENT_SHARE_LEAGUES:
+        component_total_available = scoring_context_available & ~np.isclose(
+            projections["expert_points_median"],
+            0.0,
+            rtol=0,
+            atol=1e-12,
+        )
+    else:
+        component_total_available = (
+            scoring_context_available
+            & projections["expert_points_median"].gt(0)
+        )
     for column in share_columns:
         values = pd.to_numeric(projections[column], errors="coerce")
-        invalid = positive_total & (
+        invalid = component_total_available & (
             values.isna()
             | ~np.isfinite(values)
-            | values.lt(0)
-            | values.gt(1)
         )
+        if LEAGUE not in SIGNED_PROJECTION_COMPONENT_SHARE_LEAGUES:
+            invalid |= component_total_available & (
+                values.lt(0) | values.gt(1)
+            )
         if invalid.any():
             preview = projections.loc[
                 invalid,
                 ["player", "player_key", "pos", season_column, column],
             ].head(20)
             raise ValueError(
-                f"NFFC scored projection context has invalid {column}: "
+                f"{context_label} scored projection context has invalid {column}: "
                 f"{preview.to_dict('records')}"
             )
-        projections[column] = values.where(positive_total, 0.0)
+        projections[column] = values.where(component_total_available, 0.0)
     share_sum = projections[share_columns].sum(axis=1)
-    inconsistent_shares = positive_total & ~np.isclose(
+    inconsistent_shares = component_total_available & ~np.isclose(
         share_sum,
         1.0,
         rtol=0,
@@ -2134,7 +2530,7 @@ def apply_v2_scored_projection_context(
             ["player", "player_key", "pos", season_column, *share_columns],
         ].head(20)
         raise ValueError(
-            "NFFC scored projection component shares do not sum to one: "
+            f"{context_label} scored projection component shares do not sum to one: "
             f"{preview.to_dict('records')}"
         )
     team_qb1_ppg = pd.to_numeric(
@@ -2147,14 +2543,13 @@ def apply_v2_scored_projection_context(
         projections["derived_team_qb1_ppg"], errors="coerce"
     )
     assigned_team = has_current_team(projections["team"])
-    invalid_team_qb = (
+    invalid_team_qb_values = (
         (
             team_qb1_ppg.isna()
             | ~np.isfinite(team_qb1_ppg)
             | team_qb1_ppg.lt(0)
             | team_qb1_pass_points.isna()
             | ~np.isfinite(team_qb1_pass_points)
-            | team_qb1_pass_points.lt(0)
             | derived_team_qb1_ppg.isna()
             | ~np.isfinite(derived_team_qb1_ppg)
             | ~np.isclose(
@@ -2165,6 +2560,23 @@ def apply_v2_scored_projection_context(
             )
         )
         & assigned_team
+    )
+    if LEAGUE not in SIGNED_PROJECTION_COMPONENT_SHARE_LEAGUES:
+        invalid_team_qb_values |= (
+            assigned_team & team_qb1_pass_points.lt(0)
+        )
+    governed_team_qb_unavailable = (
+        (LEAGUE == "beta")
+        & pd.to_numeric(
+            projections[season_column], errors="coerce"
+        ).eq(2018)
+        & assigned_team
+        & invalid_team_qb_values
+    )
+    invalid_team_qb = (
+        invalid_team_qb_values
+        & scoring_context_available
+        & ~governed_team_qb_unavailable
     )
     if invalid_team_qb.any():
         preview = projections.loc[
@@ -2181,9 +2593,20 @@ def apply_v2_scored_projection_context(
             ],
         ].head(20)
         raise ValueError(
-            "NFFC scored projection context lacks valid team-QB context for "
+            f"{context_label} scored projection context lacks valid team-QB context for "
             f"an assigned player: {preview.to_dict('records')}"
         )
+    team_qb_context_available = (
+        ~invalid_team_qb_values | ~assigned_team
+    )
+    projections["team_qb_scoring_context_available"] = (
+        team_qb_context_available.astype(np.int8)
+    )
+    projections["team_qb_scoring_context_unavailable_reason"] = np.where(
+        governed_team_qb_unavailable,
+        BETA_2018_QB_CENTER_FALLBACK_REASON,
+        "",
+    )
     projections["team_qb1_ppg"] = team_qb1_ppg
     projections["team_qb1_pass_points"] = team_qb1_pass_points
 
@@ -2195,33 +2618,64 @@ def apply_v2_scored_projection_context(
         "avg_proj_rec_points": "model_input_avg_proj_rec_points",
         "qb_avg_proj_pass_points": "model_input_qb_avg_proj_pass_points",
         "std_proj_points": "model_input_std_proj_points",
+        "std_pos_rank": "model_input_std_pos_rank",
     }
     for source, audit_column in original_columns.items():
         projections[audit_column] = (
             projections[source] if source in projections else np.nan
         )
 
-    projections["avg_proj_points"] = projections["expert_points_median"]
+    projections["avg_proj_points"] = projections[
+        "expert_points_median"
+    ].where(
+        scoring_context_available,
+        projections["avg_proj_points"],
+    )
     projections["preseason_proj_ppg"] = projections[
         "expert_ppg_team_game_median"
-    ]
+    ].where(
+        scoring_context_available,
+        projections["preseason_proj_ppg"],
+    )
     for destination, share_column in (
         ("avg_proj_pass_points", "projected_pass_point_share"),
         ("avg_proj_rush_points", "projected_rush_point_share"),
         ("avg_proj_rec_points", "projected_receiving_point_share"),
     ):
-        projections[destination] = (
+        scored_component = (
             projections[share_column]
             * projections["expert_points_median"]
         )
-    projections["qb_avg_proj_pass_points"] = (
-        projections["team_qb1_pass_points"]
+        projections[destination] = scored_component.where(
+            scoring_context_available,
+            projections[destination],
+        )
+    projections["qb_avg_proj_pass_points"] = projections[
+        "team_qb1_pass_points"
+    ].where(
+        scoring_context_available & team_qb_context_available,
+        np.nan,
     )
-    projections["std_proj_points"] = (
-        projections["expert_ppg_team_game_std"] * WEEK_COUNT
+    scored_std_points = (
+        projections["expert_ppg_team_game_std"] * source_schedule_games
     )
-    projections["projection_context_source"] = (
-        _PRODUCTION_CYCLE.template_context_sources["nffc"]
+    projections["std_proj_points"] = scored_std_points.where(
+        scoring_context_available,
+        projections["std_proj_points"],
+    )
+    if LEAGUE == "beta":
+        scored_position_rank_std = pd.to_numeric(
+            projections["beta_scored_position_rank_std"],
+            errors="coerce",
+        )
+        projections["std_pos_rank"] = scored_position_rank_std.where(
+            scoring_context_available,
+            projections["std_pos_rank"],
+        )
+    projections["projection_context_source"] = np.where(
+        scoring_context_available,
+        scoring_matched_context_source(),
+        "v2_beta_scoring_context_unavailable",
     )
     projections["projection_context_avg_proj_points_delta"] = (
         projections["avg_proj_points"]
@@ -2249,6 +2703,41 @@ def apply_v2_scored_projection_context(
             approved_policies[0]
         )
         projections["v2_recenter_promoted"] = 0
+    elif use_expert_fallback_center:
+        if LEAGUE != "beta":
+            raise ValueError(
+                "The scoring-matched expert fallback center is governed only for beta."
+            )
+        approved_policies = set(
+            _PRODUCTION_CYCLE.template_center_policies["beta"]
+        )
+        expected_policies = {
+            "legacy_validated_oos",
+            "beta_scored_expert_fallback",
+        }
+        if approved_policies != expected_policies:
+            raise ValueError(
+                "The approved beta donor-center contract does not permit "
+                "the scoring-matched expert fallback."
+            )
+        fallback = (
+            scoring_context_available
+            & projections["historical_center_policy"].eq(
+                "preseason_projection_fallback"
+            )
+        )
+        projections.loc[
+            fallback,
+            "historical_pred_fp_per_game",
+        ] = projections.loc[fallback, "expert_ppg_team_game_median"]
+        projections.loc[
+            fallback,
+            "historical_projection_source",
+        ] = "v2_beta_expert_consensus_fallback"
+        projections.loc[
+            fallback,
+            "historical_center_policy",
+        ] = "beta_scored_expert_fallback"
 
     return projections.drop(
         columns=[
@@ -2259,8 +2748,13 @@ def apply_v2_scored_projection_context(
             "feature_context_source_season",
             "feature_context_team",
             "_feature_context_team_normalized",
+            "_projection_context_team_normalized",
+            "_projection_team_qb1_pass_points",
+            "_projection_team_qb1_ppg",
             "team_qb1_pass_points",
             "derived_team_qb1_ppg",
+            "beta_scored_position_rank_std",
+            "beta_scored_position_rank_source_count",
             *V2_SCORED_PROJECTION_CONTEXT_COLUMNS,
         ],
         errors="ignore",
@@ -2271,7 +2765,27 @@ def load_historical_projection_context(
     max_template_season,
     *,
     v2_database=None,
+    scoring_matched_context=None,
+    scoring_matched_fallback_center=None,
 ):
+    use_scoring_context = resolve_scoring_matched_context(
+        scoring_matched_context
+    )
+    if scoring_matched_fallback_center is None:
+        use_scoring_fallback_center = (
+            use_scoring_context
+            and LEAGUE == "beta"
+            and "beta_scored_expert_fallback"
+            in _PRODUCTION_CYCLE.template_center_policies["beta"]
+        )
+    else:
+        use_scoring_fallback_center = bool(
+            scoring_matched_fallback_center
+        )
+    if use_scoring_fallback_center and not use_scoring_context:
+        raise ValueError(
+            "A scoring-matched fallback center requires scoring-matched context."
+        )
     proj = pd.DataFrame()
 
     for pos in POSITIONS:
@@ -2293,8 +2807,8 @@ def load_historical_projection_context(
         ascending=[True, True, True, False],
     ).drop_duplicates(["season", "pos", "player"])
     proj = attach_uncapped_template_experience(proj, season_col="season")
-    if LEAGUE != "nffc":
-        # Preserve the previously validated DK/beta matcher path exactly.
+    if not use_scoring_context:
+        # Preserve the previously validated Model_Inputs matcher path exactly.
         proj = add_qb_team_rank_fields(
             proj,
             year_col="season",
@@ -2323,12 +2837,13 @@ def load_historical_projection_context(
         max_template_season=max_template_season,
         v2_database=v2_database,
     )
-    if LEAGUE == "nffc":
+    if use_scoring_context:
         proj = apply_v2_scored_projection_context(
             proj,
             v2_database=v2_database,
             season_column="season",
-            use_expert_donor_center=True,
+            use_expert_donor_center=LEAGUE == "nffc",
+            use_expert_fallback_center=use_scoring_fallback_center,
         )
         proj = add_qb_team_rank_fields(
             proj,
@@ -2346,6 +2861,10 @@ def load_historical_projection_context(
         rank_pct_col="projection_rank_pct",
         total_points_col="avg_proj_points",
         projection_ppg_col="historical_pred_fp_per_game",
+        preserve_signed_team_qb_context=(
+            use_scoring_context
+            and LEAGUE in SIGNED_PROJECTION_COMPONENT_SHARE_LEAGUES
+        ),
     )
     return proj.reset_index(drop=True)
 
@@ -2996,6 +3515,22 @@ def build_weekly_templates(proj, weekly, league=None):
         TEMPLATE_OUTCOME_EXCLUSIONS.get(tuple(key), "")
         for key in exclusion_keys
     ]
+    if "scoring_context_available" in templates:
+        unavailable_scoring_context = pd.to_numeric(
+            templates["scoring_context_available"],
+            errors="coerce",
+        ).eq(0)
+        unavailable_detail = templates.get(
+            "scoring_context_unavailable_reason",
+            pd.Series("", index=templates.index),
+        ).astype("string").fillna("").str.strip()
+        templates.loc[
+            unavailable_scoring_context,
+            "template_exclusion_reason",
+        ] = (
+            "scoring_context_unavailable:"
+            + unavailable_detail.loc[unavailable_scoring_context]
+        )
     templates["template_eligible"] = templates[
         "template_exclusion_reason"
     ].eq("").astype(np.int8)
@@ -3721,6 +4256,40 @@ def validate_weekly_template_audits(player_pool_audit, template_audit=None):
             for key, reason in TEMPLATE_OUTCOME_EXCLUSIONS.items()
             if min_observed_season <= key[2] <= max_observed_season
         }
+        governed_beta_unavailable_reason = (
+            "scoring_context_unavailable:"
+            + BETA_2018_QB_CENTER_FALLBACK_REASON
+        )
+        governed_beta_unavailable = excluded[
+            excluded["template_exclusion_reason"].eq(
+                governed_beta_unavailable_reason
+            )
+        ]
+        if not governed_beta_unavailable.empty:
+            governed_seasons = pd.to_numeric(
+                governed_beta_unavailable["season"],
+                errors="coerce",
+            )
+            invalid_governed_unavailable = governed_beta_unavailable[
+                governed_beta_unavailable["pos"].ne("QB")
+                | governed_seasons.ne(2018)
+            ]
+            if LEAGUE != "beta" or not invalid_governed_unavailable.empty:
+                preview = governed_beta_unavailable[
+                    ["player", "pos", "season", "template_exclusion_reason"]
+                ].head(10)
+                raise ValueError(
+                    "The governed beta scoring-context exclusion appeared "
+                    "outside beta 2018 QB templates: "
+                    f"{preview.to_dict('records')}"
+                )
+            expected_exclusions.update(
+                {
+                    (row.player, row.pos, int(row.season)):
+                        governed_beta_unavailable_reason
+                    for row in governed_beta_unavailable.itertuples(index=False)
+                }
+            )
         actual_exclusions = {
             (row.player, row.pos, int(row.season)): row.template_exclusion_reason
             for row in excluded.itertuples(index=False)
@@ -4087,9 +4656,13 @@ def attach_fallback_team_qb1_passing_context(fallback):
 def load_v2_current_player_context(
     v2_database=None,
     selected_player_keys=None,
+    scoring_matched_context=None,
 ):
     """Build an auditable context fallback from the current V2 feature mart."""
 
+    use_scoring_context = resolve_scoring_matched_context(
+        scoring_matched_context
+    )
     v2_database = resolve_v2_database(v2_database)
     required_columns = {
         "player_key",
@@ -4153,7 +4726,7 @@ def load_v2_current_player_context(
         raise ValueError(
             f"V2 player_season_features has duplicate {YEAR} player keys"
         )
-    if LEAGUE != "nffc":
+    if not use_scoring_context:
         # The V2 mart stores ``team_qb1_ppg`` as the QB1's total fantasy
         # scoring rate. Receiver matching needs the QB1's passing component,
         # so derive it from the full feature population before filtering to
@@ -4174,9 +4747,9 @@ def load_v2_current_player_context(
                 "feature context: "
                 f"{sorted(selected_player_keys - observed_keys)[:20]}"
             )
-    if LEAGUE == "nffc":
+    if use_scoring_context:
         # Validate the table lineage against the active lock before any of its
-        # fields can become authoritative in the NFFC matcher.
+        # fields can become authoritative in the league matcher.
         scored_context = load_v2_scored_projection_context(
             v2_database,
             min_season=YEAR,
@@ -4189,6 +4762,8 @@ def load_v2_current_player_context(
                     "season",
                     "team_qb1_pass_points",
                     "derived_team_qb1_ppg",
+                    "beta_scored_position_rank_std",
+                    "beta_scored_position_rank_source_count",
                 ]
             ],
             on=["player_key", "season"],
@@ -4212,12 +4787,15 @@ def load_v2_current_player_context(
             | ~np.isfinite(total)
             | ~np.isfinite(ppg)
             | ~np.isfinite(point_std)
-            | total.lt(0)
-            | ppg.lt(0)
             | point_std.lt(0)
         )
+        if LEAGUE not in SIGNED_PROJECTION_COMPONENT_SHARE_LEAGUES:
+            invalid_required |= total.lt(0) | ppg.lt(0)
+        source_schedule_games = projection_schedule_games(
+            fallback["season"]
+        )
         inconsistent_ppg = ~np.isclose(
-            total / WEEK_COUNT,
+            total / source_schedule_games,
             ppg,
             rtol=0,
             atol=1e-9,
@@ -4235,7 +4813,7 @@ def load_v2_current_player_context(
                 ],
             ].head(20)
             raise ValueError(
-                "Selected NFFC current scoring context has invalid or "
+                f"Selected {LEAGUE.upper()} current scoring context has invalid or "
                 "inconsistent expert points: "
                 f"{preview.to_dict('records')}"
             )
@@ -4248,12 +4826,18 @@ def load_v2_current_player_context(
             pd.to_numeric,
             errors="coerce",
         )
-        positive_total = total.gt(0)
-        invalid_shares = positive_total & (
+        if LEAGUE in SIGNED_PROJECTION_COMPONENT_SHARE_LEAGUES:
+            component_total_available = ~np.isclose(
+                total,
+                0.0,
+                rtol=0,
+                atol=1e-12,
+            )
+        else:
+            component_total_available = total.gt(0)
+        invalid_shares = component_total_available & (
             shares.isna().any(axis=1)
             | (~np.isfinite(shares)).any(axis=1)
-            | shares.lt(0).any(axis=1)
-            | shares.gt(1).any(axis=1)
             | ~np.isclose(
                 shares.sum(axis=1),
                 1.0,
@@ -4261,6 +4845,11 @@ def load_v2_current_player_context(
                 atol=1e-9,
             )
         )
+        if LEAGUE not in SIGNED_PROJECTION_COMPONENT_SHARE_LEAGUES:
+            invalid_shares |= component_total_available & (
+                shares.lt(0).any(axis=1)
+                | shares.gt(1).any(axis=1)
+            )
         if invalid_shares.any():
             preview = fallback.loc[
                 invalid_shares,
@@ -4273,7 +4862,7 @@ def load_v2_current_player_context(
                 ],
             ].head(20)
             raise ValueError(
-                "Selected NFFC current scoring context has invalid component "
+                f"Selected {LEAGUE.upper()} current scoring context has invalid component "
                 f"shares: {preview.to_dict('records')}"
             )
         team_qb1_ppg = pd.to_numeric(
@@ -4290,7 +4879,6 @@ def load_v2_current_player_context(
                 ~np.isfinite(team_qb1_ppg)
                 | team_qb1_ppg.lt(0)
                 | ~np.isfinite(team_qb1_pass_points)
-                | team_qb1_pass_points.lt(0)
                 | ~np.isfinite(derived_team_qb1_ppg)
                 | ~np.isclose(
                     team_qb1_ppg,
@@ -4301,6 +4889,11 @@ def load_v2_current_player_context(
             )
             & has_current_team(fallback["team"])
         )
+        if LEAGUE not in SIGNED_PROJECTION_COMPONENT_SHARE_LEAGUES:
+            invalid_team_qb |= (
+                has_current_team(fallback["team"])
+                & team_qb1_pass_points.lt(0)
+            )
         if invalid_team_qb.any():
             preview = fallback.loc[
                 invalid_team_qb,
@@ -4315,7 +4908,7 @@ def load_v2_current_player_context(
                 ],
             ].head(20)
             raise ValueError(
-                "Selected NFFC current scoring context lacks valid team-QB "
+                f"Selected {LEAGUE.upper()} current scoring context lacks valid team-QB "
                 f"context for an assigned player: {preview.to_dict('records')}"
             )
 
@@ -4424,12 +5017,19 @@ def load_v2_current_player_context(
             fallback["expert_ppg_team_game_std"],
             errors="coerce",
         )
-        * WEEK_COUNT
+        * projection_schedule_games(fallback["year"])
     )
-    # The V2 mart has point dispersion but no directly comparable provider
-    # position-rank standard deviation. Leave that optional field explicit so
-    # add_template_match_features uses its governed group fallback.
-    fallback["std_pos_rank"] = np.nan
+    # Beta provider ranks are recomputed from the same configured, beta-scored
+    # V2 points. Other scoring contexts retain the governed group fallback
+    # until an equivalent league-specific rank contract is promoted.
+    fallback["std_pos_rank"] = (
+        pd.to_numeric(
+            fallback["beta_scored_position_rank_std"],
+            errors="coerce",
+        )
+        if LEAGUE == "beta" and use_scoring_context
+        else np.nan
+    )
 
     optional_raw_fields = sorted(
         {
@@ -4482,10 +5082,14 @@ def load_v2_current_player_context(
         rank_pct_col="context_projection_rank_pct",
         total_points_col="current_avg_proj_points",
         projection_ppg_col="current_projection_ppg",
+        preserve_signed_team_qb_context=(
+            use_scoring_context
+            and LEAGUE in SIGNED_PROJECTION_COMPONENT_SHARE_LEAGUES
+        ),
     )
     fallback["current_context_source"] = (
         "v2_player_season_features_scoring_context"
-        if LEAGUE == "nffc"
+        if use_scoring_context
         else "v2_player_season_features_fallback"
     )
     fallback["current_context_match_method"] = "v2_feature_player_key"
@@ -4507,6 +5111,7 @@ def attach_current_context_by_player_key(
     predictions,
     model_input_context,
     v2_fallback_context,
+    scoring_matched_context=None,
 ):
     """Attach current context without relying on the production display name."""
 
@@ -4646,7 +5251,9 @@ def attach_current_context_by_player_key(
     output = output.rename(columns=rename_fallback)
 
     fallback_fields = [[] for _ in range(len(output))]
-    prefer_v2_scoring_context = LEAGUE == "nffc"
+    prefer_v2_scoring_context = resolve_scoring_matched_context(
+        scoring_matched_context
+    )
     used_v2_scoring_context = pd.Series(
         False,
         index=output.index,
@@ -4667,10 +5274,10 @@ def attach_current_context_by_player_key(
         )
         if (
             prefer_v2_scoring_context
-            and column in NFFC_SCORING_SENSITIVE_CURRENT_CONTEXT_COLS
+            and column in V2_SCORING_SENSITIVE_CURRENT_CONTEXT_COLS
         ):
-            # The Model_Inputs projections are DK-scored. They cannot fill or
-            # override an NFFC-sensitive matcher field, even when non-null.
+            # Model_Inputs projections are DK-scored. They cannot fill or
+            # override a scoring-matched league field, even when non-null.
             use_fallback = fallback_values.notna()
             output[column] = fallback_values
             used_v2_scoring_context |= use_fallback
@@ -4764,7 +5371,11 @@ def attach_current_context_by_player_key(
     return output.drop(columns=drop_columns)
 
 
-def recompute_selected_universe_match_features(player_map):
+def recompute_selected_universe_match_features(
+    player_map,
+    *,
+    preserve_signed_team_qb_context=False,
+):
     """Rebuild relative features with one canonical, temporary team key.
 
     Current source tables use a mix of provider team labels (for example,
@@ -4827,12 +5438,17 @@ def recompute_selected_universe_match_features(player_map):
         rank_pct_col="context_projection_rank_pct",
         total_points_col="current_avg_proj_points",
         projection_ppg_col="current_projection_ppg",
+        preserve_signed_team_qb_context=preserve_signed_team_qb_context,
     )
     player_map["team"] = player_map.pop(outward_team_column)
     return player_map
 
 
-def build_player_map_base(v2_database=None):
+def build_player_map_base(
+    v2_database=None,
+    *,
+    scoring_matched_context=None,
+):
     preds = simulation_dm.read(
         f"""
         SELECT *
@@ -4877,11 +5493,13 @@ def build_player_map_base(v2_database=None):
     fallback_context = load_v2_current_player_context(
         v2_database=v2_database,
         selected_player_keys=preds["player_key"],
+        scoring_matched_context=scoring_matched_context,
     )
     player_map = attach_current_context_by_player_key(
         preds,
         current_context,
         fallback_context,
+        scoring_matched_context=scoring_matched_context,
     )
     player_map = add_exp_fields(player_map)
     # Recompute every relative rank and team-room field on the one governed
@@ -4891,6 +5509,10 @@ def build_player_map_base(v2_database=None):
     # relative features are built; outward source labels remain unchanged.
     player_map = recompute_selected_universe_match_features(
         player_map,
+        preserve_signed_team_qb_context=(
+            resolve_scoring_matched_context(scoring_matched_context)
+            and LEAGUE in SIGNED_PROJECTION_COMPONENT_SHARE_LEAGUES
+        ),
     )
     # Projection-level matching is anchored to the final V2 center after the
     # shared-universe context has been rebuilt.
@@ -5962,17 +6584,7 @@ def copy_simulation_db_to_apps():
 
     sibling_root = Path(root_path).resolve().parent
     auction_dst = sibling_root / "Fantasy_Football_App" / "app" / "Simulation.sqlite3"
-    if not auction_dst.parent.exists():
-        auction_dst = Path(
-            "/Users/borys/OneDrive/Documents/Github/"
-            "Fantasy_Football_App/app/Simulation.sqlite3"
-        )
     snake_dst = sibling_root / "Fantasy_Football_Snake" / "app" / "Simulation.sqlite3"
-    if not snake_dst.parent.exists():
-        snake_dst = Path(
-            "/Users/borys/OneDrive/Documents/Github/"
-            "Fantasy_Football_Snake/app/Simulation.sqlite3"
-        )
     app_targets = []
     staged_paths = []
     with tempfile.TemporaryDirectory(

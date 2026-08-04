@@ -134,6 +134,25 @@ normalized value, feature, or weekly-template key. Excluded rows retain rule
 ID, reason, and reference in build audit artifacts rather than in
 `player_aliases`.
 
+### Governed historical team-label trust
+
+Some source rows retain valid historical projection or market values while
+their `team` field is mutable and can be overwritten by a later destination.
+`SOURCE_TEAM_TRUST_POLICIES` therefore discards only the historical team label
+through the completed-season cutoff for `FFA_RawStats`, `FFA_Projections`, and
+`FantasyPros_Best_Ball_ADP`. The player row and every non-team value remain
+eligible. Current projection-season labels are not covered by these rules.
+
+The policy is applied before identity disambiguation, alias publication,
+candidate team voting, and normalized value construction. A trusted
+same-season alias may supply the missing team downstream; if trusted evidence
+is absent or tied, team remains null. It is never selected alphabetically.
+Otherwise-identical value rows with multiple teams fail closed unless their
+source-season scope is covered by this governed discard policy.
+Recognized provider aliases are first canonicalized through `TEAM_MAP` (for
+example, `JAX` and `JAC` both become `JAC`), so code variants do not create a
+false tie; genuinely different franchises still fail closed.
+
 ## `player_season_outcomes`
 
 Outcomes come from canonical nflverse weekly player stats and are grouped
@@ -203,6 +222,12 @@ of the complete configured quarantine policy and its `row_count` is the number
 of rules. Reusing a foundation fails closed if that receipt is missing, stale,
 or duplicated. Milestone 3 separately publishes a `source_quarantine` manifest
 row for each source slice with excluded rows.
+
+Milestone 2 also writes one `source_team_trust_policy` receipt named
+`configured_source_team_trust`. Its hash covers the complete governed
+historical team-label policy and the canonical `TEAM_MAP` alias mapping.
+Reusing a foundation fails closed if either policy receipt is missing, stale,
+or duplicated.
 
 `build_runs` stores run time, league, season boundaries, useful-season
 threshold, scoring hash, output row counts, and completion status.

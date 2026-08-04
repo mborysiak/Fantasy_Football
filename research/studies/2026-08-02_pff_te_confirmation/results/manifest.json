@@ -1,0 +1,8 @@
+{
+  "projection_candidate": "te_pff_mtf__te_route",
+  "projection_sensitivity": "te_pff_yac__te_route",
+  "template_decision": "reject",
+  "roster_finalist_tested": "te_pff_yac_w025",
+  "production_changed": false,
+  "raw_intermediates_retained": false
+}

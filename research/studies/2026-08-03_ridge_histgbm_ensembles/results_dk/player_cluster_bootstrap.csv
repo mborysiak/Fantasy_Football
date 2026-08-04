@@ -1,0 +1,6 @@
+league,method,comparison,rmse_delta,bootstrap_low,bootstrap_high,player_clusters,draws
+dk,ridge_replaces_lasso_equal3,ridge_replaces_lasso_equal3_vs_current_single,-0.0024425605206879197,-0.00546688191456699,0.0006172439308863177,612,20000
+dk,lasso_ridge_split_linear_third,lasso_ridge_split_linear_third_vs_current_single,-0.001352434049053386,-0.002870493790354078,0.00018083185162200586,612,20000
+dk,current_plus_ridge_equal4,current_plus_ridge_equal4_vs_current_single,-0.003197797829542104,-0.010615113444125569,0.004222470454742533,612,20000
+dk,histgbm_replaces_lightgbm_equal3,histgbm_replaces_lightgbm_equal3_vs_current_single,-0.002535608738575945,-0.005938134352301272,0.0007305432275915489,612,20000
+dk,current_plus_histgbm_equal4,current_plus_histgbm_equal4_vs_current_single,0.003646295830864066,-0.0005292450797827808,0.007856248530647666,612,20000

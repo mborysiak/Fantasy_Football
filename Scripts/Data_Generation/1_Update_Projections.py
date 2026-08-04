@@ -99,7 +99,7 @@ def pull_fantasypros_adp(year_val):
     # https://www.fantasypros.com/nfl/adp/half-point-ppr-overall.php, then run this
     # to move the file from Downloads. Note: the best ball ADP page exports the same
     # filename, so download and process one at a time.
-    fname = f'FantasyPros_{year_val}_Overall_ADP_Rankings.csv'
+    fname = f'FantasyPros_{year_val}_Overall_ADP_Rankings (1).csv'
     df = move_download_to_folder(root_path, 'FantasyPros_ADP', fname, year_val)
 
     player_col = [c for c in df.columns if c.startswith('Player')][0]

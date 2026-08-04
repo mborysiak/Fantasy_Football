@@ -1,0 +1,7 @@
+league,rf_method,hybrid_method,rmse_delta_vs_current_blend,bootstrap_low,bootstrap_high,prespecified
+dk,current_seed_bag,current_plus_current_seed_bag_rf,-0.0005152752699859597,-0.0024177915393850612,0.0013570866732917173,False
+dk,skm_fold_param_bag,current_plus_skm_fold_param_bag_rf,-0.0011925916466788422,-0.0023243564644407242,-5.727169127957107e-05,False
+dk,skm_fold_seed_bag,current_plus_skm_fold_seed_bag_rf,-0.0011804623838576056,-0.0033418212479448097,0.0009776292197221945,False
+beta,current_seed_bag,current_plus_current_seed_bag_rf,2.840314233454322e-05,-0.00196796835959222,0.0019581121987533472,False
+beta,skm_fold_param_bag,current_plus_skm_fold_param_bag_rf,-0.000515608060646322,-0.0013126278172765793,0.0002662832663389727,False
+beta,skm_fold_seed_bag,current_plus_skm_fold_seed_bag_rf,-0.00039488965807832344,-0.0024003991648830604,0.0015872307999674536,False

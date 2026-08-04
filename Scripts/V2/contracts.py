@@ -21,7 +21,12 @@ from Scripts.config import (
     RUSH_SCORING,
     get_scoring_dict,
 )
-from Scripts.V2.config import SOURCE_ROW_EXCLUSIONS, SOURCE_SEASON_OVERRIDES
+from Scripts.V2.config import (
+    SOURCE_ROW_EXCLUSIONS,
+    SOURCE_SEASON_OVERRIDES,
+    SOURCE_TEAM_TRUST_POLICIES,
+    TEAM_MAP,
+)
 
 
 PLAYER_NAMESPACE = uuid.UUID("0da48215-bc2f-4e7e-a71e-ea3f7036f998")
@@ -35,6 +40,8 @@ SOURCE_ROW_EXCLUSION_REASON_COLUMN = "source_row_exclusion_reason"
 SOURCE_ROW_EXCLUSION_REFERENCE_COLUMN = "source_row_exclusion_reference"
 SOURCE_ROW_EXCLUSION_POLICY_COMPONENT = "source_row_exclusion_policy"
 SOURCE_ROW_EXCLUSION_POLICY_NAME = "configured_source_row_exclusions"
+SOURCE_TEAM_TRUST_POLICY_COMPONENT = "source_team_trust_policy"
+SOURCE_TEAM_TRUST_POLICY_NAME = "configured_source_team_trust"
 
 PLAYER_IDENTITY_COLUMNS = (
     "player_key",
@@ -712,6 +719,231 @@ def assert_no_source_row_exclusions(
     raise ValueError(
         f"{frame_name} contains governed source rows that must be "
         f"quarantined: {details}"
+    )
+
+
+def _validated_source_team_trust_policies() -> tuple[dict[str, object], ...]:
+    """Return validated, non-overlapping historical team-label rules."""
+    required = {
+        "policy_id",
+        "source_table",
+        "through_season",
+        "action",
+        "reason",
+        "reference",
+    }
+    rules: list[dict[str, object]] = []
+    ids: set[str] = set()
+    governed_tables: set[str] = set()
+    for raw_rule in SOURCE_TEAM_TRUST_POLICIES:
+        missing = sorted(required.difference(raw_rule))
+        if missing:
+            raise ValueError(
+                f"Source-team trust policy is missing required fields: {missing}"
+            )
+        policy_id = str(raw_rule["policy_id"]).strip()
+        source_table = str(raw_rule["source_table"]).strip()
+        through_season = int(raw_rule["through_season"])
+        action = str(raw_rule["action"]).strip()
+        reason = str(raw_rule["reason"]).strip()
+        reference = str(raw_rule["reference"]).strip()
+        if not policy_id:
+            raise ValueError("Source-team trust policy IDs cannot be empty")
+        if policy_id in ids:
+            raise ValueError(f"Duplicate source-team trust policy ID: {policy_id}")
+        # Every rule starts at the beginning of available history, so any two
+        # rules for one table overlap even when their through-seasons differ.
+        if source_table in governed_tables:
+            raise ValueError(
+                "Overlapping source-team trust policy scope for "
+                f"{source_table}"
+            )
+        if action != "discard_team":
+            raise ValueError(
+                f"Unsupported source-team trust action for {policy_id}: {action}"
+            )
+        if not source_table or not reason or not reference:
+            raise ValueError(
+                f"Source-team trust policy {policy_id} requires source_table, "
+                "reason, and reference"
+            )
+        ids.add(policy_id)
+        governed_tables.add(source_table)
+        rules.append(
+            {
+                "policy_id": policy_id,
+                "source_table": source_table,
+                "through_season": through_season,
+                "action": action,
+                "reason": reason,
+                "reference": reference,
+            }
+        )
+    return tuple(rules)
+
+
+def source_team_trust_policy_hash() -> str:
+    """Fingerprint team trust rules and the canonical source-team aliases."""
+    rules = sorted(
+        _validated_source_team_trust_policies(),
+        key=lambda rule: str(rule["policy_id"]),
+    )
+    payload = json.dumps(
+        {
+            "team_trust_policies": rules,
+            "team_alias_map": dict(sorted(TEAM_MAP.items())),
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def source_team_trust_policy_receipt(run_id: str) -> dict[str, object]:
+    """Return a source-manifest receipt for the active team-label policy."""
+    rules = _validated_source_team_trust_policies()
+    return {
+        "run_id": run_id,
+        "component": SOURCE_TEAM_TRUST_POLICY_COMPONENT,
+        "source_name": SOURCE_TEAM_TRUST_POLICY_NAME,
+        "source_uri": (
+            "python://Scripts.V2.config#"
+            "SOURCE_TEAM_TRUST_POLICIES,TEAM_MAP"
+        ),
+        "source_sha256": source_team_trust_policy_hash(),
+        "row_count": len(rules),
+    }
+
+
+def source_team_label_untrusted_mask(
+    frame: pd.DataFrame,
+    frame_name: str,
+) -> pd.Series:
+    """Identify rows whose source-season team labels are governed as unsafe."""
+    require_columns(frame, ("source_table", "season"), frame_name)
+    source_tables = frame["source_table"].astype("string")
+    seasons = pd.to_numeric(frame["season"], errors="coerce").astype("Int64")
+    matched = pd.Series(False, index=frame.index, dtype=bool)
+    for rule in _validated_source_team_trust_policies():
+        matched |= (
+            source_tables.eq(str(rule["source_table"]))
+            & seasons.le(int(rule["through_season"]))
+        ).fillna(False)
+    return matched
+
+
+def normalize_team_code(value: object) -> object:
+    """Return the canonical V2 code for a recognized source-team alias."""
+    if value is None or pd.isna(value):
+        return pd.NA
+    team = str(value).strip().upper()
+    if not team:
+        return pd.NA
+    return TEAM_MAP.get(team, team)
+
+
+def normalize_source_team_labels(
+    frame: pd.DataFrame,
+    frame_name: str,
+) -> pd.DataFrame:
+    """Canonicalize recognized team aliases before joins or consensus votes."""
+    require_columns(frame, ("team",), frame_name)
+    output = frame.copy()
+    output["team"] = output["team"].map(normalize_team_code)
+    return output
+
+
+def apply_source_team_trust_policy(
+    frame: pd.DataFrame,
+    frame_name: str,
+) -> pd.DataFrame:
+    """Discard governed historical team labels while retaining source rows."""
+    require_columns(frame, ("source_table", "season", "team"), frame_name)
+    output = normalize_source_team_labels(frame, frame_name)
+    untrusted = source_team_label_untrusted_mask(output, frame_name)
+    output.loc[untrusted, "team"] = pd.NA
+    return output
+
+
+def assert_no_untrusted_source_team_labels(
+    frame: pd.DataFrame,
+    frame_name: str,
+) -> None:
+    """Fail closed if a governed historical team label survives downstream."""
+    require_columns(frame, ("source_table", "season", "team"), frame_name)
+    untrusted = source_team_label_untrusted_mask(frame, frame_name)
+    contaminated = untrusted & frame["team"].notna()
+    if not contaminated.any():
+        return
+    counts = (
+        frame.loc[contaminated, "source_table"]
+        .astype(str)
+        .value_counts()
+        .sort_index()
+    )
+    details = ", ".join(
+        f"{source_table}={int(row_count)}"
+        for source_table, row_count in counts.items()
+    )
+    raise ValueError(
+        f"{frame_name} contains governed historical team labels that must be "
+        f"discarded: {details}"
+    )
+
+
+def assert_no_ungoverned_identical_team_conflicts(
+    frame: pd.DataFrame,
+    frame_name: str,
+) -> None:
+    """Reject otherwise-identical source rows with conflicting trusted teams."""
+    require_columns(frame, ("source_table", "season", "team"), frame_name)
+    if frame.empty:
+        return
+    candidates = normalize_source_team_labels(frame, frame_name)
+    candidates["team"] = candidates["team"].astype("string")
+    candidates = candidates[
+        candidates["team"].notna() & candidates["team"].ne("")
+    ].copy()
+    comparison_columns = [
+        column
+        for column in candidates.columns
+        if column not in {"team", "player_key"}
+    ]
+    if candidates.empty or not comparison_columns:
+        return
+    candidates = candidates[
+        candidates.duplicated(comparison_columns, keep=False)
+    ]
+    if candidates.empty:
+        return
+
+    conflicts: list[pd.DataFrame] = []
+    for _, group in candidates.groupby(
+        comparison_columns,
+        dropna=False,
+        sort=False,
+    ):
+        if group["team"].nunique(dropna=True) <= 1:
+            continue
+        if source_team_label_untrusted_mask(group, frame_name).all():
+            continue
+        conflicts.append(group)
+    if not conflicts:
+        return
+
+    conflict_rows = pd.concat(conflicts, ignore_index=True)
+    examples = (
+        conflict_rows.groupby(["source_table", "season"], dropna=False)
+        .size()
+        .head(5)
+    )
+    details = ", ".join(
+        f"{source_table}/{season}={int(row_count)}"
+        for (source_table, season), row_count in examples.items()
+    )
+    raise ValueError(
+        f"{frame_name} contains ungoverned rows that are identical except for "
+        f"team: {details}"
     )
 
 

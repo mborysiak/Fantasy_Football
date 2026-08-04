@@ -532,14 +532,19 @@ def build_projection_consensus(
     component_total = base[
         ["proj_passing_points", "proj_rushing_points", "proj_receiving_points"]
     ].fillna(0).sum(axis=1)
+    component_denominator = component_total.where(
+        ~np.isclose(component_total, 0.0, rtol=0, atol=1e-12)
+    )
     for component, output in (
         ("proj_passing_points", "projected_pass_point_share"),
         ("proj_rushing_points", "projected_rush_point_share"),
         ("proj_receiving_points", "projected_receiving_point_share"),
     ):
-        base[output] = base[component] / component_total.where(
-            component_total.gt(0)
-        )
+        # Beta sack deductions can make a fringe QB's projected passing
+        # component and total negative. Preserve the signed composition as
+        # long as the component sum is nonzero; requiring a positive total
+        # silently erased exactly the scoring context the beta matcher needs.
+        base[output] = base[component] / component_denominator
     ceiling = _group_summary(
         projection_values,
         "source_ceiling_points",

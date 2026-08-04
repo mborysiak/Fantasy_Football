@@ -28,9 +28,49 @@ must be present before rebuilding salary predictions because the same input
 drives keeper inflation and position-specific keeper-value features. The active
 2026 beta slice has 14 keepers, all with canonical keys; a unique
 `(year, league, player_key)` index prevents identity duplication.
-The corresponding annual salary input remains
-`Data/OtherData/Salaries/salaries_<year>_<league>.csv`; both files are hashed
-at production-refresh snapshot and rechecked before promotion.
+
+## Governed Salary Source Ingestion
+
+Production refreshes govern every ESPN salary export needed by the approved
+cycle. The 2026 contract is:
+
+| Salary slice | File | Expected `$` records |
+| --- | --- | ---: |
+| 2025 beta | `Data/OtherData/Salaries/salaries_2025_beta.csv` | 200 |
+| 2025 nv | `Data/OtherData/Salaries/salaries_2025_nv.csv` | 160 |
+| 2026 beta | `Data/OtherData/Salaries/salaries_2026_beta.csv` | Variable; terminal record must be `$0` |
+
+Each file is a one-column vertical ESPN stream. A `$` token starts one record;
+the following fields must contain a non-negative whole-dollar salary, a valid
+player label, an optional governed injury status, a governed ESPN team alias
+immediately before one recognized position, and any remaining projection
+fields. Secondary real-life position labels such as `WR, CB` are accepted.
+Player-name length is not part of the contract. The frozen 2025 exports retain
+exact counts. The active 2026 beta export is refreshed throughout the preseason
+and is therefore variable-length: it must parse completely and uniquely and its
+last record must have a `$0` ESPN salary. Players outside that copied ESPN pool
+remain in the projection-defined salary population and receive model estimates
+subject to the existing `$1` output floor and market-budget normalization.
+
+Exactly one player/salary row must parse from every `$` marker. Production
+rejects marker-count or parsed-count mismatches, malformed or shifted records,
+duplicate player labels case-insensitively, duplicate labels introduced by name
+cleaning, and invalid salaries.
+
+All governed files are parsed and validated before the staged database is
+opened for writing. The repair refuses the live `Simulation.sqlite3`, replaces
+only the three governed `(year, league)` slices inside one `BEGIN IMMEDIATE`
+transaction, rechecks exact row and case-insensitive unique-player counts, and
+requires the `Salaries` table schema and indexes to remain unchanged. Any
+failure rolls back all three slices. The salary log emits
+`GOVERNED_SALARY_REPAIR_RECEIPT` with source path, optional expected count,
+terminal-zero policy, terminal salary, marker count, and parsed count for every
+slice. Post-write row and unique-player counts must equal the parsed source
+count even when the active source has no fixed count.
+
+The production-refresh snapshot records file size and SHA-256 for all three
+salary exports and the current keeper file. Resume and promotion reject any
+post-snapshot change.
 
 ## `Salaries_Pred` Calibration
 
@@ -256,11 +296,27 @@ from a centered matched weekly donor; current QB donor p90 standard deviation
 was 9.35 times the historical projection-residual value. The centered donor p90
 remains available as a diagnostic, not a salary-model input.
 
-The current beta salary slice is keyed to exactly the 328-player production
-population. It contains 326 direct `ProjOnly` rows plus governed V2 fallbacks
-for Stefon Diggs and Deebo Samuel. All 14 keepers have canonical keys. After
-keeper commitments, the highest 142 non-keeper point salaries total exactly
-the `$3,071` available market budget.
+The current 2026 beta `Salaries_Pred` slice is keyed to exactly the 328-player
+production population. It contains 326 direct `ProjOnly` rows plus governed V2
+fallbacks for Stefon Diggs and Deebo Samuel. All 14 keepers have canonical
+keys. After keeper commitments, the highest 142 non-keeper point salaries total
+exactly the `$3,071` available market budget.
+
+The V2 fallback remains fail-closed for unique `player_key`, QB/RB/WR/TE
+position, `year_exp`, `adp_median`, `adp_log`, `expert_points_median`, and a
+numeric `team_conflict` value in `{0, 1}`. Team is retained for provenance but
+is not a salary-model feature; the modeling frame replaces it with a
+placeholder. An unresolved team is therefore permitted only when
+`team_conflict = 1` and the player key is explicitly approved for that cycle.
+
+For 2026, the exact nullable-team salary-only allowlist is Stefon Diggs
+(`922c769f-2f60-5de7-a75b-322112ec9540`) and Deebo Samuel Sr.
+(`d6609ec3-d6b5-5aa7-b18a-1e31e52f29e7`). A new unresolved key fails rather
+than expanding the exception silently. The salary log emits
+`V2_SALARY_FALLBACK_CONTEXT_RECEIPT` with policy
+`v2_nullable_team_conflict_v1`, fallback row count, unresolved-team count and
+keys, and the reviewed allowlist. This exception does not resolve or relax team
+identity anywhere outside the salary fallback.
 
 `Salaries_Pred` retains canonical `player_key`,
 `salary_population_source`, `ensemble_uncertainty_feature_source`, and

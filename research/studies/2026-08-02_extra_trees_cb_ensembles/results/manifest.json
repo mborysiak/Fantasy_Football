@@ -1,0 +1,22 @@
+{
+  "decision": "advance_extra_trees_as_research_shadow_candidate",
+  "extra_trees": "advance_for_further_causal_validation; do_not_promote_to_production_yet",
+  "catboost": "reject_as_a_fourth_equal_weight_member",
+  "equal_fifths": "reject_because_both_challengers_did_not_pass_independently",
+  "extra_trees_overall_rmse_delta": {
+    "beta": -0.006269631546059973,
+    "dk": -0.0034605502606632754
+  },
+  "catboost_overall_rmse_delta": {
+    "beta": 0.0027576720079625083,
+    "dk": -0.0006861428641591338
+  },
+  "extra_trees_league_season_wins": 6,
+  "extra_trees_league_season_cells": 6,
+  "extra_trees_non_qb_position_wins": 6,
+  "extra_trees_non_qb_position_cells": 6,
+  "extra_trees_single_seed_wins": 10,
+  "extra_trees_single_seed_cells": 10,
+  "caveat": "DK and beta are alternate scoring views of substantially the same player-seasons, and 2023-2025 is a reused historical confirmation block.",
+  "production_changed": false
+}

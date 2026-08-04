@@ -1,0 +1,4 @@
+league,method,comparison,rmse_delta,bootstrap_low,bootstrap_high,player_clusters,draws
+beta,current_plus_extra_trees_equal4,current_plus_extra_trees_equal4_vs_current_single,-0.006269631546059529,-0.011944869544679248,-0.0005338817511830876,604,20000
+beta,current_plus_catboost_equal4,current_plus_catboost_equal4_vs_current_single,0.0027576720079629524,-0.001708841285728968,0.007289251099541948,604,20000
+beta,current_plus_both_equal5,current_plus_both_equal5_vs_current_single,-0.002641754470293023,-0.00916077931446232,0.0038173059697164183,604,20000

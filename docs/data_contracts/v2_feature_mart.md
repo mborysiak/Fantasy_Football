@@ -56,6 +56,20 @@ candidate, normalized-value, feature, or template-key lineage. A foundation
 may be reused only when its source-manifest policy hash matches the current
 configured quarantine policy.
 
+Mutable historical team fields use the separate
+`SOURCE_TEAM_TRUST_POLICIES` ledger. Historical team labels from
+`FFA_RawStats`, `FFA_Projections`, and `FantasyPros_Best_Ball_ADP` are
+discarded while their projection/market values remain eligible. Normalized
+rows inherit team only from unconflicted trusted same-season aliases;
+otherwise team and team/room context remain null. An equal-count team tie is
+fail-closed, and otherwise-identical value rows that differ only by team are
+rejected unless the source-season scope is explicitly governed. Foundation
+reuse also requires a matching source-team trust policy receipt.
+Recognized `TEAM_MAP` aliases are canonicalized before conflict detection,
+provider grouping, alias-context voting, and room construction. The receipt
+hash includes both the trust rules and `TEAM_MAP`, so a changed alias mapping
+invalidates foundation reuse.
+
 Legacy `Rookie_RB_Stats` and `Rookie_WR_Stats` fields remain excluded. Rookie
 coverage comes from same-season expert/market evidence, canonical draft
 metadata, age/experience availability, and explicit no-history flags.
@@ -81,6 +95,16 @@ identify weekly threshold crossings. Projected fumbles, two-point conversions,
 and return TDs also remain excluded until their source quality and league
 coefficients are explicitly governed. Never infer a weekly bonus from a
 season-yardage total.
+
+Consensus passing, rushing, and receiving point shares preserve the sign of
+the configured components whenever their sum is nonzero. This matters for beta
+fringe QBs: sack penalties can make a passing component or even the configured
+total negative, so valid shares may fall outside `[0, 1]` while still summing
+to one. Do not zero, clip, or renormalize those signed shares through a
+positive-only denominator. The 2026 beta weekly matcher consumes this signed
+contract in production through the exact-lineage
+`v2_beta_scoring_matched_preseason` context. It must not fall back to the DK
+component representation.
 
 If exactly one required component is absent, the default imputation requires
 at least two other providers for the same
@@ -353,8 +377,11 @@ row count.
 17. No configured source-row quarantine survives into normalized values or
     features, and every nonzero exclusion audit has rule ID, reason, and
     reference.
-18. Reused foundations carry exactly one policy receipt whose hash matches the
-    current `SOURCE_ROW_EXCLUSIONS` policy.
+18. Reused foundations carry exactly one quarantine-policy receipt whose hash
+    matches the current `SOURCE_ROW_EXCLUSIONS` policy.
+19. Reused foundations carry exactly one team-trust-policy receipt whose hash
+    matches `SOURCE_TEAM_TRUST_POLICIES`; governed historical source-team
+    labels never reach aliases, normalized values, or team/room features.
 
 ## Current Validation Snapshot
 
@@ -384,7 +411,9 @@ row remains in aliases or normalized values, while all 50 native 2019 provider
 rows remain. There are still zero complete beta QB rows with null sacks. When
 the quarantined row was the only apparent 2018 sack donor, the affected beta
 QB provider row is now correctly incomplete rather than scored with leaked
-2019 evidence or an invented zero.
+2019 evidence or an invented zero. The production weekly build consequently
+marks the 39 affected 2018 QB contexts unavailable and donor-ineligible; it
+does not substitute a DK context or zero sacks.
 
 The legacy-inspired rolling OOF study did not promote any of the 12 features.
 No family materially improved Ridge or shallow LightGBM, every deterministic

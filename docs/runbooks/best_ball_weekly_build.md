@@ -1,6 +1,6 @@
 # Best-Ball Weekly Build Runbook
 
-Last updated: 2026-07-31
+Last updated: 2026-08-03
 
 ## Entry Point
 
@@ -109,19 +109,23 @@ After a build, review:
 - paired beta/DK template rows have nonzero scoring differences in
   `active_ppg` and/or weekly paths; full equality is a scoring-routing failure
 - historical projection source mix
-- for DK/beta, `historical_pred_fp_per_game` equals
-  `legacy_historical_pred_fp_per_game`, V2 diagnostic-center availability is
-  reported explicitly, and `v2_recenter_promoted = 0`
+- for DK, `historical_pred_fp_per_game` uses the legacy OOS center where
+  available and `preseason_projection_fallback` otherwise
+- for beta, `projection_context_source` is
+  `v2_beta_scoring_matched_preseason`, the context hash/run match the locked
+  beta V2 lineage, and historical policies are exactly
+  `legacy_validated_oos` or `beta_scored_expert_fallback`; no DK matcher or
+  fallback context is permitted
 - for NFFC, `projection_context_source` is
   `v2_nffc_scoring_matched_preseason`,
   `historical_pred_fp_per_game` equals the NFFC-scored expert team-game PPG,
   `historical_center_policy` is `nffc_scored_expert_consensus`, and the
   DK-scored `model_input_*` context is audit-only
-- the only missing V2 diagnostics are governed beta 2018 QB rows with a joined
-  locked-handoff `template_center_available = 0`, the current FFToday
-  quarantine receipt, and the exact
-  `v2_template_center_unavailable_reason`; do not fill them from DK,
-  quarantined evidence, or zero sacks
+- the only missing beta scoring contexts are the 39 governed 2018 QB rows with
+  joined locked-handoff center/context availability of zero, the current
+  FFToday quarantine receipt, the exact unavailable reason, and
+  `template_eligible = 0`; do not fill them from DK, quarantined evidence, or
+  zero sacks
 - V2 locked-center positions match template positions except for the exact
   audited hybrid rows: Cordarrelle Patterson 2019/2021 template WR to locked
   RB, and Ty Montgomery 2022 template RB to locked WR; every other mismatch
@@ -202,14 +206,25 @@ this export.
 
 ## NFFC Candidate Evidence
 
-The completed staged NFFC build has 1,509 scoring-matched templates from
-2021-2025, 17 populated weeks per template, and a 385-player current map. The
+The live NFFC build has 1,509 scoring-matched templates from 2021-2025, 17
+populated weeks per template, and a 383-player current map. The
 strict 2023-2025, 540-target donor-center replay retained
 `nffc_scored_expert_consensus`: the locked OOF alternative worsened PPG CRPS by
 `0.002901`, lost all three seasons, and failed the three promotion gates despite
 passing six of ten total gates. See
 `research/studies/2026-07-31_nffc_template_center_replay/`.
 
-Do not use or recreate the superseded DK-clone preview path. The staged NFFC
-candidate is independently scored, but it remains unpromoted and is still an
-offense-only 3RR adapter without K/DST or alternate contest formats.
+Do not use or recreate the superseded DK-clone preview path. The promoted NFFC
+slice is independently scored and remains an offense-only 3RR adapter without
+K/DST or alternate contest formats.
+
+## Beta Scoring-Context Decision
+
+The 2026-08-03 correction promotion activates full beta V2 preseason matcher
+context and the beta-scored expert fallback while preserving validated legacy
+OOS centers. It is a data-unit correction, not a predictive-win claim. Strict
+rolling validation passed every player gate but worsened development roster
+CRPS by `+0.9061%` versus the `0.5%` threshold; 2023-2025 worsened `+0.3790%`.
+The accepted tradeoff removes the known mixed DK/beta context. Future matcher
+changes must keep that corrected scoring boundary and seek new evidence rather
+than restoring DK units or tuning to this replay.

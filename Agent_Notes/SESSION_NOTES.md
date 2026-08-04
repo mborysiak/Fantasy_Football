@@ -1,6 +1,6 @@
 # Session Notes Landing
 
-Last updated: 2026-08-02
+Last updated: 2026-08-04
 
 ## Project Objective
 
@@ -10,13 +10,80 @@ template tables consumed by downstream draft apps.
 
 ## Current Focus
 
+- Fresh schema-5 release `20260804T131926Z_57a25fb4` completed all 24 refresh
+  steps after the preseason source update and is now live. The
+  active 2026 beta ESPN export is now governed by a terminal-`$0` boundary and
+  parsed 180/180 unique rows. All 328 projection-defined beta players retain
+  salary estimates, including 189 at the `$1` floor. DK/NFFC/beta production
+  key sets and current/next PPG are identical to live at 350/383/328 rows;
+  salary changes average `$0.24` absolute with a `$3.94` maximum. The fresh
+  reserve completed 1,000/1,000 trials with a `$9.21` expected roster reserve;
+  consolidated validation, app parity/size, and both app smokes passed. All ten
+  installed hashes/sizes and post-promotion SQLite integrity/foreign-key checks
+  pass; durable backups are under the run-ID folder in
+  `Data/Production_Refresh_Backups/`.
+- The frozen Ridge `alpha=10` replacement completed full corrected-lineage
+  downstream validation. Annual 2017-2025 refits improve pooled RMSE by only
+  0.001401 DK and 0.001264 beta with both player-cluster intervals crossing
+  zero; 2025 loses in both, leaving 4/6 recent season wins. Strict-prior player
+  distributions and all core/depth template cells pass, but fixed-roster score
+  CRPS improves only DK development and worsens DK temporal by 0.311%, beta
+  development by 0.378%, and beta temporal by 0.527% versus the 0.5% gate.
+  Reject the Ridge swap for 2026 and retain equal-third Lasso/RF/LightGBM.
+  HistGBM remains rejected; production is unchanged.
+- A follow-up expanded both LightGBM and CatBoost from eight to 16 pre-2023
+  candidates. DK retained the exact LightGBM 0.05/100 incumbent. Beta selected
+  a new 0.01/500 schedule pre-2023 but worsened pooled 2023-2025 blend RMSE by
+  0.000583 and slightly weakened the Extra Trees blend. Both CatBoost searches
+  retained the original 0.03/300 candidate and its beta loss. Retain current
+  LightGBM parameters and CatBoost's rejection; no production change.
+- The beta weekly-template scoring-context correction is active. Governed run
+  `20260803T040708Z_2075ac47` rebuilt and promoted the full pipeline with exact
+  beta V2 preseason matcher context and `beta_scored_expert_fallback`; validated
+  legacy OOS centers remain where available. The 39 sack-context-unavailable
+  2018 QBs remain auditable and donor-ineligible. This was an explicit
+  data-correctness override, not a predictive promotion: the full arm passed all
+  player gates but worsened development roster CRPS by `+0.9061%` versus the
+  `0.5%` gate and 2023-2025 by `+0.3790%`. All 24 refresh steps, 1,000/1,000
+  reserve trials, both app smokes, installed hashes, SQLite integrity, and app
+  content-parity checks passed. See
+  `research/studies/2026-08-02_beta_scoring_context/`.
+- A locked model-family screen selected eight Extra Trees and eight CatBoost
+  configurations only on rolling 2013-2022 origins, then tested fixed
+  equal-four blends on the reused 2023-2025 confirmation block. Extra Trees
+  improved RMSE by 0.003461 DK and 0.006270 beta, won every league-season and
+  non-QB position cell, and survived five estimator seeds per scoring system.
+  It is a research shadow candidate only: DK uncertainty crosses zero and the
+  scoring systems share player outcomes. CatBoost is rejected after its small
+  DK gain reversed in beta; production remains the equal-third
+  Lasso/RF/LightGBM blend.
 - `ADP_Ranks` provider replacement is now source-scoped, depth-validated, and
   atomic. The live `Season_Stats_New` FantasyPros slices contain 313 valid 2024
   offense rows, 302 valid 2025 offense rows including 42 recovered QBs, and
   466 valid 2026 rows including one 32-team DST snapshot. Duplicate provider
-  keys and legacy `DS`/`K1`-`K9` rows are gone. The three V2 databases remain
-  deliberately unchanged until a fresh governed refresh recomputes the
-  corrected historical market consensus and model fingerprints.
+  keys and legacy `DS`/`K1`-`K9` rows are gone. Governed run
+  `20260802T174943Z_5b3cff69` rebuilt and promoted all three V2 lineages from
+  the corrected source, so the refreshed market consensus and fingerprints are
+  now active.
+- Historical V2 team context now discards only the mutable/backfilled team
+  labels from historical `FFA_RawStats`, `FFA_Projections`, and
+  `FantasyPros_Best_Ball_ADP`; source rows and projection/market values remain.
+  Team aliases are canonicalized before consensus, true trusted-source ties
+  remain null, and the policy plus alias map is hashed into every foundation.
+  Live DK/NFFC/beta each contain 6,665 identities, 56,162 aliases, and 13,824
+  feature keys. Audited 2019 movers resolve to Hopkins=HOU, Cooks=LAR,
+  Diggs=MIN, and Winston=TB; Christian Kirk and Trevor Lawrence share exact JAC
+  QB context in 2022-2023.
+- ESPN salary ingestion is structural rather than player-name-length based.
+  The 2026 cycle atomically repairs only staged 2025 beta, 2025 nv, and 2026
+  beta slices. The frozen historical counts remain exact at 200/160; the live
+  preseason beta export is variable-length but must end at an ESPN `$0` record
+  and preserve exact parsed/post-write parity. Bo Nix is `$5` in all three and
+  Isaiah Likely is `$2` in 2026 beta. The 328-key current salary population has
+  exact projection parity. Team remains provenance-only for salary modeling;
+  the only reviewed unresolved-team fallbacks are Stefon Diggs and Deebo Samuel
+  Sr., both requiring `team_conflict=1` under
+  `v2_nullable_team_conflict_v1`.
 - Annual current/next model selection now uses a separately promoted
   `V2_Parameter_Cache.sqlite3`: 36 season/league/model entries are reusable only
   under an exact training-data and model-spec fingerprint. Cache hits skip the
@@ -50,9 +117,8 @@ template tables consumed by downstream draft apps.
   uses an equivalent within-player three-lag mean/max reduction; all 18 output
   tables match the prior successful build within `1e-12`, and repeated full
   compiles complete in about 22 seconds without warnings. Refresh manifest
-  schema 4 snapshots immutable current/next Model_Inputs bases and restores
-  both before every attempt or resume. A fresh non-promoting run through
-  `model_inputs` passed; the older failed schema-3 stage must not be resumed.
+  schema 5 retains immutable current/next Model_Inputs bases and restores both
+  before every attempt or resume. Non-schema-5 stages must not be resumed.
 - A subsequent `locked_dk` access violation was isolated to cumulative native
   LightGBM fitting, not its inputs, feature names, OpenMP inventory, or one bad
   fold. Annual current/next runners now execute each LightGBM grid origin in a
@@ -85,12 +151,11 @@ template tables consumed by downstream draft apps.
   `nffc_scored_expert_consensus`. A strict 540-target 2023-2025 replay rejects
   the locked OOF center: locked-minus-expert PPG CRPS is +0.002901, it loses
   3/3 seasons, its player-cluster interval is [-0.004914, +0.010748], and it
-  passes 6/10 gates while failing all three promotion gates. The staged
-  candidate has 1,509 2021-2025 templates with 17 populated weeks and a
-  385-player map. Annual rebuilds remove older active-league pool/map rows and
+  passes 6/10 gates while failing all three promotion gates. The live surface
+  has 1,509 2021-2025 templates with 17 populated weeks and a 383-player map.
+  Annual rebuilds remove older active-league pool/map rows and
   Snake exposes only prediction slices backed by the current map, preventing
-  regenerated template IDs from being paired to stale years. DK/beta are
-  unchanged, and no NFFC artifacts were promoted.
+  regenerated template IDs from being paired to stale years.
 - Weekly-template matcher validation now uses role-tiered objectives. Core
   players (main QB/RB/WR/TE cutoffs 18/36/48/18, with strict and broad
   sensitivities) optimize active-PPG CRPS first and managed contribution among
@@ -205,28 +270,28 @@ template tables consumed by downstream draft apps.
   flow through weekly `active_ppg` and upside paths. The production rebuild has
   5,120/5,298 paired PPG values and 5,147 paired weekly paths differing across
   leagues. Beta has 2,657/2,696 V2 historical diagnostic centers; the 39
-  unavailable 2018 QB diagnostics retain an audited legacy active center and
-  exact quarantine-linked reason rather than importing DK or zero-sack values.
+  unavailable 2018 QB diagnostics retain an audited legacy center and exact
+  quarantine-linked reason but are donor-ineligible rather than importing DK
+  or zero-sack values.
   Corrected 1,620-target/league replays retain current match weights and keep
   next-year fields out of the matcher: their small PPG gains do not survive the
   joint contribution/played-games gates. The promoted V2/Simulation artifacts
   match staging byte-for-byte; all 20 Auction generated tables match source,
   all six app-owned tables are unchanged, and every Snake table matches.
-- The V2 production handoff is active for 2026 DK (351 players:
-  56 QB/101 RB/143 WR/51 TE) and beta (328:
-  50 QB/95 RB/133 WR/50 TE). DK is the 326-player core plus the top-280 market
-  union after eight governed market-only/no-center exclusions (Tyreek Hill,
-  Joe Mixon, DeAndre Hopkins, Nick Chubb, Austin Ekeler, Kareem Hunt, Brandin
-  Cooks, and Taysom Hill); beta is the
-  core plus top-180 ETR overall-rank ordering and all keepers. The 1,490-row
+- The V2 production handoff is active for 2026 DK (350 players:
+  56 QB/100 RB/143 WR/51 TE) and beta (328:
+  50 QB/95 RB/133 WR/50 TE). Beta is the core plus top-180 ETR overall-rank
+  ordering and all keepers. The 1,980-row
   eligibility audit retains every inclusion and exclusion decision.
   Current `pred_fp_per_game` uses the locked league-specific V2 center; current
   residual quantiles are zero and the joint matched donor supplies the only
   PPG residual plus weekly/played path. Next-year `pred_fp_per_game_ny` is
   conditional on appearing and `pred_appear_ny` supplies the separate
   Bernoulli risk; the auction keeper path zeros future market value on no
-  appearance. DK/beta historical donor residuals retain the validated legacy
-  OOS centers; NFFC uses the scoring-matched expert consensus described above.
+  appearance. DK uses its legacy/preseason historical-center policy; beta uses
+  validated legacy OOS centers where available and the beta-scored expert
+  fallback otherwise; NFFC uses the scoring-matched expert consensus described
+  above.
   Legacy current/next fields are audit-only, while V2 is the production
   authority. DK/beta V2 historical donor centers remain diagnostic with
   `v2_recenter_promoted = 0`: recentering worsened PPG CRPS by 0.0057 DK and
@@ -235,10 +300,10 @@ template tables consumed by downstream draft apps.
   `player_key` plus match provenance. Governed source aliases resolve first,
   confirmed identities beat redundant provisional aliases, team disambiguates
   true same-name collisions, and pre-play rookies retain stable provisional
-  keys. Coverage is 10,596/10,596 historical beta+DK templates and 679/679
+  keys. Coverage is 10,596/10,596 historical beta+DK templates and 678/678
   current rows. Every player receives 80 donors. Required current context joins
-  are key-first: DK has 343 exact ADP matches and eight governed fallbacks;
-  beta has 238 exact matches and 90 governed fallbacks, with zero generic
+  are key-first: DK has 342 exact ADP matches and eight governed fallbacks;
+  beta has 237 exact matches and 91 governed fallbacks, with zero generic
   default/review rows. `LA`/`LAR` and `ARZ`/`ARI` are canonicalized only for
   room features, outward labels remain unchanged, and `FA` room features are
   zero. Tetairoa McMillan and Amon-Ra St. Brown retain their canonical

@@ -1,0 +1,13 @@
+league,variant,seed,candidate_id,baseline_rmse,challenger_rmse,rmse_delta,parameters_json
+dk,single_seed,1234,7,3.0909947236009616,3.0875341733402983,-0.0034605502606632754,"{""bootstrap"": false, ""max_depth"": 10, ""max_features"": 1.0, ""min_samples_leaf"": 10, ""n_estimators"": 400}"
+dk,single_seed,1335,7,3.0909947236009616,3.087792534467158,-0.0032021891338036568,"{""bootstrap"": false, ""max_depth"": 10, ""max_features"": 1.0, ""min_samples_leaf"": 10, ""n_estimators"": 400}"
+dk,single_seed,1436,7,3.0909947236009616,3.0884960844729177,-0.0024986391280439335,"{""bootstrap"": false, ""max_depth"": 10, ""max_features"": 1.0, ""min_samples_leaf"": 10, ""n_estimators"": 400}"
+dk,single_seed,1537,7,3.0909947236009616,3.087613533183805,-0.0033811904171567875,"{""bootstrap"": false, ""max_depth"": 10, ""max_features"": 1.0, ""min_samples_leaf"": 10, ""n_estimators"": 400}"
+dk,single_seed,1638,7,3.0909947236009616,3.0868521881918807,-0.0041425354090809385,"{""bootstrap"": false, ""max_depth"": 10, ""max_features"": 1.0, ""min_samples_leaf"": 10, ""n_estimators"": 400}"
+dk,five_seed_mean,,7,3.0909947236009616,3.0876288301550026,-0.003365893445959056,"{""bootstrap"": false, ""max_depth"": 10, ""max_features"": 1.0, ""min_samples_leaf"": 10, ""n_estimators"": 400}"
+beta,single_seed,1234,7,2.892610919065094,2.886341287519034,-0.006269631546059973,"{""bootstrap"": false, ""max_depth"": 10, ""max_features"": 1.0, ""min_samples_leaf"": 10, ""n_estimators"": 400}"
+beta,single_seed,1335,7,2.892610919065094,2.885838464432969,-0.006772454632125058,"{""bootstrap"": false, ""max_depth"": 10, ""max_features"": 1.0, ""min_samples_leaf"": 10, ""n_estimators"": 400}"
+beta,single_seed,1436,7,2.892610919065094,2.885342395029741,-0.007268524035353163,"{""bootstrap"": false, ""max_depth"": 10, ""max_features"": 1.0, ""min_samples_leaf"": 10, ""n_estimators"": 400}"
+beta,single_seed,1537,7,2.892610919065094,2.8862288961975024,-0.006382022867591708,"{""bootstrap"": false, ""max_depth"": 10, ""max_features"": 1.0, ""min_samples_leaf"": 10, ""n_estimators"": 400}"
+beta,single_seed,1638,7,2.892610919065094,2.885597587961002,-0.007013331104092302,"{""bootstrap"": false, ""max_depth"": 10, ""max_features"": 1.0, ""min_samples_leaf"": 10, ""n_estimators"": 400}"
+beta,five_seed_mean,,7,2.892610919065094,2.8858422763262297,-0.006768642738864461,"{""bootstrap"": false, ""max_depth"": 10, ""max_features"": 1.0, ""min_samples_leaf"": 10, ""n_estimators"": 400}"

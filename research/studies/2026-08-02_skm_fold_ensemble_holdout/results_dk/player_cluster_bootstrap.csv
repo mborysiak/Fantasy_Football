@@ -1,0 +1,4 @@
+league,method,comparison,rmse_delta,bootstrap_low,bootstrap_high,player_clusters,draws
+dk,current_seed_bag,current_seed_bag_vs_current_single,-0.0005152752699859597,-0.0024037334965764214,0.0013304968230879641,612,20000
+dk,skm_fold_param_bag,skm_fold_param_bag_vs_current_single,0.00023016717475687898,-0.0014016119164236506,0.0018800564804953284,612,20000
+dk,skm_fold_seed_bag,skm_fold_seed_bag_vs_current_single,0.00021276041594875394,-0.002066035784423459,0.0024914447785252167,612,20000

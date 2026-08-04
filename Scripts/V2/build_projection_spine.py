@@ -19,6 +19,8 @@ from Scripts.V2.contracts import (
     PLAYER_SEASON_SPINE_COLUMNS,
     align_columns,
     apply_source_row_exclusions,
+    apply_source_team_trust_policy,
+    assert_no_untrusted_source_team_labels,
     require_columns,
     scoring_hash,
 )
@@ -34,6 +36,7 @@ def _clean_text(value: object) -> object:
 def _deterministic_mode(
     values: Iterable[object],
     preferred: object = None,
+    fail_closed_on_tie: bool = False,
 ) -> object:
     cleaned = [str(value) for value in values if pd.notna(value) and str(value)]
     if not cleaned:
@@ -42,6 +45,8 @@ def _deterministic_mode(
     leaders = sorted(counts[counts.eq(counts.max())].index.tolist())
     if preferred is not None and pd.notna(preferred) and str(preferred) in leaders:
         return str(preferred)
+    if fail_closed_on_tie and len(leaders) > 1:
+        return pd.NA
     return leaders[0]
 
 
@@ -78,6 +83,14 @@ def build_player_season_sources(
     aliases = apply_source_row_exclusions(
         aliases,
         "player_aliases for projection spine",
+    )
+    aliases = apply_source_team_trust_policy(
+        aliases,
+        "player_aliases for projection spine",
+    )
+    assert_no_untrusted_source_team_labels(
+        aliases,
+        "player_aliases for projection spine after team policy",
     )
     aliases["season"] = pd.to_numeric(
         aliases["season"], errors="coerce"
@@ -140,7 +153,10 @@ def build_player_season_sources(
                 "source_position": _deterministic_mode(
                     group["source_position"]
                 ),
-                "source_team": _deterministic_mode(group["source_team"]),
+                "source_team": _deterministic_mode(
+                    group["source_team"],
+                    fail_closed_on_tie=True,
+                ),
                 "match_method": "|".join(
                     sorted(
                         {
@@ -204,7 +220,10 @@ def _candidate_summary(
         )
         if pd.isna(position) or position not in POSITIONS:
             continue
-        team = _deterministic_mode(group["source_team"])
+        team = _deterministic_mode(
+            group["source_team"],
+            fail_closed_on_tie=True,
+        )
         source_kinds = group["source_kind"].value_counts()
         non_draft_count = int(
             source_kinds.get("projection", 0)

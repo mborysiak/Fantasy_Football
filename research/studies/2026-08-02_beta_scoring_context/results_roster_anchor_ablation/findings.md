@@ -1,0 +1,14 @@
+# Roster validation findings
+
+| candidate | period | baseline_score_crps | candidate_score_crps | score_crps_relative_delta | gate_within_0_5_percent | roster_level_pass |
+| --- | --- | --- | --- | --- | --- | --- |
+| beta_context_only | development_2017_2022 | 93.32034034744872 | 92.86135935219878 | -0.004918338205165934 | True | True |
+| beta_context_only | temporal_2023_2025 | 89.8236151465 | 90.06139029701788 | 0.002647134054113401 | True | True |
+| beta_scored_full | development_2017_2022 | 93.32034034744872 | 94.16594233981644 | 0.009061282773073779 | False | False |
+| beta_scored_full | temporal_2023_2025 | 89.8236151465 | 90.16405084376785 | 0.003790046712243858 | True | False |
+| beta_scored_rank_only | development_2017_2022 | 93.32034034744872 | 93.9099776899396 | 0.006318422546419641 | False | False |
+| beta_scored_rank_only | temporal_2023_2025 | 89.8236151465 | 90.08453372666045 | 0.0029047882311895173 | True | False |
+| beta_scored_ppg_only | development_2017_2022 | 93.32034034744872 | 93.66638076936619 | 0.003708092154712392 | True | True |
+| beta_scored_ppg_only | temporal_2023_2025 | 89.8236151465 | 89.5926024233405 | -0.0025718484251912276 | True | True |
+
+At least one fully beta-scored representation passes the roster gate.

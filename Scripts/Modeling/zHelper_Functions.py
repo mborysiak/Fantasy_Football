@@ -526,47 +526,28 @@ def features_target_v2(df, set_pos, year_start, year_split, median_features, sum
 def append_to_db(df, db_name='Season_Stats', table_name='NA', if_exist='append'):
 
     import sqlite3
-    import os
     import datetime as dt
+    from pathlib import Path
     from shutil import copyfile
+    from ff import general
     
-    #--------
-    # Append pandas df to database in Github
-    #--------
-    
-    username = os.getlogin()
-    
-    # move into the local database directory
-    os.chdir(f'/Users/{username}/Documents/Github/Fantasy_Football/Data/Databases/')
-    
-    # copy the current database over to new folder with timestamp appended
+    database_dir = (
+        Path(general.get_main_path('Fantasy_Football')) / 'Data' / 'Databases'
+    )
+    version_dir = database_dir / 'DB_Versioning'
+    version_dir.mkdir(parents=True, exist_ok=True)
+    database_path = database_dir / f'{db_name}.sqlite3'
     today_time = dt.datetime.now().strftime('_%Y_%m_%d_%M')
-    copyfile(db_name + '.sqlite3', 'DB_Versioning/' + db_name + today_time + '.sqlite3')
-
-    conn = sqlite3.connect(db_name + '.sqlite3')
-
-    df.to_sql(
-    name=table_name,
-    con=conn,
-    if_exists=if_exist,
-    index=False
-    )
-
-    #--------
-    # Append pandas df to database in OneDrive
-    #--------
-
-    os.chdir(f'/Users/{username}/OneDrive/FF/DataBase/')
-    copyfile(db_name + '.sqlite3', 'DB_Versioning/' + db_name + today_time + '.sqlite3')
-
-    conn = sqlite3.connect(db_name + '.sqlite3')
+    backup_path = version_dir / f'{db_name}{today_time}.sqlite3'
+    copyfile(database_path, backup_path)
     
-    df.to_sql(
-    name=table_name,
-    con=conn,
-    if_exists=if_exist,
-    index=False
-    )
+    with sqlite3.connect(database_path) as conn:
+        df.to_sql(
+            name=table_name,
+            con=conn,
+            if_exists=if_exist,
+            index=False,
+        )
 
 
 # ================

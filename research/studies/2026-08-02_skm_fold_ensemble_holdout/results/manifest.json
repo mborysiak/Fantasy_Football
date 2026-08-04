@@ -1,0 +1,11 @@
+{
+  "decision": "retain_current_single_fit",
+  "primary_challenger": "skm_fold_seed_bag",
+  "holdout_seasons": [
+    2023,
+    2024,
+    2025
+  ],
+  "exploratory_follow_up": "current_lasso_lgbm_plus_skm_fold_param_rf",
+  "production_changed": false
+}

@@ -1,0 +1,16 @@
+{
+  "league": "dk",
+  "v2_database": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Databases\\Projection_V2.sqlite3",
+  "projection_results_dir": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\research\\studies\\2026-08-03_ridge_swap_downstream\\results_projection_dk",
+  "max_template_season": 2025,
+  "target_rows_per_method": 2306,
+  "prediction_rows": 4612,
+  "methods": [
+    "production",
+    "ridge_swap"
+  ],
+  "cohort_policy": "production top-N frozen for both methods",
+  "matcher_policy": "identical production weights and donor rules",
+  "runtime_seconds": 29.726067800002056,
+  "production_changed": false
+}

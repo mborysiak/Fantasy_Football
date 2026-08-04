@@ -1,0 +1,23 @@
+{
+  "league": "beta",
+  "v2_database": "C:\\Users\\borys\\AppData\\Local\\Temp\\ff_beta_context_20260802_02\\databases\\Projection_V2_beta.sqlite3",
+  "simulation_database": "C:\\Users\\borys\\AppData\\Local\\Temp\\ff_beta_context_20260802_02\\databases\\Simulation.sqlite3",
+  "max_template_season": 2025,
+  "target_players": 2402,
+  "rooms_per_origin": 12,
+  "teams_per_room": 12,
+  "roster_size": 20,
+  "scenarios": 384,
+  "rosters": 1152,
+  "prediction_rows": 4608,
+  "matchers": [
+    "production_hybrid",
+    "beta_context_only",
+    "beta_scored_full",
+    "beta_scored_ppg_rank_w050"
+  ],
+  "future_donor_rows": 0,
+  "roster_level_pass": false,
+  "runtime_seconds": 36.212664500002575,
+  "production_changed": false
+}

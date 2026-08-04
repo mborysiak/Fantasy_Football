@@ -14,6 +14,79 @@ reproducible bundles.
   data contract/runbook.
 
 ## Current Study Types
+- Projection V2 Ridge downstream decision. The frozen equal-third
+  Ridge(alpha 10)/RF/LightGBM swap was replayed on the corrected live lineage
+  with annual 2017-2025 refits, strict-prior residuals, frozen player cohorts,
+  unchanged weekly-template matching, and shared 384-scenario fixed Snake
+  rosters. Pooled RMSE and player CRPS improve slightly, and weekly-template
+  transport passes, but the swap wins only 4/6 recent season cells and only
+  1/4 development/temporal roster cells. Beta temporal roster CRPS worsens
+  0.527%, outside the +0.5% margin. Reject the Ridge swap for 2026 and retain
+  equal-third Lasso/RF/LightGBM. See
+  `studies/2026-08-03_ridge_swap_downstream/`.
+- NFFC draft-slot preference. A corrected ex-ante 12-slot simulation removes
+  exactly `slot - 1` noisy-ADP opponents before each first user turn, follows
+  the current stack-aware Sequential rollout policy through 256 matched rooms,
+  and scores completed rosters on 512 common held-out 17-week seasons. The
+  current point-estimate order is `3,4,2,5,6,7,1,8,11,9,10,12`; slots 3 and 4
+  form the clearest top tier. This is a current-model structural preference,
+  not historical ROI or complete 30-round NFFC validation. See
+  `studies/2026-08-03_nffc_draft_slot_order/`.
+- Projection V2 Ridge and histogram-gradient-boosting screen. On the exact
+  locked 40-feature surface, seven Ridge alphas and ten HistGBM
+  schedule/regularization candidates are selected only on 2013-2022 origins.
+  Both scorings retain Ridge alpha 10; replacing Lasso improves 2023-2025 RMSE
+  by 0.002443 DK and 0.006348 beta and wins all six season cells, but the models
+  are nearly identical and RB worsens slightly. Ridge advances only as a
+  shadow. HistGBM worsens both equal-four blends and is rejected. See
+  `studies/2026-08-03_ridge_histgbm_ensembles/`.
+- Projection V2 boosting-grid expansion. The 16-candidate LightGBM search
+  retains all incumbent candidates and adds paired 0.01-0.10 learning-rate/tree
+  schedules. DK retains the exact 0.05/100 incumbent; beta selects 0.01/500 on
+  pre-2023 forecasts but worsens 2023-2025 blend RMSE by 0.000583 and slightly
+  weakens the Extra Trees ensemble. The 16-candidate CatBoost search retains
+  the original 0.03/300 winner in both scorings, reproducing its earlier beta
+  loss. Retain the existing LightGBM grid and CatBoost rejection. See
+  `studies/2026-08-02_boosting_grid_expansion/`.
+- Beta weekly-template scoring-context correction. The implementation replaces
+  DK-derived matcher/fallback units with exact-lineage beta V2 context,
+  preserves signed sack-derived components, and quarantines the 39 unavailable
+  2018 QB rows. The full beta arm passes all 2,608-target player gates but
+  misses development roster CRPS (`+0.9061%` versus `0.5%`; recent
+  `+0.3790%`). On 2026-08-03 it was promoted by explicit data-correctness
+  override: accepting the small measured regression is preferable to retaining
+  known mixed units. This is not evidence of predictive superiority. See
+  `studies/2026-08-02_beta_scoring_context/`.
+- Projection V2 Extra Trees and CatBoost ensemble screen. Eight compact
+  configurations per family are selected on rolling 2013-2022 origins, refit
+  through 2022, and tested as fixed equal-weight fourth members against the
+  exact current Lasso/RF/LightGBM 2023-2025 predictions. Extra Trees improves
+  RMSE by 0.003461 DK and 0.006270 beta, wins every scoring-system/season and
+  non-QB position cell, and remains favorable across five estimator seeds. It
+  advances only as a research shadow candidate because the gain is small and
+  the confirmation block has been reused. CatBoost reverses from a tiny DK
+  gain to a beta loss and is rejected. See
+  `studies/2026-08-02_extra_trees_cb_ensembles/`.
+- Projection V2 SKM fold/seed ensemble holdout. A sealed 2023-2025 test compares
+  the current one-fit-per-family method with the legacy five-member
+  fold-parameter and estimator-seed bag on identical features, pipelines,
+  grids, and equal-third Lasso/RF/LightGBM blend. The full SKM bag is tied in
+  DK and worsens beta RMSE by 0.00441 with its paired player-cluster interval
+  above zero. Seed averaging around current parameters is neutral. Fold-bagged
+  RF improves in both leagues, but fold-specific Lasso destabilizes beta; an
+  RF-only hybrid is post-hoc and remains research-only. See
+  `studies/2026-08-02_skm_fold_ensemble_holdout/`.
+- PFF TE full-model and template confirmation. The 2026-08-02 follow-up refits
+  the complete locked Lasso/RF/LightGBM conditional-PPG blend with exact
+  production-selected hyperparameters and strictly lagged PFF features. A
+  TE-only route for avoided tackles per reception improves RMSE and q90 Brier
+  versus production and a PFF opportunity control in DK/beta and both time
+  periods. It remains a projection-only candidate because the screen and
+  confirmation share historical origins. Weekly matching is rejected: the
+  primary tackle-breaking arm fails development player-level gates; YAC/route
+  passes those gates but worsens every DK roster/championship metric in both
+  periods and is mixed in beta. See
+  `studies/2026-08-02_pff_te_confirmation/`.
 - Projection V2 NFFC-market and expert-rank challengers. The 2026-07-30 replay
   reduces the NFFC family from its composite plus four correlated contest rows
   to the single existing `ADP_Averages` composite. The live market/rank mart

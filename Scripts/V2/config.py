@@ -78,6 +78,50 @@ SOURCE_ROW_EXCLUSIONS = (
     },
 )
 
+# Some provider archives retain valid historical projection/market values but
+# expose a mutable player-team label that is refreshed after the source season.
+# Keep those values while discarding only the contaminated historical team
+# label.  A trusted same-season source may still supply team context downstream;
+# otherwise the player-season remains deliberately unassigned to a team.
+SOURCE_TEAM_TRUST_POLICIES = (
+    {
+        "policy_id": "ffa_raw_historical_team_labels_untrusted_v1",
+        "source_table": "FFA_RawStats",
+        "through_season": COMPLETED_THROUGH_SEASON,
+        "action": "discard_team",
+        "reason": (
+            "Historical FFA raw-stat rows contain later-team backfills, "
+            "including otherwise-identical 2019 rows that differ only by "
+            "the player's later team."
+        ),
+        "reference": "internal_audit=2026-08-02_historical_team_backfill",
+    },
+    {
+        "policy_id": "ffa_projection_historical_team_labels_untrusted_v1",
+        "source_table": "FFA_Projections",
+        "through_season": COMPLETED_THROUGH_SEASON,
+        "action": "discard_team",
+        "reason": (
+            "Historical FFA projection rows contain later-team backfills, "
+            "including otherwise-identical 2019 rows that differ only by "
+            "the player's later team."
+        ),
+        "reference": "internal_audit=2026-08-02_historical_team_backfill",
+    },
+    {
+        "policy_id": "fantasypros_best_ball_historical_team_labels_untrusted_v1",
+        "source_table": "FantasyPros_Best_Ball_ADP",
+        "through_season": COMPLETED_THROUGH_SEASON,
+        "action": "discard_team",
+        "reason": (
+            "Historical FantasyPros best-ball ADP rows expose mutable team "
+            "labels that reflect later destinations rather than the source "
+            "season."
+        ),
+        "reference": "internal_audit=2026-08-02_historical_team_backfill",
+    },
+)
+
 # These sources define who was knowable before a season. A row enters the
 # projection spine through at least one of these sources; observed outcomes are
 # deliberately not a candidate source.

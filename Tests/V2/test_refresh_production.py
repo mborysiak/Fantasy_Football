@@ -102,6 +102,28 @@ def test_release_plan_covers_every_downstream_surface():
     assert refresh.GITHUB_BLOB_LIMIT_BYTES == 100 * 1024 * 1024
 
 
+def test_refresh_fingerprints_every_governed_salary_export():
+    inputs = refresh.external_file_inputs(2026)
+
+    assert {
+        key: path.name
+        for key, path in inputs.items()
+        if "auction_salaries" in key
+    } == {
+        "historical_auction_salaries_2025_beta": "salaries_2025_beta.csv",
+        "historical_auction_salaries_2025_nv": "salaries_2025_nv.csv",
+        "current_auction_salaries": "salaries_2026_beta.csv",
+    }
+    for key in (
+        "historical_auction_salaries_2025_beta",
+        "historical_auction_salaries_2025_nv",
+        "current_auction_salaries",
+    ):
+        state = refresh.regular_file_state(inputs[key])
+        assert state["sha256"]
+        assert state["size_bytes"] > 0
+
+
 def test_vacuum_sqlite_reclaims_pages_without_changing_content(tmp_path):
     database = tmp_path / "compact.sqlite3"
     with closing(sqlite3.connect(database)) as connection:
@@ -1293,6 +1315,97 @@ def test_nffc_template_context_rejects_null_required_fields(
             expected_context_source=expected_context_source,
             expected_scoring_hash=expected_scoring_hash,
             expected_horizon=17,
+        ) == 1
+
+
+def test_beta_template_context_accepts_promoted_and_quarantined_rows():
+    expected_hash = refresh.scoring_hash("beta")
+    expected_source = "v2_beta_scoring_matched_preseason"
+    columns = (
+        "league, season, pos, historical_projection_source, "
+        "historical_center_policy, projection_context_source, "
+        "projection_context_scoring_hash, projection_context_run_id, "
+        "scoring_context_available, scoring_context_unavailable_reason, "
+        "team_qb_scoring_context_available, "
+        "team_qb_scoring_context_unavailable_reason, "
+        "team_qb_pass_proj_rank_pct, model_input_avg_proj_points, "
+        "projection_context_avg_proj_points_delta, avg_proj_points, "
+        "historical_pred_fp_per_game, avg_proj_pass_points, "
+        "avg_proj_rush_points, avg_proj_rec_points, "
+        "v2_recenter_promoted, template_eligible, "
+        "template_exclusion_reason"
+    )
+    with closing(sqlite3.connect(":memory:")) as connection:
+        connection.execute(
+            """
+            CREATE TABLE Best_Ball_Weekly_Templates (
+                league TEXT, season INTEGER, pos TEXT,
+                historical_projection_source TEXT,
+                historical_center_policy TEXT,
+                projection_context_source TEXT,
+                projection_context_scoring_hash TEXT,
+                projection_context_run_id TEXT,
+                scoring_context_available INTEGER,
+                scoring_context_unavailable_reason TEXT,
+                team_qb_scoring_context_available INTEGER,
+                team_qb_scoring_context_unavailable_reason TEXT,
+                team_qb_pass_proj_rank_pct REAL,
+                model_input_avg_proj_points REAL,
+                projection_context_avg_proj_points_delta REAL,
+                avg_proj_points REAL,
+                historical_pred_fp_per_game REAL,
+                avg_proj_pass_points REAL,
+                avg_proj_rush_points REAL,
+                avg_proj_rec_points REAL,
+                v2_recenter_promoted INTEGER,
+                template_eligible INTEGER,
+                template_exclusion_reason TEXT
+            )
+            """
+        )
+        connection.execute(
+            f"INSERT INTO Best_Ball_Weekly_Templates ({columns}) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                "beta", 2025, "WR",
+                "v2_beta_expert_consensus_fallback",
+                "beta_scored_expert_fallback",
+                expected_source, expected_hash, "feature-run", 1, None,
+                1, None, 0.4, 100.0, 104.0, 204.0, 12.0,
+                -20.4, 102.0, 122.4, 0, 1, "",
+            ),
+        )
+        connection.execute(
+            f"INSERT INTO Best_Ball_Weekly_Templates ({columns}) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                "beta", 2018, "QB", "validation_ensemble",
+                "legacy_validated_oos",
+                "v2_beta_scoring_context_unavailable", expected_hash,
+                "feature-run", 0,
+                refresh.BETA_SCORING_CONTEXT_UNAVAILABLE_REASON,
+                0, refresh.BETA_SCORING_CONTEXT_UNAVAILABLE_REASON, 0.5,
+                200.0, 0.0, 200.0, 12.0, None, None, None, 0, 0,
+                "scoring_context_unavailable:"
+                + refresh.BETA_SCORING_CONTEXT_UNAVAILABLE_REASON,
+            ),
+        )
+
+        assert refresh._count_invalid_beta_template_context_rows(
+            connection,
+            expected_context_source=expected_source,
+            expected_scoring_hash=expected_hash,
+        ) == 0
+
+        connection.execute(
+            "UPDATE Best_Ball_Weekly_Templates "
+            "SET projection_context_source='model_inputs' "
+            "WHERE scoring_context_available=1"
+        )
+        assert refresh._count_invalid_beta_template_context_rows(
+            connection,
+            expected_context_source=expected_source,
+            expected_scoring_hash=expected_hash,
         ) == 1
 
 

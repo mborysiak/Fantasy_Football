@@ -38,8 +38,15 @@ def test_2026_cycle_is_explicit_and_complete():
     assert cycle.template_center_policies["nffc"] == (
         "nffc_scored_expert_consensus",
     )
+    assert cycle.template_center_policies["beta"] == (
+        "legacy_validated_oos",
+        "beta_scored_expert_fallback",
+    )
     assert cycle.template_context_sources["nffc"] == (
         "v2_nffc_scoring_matched_preseason"
+    )
+    assert cycle.template_context_sources["beta"] == (
+        "v2_beta_scoring_matched_preseason"
     )
 
 

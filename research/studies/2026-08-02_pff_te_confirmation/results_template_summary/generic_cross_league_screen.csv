@@ -1,0 +1,4 @@
+study,method,league_count,leagues,mean_development_ppg_relative_delta,worst_development_ppg_relative_delta,mean_development_contribution_relative_delta,worst_temporal_ppg_relative_delta,all_leagues_ppg_improve,all_leagues_screen_pass,all_leagues_one_se_near_best
+2026-08-02_pff_te_confirmation,te_pff_yac_w025,2,"beta,dk",-7.260699338856869e-05,-5.895955448043111e-05,8.133298663637323e-05,-8.157914026130086e-05,True,True,True
+2026-08-02_pff_te_confirmation,te_pff_mtf_w050,2,"beta,dk",-4.621606923271848e-05,-1.003680902833537e-06,-1.829512085527174e-05,-0.0001619999828362806,True,True,False
+2026-08-02_pff_te_confirmation,te_pff_mtf_w025,2,"beta,dk",2.695220825998934e-05,3.454365073607413e-05,-1.4138956282772064e-05,-4.927530211595865e-05,False,False,False

@@ -1,0 +1,19 @@
+{
+  "decision": "retain_existing_boosting_grids_and_parameters",
+  "lightgbm": "DK retained the incumbent 0.05/100 configuration. Beta selected 0.01/500 pre-2023 but worsened pooled 2023-2025 RMSE, so do not change the beta model.",
+  "catboost": "Both scorings retained the original 0.03/300 configuration; expanded tuning did not rescue CatBoost as a fourth member.",
+  "extra_trees": "The prior Extra Trees result remains the model-family finalist. Replacing beta LightGBM with the expanded selection slightly weakens the Extra Trees blend.",
+  "lgbm_overall_rmse_delta": {
+    "beta": 0.0005829658115032998,
+    "dk": 0.0
+  },
+  "catboost_overall_rmse_delta": {
+    "beta": 0.0027576720079629524,
+    "dk": -0.0006861428641591338
+  },
+  "expanded_lgbm_extra_interaction_rmse_delta": {
+    "beta": 0.00041444540535895413,
+    "dk": 0.0
+  },
+  "production_changed": false
+}

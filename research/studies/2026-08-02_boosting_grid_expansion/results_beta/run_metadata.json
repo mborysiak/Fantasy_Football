@@ -1,0 +1,28 @@
+{
+  "league": "beta",
+  "training_max_season": 2022,
+  "holdout_seasons": [
+    2023,
+    2024,
+    2025
+  ],
+  "tuning_origins": [
+    2013,
+    2014,
+    2015,
+    2016,
+    2017,
+    2018,
+    2019,
+    2020,
+    2021,
+    2022
+  ],
+  "training_rows": 5126,
+  "holdout_rows": 1226,
+  "feature_count": 40,
+  "lightgbm_candidate_count": 16,
+  "catboost_candidate_count": 16,
+  "baseline_source": "research\\studies\\2026-08-02_extra_trees_cb_ensembles",
+  "production_changed": false
+}

@@ -1,0 +1,7 @@
+league,method,comparison,rmse_delta,bootstrap_low,bootstrap_high,player_clusters,draws
+dk,current_seed_bag,current_seed_bag_vs_current_single,-0.0005152752699859,-0.0024037334965764,0.0013304968230879,612,20000
+dk,skm_fold_param_bag,skm_fold_param_bag_vs_current_single,0.0002301671747568,-0.0014016119164236,0.0018800564804953,612,20000
+dk,skm_fold_seed_bag,skm_fold_seed_bag_vs_current_single,0.0002127604159487,-0.0020660357844234,0.0024914447785252,612,20000
+beta,current_seed_bag,current_seed_bag_vs_current_single,2.840314233454322e-05,-0.0019603204043965,0.0019745505018254,604,20000
+beta,skm_fold_param_bag,skm_fold_param_bag_vs_current_single,0.0043086779826793,0.0012325705446875,0.0074680622129042,604,20000
+beta,skm_fold_seed_bag,skm_fold_seed_bag_vs_current_single,0.0044126180846744,0.0009166326333969,0.0078501450875152,604,20000

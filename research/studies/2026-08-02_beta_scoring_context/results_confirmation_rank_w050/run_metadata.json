@@ -1,0 +1,12 @@
+{
+  "league": "beta",
+  "v2_database": "C:\\Users\\borys\\AppData\\Local\\Temp\\ff_beta_context_20260802_02\\databases\\Projection_V2_beta.sqlite3",
+  "simulation_database": "C:\\Users\\borys\\AppData\\Local\\Temp\\ff_beta_context_20260802_02\\databases\\Simulation.sqlite3",
+  "candidate": "beta_scored_ppg_rank_w050",
+  "max_template_season": 2025,
+  "targets": 2608,
+  "prediction_rows": 5216,
+  "player_level_pass": true,
+  "runtime_seconds": 11.274795600002108,
+  "production_changed": false
+}

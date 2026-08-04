@@ -226,6 +226,46 @@ def test_consensus_room_features_preserve_nonconsecutive_row_indexes():
     assert features.loc[10, "pass_catcher_room_share"] == pytest.approx(2 / 3)
 
 
+def test_canonical_team_aliases_share_qb_context():
+    frame = pd.DataFrame(
+        [
+            {
+                "player_key": "christian-kirk",
+                "season": 2023,
+                "team": "JAX",
+                "position": "WR",
+                "expert_points_median": 180.0,
+                "expert_ppg_team_game_median": 11.0,
+                "proj_passing_yards": np.nan,
+                "proj_passing_tds": 0.0,
+                "proj_rushing_yards": 10.0,
+                "proj_rushing_tds": 0.0,
+                "projected_rush_point_share": 0.01,
+            },
+            {
+                "player_key": "trevor-lawrence",
+                "season": 2023,
+                "team": "JAC",
+                "position": "QB",
+                "expert_points_median": 300.0,
+                "expert_ppg_team_game_median": 18.0,
+                "proj_passing_yards": 4000.0,
+                "proj_passing_tds": 25.0,
+                "proj_rushing_yards": 300.0,
+                "proj_rushing_tds": 3.0,
+                "projected_rush_point_share": 0.15,
+            },
+        ]
+    )
+
+    features = add_consensus_room_features(frame).set_index("player_key")
+
+    assert features.loc["christian-kirk", "team_normalized"] == "JAC"
+    assert features.loc["trevor-lawrence", "team_normalized"] == "JAC"
+    assert features.loc["christian-kirk", "team_qb1_ppg"] == 18.0
+    assert features.loc["christian-kirk", "team_qb1_passing_yards"] == 4000.0
+
+
 def test_experience_context_uses_self_excluded_same_season_peers():
     frame = pd.DataFrame(
         [
@@ -410,6 +450,67 @@ def test_projection_consensus_never_uses_provider_published_totals():
     )
     assert pd.isna(consensus.loc["fallback_only", "expert_points_median"])
     assert consensus.loc["fallback_only", "expert_points_count"] == 0
+
+
+def test_projection_consensus_preserves_signed_beta_component_shares():
+    frame = pd.DataFrame(
+        [
+            {
+                "player_key": "signed_qb",
+                "season": 2026,
+                "provider": "configured",
+                "configured_points_complete": 1,
+                "configured_points_imputed_component_count": 0,
+                "configured_projected_points": -8.0,
+                "provider_projected_points": -8.0,
+                "provider_points_per_team_game": -8.0 / 17.0,
+                "provider_points_per_projected_game": np.nan,
+                "passing_points": -10.0,
+                "rushing_points": 2.0,
+                "receiving_points": 0.0,
+            }
+        ]
+    )
+    for column in {
+        "projected_games",
+        "source_uncertainty",
+        "source_ceiling_points",
+        "source_floor_points",
+        "provider_room_share",
+        "provider_room_rank",
+        "provider_room_gap_to_leader",
+        "provider_room_hhi",
+        "provider_room_points",
+        "provider_team_points",
+        "passing_yards",
+        "passing_tds",
+        "interceptions",
+        "pass_attempts",
+        "rush_attempts",
+        "rushing_yards",
+        "rushing_tds",
+        "targets",
+        "receptions",
+        "receiving_yards",
+        "receiving_tds",
+    }:
+        frame[column] = np.nan
+
+    row = build_projection_consensus(frame).iloc[0]
+    assert row["expert_points_median"] == pytest.approx(-8.0)
+    assert row["projected_pass_point_share"] == pytest.approx(1.25)
+    assert row["projected_rush_point_share"] == pytest.approx(-0.25)
+    assert row["projected_receiving_point_share"] == pytest.approx(0.0)
+    assert (
+        row[
+            [
+                "projected_pass_point_share",
+                "projected_rush_point_share",
+                "projected_receiving_point_share",
+            ]
+        ].sum()
+        == pytest.approx(1.0)
+    )
 
 
 def test_provider_specific_projection_requires_three_prior_seasons():

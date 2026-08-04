@@ -1,6 +1,6 @@
 # Best-Ball Weekly Tables Contract
 
-Last updated: 2026-07-31
+Last updated: 2026-08-03
 
 ## Owner
 
@@ -28,8 +28,10 @@ Important columns:
   `historical_pred_fp_per_game`, `projection_rank_pct`,
   `projection_decile`, `projection_tier`, absolute projected PPG, projection
   disagreement, market-vs-projection gap match fields,
-  `projection_context_source`, and the audit-only
-  `model_input_*` projection-context columns
+  `projection_context_source`, `projection_context_scoring_hash`,
+  `projection_context_run_id`, `scoring_context_available`,
+  `scoring_context_unavailable_reason`, and the audit-only `model_input_*`
+  projection-context columns
 - center audit: `legacy_historical_pred_fp_per_game`,
   `v2_historical_pred_fp_per_game`, `v2_point_center_source`,
   `v2_template_center_available`,
@@ -257,15 +259,14 @@ locked NFFC center remains a diagnostic and is not promoted. A strict
 `+0.002901`; the locked arm lost all three seasons and its player-cluster 95%
 interval was `[-0.004914, +0.010748]`. It passed six of ten safety gates but
 failed all three promotion gates. This NFFC-only decision does not change the
-validated DK/beta historical center contract.
+separately governed DK or beta historical-center contracts.
 
-The completed staged NFFC build contains 1,509 historical templates from
-2021-2025, all with 17 populated weeks, and a 385-player current map. These are
-candidate artifacts only; no live NFFC database or app release was promoted.
+The live NFFC build contains 1,509 historical templates from 2021-2025, all
+with 17 populated weeks, and a 383-player current map.
 
 This is not a complete NFFC contest implementation. The Snake NFFC selector is
 an offense-only 3RR mode; it does not project or draft K/DST and does not cover
-alternate NFFC contest formats. The candidate becomes live only after the full
+alternate NFFC contest formats. The governed adapter is live after the full
 season-registered refresh, NFFC model-acceptance and template gates, both app
 smokes, and explicit promotion.
 
@@ -274,35 +275,36 @@ smokes, and explicit promotion.
 The current production population is selected before weekly context and donor
 construction:
 
-- DK contains 351 players: 56 QB, 101 RB, 143 WR, and 51 TE. It is the union
-  of the 326-player core and the top-280 DK market population after excluding
-  eight governed market-only rows without a current V2 center: Tyreek Hill,
-  Joe Mixon, DeAndre Hopkins, Nick Chubb, Austin Ekeler, Kareem Hunt, Brandin
-  Cooks, and Taysom Hill.
+- DK contains 350 players: 56 QB, 100 RB, 143 WR, and 51 TE. The governed
+  eligibility audit preserves every reviewed core, market-tail, and exclusion
+  decision.
 - Beta contains 328 players: 50 QB, 95 RB, 133 WR, and 50 TE. It is the union
   of the core population, top-180 ETR overall-rank population, and all governed
   keepers.
 
 Current and following-season centers come from the locked league-specific V2
-shadows. Legacy current/next values are retained only for audit. This does not
-change the separate DK/beta historical-template rule: their donor residuals use
-the validated legacy OOS historical center where available and disclose the
-preseason projection fallback otherwise. NFFC instead uses the independently
-validated `nffc_scored_expert_consensus` rule described above.
+shadows. Legacy current/next values are retained only for audit. DK donor
+residuals use the validated legacy OOS historical center where available and
+the DK preseason projection fallback otherwise. Beta keeps the validated
+legacy OOS center where available but uses the beta-scored expert consensus
+for fallback rows; its matcher fields come from the beta-scored V2 preseason
+context. NFFC uses the independently validated
+`nffc_scored_expert_consensus` rule described above.
 `V2_Production_Eligibility_Audit` retains all 1,490 reviewed eligibility rows,
 including governed exclusions.
 
 Every live player requires a canonical `player_key` before context joins and
-receives exactly 80 historical donors. DK uses exact canonical ADP for 343
+receives exactly 80 historical donors. DK uses exact canonical ADP for 342
 players and a governed fallback for eight; beta uses exact canonical ADP for
-238 players and a governed fallback for 90. No row uses a generic default or
+237 players and a governed fallback for 91. No row uses a generic default or
 review route. Tetairoa McMillan and Amon-Ra St. Brown retain their governed
 canonical identities.
 
-The final release passed 187 main-repository tests, 69 strict release tests,
-49 Auction tests, and 16 Snake tests. Snake `AppTest` completed with zero
-exceptions. The durable release evidence lives under
-`research/studies/2026-07-30_canonical_adp_handoff/`.
+The beta-context correction was promoted by governed refresh
+`20260803T040708Z_2075ac47`. All release gates, the 1,000/1,000 reserve trial,
+and both app smokes passed; post-promotion hashes match the manifest, all three
+live Simulation copies pass SQLite integrity, and the Snake/Auction content
+parity checks pass.
 
 Team aliases are normalized only while calculating position-room features:
 `LA`/`LAR` and `ARZ`/`ARI` share their corresponding room. Outward player/team
@@ -357,28 +359,35 @@ zero room features rather than being grouped into a synthetic team room.
   outcome without injecting small-workload QB games into the best-ball profile.
 - Preserve `active_ppg_resid` as template active-game PPG minus historical
   predicted PPG.
-- DK/beta production donor residuals use the previously validated historical
-  OOS projection where it exists (`historical_center_policy =
-  legacy_validated_oos`) and the same-season preseason projection otherwise
-  (`historical_center_policy = preseason_projection_fallback`). The strict-OOS
-  V2 donor center is retained in `v2_historical_pred_fp_per_game` for audit,
-  but `v2_recenter_promoted = 0`. A strict rolling replay on 2017-2025 rows
-  found that V2 recentering worsened PPG CRPS in both DK and beta; do not switch
-  the active center without clearing the league-specific replay again.
+- DK production donor residuals use the previously validated historical OOS
+  projection where it exists (`historical_center_policy =
+  legacy_validated_oos`) and the same-season DK preseason projection otherwise
+  (`historical_center_policy = preseason_projection_fallback`).
+- Beta production uses exact `v2_beta_scoring_matched_preseason` matcher
+  context. Donor residuals retain `legacy_validated_oos` for 2,696 rows and use
+  the beta-scored expert consensus fallback for 2,602 rows
+  (`historical_center_policy = beta_scored_expert_fallback`). The strict-OOS V2
+  center remains audit-only and `v2_recenter_promoted = 0`.
+- Strict rolling validation did not establish a predictive promotion: the full
+  beta arm passed all player gates but worsened development roster CRPS by
+  `+0.9061%` against the `0.5%` limit; 2023-2025 worsened `+0.3790%`. The
+  2026-08-03 promotion is an explicit data-correctness override that removes
+  mixed DK/beta units. Do not describe it as a performance improvement or
+  retune matcher weights on this evidence.
 - NFFC production candidates use the NFFC-scored preseason expert consensus for
   both matcher context and the donor center
   (`historical_center_policy = nffc_scored_expert_consensus`). The locked OOF
   center remains diagnostic after failing its prespecified replay gates.
-- A missing V2 diagnostic center normally fails the build. The only governed
-  exception is a beta 2018 QB locked-handoff row with
-  `template_center_available = 0` when the active FFToday quarantine receipt
+- A missing beta scoring context normally fails the build. The only governed
+  exception is a beta 2018 QB locked-handoff row with both center and scoring
+  context availability set to zero when the active FFToday quarantine receipt
   proves that no valid beta sack donor exists. Keep
-  `v2_historical_pred_fp_per_game` null, retain the complete
-  `legacy_validated_oos` active center, and record
+  `v2_historical_pred_fp_per_game` null, retain the auditable
+  `legacy_validated_oos` center, set `template_eligible = 0`, and record
   `legacy_validated_oos_fallback:fftoday_qb_stored_2018_2019_vintage_quarantine_v1:no_valid_beta_qb_sack_donor`
-  in `v2_template_center_unavailable_reason`. A missing locked row, stale
-  policy receipt, other season/position/league, or any other unavailable center
-  remains an error.
+  in both unavailable-reason fields. A missing locked row, stale policy
+  receipt, other season/position/league, or any other unavailable context
+  remains an error. The live table contains exactly 39 such 2018 QB rows.
 - A template/V2-center position mismatch also fails closed except for three
   reviewed hybrid-role rows: Cordarrelle Patterson's 2019 and 2021 templates
   are WR while the locked center position is RB, and Ty Montgomery's 2022
@@ -387,9 +396,10 @@ zero room features rather than being grouped into a synthetic team room.
   `canonical_hybrid_role_shift:<player>` reason. No name-only, position-family,
   or generalized hybrid exception is allowed.
 - Keep structurally non-transferable outcomes in the template and audit tables,
-  but set `template_eligible = 0` and record a declared reason. Le'Veon Bell's
-  2018 contract holdout is currently the only exclusion. Ordinary zero-active
-  and low-active seasons remain eligible because they represent real downside.
+  but set `template_eligible = 0` and record a declared reason. The live beta
+  slice has 39 scoring-context exclusions plus Le'Veon Bell's 2018 contract
+  holdout. Ordinary zero-active and low-active seasons remain eligible because
+  they represent real downside.
 - `year_exp` is template-matching tenure reconstructed from the most recent
   plausible draft year at or before the row season, preferring matching draft
   team and using first recorded season only when draft identity is unavailable.

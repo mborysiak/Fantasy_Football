@@ -1,0 +1,18 @@
+{
+  "league": "dk",
+  "v2_database": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\Data\\Databases\\Projection_V2.sqlite3",
+  "max_season": 2025,
+  "target_players": 2696,
+  "rooms_per_origin": 12,
+  "teams_per_room": 12,
+  "roster_size": 20,
+  "scenarios": 384,
+  "rooms": 108,
+  "prediction_rows": 2592,
+  "matchers": [
+    "production",
+    "te_pff_yac_w025"
+  ],
+  "runtime_seconds": 38.70712700000013,
+  "production_changed": false
+}

@@ -1,0 +1,38 @@
+{
+  "league": "dk",
+  "training_max_season": 2022,
+  "holdout_seasons": [
+    2023,
+    2024,
+    2025
+  ],
+  "tuning_origins": [
+    2013,
+    2014,
+    2015,
+    2016,
+    2017,
+    2018,
+    2019,
+    2020,
+    2021,
+    2022
+  ],
+  "training_rows": 5200,
+  "holdout_rows": 1237,
+  "feature_count": 40,
+  "candidate_counts": {
+    "conditional_ppg_ridge": 7,
+    "conditional_ppg_hist_gradient_boosting": 10
+  },
+  "ensemble_methods": [
+    "current_single",
+    "ridge_replaces_lasso_equal3",
+    "lasso_ridge_split_linear_third",
+    "current_plus_ridge_equal4",
+    "histgbm_replaces_lightgbm_equal3",
+    "current_plus_histgbm_equal4"
+  ],
+  "baseline_source": "research\\studies\\2026-08-02_skm_fold_ensemble_holdout",
+  "production_changed": false
+}

@@ -1,0 +1,7 @@
+league,method,prespecified_primary,te_development_ppg_delta,te_recent_ppg_delta,te_development_q90_brier_delta,te_recent_q90_brier_delta,all_core_development_ppg_relative_delta,all_core_recent_ppg_relative_delta,te_ppg_both_periods_improve,te_q90_both_periods_improve,aggregate_guardrail_pass,cross_league_mechanical_pass,cross_league_upside_pass,advance_to_roster
+dk,te_pff_mtf_w025,True,0.000575625673906,-0.0031986737805427,0.000529963304042,-0.0002082925652641,3.454365073608402e-05,-0.0001963055676461,False,False,True,False,False,False
+beta,te_pff_mtf_w025,True,0.0002494623110143,-0.0006613795654624,0.000159233974621,-0.0004049809870014,1.936076578396682e-05,-4.927530211595356e-05,False,False,True,False,False,False
+dk,te_pff_mtf_w050,False,-0.0015235380852129,-0.0049568398349895,0.0003455604449158,0.0001834613084828,-9.142845756262004e-05,-0.0003042058441402,True,False,True,True,False,False
+beta,te_pff_mtf_w050,False,-1.2932368497642344e-05,-0.0021743850093747,0.0002922118836514,-0.0003085132190112,-1.00368090284081e-06,-0.0001619999828362,True,False,True,True,False,False
+dk,te_pff_yac_w025,False,-0.0009824854222926,-0.0037939284595669,-0.0003302520969093,-0.0008382732922183,-5.895955448040751e-05,-0.000232836897715,True,True,True,True,True,True
+beta,te_pff_yac_w025,False,-0.001111383209523,-0.0010949659163907,-0.0001611236819679,-0.0003117748525663,-8.625443229673251e-05,-8.157914026134944e-05,True,True,True,True,True,True

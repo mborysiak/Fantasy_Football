@@ -34,7 +34,9 @@ from Scripts.V2.contracts import (
     align_columns,
     apply_source_row_exclusions,
     apply_source_season_overrides,
+    apply_source_team_trust_policy,
     assert_no_source_row_exclusions,
+    assert_no_untrusted_source_team_labels,
     bytes_sha256,
     normalize_player_name,
     normalize_source_position,
@@ -477,6 +479,10 @@ def load_identity_source_records(
         frame,
         "identity source records",
     )
+    frame = apply_source_team_trust_policy(
+        frame,
+        "identity source records",
+    )
     frame["_draft_year_inferred"] = False
     known_drafts = (
         frame[frame["draft_year"].notna()]
@@ -747,9 +753,17 @@ def resolve_source_records(
         source_records,
         "identity source records",
     )
+    source_records = apply_source_team_trust_policy(
+        source_records,
+        "identity source records",
+    )
     assert_no_source_row_exclusions(
         source_records,
         "identity source records after quarantine",
+    )
+    assert_no_untrusted_source_team_labels(
+        source_records,
+        "identity source records after team policy",
     )
     lookup = _candidate_indexes(identity)
     name_lookup = _candidate_name_indexes(identity)

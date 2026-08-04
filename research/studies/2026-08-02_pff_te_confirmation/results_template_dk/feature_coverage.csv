@@ -1,0 +1,9 @@
+population,position,rows,available,coverage,median_routes_when_available,median_receptions_when_available
+historical_templates,QB,706,0,0.0,,
+historical_templates,RB,1549,0,0.0,,
+historical_templates,TE,833,744,0.8931572629051621,313.5,38.0
+historical_templates,WR,2210,0,0.0,,
+rolling_targets,QB,359,0,0.0,,
+rolling_targets,RB,788,0,0.0,,
+rolling_targets,TE,423,376,0.8888888888888888,305.0,37.0
+rolling_targets,WR,1077,0,0.0,,

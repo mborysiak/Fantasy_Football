@@ -55,6 +55,16 @@ Position-less market rows are retained only when they resolve to an existing
 identity and another source or the canonical identity supplies an eligible
 fantasy position.
 
+Historical team labels covered by `SOURCE_TEAM_TRUST_POLICIES` are discarded
+before this table is aggregated. The source observation remains present, but
+its `source_team` is null. The season-level spine team is selected only from
+remaining trusted same-season evidence; an unresolved equal-count tie also
+produces null rather than an alphabetical winner. See
+`v2_identity_outcomes.md` for the governed source scopes.
+Recognized `TEAM_MAP` aliases are canonicalized before both the per-source and
+cross-source votes, so values such as `JAC` and `JAX` count as one team while
+`JAC` and `BUF` remain a true conflict.
+
 Rows matching `SOURCE_ROW_EXCLUSIONS` are partitioned before candidate
 aggregation. They remain in the raw source database but cannot contribute a
 `player_season_sources` record, establish a candidate, or influence the

@@ -1,0 +1,112 @@
+{
+  "checks": [
+    {
+      "check": "dk_corrected_run",
+      "passed": true,
+      "detail": "v2_locked_final_dk_20260803T041942Z_43a6ddee"
+    },
+    {
+      "check": "dk_feature_lock",
+      "passed": true,
+      "detail": "milestone_3_20260803T040957Z_f93a6797"
+    },
+    {
+      "check": "dk_frozen_ridge",
+      "passed": true,
+      "detail": "10.0"
+    },
+    {
+      "check": "dk_read_only_receipts",
+      "passed": true,
+      "detail": "all stages report production_changed=false"
+    },
+    {
+      "check": "dk_point_pairing",
+      "passed": true,
+      "detail": "paired_rows=3696"
+    },
+    {
+      "check": "dk_strict_prior_minimum",
+      "passed": true,
+      "detail": "available_rows=6578"
+    },
+    {
+      "check": "dk_target_pairing",
+      "passed": true,
+      "detail": "target_rows=2306"
+    },
+    {
+      "check": "dk_roster_pairing",
+      "passed": true,
+      "detail": "paired_rosters=1152"
+    },
+    {
+      "check": "dk_roster_origins",
+      "passed": true,
+      "detail": "[2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025]"
+    },
+    {
+      "check": "dk_scenario_contract",
+      "passed": true,
+      "detail": "384 scenarios; 12x12 rooms; 20-player rosters"
+    },
+    {
+      "check": "beta_corrected_run",
+      "passed": true,
+      "detail": "v2_locked_final_beta_20260803T042536Z_b4f0f20f"
+    },
+    {
+      "check": "beta_feature_lock",
+      "passed": true,
+      "detail": "milestone_3_20260803T041720Z_de712ffa"
+    },
+    {
+      "check": "beta_frozen_ridge",
+      "passed": true,
+      "detail": "10.0"
+    },
+    {
+      "check": "beta_read_only_receipts",
+      "passed": true,
+      "detail": "all stages report production_changed=false"
+    },
+    {
+      "check": "beta_point_pairing",
+      "passed": true,
+      "detail": "paired_rows=3622"
+    },
+    {
+      "check": "beta_strict_prior_minimum",
+      "passed": true,
+      "detail": "available_rows=6440"
+    },
+    {
+      "check": "beta_target_pairing",
+      "passed": true,
+      "detail": "target_rows=2269"
+    },
+    {
+      "check": "beta_roster_pairing",
+      "passed": true,
+      "detail": "paired_rosters=1008"
+    },
+    {
+      "check": "beta_roster_origins",
+      "passed": true,
+      "detail": "[2019, 2020, 2021, 2022, 2023, 2024, 2025]"
+    },
+    {
+      "check": "beta_scenario_contract",
+      "passed": true,
+      "detail": "384 scenarios; 12x12 rooms; 20-player rosters"
+    },
+    {
+      "check": "decision_matches_gates",
+      "passed": true,
+      "detail": "{'promote_ridge_swap': False, 'recommended_2026_point_center': 'production_lasso_random_forest_lightgbm_equal_thirds', 'failed_gates': ['point_ppg', 'fixed_roster_snake'], 'production_changed': False}"
+    }
+  ],
+  "check_count": 21,
+  "all_passed": true,
+  "production_changed": false
+}

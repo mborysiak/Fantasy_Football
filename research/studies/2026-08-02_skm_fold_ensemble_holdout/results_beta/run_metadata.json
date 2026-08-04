@@ -1,0 +1,32 @@
+{
+  "league": "beta",
+  "training_max_season": 2022,
+  "holdout_seasons": [
+    2023,
+    2024,
+    2025
+  ],
+  "tuning_origins": [
+    2013,
+    2014,
+    2015,
+    2016,
+    2017,
+    2018,
+    2019,
+    2020,
+    2021,
+    2022
+  ],
+  "training_rows": 5126,
+  "holdout_rows": 1226,
+  "folds": 5,
+  "feature_count": 40,
+  "methods": [
+    "current_single",
+    "current_seed_bag",
+    "skm_fold_param_bag",
+    "skm_fold_seed_bag"
+  ],
+  "production_changed": false
+}

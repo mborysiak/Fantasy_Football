@@ -1,0 +1,22 @@
+{
+  "league": "beta",
+  "database": "C:\\Users\\borys\\OneDrive\\Documents\\GitHub\\Fantasy_Football\\Data\\Databases\\Projection_V2_beta.sqlite3",
+  "feature_run_id": "milestone_3_20260801T195106Z_4cadd555",
+  "validation_seasons": [
+    2017,
+    2025
+  ],
+  "variants": [
+    "te_pff_opportunity_control",
+    "te_pff_mtf",
+    "te_pff_yac"
+  ],
+  "components": [
+    "conditional_ppg_lasso",
+    "conditional_ppg_random_forest",
+    "conditional_ppg_lightgbm"
+  ],
+  "hyperparameter_policy": "reuse exact production per-origin selections",
+  "runtime_seconds": 41.11327809999989,
+  "production_changed": false
+}

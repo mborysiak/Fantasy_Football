@@ -1,0 +1,27 @@
+{
+  "league": "dk",
+  "database": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Databases\\Projection_V2.sqlite3",
+  "source_model_run_id": "v2_locked_final_dk_20260803T041942Z_43a6ddee",
+  "source_feature_run_id": "milestone_3_20260803T040957Z_f93a6797",
+  "loaded_feature_run_id": "milestone_3_20260803T040957Z_f93a6797",
+  "source_lock_version": "v2_conditional_ppg_2026_candidate_v1",
+  "ridge_alpha": 10.0,
+  "feature_count": 40,
+  "historical_origins": [
+    2017,
+    2018,
+    2019,
+    2020,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025
+  ],
+  "point_rows_per_method": 3696,
+  "distribution_rows_per_method": 3289,
+  "shadow_rows": 660,
+  "shadow_complete_rows": 615,
+  "runtime_seconds": 113.35550850000072,
+  "production_changed": false
+}

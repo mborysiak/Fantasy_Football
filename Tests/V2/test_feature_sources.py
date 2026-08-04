@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
+import Scripts.V2.contracts as contracts
 from Scripts.V2.build_feature_sources import (
     PROVIDER_POINTS_ESTIMAND_VERSION,
     _add_provider_room_context,
@@ -29,9 +30,13 @@ from Scripts.V2.contracts import (
     SOURCE_SEASON_OVERRIDE_REASON_COLUMN,
     SOURCE_SEASON_OVERRIDE_REFERENCE_COLUMN,
     SOURCE_STORED_SEASON_COLUMN,
+    apply_source_team_trust_policy,
     apply_source_season_overrides,
+    assert_no_ungoverned_identical_team_conflicts,
     assert_no_source_row_exclusions,
+    assert_no_untrusted_source_team_labels,
     configured_scoring,
+    normalize_source_team_labels,
     normalize_source_position,
     partition_source_row_exclusions,
 )
@@ -192,6 +197,295 @@ def test_fftoday_2018_qb_quarantine_is_scoped_and_auditable():
             frame,
             "unfiltered source quarantine fixture",
         )
+
+
+@pytest.mark.parametrize(
+    "source_table",
+    [
+        "FFA_RawStats",
+        "FFA_Projections",
+        "FantasyPros_Best_Ball_ADP",
+    ],
+)
+def test_historical_mutable_team_labels_are_discarded(source_table):
+    frame = pd.DataFrame(
+        [
+            {
+                "source_table": source_table,
+                "season": 2019,
+                "team": "ARI",
+            },
+            {
+                "source_table": source_table,
+                "season": 2026,
+                "team": "ARI",
+            },
+            {
+                "source_table": "Trusted_Projections",
+                "season": 2019,
+                "team": "HOU",
+            },
+        ]
+    )
+
+    governed = apply_source_team_trust_policy(frame, "team-policy fixture")
+
+    assert pd.isna(governed.iloc[0]["team"])
+    assert governed.iloc[1]["team"] == "ARI"
+    assert governed.iloc[2]["team"] == "HOU"
+    assert_no_untrusted_source_team_labels(
+        governed,
+        "governed team-policy fixture",
+    )
+    with pytest.raises(ValueError, match="must be discarded"):
+        assert_no_untrusted_source_team_labels(
+            frame,
+            "ungoverned team-policy fixture",
+        )
+
+
+def test_identical_except_team_conflicts_fail_closed_without_policy():
+    frame = pd.DataFrame(
+        [
+            {
+                "source_table": source_table,
+                "season": 2019,
+                "player_key": "hopkins",
+                "position": "WR",
+                "team": team,
+                "projected_points": 300.0,
+            }
+            for source_table, team in (
+                ("Fixture_Projections", "HOU"),
+                ("Fixture_Projections", "ARI"),
+            )
+        ]
+    )
+
+    with pytest.raises(ValueError, match="identical except for team"):
+        assert_no_ungoverned_identical_team_conflicts(
+            frame,
+            "ungoverned team-conflict fixture",
+        )
+
+    governed = frame.assign(source_table="FFA_RawStats")
+    assert_no_ungoverned_identical_team_conflicts(
+        governed,
+        "governed team-conflict fixture",
+    )
+
+
+def test_team_aliases_canonicalize_before_conflict_detection():
+    base = {
+        "source_table": "Fixture_Projections",
+        "season": 2023,
+        "player_key": "trevor-lawrence",
+        "position": "QB",
+        "projected_points": 310.0,
+    }
+    aliases = pd.DataFrame(
+        [{**base, "team": team} for team in ("JAC", "JAX")]
+    )
+
+    assert_no_ungoverned_identical_team_conflicts(
+        aliases,
+        "recognized team-alias fixture",
+    )
+    normalized = normalize_source_team_labels(
+        aliases,
+        "recognized team-alias fixture",
+    )
+    assert normalized["team"].tolist() == ["JAC", "JAC"]
+
+    true_conflict = pd.DataFrame(
+        [{**base, "team": team} for team in ("JAC", "BUF")]
+    )
+    with pytest.raises(ValueError, match="identical except for team"):
+        assert_no_ungoverned_identical_team_conflicts(
+            true_conflict,
+            "true team-conflict fixture",
+        )
+
+
+def test_team_policy_rejects_overlapping_rules_for_one_source(monkeypatch):
+    base_rule = {
+        "policy_id": "fixture_team_policy_v1",
+        "source_table": "Fixture_Projections",
+        "through_season": 2024,
+        "action": "discard_team",
+        "reason": "fixture",
+        "reference": "fixture",
+    }
+    overlapping_rule = {
+        **base_rule,
+        "policy_id": "fixture_team_policy_v2",
+        "through_season": 2025,
+    }
+    monkeypatch.setattr(
+        contracts,
+        "SOURCE_TEAM_TRUST_POLICIES",
+        (base_rule, overlapping_rule),
+    )
+
+    with pytest.raises(ValueError, match="Overlapping.*Fixture_Projections"):
+        contracts.source_team_trust_policy_hash()
+
+
+def test_ffa_2019_team_conflict_uses_trusted_same_season_context(tmp_path):
+    raw = pd.DataFrame(
+        [
+            {
+                "ffa_id": "hopkins",
+                "player": "DeAndre Hopkins",
+                "position": "WR",
+                "team": team,
+                "year": 2019,
+                "ffa_rush_yds": 0,
+                "ffa_rush_tds": 0,
+                "ffa_rec_yds": 1180,
+                "ffa_rec_tds": 8,
+            }
+            for team in ("HOU", "ARI")
+        ]
+    )
+    aliases = pd.DataFrame(
+        [
+            {
+                "player_key": "hopkins",
+                "source_table": "FFA_RawStats",
+                "source": "ffa_raw",
+                "source_player_id": "hopkins",
+                "normalized_name": "deandre hopkins",
+                "position": "WR",
+                "team": team,
+                "season": 2019,
+            }
+            for team in ("HOU", "ARI")
+        ]
+        + [
+            {
+                "player_key": "hopkins",
+                "source_table": "FFToday_Projections",
+                "source": "fftoday",
+                "source_player_id": pd.NA,
+                "normalized_name": "deandre hopkins",
+                "position": "WR",
+                "team": "HOU",
+                "season": 2019,
+            }
+        ]
+    )
+    source_database = tmp_path / "ffa_team_policy.sqlite3"
+    with sqlite3.connect(source_database) as connection:
+        raw.to_sql("FFA_RawStats", connection, index=False)
+
+    values, _ = build_projection_values(
+        aliases,
+        "dk",
+        "ffa_team_policy_fixture",
+        source_database=source_database,
+        start_season=2019,
+        projection_through_season=2019,
+    )
+
+    assert len(values) == 1
+    assert values.iloc[0]["player_key"] == "hopkins"
+    assert values.iloc[0]["team"] == "HOU"
+
+
+def test_value_ingestion_rejects_ungoverned_team_only_conflict(tmp_path):
+    raw = pd.DataFrame(
+        [
+            {
+                "player": "Fixture Receiver",
+                "pos": "WR",
+                "team": team,
+                "year": 2025,
+                "fdta_rec": 80,
+                "fdta_rec_yds": 1000,
+                "fdta_rec_td": 7,
+            }
+            for team in ("JAC", "BUF")
+        ]
+    )
+    aliases = pd.DataFrame(
+        [
+            {
+                "player_key": "fixture-receiver",
+                "source_table": "FantasyData",
+                "source": "fantasydata",
+                "source_player_id": pd.NA,
+                "normalized_name": "fixture receiver",
+                "position": "WR",
+                "team": team,
+                "season": 2025,
+            }
+            for team in ("JAC", "BUF")
+        ]
+    )
+    source_database = tmp_path / "ungoverned_team_conflict.sqlite3"
+    with sqlite3.connect(source_database) as connection:
+        raw.to_sql("FantasyData", connection, index=False)
+
+    with pytest.raises(ValueError, match="identical except for team"):
+        build_projection_values(
+            aliases,
+            "dk",
+            "ungoverned_team_conflict_fixture",
+            source_database=source_database,
+            start_season=2025,
+            projection_through_season=2026,
+        )
+
+
+def test_value_ingestion_canonicalizes_team_aliases_before_grouping(tmp_path):
+    raw = pd.DataFrame(
+        [
+            {
+                "player": "Trevor Lawrence",
+                "pos": "QB",
+                "team": team,
+                "year": 2023,
+                "fdta_pass_yds": 4000,
+                "fdta_pass_td": 25,
+                "fdta_pass_int": 10,
+                "fdta_rush_yds": 300,
+                "fdta_rush_td": 3,
+            }
+            for team in ("JAC", "JAX")
+        ]
+    )
+    aliases = pd.DataFrame(
+        [
+            {
+                "player_key": "trevor-lawrence",
+                "source_table": "FantasyData",
+                "source": "fantasydata",
+                "source_player_id": pd.NA,
+                "normalized_name": "trevor lawrence",
+                "position": "QB",
+                "team": team,
+                "season": 2023,
+            }
+            for team in ("JAC", "JAX")
+        ]
+    )
+    source_database = tmp_path / "team_alias_values.sqlite3"
+    with sqlite3.connect(source_database) as connection:
+        raw.to_sql("FantasyData", connection, index=False)
+
+    values, _ = build_projection_values(
+        aliases,
+        "dk",
+        "team_alias_value_fixture",
+        source_database=source_database,
+        start_season=2023,
+        projection_through_season=2023,
+    )
+
+    assert len(values) == 1
+    assert values.iloc[0]["player_key"] == "trevor-lawrence"
+    assert values.iloc[0]["team"] == "JAC"
 
 
 def test_feature_ingestion_uses_effective_season_before_alias_resolution(

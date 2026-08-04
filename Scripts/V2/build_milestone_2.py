@@ -35,6 +35,7 @@ from Scripts.V2.contracts import (
     read_existing_table,
     scoring_hash,
     source_row_exclusion_policy_receipt,
+    source_team_trust_policy_receipt,
     table_exists,
     utc_now,
 )
@@ -144,6 +145,7 @@ def _source_manifest(
             }
         )
     rows.append(source_row_exclusion_policy_receipt(run_id))
+    rows.append(source_team_trust_policy_receipt(run_id))
     return align_columns(
         pd.DataFrame(rows),
         SOURCE_MANIFEST_COLUMNS,

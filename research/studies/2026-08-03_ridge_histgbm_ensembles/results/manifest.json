@@ -1,0 +1,25 @@
+{
+  "decision": "ridge_histgbm_screen_complete",
+  "ridge": "research_shadow_candidate",
+  "histgbm": "reject",
+  "primary_methods": {
+    "ridge": "ridge_replaces_lasso_equal3",
+    "histgbm": "current_plus_histgbm_equal4"
+  },
+  "primary_rmse_deltas": {
+    "ridge": {
+      "beta": -0.006348332414225055,
+      "dk": -0.0024425605206879197
+    },
+    "histgbm": {
+      "beta": 0.0010221650805610771,
+      "dk": 0.003646295830864066
+    }
+  },
+  "primary_season_wins": {
+    "ridge": 6,
+    "histgbm": 3
+  },
+  "caveat": "DK and beta share substantially the same player-seasons, and 2023-2025 is a reused historical confirmation block.",
+  "production_changed": false
+}

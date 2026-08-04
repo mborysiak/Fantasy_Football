@@ -1,0 +1,9 @@
+{
+  "promote_ridge_swap": false,
+  "recommended_2026_point_center": "production_lasso_random_forest_lightgbm_equal_thirds",
+  "failed_gates": [
+    "point_ppg",
+    "fixed_roster_snake"
+  ],
+  "production_changed": false
+}

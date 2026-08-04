@@ -1,6 +1,6 @@
 # Production Refresh Runbook
 
-Last updated: 2026-07-31
+Last updated: 2026-08-02
 
 ## Scope and Manual Boundary
 
@@ -76,6 +76,14 @@ artifacts. Promotion is a separate, explicit command:
 `--promote` requires all staged steps, including both app smoke tests, to be
 complete. It cannot be combined with an earlier `--through` target.
 
+The beta scoring-context correction was promoted from immutable stage
+`ff_beta_context_promotion_20260802_03`, run
+`20260803T040708Z_2075ac47`, on 2026-08-03. All 24 steps completed, the reserve
+seed passed 1,000/1,000 trials, both app smokes had zero errors/exceptions, and
+all ten installed artifacts match the promotion manifest. Durable rollback
+copies are under
+`Data/Production_Refresh_Backups/20260803T040708Z_2075ac47/`.
+
 ## Resume and Diagnostic Stops
 
 The manifest records each step as pending, running, completed, or failed.
@@ -99,10 +107,11 @@ Use `--through <step>` to stop inclusively at a named step:
 Omitting `--through` on the next resume continues through `app_smoke`.
 `--dry-run` prints the planned steps without creating files. A resume retains
 the manifest's model options; only `--app-timeout` is treated as a retry-time
-override. Start a new refresh if any snapshotted live database, external
-weekly/salary input, or fingerprinted pipeline/app source file changed.
-Manifest schema 4 adds immutable Model_Inputs retry bases; older stage manifests
-fail closed and must be rebuilt rather than resumed.
+override. Start a new refresh if any snapshotted live database, external weekly
+input, governed salary export, keeper file, or fingerprinted pipeline/app
+source file changed. Manifest schema 5 is current and retains immutable
+Model_Inputs retry bases; any non-5 stage manifest fails closed and must be
+rebuilt rather than resumed.
 
 Every production refresh runs a fresh 1,000-trial Auction selection seed.
 Carrying an earlier seed across changed projections, salaries, keepers, weekly
@@ -207,9 +216,13 @@ app_smoke
 
 - `snapshot` copies and hashes the nine source/model databases plus both live
   app databases, and retains immutable current/next Model_Inputs retry bases.
-  It also records the read-only weekly-history database, current Auction salary
-  export, and historical selection bootstrap files that remain outside the
-  staged database directory.
+  It also records the read-only weekly-history database, current keeper file,
+  historical selection bootstrap files, and every governed salary export that
+  remains outside the staged database directory. For the 2026 cycle, the salary
+  inputs are `salaries_2025_beta.csv` (200 records),
+  `salaries_2025_nv.csv` (160), and the variable-length
+  `salaries_2026_beta.csv` export ending at an ESPN `$0` record; each external
+  input is recorded by size and SHA-256.
 - `model_inputs` runs the canonical-input portion of
   `4_Data_Compile.py`, producing current and next-year model inputs. Both
   writable outputs are reset from the snapshot bases before every attempt.
@@ -223,7 +236,10 @@ app_smoke
   prove idempotence.
 - `weekly_*` builds DK, NFFC, and beta weekly templates/pools with app sync
   disabled; `template_audit_*` validates all three handoffs.
-- `salary` writes staged keeper/salary outputs and salary validation tables.
+- `salary` first parses all governed salary files and atomically repairs only
+  their staged `Salaries` slices without changing the table schema or indexes.
+  It logs `GOVERNED_SALARY_REPAIR_RECEIPT`, then writes staged keeper/salary
+  outputs and salary validation tables.
 - `selection_premium` writes a fresh beta reserve surface plus its seed and
   calibrator.
 - `validate`, `prepare_apps`, and `app_smoke` gate the candidate release.
@@ -339,9 +355,20 @@ context is retained for audit and cannot fill NFFC fields. Historical NFFC
 donors use `nffc_scored_expert_consensus`. A 540-target 2023-2025 replay
 rejected promotion of the locked OOF donor center: locked-minus-expert PPG CRPS
 was `+0.002901`, it lost all three seasons, and the player-cluster 95% interval
-was `[-0.004914, +0.010748]`. The staged surface has 1,509 2021-2025
-templates, 17 populated weeks, and a 385-player map. No NFFC release has been
-promoted.
+was `[-0.004914, +0.010748]`. The promoted surface has 1,509 2021-2025
+templates, 17 populated weeks, and a 383-player map. The 2026 offense-only NFFC
+release is active.
+
+Beta scoring-sensitive historical and current matcher context now comes from
+the beta-scored V2 preseason foundation. Historical donors keep validated OOS
+centers where available and otherwise use
+`beta_scored_expert_fallback`; DK preseason fallback units are not permitted.
+Exactly 39 beta 2018 QB rows lack a valid sack-aware context because of the
+governed FFToday vintage quarantine and remain auditable but donor-ineligible.
+The correction was promoted by explicit data-correctness override: its full
+strict replay passed every player gate but worsened development roster CRPS by
+`+0.9061%` versus the `0.5%` gate (2023-2025: `+0.3790%`). This release does not
+claim predictive superiority.
 
 ## Release Gates and Promotion Safety
 
@@ -369,13 +396,24 @@ Before preparing app candidates, validation requires:
   omission is allowed only for incomplete market-only tail rows when the
   remaining complete pool still covers 240 DK, 360 NFFC, or 180 beta picks
 - exact registered historical center policy and scoring-context source for
-  every league; NFFC must use `nffc_scored_expert_consensus` plus the
-  NFFC-scored V2 context, while DK/beta retain their existing contract
+  every league; NFFC must use `nffc_scored_expert_consensus` plus NFFC-scored
+  V2 context, beta must use `legacy_validated_oos` or
+  `beta_scored_expert_fallback` plus beta-scored V2 context, and DK retains its
+  legacy/preseason contract
 - exactly 80 weekly donors per production player
 - populated league-specific weekly horizons: 16 weeks for DK/beta and 17 for
   NFFC in the 2026 cycle; NFFC donors must begin in 2021
 - zero weekly ADP review, default-ADP, or high-impact unresolved flags
-- complete, unique keyed salary predictions
+- exact governed salary marker, parsed-row, and unique-player counts of 200/160
+  for the frozen 2025 beta/nv exports; the variable-length 2026 beta export must
+  end at `$0`, and its staged row/unique counts must exactly match its parsed
+  count, with transactional, schema/index-preserving staged repair
+- the 2026 `v2_nullable_team_conflict_v1` salary-fallback receipt: unresolved
+  team rows must be source conflicts and a subset of the reviewed Stefon Diggs
+  and Deebo Samuel Sr. player keys; the promoted release contains exactly those
+  two rows
+- complete, unique keyed salary predictions with exact key parity to the
+  current beta `Final_Predictions_Resid` production population
 - a keyed selection-premium surface with the configured trial count and at
   least one successful seed trial
 - an idempotent production handoff across all eight governed tables
@@ -396,7 +434,8 @@ repository test suites separately when application or optimizer code changed.
 Promotion rechecks every live database against its snapshot hash, revalidates
 the staged release, verifies that candidate hashes are unchanged since
 validation/AppTest, and requires the pipeline/app source-code fingerprint and
-external weekly/salary input hashes to match the start of the run. It creates
+external weekly input, keeper, and all governed salary-export hashes to match
+the start of the run. It creates
 durable
 `Data/Production_Refresh_Backups/<run-id>/*.pre_refresh.sqlite3` files, and
 installs all ten destinations as one rollback set. Each installed file must
@@ -419,7 +458,11 @@ For annual rollover:
 1. set `FF_CURRENT_SEASON` before launching/restarting the notebook kernel,
    confirm `Scripts.config.YEAR`, finish the new raw-source ingest, and verify
    source years;
-2. create the season-specific beta salary and keeper files;
+2. create the current beta keeper file and every salary export required by the
+   new cycle; add the exact `(year, league, expected_count)` entries to
+   `_GOVERNED_SALARY_SLICES`, and review
+   `_GOVERNED_SALARY_FALLBACK_NULL_TEAM_KEYS` rather than carrying forward the
+   prior allowlist;
 3. complete and review the new locked-current and following-season validation
    runners and record their exact table/model versions;
 4. review annual market, model-input, production-population, exclusion, weekly
@@ -445,5 +488,5 @@ downloads fails closed. Exact reproducibility across future rebuilds still
 requires pinned local inputs. The external `FastR_Beta` data used by weekly
 generation remains outside the staged copy, but its starting hash is recorded
 and promotion is rejected if it changes. The same immutability check covers the
-season-specific Auction salary and keeper files plus historical selection
-bootstrap files.
+current keeper file, every governed Auction salary export, and historical
+selection bootstrap files.

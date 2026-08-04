@@ -5,6 +5,7 @@
 
 import pandas as pd
 import numpy as np
+import json
 import os
 import sqlite3
 from pathlib import Path
@@ -28,6 +29,14 @@ from Scripts.V2.template_identity import attach_v2_player_keys
 from Scripts.V2.production_handoff import (
     load_identity_frames,
     resolve_source_player_keys,
+)
+from Scripts.Modeling.salary_source_parser import (
+    governed_salary_fallback_null_team_keys,
+    governed_salary_source_specs,
+    parse_espn_salary_records,
+    repair_governed_salary_slices,
+    validate_salary_records,
+    validate_v2_salary_fallback_context,
 )
 from Scripts.config import YEAR
 
@@ -354,50 +363,38 @@ if KEEPERS_ONLY:
 # Load salaries from ESPN into database
 #=================
 
-# read in csv file of raw copy-pasted data with bad formatting from ESPN
-df = pd.read_csv(f'{PATH}/OtherData/Salaries/salaries_{YEAR}_{LEAGUE}.csv', header=None)
-
-def scrape_values(df):
-    '''
-    This function will scrape a copy-paste of the ESPN salary information (paste special->text)
-    into a CSV when the data is in a single long row
-    '''
-    is_dollar = False
-    names = []
-    values = []
-    for _, v in df.iterrows():
-        
-        # get the value in the row
-        v = v[0]
-
-        # names are longer than other stats in the sheet, so filter based on length
-        if len(v) > 7:
-            names.append(v)
-
-        # the code below is a trigger for a dollar sign, which
-        # signals salary is coming up. if trigger is active, append salary
-        if is_dollar:
-            values.append(int(v))
-
-        # set the dollar sign trigger based on the current value for next iteration
-        if v == '$': is_dollar=True
-        else: is_dollar=False
-    
-    # create a dataframe of the resultant lists
-    df = pd.DataFrame([names, values]).T
-    df.columns = ['player', 'salary']
-
-    return df
-
-salaries = scrape_values(df)
-salaries['year'] = YEAR
-salaries['league'] = LEAGUE
-salaries = salaries.dropna().reset_index(drop=True)
-salaries.player = salaries.player.apply(dc.name_clean)
+if IS_STAGED_DATABASE_RUN and not VALIDATION_DATASETS_ONLY:
+    salary_source_repair = repair_governed_salary_slices(
+        Path(db_path) / 'Simulation.sqlite3',
+        governed_salary_source_specs(Path(PATH), YEAR),
+        name_clean=dc.name_clean,
+        live_database_path=(
+            Path(root_path) / 'Data' / 'Databases' / 'Simulation.sqlite3'
+        ),
+    )
+    print(
+        'GOVERNED_SALARY_REPAIR_RECEIPT='
+        + json.dumps(salary_source_repair, sort_keys=True)
+    )
+else:
+    # Preserve the interactive/non-refresh behavior: validate and replace only
+    # the current beta source slice.
+    df = pd.read_csv(
+        f'{PATH}/OtherData/Salaries/salaries_{YEAR}_{LEAGUE}.csv',
+        header=None,
+    )
+    salaries = parse_espn_salary_records(df)
+    salaries['year'] = YEAR
+    salaries['league'] = LEAGUE
+    salaries.player = salaries.player.apply(dc.name_clean)
+    validate_salary_records(
+        salaries,
+        source_name='cleaned ESPN salary records',
+    )
 
 if VALIDATION_DATASETS_ONLY:
     print('Validation-only run: leaving the current Simulation.Salaries slice unchanged.')
-else:
+elif not IS_STAGED_DATABASE_RUN:
     dm.delete_from_db(
         'Simulation',
         'Salaries',
@@ -625,6 +622,7 @@ def get_adp():
                            season,
                            position,
                            team,
+                           team_conflict,
                            year_exp,
                            adp_median,
                            adp_log,
@@ -650,23 +648,16 @@ def get_adp():
             how='left',
             validate='one_to_one',
         )
-        required_fallback = [
-            'position',
-            'team',
-            'year_exp',
-            'adp_median',
-            'adp_log',
-            'expert_points_median',
-        ]
-        if fallback[required_fallback].isna().any().any():
-            missing = fallback.loc[
-                fallback[required_fallback].isna().any(axis=1),
-                ['player_key', 'player', *required_fallback],
-            ].to_dict('records')
-            raise ValueError(
-                'V2 salary population fallback lacks required context: '
-                f'{missing}'
-            )
+        fallback_context_receipt = validate_v2_salary_fallback_context(
+            fallback,
+            allowed_unresolved_team_player_keys=(
+                governed_salary_fallback_null_team_keys(YEAR)
+            ),
+        )
+        print(
+            'V2_SALARY_FALLBACK_CONTEXT_RECEIPT='
+            + json.dumps(fallback_context_receipt, sort_keys=True)
+        )
         fallback['pos'] = fallback.pop('position')
         fallback['player'] = fallback.player.apply(dc.name_clean)
         fallback['year'] = YEAR

@@ -424,6 +424,40 @@ def test_template_league_uses_weekly_marker_and_rejects_mismatch(monkeypatch):
         )
 
 
+def test_template_excludes_governed_unavailable_scoring_context():
+    projection = _projection_context()
+    projection["scoring_context_available"] = 0
+    projection["scoring_context_unavailable_reason"] = (
+        weekly_builder.BETA_2018_QB_CENTER_FALLBACK_REASON
+    )
+    weekly = pd.DataFrame(
+        [
+            {
+                "player": "Scoring Receiver",
+                "pos": "WR",
+                "season": 2025,
+                "week": 1,
+                "fantasy_pts": 10.0,
+                "managed_fantasy_pts": 10.0,
+                "played_week": True,
+                "scoring_league": "beta",
+            }
+        ]
+    )
+
+    template = weekly_builder.build_weekly_templates(
+        projection,
+        weekly,
+        league="beta",
+    ).iloc[0]
+
+    assert template["template_eligible"] == 0
+    assert template["template_exclusion_reason"] == (
+        "scoring_context_unavailable:"
+        + weekly_builder.BETA_2018_QB_CENTER_FALLBACK_REASON
+    )
+
+
 def test_cli_exposes_safe_staging_controls(tmp_path):
     staging_db = tmp_path / "Simulation_staging.sqlite3"
     v2_db = tmp_path / "Projection_V2_beta_staging.sqlite3"
@@ -960,6 +994,62 @@ def test_modern_nffc_audit_does_not_require_out_of_era_exclusions():
     )
 
 
+def test_beta_audit_accepts_only_governed_2018_qb_context_exclusions():
+    player_pool_audit = pd.DataFrame(
+        columns=[
+            "player",
+            "missing_template_pool",
+            "template_pool_below_min",
+        ]
+    )
+    unavailable_reason = (
+        "scoring_context_unavailable:"
+        + weekly_builder.BETA_2018_QB_CENTER_FALLBACK_REASON
+    )
+    template_audit = pd.DataFrame(
+        [
+            {
+                "player": "Quarantined Quarterback",
+                "pos": "QB",
+                "season": 2018,
+                "template_eligible": 0,
+                "template_exclusion_reason": unavailable_reason,
+                "played_mask_mismatch": False,
+                "active_exceeds_played": False,
+                "non_qb_played_active_mismatch": False,
+            },
+            {
+                "player": "Le'Veon Bell",
+                "pos": "RB",
+                "season": 2018,
+                "template_eligible": 0,
+                "template_exclusion_reason": "contract_holdout",
+                "played_mask_mismatch": False,
+                "active_exceeds_played": False,
+                "non_qb_played_active_mismatch": False,
+            },
+        ]
+    )
+
+    original_league = weekly_builder.LEAGUE
+    try:
+        weekly_builder.set_active_league("beta")
+        weekly_builder.validate_weekly_template_audits(
+            player_pool_audit,
+            template_audit,
+        )
+
+        invalid = template_audit.copy()
+        invalid.loc[invalid["pos"].eq("QB"), "pos"] = "WR"
+        with pytest.raises(ValueError, match="outside beta 2018 QB"):
+            weekly_builder.validate_weekly_template_audits(
+                player_pool_audit,
+                invalid,
+            )
+    finally:
+        weekly_builder.set_active_league(original_league)
+
+
 def test_weekly_rebuild_drops_prior_year_active_league_artifacts():
     pool_rows = pd.DataFrame(
         [
@@ -1063,7 +1153,17 @@ def _scoring_match_context(
     }
 
 
-def _write_v2_scoring_context_database(path, *, season, total_points=204.0):
+def _write_v2_scoring_context_database(
+    path,
+    *,
+    season,
+    total_points=204.0,
+    league="nffc",
+    receiver_shares=(0.10, 0.30, 0.60),
+):
+    feature_run_id = f"{league}-feature-run"
+    model_run_id = f"{league}-scoring-run"
+    pass_share, rush_share, receiving_share = receiver_shares
     feature = pd.DataFrame(
         [
             {
@@ -1072,9 +1172,9 @@ def _write_v2_scoring_context_database(path, *, season, total_points=204.0):
                 "season": season,
                 "position": "WR",
                 "team": "WAS",
-                "league": "nffc",
-                "scoring_hash": weekly_builder.scoring_hash("nffc"),
-                "run_id": "nffc-feature-run",
+                "league": league,
+                "scoring_hash": weekly_builder.scoring_hash(league),
+                "run_id": feature_run_id,
                 "feature_cutoff_season": season - 1,
                 "preseason_source_season": season,
                 "expert_points_median": total_points,
@@ -1083,9 +1183,9 @@ def _write_v2_scoring_context_database(path, *, season, total_points=204.0):
                 "expert_points_iqr": 20.0,
                 "adp_median": 45.0,
                 "year_exp": 3.0,
-                "projected_pass_point_share": 0.10,
-                "projected_rush_point_share": 0.30,
-                "projected_receiving_point_share": 0.60,
+                "projected_pass_point_share": pass_share,
+                "projected_rush_point_share": rush_share,
+                "projected_receiving_point_share": receiving_share,
                 "team_qb1_ppg": 22.0,
             },
             {
@@ -1094,9 +1194,9 @@ def _write_v2_scoring_context_database(path, *, season, total_points=204.0):
                 "season": season,
                 "position": "QB",
                 "team": "WAS",
-                "league": "nffc",
-                "scoring_hash": weekly_builder.scoring_hash("nffc"),
-                "run_id": "nffc-feature-run",
+                "league": league,
+                "scoring_hash": weekly_builder.scoring_hash(league),
+                "run_id": feature_run_id,
                 "feature_cutoff_season": season - 1,
                 "preseason_source_season": season,
                 "expert_points_median": 374.0,
@@ -1115,7 +1215,7 @@ def _write_v2_scoring_context_database(path, *, season, total_points=204.0):
     handoff = pd.DataFrame(
         [
             {
-                "model_run_id": "nffc-scoring-run",
+                "model_run_id": model_run_id,
                 "player_key": "scoring-key",
                 "season": season,
                 "position": "WR",
@@ -1123,6 +1223,64 @@ def _write_v2_scoring_context_database(path, *, season, total_points=204.0):
                 "point_center_source": "locked_nffc_fixture",
                 "template_center_available": 1,
             }
+        ]
+    )
+    projection_values = pd.DataFrame(
+        [
+            {
+                "player_key": "scoring-key",
+                "season": season,
+                "provider": "provider_a",
+                "position": "WR",
+                "configured_points_complete": 1,
+                "provider_projected_points": total_points,
+                "run_id": feature_run_id,
+            },
+            {
+                "player_key": "scoring-key",
+                "season": season,
+                "provider": "provider_b",
+                "position": "WR",
+                "configured_points_complete": 1,
+                "provider_projected_points": total_points - 24.0,
+                "run_id": feature_run_id,
+            },
+            {
+                "player_key": "other-wr-key",
+                "season": season,
+                "provider": "provider_a",
+                "position": "WR",
+                "configured_points_complete": 1,
+                "provider_projected_points": total_points - 12.0,
+                "run_id": feature_run_id,
+            },
+            {
+                "player_key": "other-wr-key",
+                "season": season,
+                "provider": "provider_b",
+                "position": "WR",
+                "configured_points_complete": 1,
+                "provider_projected_points": total_points + 12.0,
+                "run_id": feature_run_id,
+            },
+            {
+                "player_key": "team-qb-key",
+                "season": season,
+                "provider": "provider_a",
+                "position": "QB",
+                "configured_points_complete": 1,
+                "provider_projected_points": 374.0,
+                "run_id": feature_run_id,
+            },
+            {
+                "player_key": "team-qb-key",
+                "season": season,
+                "provider": "provider_b",
+                "position": "QB",
+                "configured_points_complete": 1,
+                "provider_projected_points": 350.0,
+                "run_id": feature_run_id,
+            },
         ]
     )
     with sqlite3.connect(path) as connection:
@@ -1138,11 +1296,17 @@ def _write_v2_scoring_context_database(path, *, season, total_points=204.0):
             if_exists="replace",
             index=False,
         )
+        projection_values.to_sql(
+            "player_season_projection_values",
+            connection,
+            if_exists="replace",
+            index=False,
+        )
         pd.DataFrame(
             [
                 {
-                    "model_run_id": "nffc-scoring-run",
-                    "feature_run_id": "nffc-feature-run",
+                    "model_run_id": model_run_id,
+                    "feature_run_id": feature_run_id,
                 }
             ]
         ).to_sql(
@@ -1257,6 +1421,7 @@ def test_non_nffc_v2_current_context_derives_qb_passing_component_before_filter(
         context = weekly_builder.load_v2_current_player_context(
             v2_database=v2_db,
             selected_player_keys={"scoring-key"},
+            scoring_matched_context=False,
         ).iloc[0]
     finally:
         weekly_builder.set_active_league(original_league)
@@ -1406,10 +1571,19 @@ def _exercise_historical_scoring_context(
     tmp_path,
     *,
     league,
+    scoring_matched_context=None,
+    scoring_matched_fallback_center=None,
+    validation_ppg=6.0,
+    receiver_shares=(0.10, 0.30, 0.60),
 ):
     season = 2025
     v2_db = tmp_path / f"Projection_V2_{league}_staging.sqlite3"
-    _write_v2_scoring_context_database(v2_db, season=season)
+    _write_v2_scoring_context_database(
+        v2_db,
+        season=season,
+        league=league,
+        receiver_shares=receiver_shares,
+    )
     projection_columns = [
         "player",
         "pos",
@@ -1471,7 +1645,7 @@ def _exercise_historical_scoring_context(
                     "player": "Scoring Receiver",
                     "season": season,
                     "pos": "WR",
-                    "validation_pred_fp_per_game": 6.0,
+                    "validation_pred_fp_per_game": validation_ppg,
                     "validation_ensemble_sources": "dk_scaled_fixture",
                 }
             ]
@@ -1501,6 +1675,10 @@ def _exercise_historical_scoring_context(
         return weekly_builder.load_historical_projection_context(
             season,
             v2_database=v2_db,
+            scoring_matched_context=scoring_matched_context,
+            scoring_matched_fallback_center=(
+                scoring_matched_fallback_center
+            ),
         ).iloc[0]
     finally:
         weekly_builder.set_active_league(original_league)
@@ -1526,6 +1704,58 @@ def test_nffc_historical_matching_uses_v2_scoring_context(
     assert context["std_proj_points"] == pytest.approx(25.5)
 
 
+def test_beta_historical_scoring_context_allows_signed_components(
+    monkeypatch,
+    tmp_path,
+):
+    context = _exercise_historical_scoring_context(
+        monkeypatch,
+        tmp_path,
+        league="beta",
+        scoring_matched_context=True,
+        scoring_matched_fallback_center=False,
+        receiver_shares=(-0.10, 0.50, 0.60),
+    )
+
+    assert context["avg_proj_points"] == pytest.approx(204.0)
+    assert context["preseason_proj_ppg"] == pytest.approx(12.0)
+    assert context["historical_pred_fp_per_game"] == pytest.approx(6.0)
+    assert context["match_projection_ppg_scaled"] == pytest.approx(0.6)
+    assert context["avg_proj_pass_points"] == pytest.approx(-20.4)
+    assert context["avg_proj_rush_points"] == pytest.approx(102.0)
+    assert context["avg_proj_rec_points"] == pytest.approx(122.4)
+    assert context["std_proj_points"] == pytest.approx(25.5)
+    assert context["std_pos_rank"] == pytest.approx(0.5)
+    assert context["rank_disagreement_scaled"] == pytest.approx(0.5)
+    assert context["model_input_std_pos_rank"] == pytest.approx(2.0)
+    assert context["projection_context_source"] == (
+        "v2_beta_scoring_matched_preseason"
+    )
+
+
+def test_beta_historical_scoring_context_replaces_only_dk_fallback_center(
+    monkeypatch,
+    tmp_path,
+):
+    context = _exercise_historical_scoring_context(
+        monkeypatch,
+        tmp_path,
+        league="beta",
+        validation_ppg=None,
+    )
+
+    assert context["legacy_historical_pred_fp_per_game"] == pytest.approx(
+        6.25
+    )
+    assert context["historical_pred_fp_per_game"] == pytest.approx(12.0)
+    assert context["historical_projection_source"] == (
+        "v2_beta_expert_consensus_fallback"
+    )
+    assert context["historical_center_policy"] == (
+        "beta_scored_expert_fallback"
+    )
+
+
 @pytest.mark.parametrize("league", ["dk", "beta"])
 def test_non_nffc_historical_matching_keeps_model_input_context(
     monkeypatch,
@@ -1536,6 +1766,7 @@ def test_non_nffc_historical_matching_keeps_model_input_context(
         monkeypatch,
         tmp_path,
         league=league,
+        scoring_matched_context=False,
     )
 
     assert context["avg_proj_points"] == pytest.approx(100.0)
@@ -1603,6 +1834,118 @@ def test_nffc_current_join_prefers_v2_scoring_context_over_model_inputs():
     assert attached["match_projection_ppg_scaled"] == pytest.approx(1.2)
 
 
+def test_beta_scoring_context_preserves_signed_team_qb_passing_component():
+    frame = pd.DataFrame(
+        [
+            {
+                "player": "Receiver",
+                "pos": "WR",
+                "team": "PIT",
+                "season": 2026,
+                "avg_proj_points": 180.0,
+                "historical_pred_fp_per_game": 11.0,
+                "projection_rank_pct": 0.5,
+                "avg_pick": 50.0,
+                "year_exp": 3.0,
+                "avg_proj_rec_points": 180.0,
+                "qb_avg_proj_pass_points": -5.0,
+            },
+            {
+                "player": "Rushing Starter",
+                "pos": "QB",
+                "team": "PIT",
+                "season": 2026,
+                "avg_proj_points": 300.0,
+                "historical_pred_fp_per_game": 18.0,
+                "projection_rank_pct": 0.5,
+                "avg_pick": 100.0,
+                "year_exp": 4.0,
+                "avg_proj_pass_points": -5.0,
+                "avg_proj_rush_points": 305.0,
+                "qb_avg_proj_pass_points": -5.0,
+            },
+            {
+                "player": "Passing Backup",
+                "pos": "QB",
+                "team": "PIT",
+                "season": 2026,
+                "avg_proj_points": 100.0,
+                "historical_pred_fp_per_game": 6.0,
+                "projection_rank_pct": 1.0,
+                "avg_pick": 200.0,
+                "year_exp": 2.0,
+                "avg_proj_pass_points": 20.0,
+                "avg_proj_rush_points": 80.0,
+                "qb_avg_proj_pass_points": -5.0,
+            },
+        ]
+    )
+
+    output = weekly_builder.add_template_match_features(
+        frame,
+        group_cols=["season", "pos"],
+        rank_pct_col="projection_rank_pct",
+        total_points_col="avg_proj_points",
+        projection_ppg_col="historical_pred_fp_per_game",
+        preserve_signed_team_qb_context=True,
+    )
+
+    receiver = output[output.player.eq("Receiver")].iloc[0]
+    assert receiver["team_qb_pass_points"] == pytest.approx(-5.0)
+
+
+def test_beta_current_join_uses_promoted_v2_scoring_context():
+    prediction = _current_prediction("scoring-key", "Scoring Receiver")
+    prediction["version"] = "beta"
+    model_context = pd.DataFrame(
+        [
+            _scoring_match_context(
+                "scoring-key",
+                source="model_inputs_projection_context",
+                total_points=100.0,
+                projection_ppg=6.0,
+                pass_points=1.0,
+                rush_points=19.0,
+                receiving_points=80.0,
+                team_qb1_points=250.0,
+                projection_std_points=5.0,
+            )
+        ]
+    )
+    v2_context = pd.DataFrame(
+        [
+            _scoring_match_context(
+                "scoring-key",
+                source="v2_player_season_features_scoring_context",
+                total_points=204.0,
+                projection_ppg=12.0,
+                pass_points=-20.4,
+                rush_points=102.0,
+                receiving_points=122.4,
+                team_qb1_points=374.0,
+                projection_std_points=25.5,
+            )
+        ]
+    )
+
+    original_league = weekly_builder.LEAGUE
+    try:
+        weekly_builder.set_active_league("beta")
+        attached = weekly_builder.attach_current_context_by_player_key(
+            pd.DataFrame([prediction]),
+            model_context,
+            v2_context,
+        ).iloc[0]
+    finally:
+        weekly_builder.set_active_league(original_league)
+
+    assert attached["current_avg_proj_points"] == pytest.approx(204.0)
+    assert attached["avg_proj_pass_points"] == pytest.approx(-20.4)
+    assert attached["avg_proj_rush_points"] == pytest.approx(102.0)
+    assert attached["avg_proj_rec_points"] == pytest.approx(122.4)
+    assert attached["std_proj_points"] == pytest.approx(25.5)
+
+
 @pytest.mark.parametrize("league", ["dk", "beta"])
 def test_non_nffc_current_join_preserves_model_input_scoring_context(league):
     prediction = _current_prediction("scoring-key", "Scoring Receiver")
@@ -1645,6 +1988,7 @@ def test_non_nffc_current_join_preserves_model_input_scoring_context(league):
             pd.DataFrame([prediction]),
             model_context,
             v2_context,
+            scoring_matched_context=False,
         ).iloc[0]
     finally:
         weekly_builder.set_active_league(original_league)
@@ -1703,6 +2047,7 @@ def test_current_context_join_is_key_first_and_uses_v2_fallback():
         predictions,
         model_context,
         fallback_context,
+        scoring_matched_context=False,
     ).set_index("player_key")
 
     assert attached.loc["deebo-key", "player"] == "Deebo Samuel Sr."
