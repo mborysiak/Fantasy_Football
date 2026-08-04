@@ -1,320 +1,326 @@
 Rank	Player ID	Player	Team	Position(s)	ADP	Min Pick	Max Pick	Difference	# Picks	Team	Team Pick
-1	20272	Gibbs, Jahmyr	DET	RB	1.43	1	2		14		
-2	20271	Robinson, Bijan	ATL	RB	1.57	1	2		14		
-3	18775	Chase, Ja'Marr	CIN	WR	3.43	3	5		14		
-4	20336	Nacua, Puka	LA	WR	3.71	3	4		14		
-5	20273	Smith-Njigba, Jaxon	SEA	WR	5.57	5	8		14		
-6	15222	McCaffrey, Christian	SF	RB	6.36	3	11		14		
-7	18827	St. Brown, Amon-Ra	DET	WR	7.00	5	10		14		
-8	17962	Taylor, Jonathan	IND	RB	8.36	7	11		14		
-9	17972	Jefferson, Justin	MIN	WR	9.29	8	11		14		
-10	17965	Lamb, CeeDee	DAL	WR	10.64	6	15		14		
-11	22055	Jeanty, Ashton	LV	RB	10.79	6	15		14		
-12	19467	Cook III, James	BUF	RB	10.93	9	14		14		
-13	20292	Brown, Chase	CIN	RB	14.50	11	19		14		
-14	20284	Achane, De'Von	MIA	RB	15.79	12	22		14		
-15	22069	Hampton, Omarion	LAC	RB	16.71	12	24		14		
-16	16062	Barkley, Saquon	PHI	RB	17.07	13	24		14		
-17	19433	London, Drake	ATL	WR	17.21	13	21		14		
-18	19430	Walker III, Kenneth	KC	RB	18.50	13	24		14		
-19	19439	McBride, Trey	ARZ	TE	21.00	14	29		14		
-20	15055	Henry, Derrick	BAL	RB	21.14	16	25		14		
-21	20287	Rice, Rashee	KC	WR	21.29	12	30		14		
-22	21123	Bowers, Brock	LV	TE	21.36	13	29		14		
-23	17004	Brown, A.J.	NE	WR	22.79	15	33		14		
-24	22930	Love, Jeremiyah	ARZ	RB	24.29	15	36		14		
-25	19437	Pickens, George	DAL	WR	25.21	17	32		14		
-26	16074	Allen, Josh	BUF	QB	25.29	15	34		14		
-27	18836	Collins, Nico	HOU	WR	26.93	22	36		14		
-28	19432	Olave, Chris	NO	WR	27.57	20	34		14		
-29	19427	Hall, Breece	NYJ	RB	28.36	23	40		14		
-30	18778	Smith, DeVonta	PHI	WR	30.07	22	38		14		
-31	22063	Egbuka, Emeka	TB	WR	33.93	23	51		14		
-32	19431	Wilson, Garrett	NYJ	WR	34.36	27	40		14		
-33	21122	Nabers, Malik	NYG	WR	35.29	27	51		14		
-34	20288	Flowers, Zay	BAL	WR	35.57	29	44		14		
-35	16998	Jacobs, Josh	GB	RB	36.21	26	54		14		
-36	17971	Higgins, Tee	CIN	WR	36.71	24	46		14		
-37	18770	Etienne Jr., Travis	NO	RB	38.21	31	48		14		
-38	21139	McConkey, Ladd	LAC	WR	38.93	32	49		14		
-39	22059	McMillan, Tetairoa	CAR	WR	39.71	33	48		14		
-40	22075	Loveland, Colston	CHI	TE	40.43	31	52		14		
-41	19450	Williams, Kyren	LA	RB	40.79	31	50		14		
-42	22060	Burden III, Luther	CHI	WR	40.93	35	48		14		
-43	18771	Williams, Javonte	DAL	RB	42.36	35	49		14		
-44	22072	Henderson, TreVeyon	NE	RB	43.07	24	57		14		
-45	22077	Skattebo, Cam	NYG	RB	47.36	32	54		14		
-46	18781	Waddle, Jaylen	DEN	WR	47.71	34	62		14		
-47	12686	Evans, Mike	SF	WR	48.93	40	58		14		
-48	21136	Irving, Bucky	TB	RB	49.50	29	68		14		
-49	12729	Adams, Davante	LA	WR	49.50	40	59		14		
-50	17062	McLaurin, Terry	WAS	WR	50.00	42	65		14		
-51	16134	Moore, DJ	BUF	WR	50.64	41	60		14		
-52	22062	Judkins, Quinshon	CLE	RB	51.29	43	59		14		
-53	21125	Maye, Drake	NE	QB	51.64	32	71		14		
-54	17016	Montgomery, David	HOU	RB	52.29	42	60		14		
-55	19435	Williams, Jameson	DET	WR	53.36	46	60		14		
-56	19445	Watson, Christian	GB	WR	54.50	47	60		14		
-57	17968	Burrow, Joe	CIN	QB	55.50	37	66		14		
-58	22067	Warren, Tyler	IND	TE	55.71	51	63		14		
-59	16081	Jackson, Lamar	BAL	QB	57.00	46	73		14		
-60	20335	Odunze, Rome	CHI	WR	59.21	52	65		14		
-61	17961	Swift, D'Andre	CHI	RB	59.71	47	67		14		
-62	22106	Tuten, Bhayshul	JAX	RB	63.29	57	71		14		
-63	22929	Tate, Carnell	TEN	WR	63.79	59	79		14		
-64	22938	Price, Jadarian	SEA	RB	64.00	55	77		14		
-65	21131	Thomas Jr., Brian	JAX	WR	67.57	59	78		14		
-66	21124	Williams, Caleb	CHI	QB	68.79	52	85		14		
-67	22931	Tyson, Jordyn	NO	WR	70.21	58	82		14		
-68	20291	Washington, Parker	JAX	WR	70.29	61	88		14		
-69	21121	Harrison Jr., Marvin	ARZ	WR	70.71	63	87		14		
-70	20312	Kraft, Tucker	GB	TE	71.00	62	79		14		
-71	19463	Pierce, Alec	IND	WR	71.50	54	86		14		
-72	17995	Pittman Jr., Michael	PIT	WR	73.43	64	86		14		
-73	21126	Daniels, Jayden	WAS	QB	73.50	65	78		14		
-74	18789	Pitts Sr., Kyle	ATL	TE	74.07	48	87		14		
-75	18773	Hubbard, Chuba	CAR	RB	76.79	58	104		14		
-76	17976	Herbert, Justin	LAC	QB	78.79	66	98		14		
-77	22095	Fannin Jr., Harold	CLE	TE	80.21	69	93		14		
-78	16066	Sutton, Courtland	DEN	WR	80.36	74	100		14		
-79	14553	Prescott, Dak	DAL	QB	80.50	69	97		14		
-80	17999	Hurts, Jalen	PHI	QB	80.50	71	92		14		
-81	18791	Stevenson, Rhamondre	NE	RB	81.71	70	103		14		
-82	18779	Lawrence, Trevor	JAX	QB	85.00	80	96		14		
-83	17002	Metcalf, DK	PIT	WR	85.36	68	106		14		
-84	20276	Johnston, Quentin	LAC	WR	85.57	64	112		14		
-85	7697	Stafford, Matthew	LA	QB	88.07	72	105		14		
-86	19833	Warren, Jaylen	PIT	RB	88.71	68	100		14		
-87	20340	Wilson, Michael	ARZ	WR	89.36	69	105		14		
-88	22119	Monangai, Kyle	CHI	RB	90.64	64	110		14		
-89	19742	Purdy, Brock	SF	QB	90.79	69	104		14		
-90	17067	Pollard, Tony	TEN	RB	91.29	72	110		14		
-91	22087	Dart, Jaxson	NYG	QB	91.43	69	109		14		
-92	22111	Harvey, RJ	DEN	RB	91.86	67	119		14		
-93	20339	LaPorta, Sam	DET	TE	92.14	80	111		14		
-94	22932	Lemon, Makai	PHI	WR	92.86	79	116		14		
-95	19460	Robinson, Wan'Dale	TEN	WR	94.36	81	104		14		
-96	15234	Mahomes, Patrick	KC	QB	95.79	81	115		14		
-97	15316	Godwin Jr., Chris	TB	WR	96.21	75	122		14		
-98	20278	Corum, Blake	LA	RB	98.14	76	117		14		
-99	14748	Goff, Jared	DET	QB	98.79	85	110		14		
-100	20283	Downs, Josh	IND	WR	100.57	88	125		14		
-101	20299	Nix, Bo	DEN	QB	101.14	88	116		14		
-102	18036	Dowdle, Rico	PIT	RB	101.50	92	121		14		
-103	17061	Meyers, Jakobi	JAX	WR	102.07	78	127		14		
-104	20311	Reed, Jayden	GB	WR	103.14	87	117		14		
-105	21133	Brooks, Jonathon	CAR	RB	103.36	74	129		14		
-106	18772	Gainwell, Kenny	TB	RB	104.00	86	130		14		
-107	21146	Pearsall, Ricky	SF	WR	104.79	89	116		14		
-108	15360	Kittle, George	SF	TE	107.86	91	134		14		
-109	20274	Addison, Jordan	MIN	WR	109.14	89	121		14		
-110	17009	Murray, Kyler	MIN	QB	110.07	92	125		14		
-111	21128	Worthy, Xavier	KC	WR	111.14	95	130		14		
-112	17963	Dobbins, J.K.	DEN	RB	112.57	101	129		14		
-113	11842	Kelce, Travis	KC	TE	115.00	100	140		14		
-114	19464	Likely, Isaiah	NYG	TE	116.29	87	135		14		
-115	19436	White, Rachaad	WAS	RB	116.86	99	148		14		
-116	17997	Love, Jordan	GB	QB	116.86	105	127		14		
-117	19455	Doubs, Romeo	NE	WR	117.29	105	147		14		
-118	16151	Goedert, Dallas	PHI	TE	117.29	106	135		14		
-119	16069	Mayfield, Baker	TB	QB	118.21	97	140		14		
-120	20300	Kincaid, Dalton	BUF	TE	119.86	102	147		14		
-121	19476	Ferguson, Jake	DAL	TE	121.21	111	134		14		
-122	22933	Concepcion, KC	CLE	WR	122.00	108	129		14		
-123	22085	Golden, Matthew	GB	WR	122.00	106	143		14		
-124	22220	Shough, Tyler	NO	QB	122.57	95	145		14		
-125	22101	Gadsden, Oronde	LAC	TE	124.29	86	161		14		
-126	16075	Andrews, Mark	BAL	TE	125.71	109	137		14		
-127	20425	Strange, Brenton	JAX	TE	126.29	97	151		14		
-128	21570	Coker, Jalen	CAR	WR	129.57	120	141		14		
-129	2964	Cowboys, Dallas	DAL	TK	130.07	114	137		14		
-130	4343	Texans, Houston	HOU	TDSP	130.14	116	141		14		
-131	19462	Shakir, Khalil	BUF	WR	130.64	111	144		14		
-132	22114	Higgins, Jayden	HOU	WR	131.71	114	146		14		
-133	20308	Rodriguez Jr., Chris	JAX	RB	132.07	114	169		14		
-134	22130	Croskey-Merritt, Jacory	WAS	RB	133.93	120	147		14		
-135	21183	Tracy Jr., Tyrone	NYG	RB	134.29	121	153		14		
-136	15392	Jones Sr., Aaron	MIN	RB	135.64	120	162		14		
-137	19872	Mason, Jordan	MIN	RB	139.07	115	176		14		
-138	13671	Diggs, Stefon	NE	WR	139.14	121	171		14		
-139	21153	McMillan, Jalen	TB	WR	140.00	128	154		14		
-140	1996	Rams, Los Angeles (LAR)	LA	TDSP	140.36	117	162		14		
-141	20344	Mitchell, Keaton	LAC	RB	143.79	134	167		14		
-142	17008	Jones, Daniel	IND	QB	144.43	127	171		14		
-143	1989	Seahawks, Seattle	SEA	TDSP	145.43	134	159		14		
-144	22099	Sampson, Dylan	CLE	RB	147.36	106	180		14		
-145	20329	Spears, Tyjae	TEN	RB	148.00	130	174		14		
-146	19458	Willis, Malik	MIA	QB	149.57	121	170		14		
-147	20280	Stroud, C.J.	HOU	QB	150.00	123	172		14		
-148	1863	Broncos, Denver	DEN	TDSP	150.14	138	161		14		
-149	22941	Coleman, Jonah	DEN	RB	150.43	108	187		14		
-150	14968	Henry, Hunter	NE	TE	152.00	122	180		14		
-151	19934	Shaheed, Rashid	SEA	WR	153.21	139	183		14		
-152	19715	Nailor, Jalen	LV	WR	153.64	132	198		14		
-153	19633	Okonkwo, Chig	WAS	TE	153.86	123	179		14		
-154	20310	Ward, Cam	TEN	QB	158.43	141	167		14		
-155	22935	Sadiq, Kenyon	NYJ	TE	159.14	140	181		14		
-156	17014	Hockenson, T.J.	MIN	TE	160.14	142	182		14		
-157	16077	Darnold, Sam	SEA	QB	161.07	132	219		14		
-158	4345	Texans, Houston	HOU	TK	161.50	137	185		14		
-159	1919	Vikings, Minnesota	MIN	TDSP	162.79	152	176		14		
-160	18582	Johnson, Juwan	NO	TE	163.50	149	196		14		
-161	19441	Allgeier, Tyler	ARZ	RB	164.50	138	194		14		
-162	22134	TeSlaa, Isaac	DET	WR	164.79	133	186		14		
-163	22934	Boston, Denzel	CLE	WR	166.21	139	200		14		
-164	20357	Tucker, Tre	LV	WR	166.57	142	191		14		
-165	22109	Marks, Woody	HOU	RB	168.50	142	209		14		
-166	22948	Cooper Jr., Omar	NYJ	WR	169.50	150	195		14		
-167	22058	Hunter, Travis	JAX	WR	170.14	141	206		14		
-168	22955	Washington Jr., Mike	LV	RB	171.43	128	215		14		
-169	2969	Jaguars, Jacksonville	JAX	TK	171.79	145	187		14		
-170	1961	Eagles, Philadelphia	PHI	TDSP	173.79	151	206		14		
-171	22956	Williams, Antonio	WAS	WR	174.21	142	216		14		
-172	1975	Chargers, Los Angeles (LAC)	LAC	TDSP	176.64	156	207		14		
-173	18033	Jennings, Jauan	MIN	WR	177.36	123	234		14		
-174	15293	Kamara, Alvin	NO	RB	177.64	143	256		14		
-175	1926	Patriots, New England	NE	TDSP	177.86	163	197		14		
-176	21355	Flournoy, Ryan	DAL	WR	179.21	160	208		14		
-177	22939	Johnson, Emmett	KC	RB	180.07	148	234		14		
-178	17983	Aiyuk, Brandon	SF	WR	180.29	138	256		13		
-179	17019	Samuel, Deebo	WAS	WR	181.50	151	222		14		
-180	19486	Pacheco, Isiah	DET	RB	184.36	156	224		14		
-181	22074	Harris, Tre'	LAC	WR	184.50	146	211		14		
-182	22940	Allen, Kaytron	WAS	RB	184.57	155	217		14		
-183	1968	Steelers, Pittsburgh	PIT	TDSP	185.50	163	202		14		
-184	1898	Jaguars, Jacksonville	JAX	TDSP	186.50	171	219		14		
-185	20281	Young, Bryce	CAR	QB	186.93	148	249		14		
-186	2980	Chargers, Los Angeles (LAC)	LAC	TK	187.21	164	203		14		
-187	1807	Ravens, Baltimore	BAL	TDSP	188.14	158	214		14		
-188	16255	Schultz, Dalton	HOU	TE	190.86	160	217		14		
-189	2982	Seahawks, Seattle	SEA	TK	191.36	168	212		14		
-190	2871	Browns, Cleveland	CLE	TDSP	192.64	168	239		14		
-191	19469	Charbonnet, Zach	SEA	RB	193.14	172	251		14		
-192	19468	Robinson, Brian	ATL	RB	195.50	161	232		14		
-193	21154	Washington, Malik	MIA	WR	195.71	155	234		14		
-194	22944	Claiborne, Demond	MIN	RB	197.93	177	235		14		
-195	20279	Bigsby, Tank	PHI	RB	200.50	165	237		14		
-196	21129	Mitchell, Adonai	NYJ	WR	201.93	166	218		12		
-197	1982	49ers, San Francisco	SF	TDSP	204.57	173	214		11		
-198	14802	Brissett, Jacoby	ARZ	QB	206.50	169	235		13		
-199	1842	Bears, Chicago	CHI	TDSP	206.79	172	243		14		
-200	1905	Chiefs, Kansas City	KC	TDSP	207.14	182	234		14		
-201	2983	Rams, Los Angeles (LAR)	LA	TK	208.57	173	232		14		
-202	21169	Vidal, Kimani	LAC	RB	208.71	162	235		11		
-203	21315	Barner, AJ	SEA	TE	208.71	171	220		13		
-204	17964	Jeudy, Jerry	CLE	WR	210.86	158	258		14		
-205	2972	Vikings, Minnesota	MIN	TK	211.29	165	235		14		
-206	23066	Stribling, De'Zhaun	SF	WR	211.79	175	233		14		
-207	22947	Bernard, Germie	PIT	WR	212.57	179	248		13		
-208	2981	49ers, San Francisco	SF	TK	213.64	175	254		14		
-209	23064	Black, Kaelon	SF	RB	214.50	169	247		14		
-210	1940	Giants, New York (NYG)	NYG	TDSP	215.00	193	231		13		
-211	22951	Branch, Zachariah	ATL	WR	215.64	182	239		11		
-212	21001	Wilson, Emanuel	SEA	RB	216.21	151	259		11		
-213	1814	Falcons, Atlanta	ATL	TDSP	216.36	177	241		14		
-214	19477	Dulcich, Greg	MIA	TE	216.50	150	250		9		
-215	21132	Allen, Braelon	NYJ	RB	216.64	196	238		12		
-216	22943	Singleton, Nicholas	TEN	RB	217.71	190	238		14		
-217	18169	Mooney, Darnell	NYG	WR	219.29	156	255		13		
-218	22942	Stowers, Eli	PHI	TE	220.21	178	242		10		
-219	1933	Saints, New Orleans	NO	TDSP	221.36	194	236		13		
-220	1870	Lions, Detroit	DET	TDSP	221.43	192	251		12		
-221	1877	Packers, Green Bay	GB	TDSP	222.36	181	259		13		
-222	2979	Steelers, Pittsburgh	PIT	TK	222.43	203	239		14		
-223	20323	Dell, Tank	HOU	WR	222.79	183	255		12		
-224	22123	Helm, Gunnar	TEN	TE	222.93	198	239		12		
-225	21151	Davis, Ray	BUF	RB	223.00	189	255		13		
-226	22206	Ferguson, Terrance	LA	TE	224.00	195	257		14		
-227	20285	Tucker, Sean	TB	RB	226.86	183	233		10		
-228	1828	Bills, Buffalo	BUF	TDSP	227.07	186	247		13		
-229	2966	Lions, Detroit	DET	TK	227.86	197	256		14		
-230	5712	Rodgers, Aaron	PIT	QB	230.43	186	258		12		
-231	2965	Broncos, Denver	DEN	TK	231.00	203	254		13		
-232	14725	Hill, Tyreek	MIA	WR	232.43	165	258		9		
-233	1856	Cowboys, Dallas	DAL	TDSP	232.64	186	252		11		
-234	21709	Holani, George	SEA	RB	232.86	197	239		10		
-235	16065	Ridley, Calvin	TEN	WR	233.79	198	244		9		
-236	2968	Colts, Indianapolis	IND	TK	235.36	222	259		14		
-237	10974	Cousins, Kirk	LV	QB	236.29	172	258		7		
-238	2962	Bengals, Cincinnati	CIN	TK	236.71	216	244		12		
-239	2984	Buccaneers, Tampa Bay	TB	TK	237.43	210	259		14		
-240	21144	Lloyd, MarShawn	GB	RB	237.64	184	256		9		
-241	18018	Parkinson, Colby	LA	TE	237.79	179	246		7		
-242	22946	Bell, Chris	MIA	WR	240.00	193	251		10		
-243	20314	Wicks, Dontayvion	PHI	WR	240.07	202	256		10		
-244	22957	Bell, Skyler	BUF	WR	241.00	182	248		7		
-245	15227	Njoku, David	LAC	TE	241.71	199	241		7		
-246	2961	Bears, Chicago	CHI	TK	242.36	233	260		14		
-247	2973	Patriots, New England	NE	TK	242.93	222	258		12		
-248	2970	Chiefs, Kansas City	KC	TK	243.07	218	254		12		
-249	21171	Horton, Tory	SEA	WR	243.50	211	252		9		
-250	22092	Blue, Jaydon	DAL	RB	244.43	195	233		5		
-251	1891	Colts, Indianapolis	IND	TDSP	245.64	212	255		8		
-252	2974	Saints, New Orleans	NO	TK	245.64	223	260		13		
-253	11818	Smith, Geno	NYJ	QB	246.14	203	253		6		
-254	22090	Allen Jr., LeQuint	JAX	RB	246.71	211	260		10		
-255	2958	Ravens, Baltimore	BAL	TK	246.93	237	255		13		
-256	22952	Fields, Malachi	NYG	WR	247.57	206	257		9		
-257	11857	Allen, Keenan	LAC	WR	247.71	201	247		5		
-258	22097	James, Jordan	SF	RB	248.57	229	257		10		
-259	18792	Freiermuth, Pat	PIT	TE	248.79	216	259		10		
-260	19632	Otton, Cade	TB	TE	248.93	216	259		8		
-261	20326	Boutte, Kayshon	NE	WR	249.07	190	253		6		
-262	16132	Kirk, Christian	SF	WR	251.64	179	260		7		
-263	15306	Conner, James	ARZ	RB	251.71	230	256		7		
-264	2957	Falcons, Atlanta	ATL	TK	251.86	241	257		10		
-265	15238	Engram, Evan	DEN	TE	252.43	183	259		5		
-266	19960	Tonges, Jake	SF	TE	252.57	235	260		8		
-267	22269	Dike, Chimere	TEN	WR	252.71	149	257		2		
-268	22128	Williams, Kyle	NE	WR	253.14	191	221		2		
-269	22098	Johnson, Kaleb	PIT	RB	253.36	211	252		3		
-270	22116	Noel, Jaylin	HOU	WR	254.36	218	243		3		
-271	1835	Panthers, Carolina	CAR	TDSP	254.36	225	254		4		
-272	23043	Douglas, Caleb	MIA	WR	254.50	225	258		6		
-273	22960	Randall, Adam	BAL	RB	255.00	188	258		3		
-274	1884	Titans, Tennessee	TEN	TDSP	255.21	225	258		4		
-275	22969	Lance, Bryce	NO	WR	255.36	205	238		2		
-276	19453	Tolbert, Jalen	MIA	WR	255.50	214	231		2		
-277	21160	Wright, Jaylen	MIA	RB	256.14	226	260		3		
-278	2003	Buccaneers, Tampa Bay	TB	TDSP	256.21	225	254		3		
-279	20719	Demercado, Emari	KC	RB	256.36	237	255		4		
-280	20100	Davis, Malik	DAL	RB	256.57	223	258		4		
-281	1849	Bengals, Cincinnati	CIN	TDSP	256.71	227	258		4		
-282	21130	Coleman, Keon	BUF	WR	256.86	225	255		3		
-283	15231	Watson, Deshaun	CLE	QB	257.00	213	253		2		
-284	22949	Sarratt, Elijah	BAL	WR	257.07	233	249		3		
-285	22061	Bond, Isaiah	CLE	WR	257.21	233	258		3		
-286	1954	Raiders, Las Vegas	LV	TDSP	257.36	229	242		2		
-287	23097	Thompson, Brenen	LAC	WR	257.50	241	254		4		
-288	17975	Tagovailoa, Tua	ATL	QB	257.64	238	252		3		
-289	22928	Mendoza, Fernando	LV	QB	257.86	244	257		5		
-290	22056	Sanders, Shedeur	CLE	QB	257.93	232	247		2		
-291	22967	Hurst III, Ted	TB	WR	258.00	241	260		7		
-292	22124	Hunter, Jarquez	LA	RB	258.21	222	222		1		
-293	20954	Brooks, Chris	GB	RB	258.43	225	225		1		
-294	15283	Kupp, Cooper	SEA	WR	258.43	241	245		2		
-295	21127	Franklin, Troy	DEN	WR	258.64	252	259		6		
-296	2959	Bills, Buffalo	BUF	TK	258.71	246	259		4		
-297	2977	Raiders, Las Vegas	LV	TK	258.71	251	256		4		
-298	17020	Hill, Justice	BAL	RB	259.36	242	257		2		
-299	23176	Coleman Jr., Kevin	MIA	WR	259.43	239	239		1		
-300	2967	Packers, Green Bay	GB	TK	259.43	247	260		4		
-301	15362	Perine, Samaje	CIN	RB	259.57	242	260		2		
-302	19491	Thornton, Tyquan	KC	WR	259.71	243	243		1		
-303	20282	Mayer, Michael	LV	TE	259.79	244	244		1		
-304	21161	Davis, Isaiah	NYJ	RB	259.79	244	244		1		
-305	22115	Bryant, Pat	DEN	WR	259.79	244	244		1		
-306	2985	Titans, Tennessee	TEN	TK	259.79	254	258		3		
-307	22112	Bech, Jack	LV	WR	259.86	245	245		1		
-308	22970	Delp, Oscar	NO	TE	260.14	249	249		1		
-309	21181	Johnson, Theo	NYG	TE	260.14	249	249		1		
-310	20341	Douglas, DeMario	NE	WR	260.21	250	250		1		
-311	22078	Burks, Deion	IND	WR	260.21	250	250		1		
-312	15355	Hollins, Mack	NE	WR	260.29	251	251		1		
-313	18800	Jones, Mac	SF	QB	260.36	252	252		1		
-314	2975	Jets, New York (NYJ)	NYJ	TK	260.50	254	254		1		
-315	21135	Benson, Trey	ARZ	RB	260.50	254	254		1		
-316	17046	Johnson, Ty	BUF	RB	260.64	256	256		1		
-317	21357	Vele, Devaughn	NO	WR	260.79	258	258		1		
-318	2976	Giants, New York (NYG)	NYG	TK	260.79	259	260		2		
-319	22104	Neal, Devin	NO	RB	260.93	260	260		1		
+1	20272	Gibbs, Jahmyr	DET	RB	1.35	1	2		17		
+2	20271	Robinson, Bijan	ATL	RB	1.65	1	2		17		
+3	18775	Chase, Ja'Marr	CIN	WR	3.35	3	5		17		
+4	20336	Nacua, Puka	LA	WR	3.82	3	5		17		
+5	20273	Smith-Njigba, Jaxon	SEA	WR	5.47	4	8		17		
+6	15222	McCaffrey, Christian	SF	RB	6.71	3	11		17		
+7	18827	St. Brown, Amon-Ra	DET	WR	6.94	5	10		17		
+8	17962	Taylor, Jonathan	IND	RB	8.24	5	11		17		
+9	17972	Jefferson, Justin	MIN	WR	9.47	6	14		17		
+10	22055	Jeanty, Ashton	LV	RB	11.00	6	15		17		
+11	17965	Lamb, CeeDee	DAL	WR	11.06	6	16		17		
+12	19467	Cook III, James	BUF	RB	11.18	9	16		17		
+13	20292	Brown, Chase	CIN	RB	13.88	9	19		17		
+14	20284	Achane, De'Von	MIA	RB	15.71	11	22		17		
+15	22069	Hampton, Omarion	LAC	RB	15.76	7	24		17		
+16	16062	Barkley, Saquon	PHI	RB	16.82	13	24		17		
+17	19433	London, Drake	ATL	WR	17.71	13	22		17		
+18	19430	Walker III, Kenneth	KC	RB	18.06	13	24		17		
+19	15055	Henry, Derrick	BAL	RB	20.71	15	25		17		
+20	21123	Bowers, Brock	LV	TE	20.88	13	29		17		
+21	19439	McBride, Trey	ARZ	TE	20.94	14	29		17		
+22	20287	Rice, Rashee	KC	WR	21.76	12	30		17		
+23	17004	Brown, A.J.	NE	WR	22.41	15	33		17		
+24	22930	Love, Jeremiyah	ARZ	RB	24.59	15	36		17		
+25	19437	Pickens, George	DAL	WR	25.76	17	32		17		
+26	16074	Allen, Josh	BUF	QB	25.82	15	34		17		
+27	18836	Collins, Nico	HOU	WR	26.35	22	36		17		
+28	19432	Olave, Chris	NO	WR	28.00	20	34		17		
+29	19427	Hall, Breece	NYJ	RB	29.76	23	40		17		
+30	18778	Smith, DeVonta	PHI	WR	30.18	22	38		17		
+31	22063	Egbuka, Emeka	TB	WR	32.76	23	51		17		
+32	19431	Wilson, Garrett	NYJ	WR	34.29	27	40		17		
+33	20288	Flowers, Zay	BAL	WR	34.41	27	44		17		
+34	21122	Nabers, Malik	NYG	WR	34.76	24	51		17		
+35	17971	Higgins, Tee	CIN	WR	37.29	24	46		17		
+36	16998	Jacobs, Josh	GB	RB	37.53	26	54		17		
+37	21139	McConkey, Ladd	LAC	WR	38.47	32	49		17		
+38	18770	Etienne Jr., Travis	NO	RB	38.88	31	48		17		
+39	22075	Loveland, Colston	CHI	TE	39.06	31	52		17		
+40	19450	Williams, Kyren	LA	RB	40.41	31	50		17		
+41	22059	McMillan, Tetairoa	CAR	WR	41.00	33	49		17		
+42	22060	Burden III, Luther	CHI	WR	41.35	35	48		17		
+43	18771	Williams, Javonte	DAL	RB	41.76	30	49		17		
+44	22072	Henderson, TreVeyon	NE	RB	43.53	24	57		17		
+45	18781	Waddle, Jaylen	DEN	WR	46.18	34	62		17		
+46	22077	Skattebo, Cam	NYG	RB	47.12	32	54		17		
+47	17062	McLaurin, Terry	WAS	WR	48.65	41	65		17		
+48	12686	Evans, Mike	SF	WR	49.76	38	68		17		
+49	21125	Maye, Drake	NE	QB	50.82	32	71		17		
+50	12729	Adams, Davante	LA	WR	51.18	40	69		17		
+51	22062	Judkins, Quinshon	CLE	RB	51.47	43	59		17		
+52	16134	Moore, DJ	BUF	WR	51.53	41	60		17		
+53	17016	Montgomery, David	HOU	RB	51.76	42	60		17		
+54	21136	Irving, Bucky	TB	RB	51.94	29	68		17		
+55	19445	Watson, Christian	GB	WR	53.47	47	60		17		
+56	19435	Williams, Jameson	DET	WR	54.59	46	63		17		
+57	22067	Warren, Tyler	IND	TE	54.76	47	63		17		
+58	17968	Burrow, Joe	CIN	QB	56.18	37	66		17		
+59	16081	Jackson, Lamar	BAL	QB	57.47	46	73		17		
+60	20335	Odunze, Rome	CHI	WR	59.12	52	65		17		
+61	17961	Swift, D'Andre	CHI	RB	59.47	47	67		17		
+62	22106	Tuten, Bhayshul	JAX	RB	63.12	57	71		17		
+63	22938	Price, Jadarian	SEA	RB	63.29	55	77		17		
+64	22929	Tate, Carnell	TEN	WR	63.35	56	79		17		
+65	21124	Williams, Caleb	CHI	QB	67.88	52	85		17		
+66	21131	Thomas Jr., Brian	JAX	WR	68.47	59	78		17		
+67	20291	Washington, Parker	JAX	WR	68.94	54	88		17		
+68	22931	Tyson, Jordyn	NO	WR	70.82	58	82		17		
+69	20312	Kraft, Tucker	GB	TE	71.24	62	89		17		
+70	21121	Harrison Jr., Marvin	ARZ	WR	71.24	63	87		17		
+71	18789	Pitts Sr., Kyle	ATL	TE	71.76	48	87		17		
+72	21126	Daniels, Jayden	WAS	QB	73.00	65	78		17		
+73	19463	Pierce, Alec	IND	WR	73.94	54	95		17		
+74	17995	Pittman Jr., Michael	PIT	WR	75.18	64	94		17		
+75	17976	Herbert, Justin	LAC	QB	78.12	66	98		17		
+76	18773	Hubbard, Chuba	CAR	RB	79.65	58	111		17		
+77	22095	Fannin Jr., Harold	CLE	TE	80.12	69	93		17		
+78	16066	Sutton, Courtland	DEN	WR	80.35	74	100		17		
+79	17999	Hurts, Jalen	PHI	QB	81.12	71	92		17		
+80	14553	Prescott, Dak	DAL	QB	81.29	69	97		17		
+81	18791	Stevenson, Rhamondre	NE	RB	82.18	66	103		17		
+82	18779	Lawrence, Trevor	JAX	QB	83.41	67	96		17		
+83	20276	Johnston, Quentin	LAC	WR	83.71	64	112		17		
+84	17002	Metcalf, DK	PIT	WR	86.35	68	106		17		
+85	7697	Stafford, Matthew	LA	QB	87.41	65	105		17		
+86	19833	Warren, Jaylen	PIT	RB	89.12	68	100		17		
+87	20340	Wilson, Michael	ARZ	WR	89.24	69	105		17		
+88	20339	LaPorta, Sam	DET	TE	89.94	78	111		17		
+89	19742	Purdy, Brock	SF	QB	91.24	69	106		17		
+90	22119	Monangai, Kyle	CHI	RB	91.35	64	110		17		
+91	22087	Dart, Jaxson	NYG	QB	92.12	69	109		17		
+92	17067	Pollard, Tony	TEN	RB	92.82	72	110		17		
+93	19460	Robinson, Wan'Dale	TEN	WR	93.53	81	104		17		
+94	22111	Harvey, RJ	DEN	RB	93.82	67	119		17		
+95	15316	Godwin Jr., Chris	TB	WR	93.94	74	122		17		
+96	22932	Lemon, Makai	PHI	WR	95.06	79	117		17		
+97	15234	Mahomes, Patrick	KC	QB	97.53	81	115		17		
+98	20278	Corum, Blake	LA	RB	97.88	76	117		17		
+99	20283	Downs, Josh	IND	WR	98.94	81	125		17		
+100	14748	Goff, Jared	DET	QB	99.35	85	110		17		
+101	21133	Brooks, Jonathon	CAR	RB	100.47	74	129		17		
+102	18036	Dowdle, Rico	PIT	RB	101.65	92	121		17		
+103	20299	Nix, Bo	DEN	QB	102.29	88	116		17		
+104	17061	Meyers, Jakobi	JAX	WR	103.59	78	127		17		
+105	20311	Reed, Jayden	GB	WR	103.65	87	119		17		
+106	18772	Gainwell, Kenny	TB	RB	104.41	86	130		17		
+107	15360	Kittle, George	SF	TE	106.29	79	134		17		
+108	20274	Addison, Jordan	MIN	WR	108.29	87	121		17		
+109	21128	Worthy, Xavier	KC	WR	109.76	94	130		17		
+110	17009	Murray, Kyler	MIN	QB	110.53	92	127		17		
+111	17963	Dobbins, J.K.	DEN	RB	111.94	90	129		17		
+112	19464	Likely, Isaiah	NYG	TE	112.82	72	135		17		
+113	11842	Kelce, Travis	KC	TE	114.41	100	140		17		
+114	21146	Pearsall, Ricky	SF	WR	115.00	89	120		16		
+115	19436	White, Rachaad	WAS	RB	115.12	99	148		17		
+116	16151	Goedert, Dallas	PHI	TE	115.71	85	135		17		
+117	17997	Love, Jordan	GB	QB	116.71	105	127		17		
+118	16069	Mayfield, Baker	TB	QB	117.53	97	140		17		
+119	19455	Doubs, Romeo	NE	WR	118.18	105	147		17		
+120	20300	Kincaid, Dalton	BUF	TE	120.00	102	147		17		
+121	22220	Shough, Tyler	NO	QB	121.12	95	145		17		
+122	19476	Ferguson, Jake	DAL	TE	121.29	104	136		17		
+123	22085	Golden, Matthew	GB	WR	121.71	106	143		17		
+124	22933	Concepcion, KC	CLE	WR	124.59	108	149		17		
+125	16075	Andrews, Mark	BAL	TE	126.88	109	142		17		
+126	21570	Coker, Jalen	CAR	WR	128.59	114	141		17		
+127	22101	Gadsden, Oronde	LAC	TE	128.94	86	164		17		
+128	20425	Strange, Brenton	JAX	TE	129.00	97	151		17		
+129	22114	Higgins, Jayden	HOU	WR	129.71	107	146		17		
+130	2964	Cowboys, Dallas	DAL	TK	130.76	114	139		17		
+131	4343	Texans, Houston	HOU	TDSP	131.24	116	142		17		
+132	22130	Croskey-Merritt, Jacory	WAS	RB	132.41	120	147		17		
+133	19462	Shakir, Khalil	BUF	WR	133.12	111	156		17		
+134	20308	Rodriguez Jr., Chris	JAX	RB	133.35	114	169		17		
+135	19872	Mason, Jordan	MIN	RB	135.00	112	176		17		
+136	21183	Tracy Jr., Tyrone	NYG	RB	135.59	121	168		17		
+137	15392	Jones Sr., Aaron	MIN	RB	136.00	120	162		17		
+138	1996	Rams, Los Angeles (LAR)	LA	TDSP	138.29	105	162		17		
+139	21153	McMillan, Jalen	TB	WR	139.24	128	154		17		
+140	13671	Diggs, Stefon	NE	WR	139.82	121	171		17		
+141	17008	Jones, Daniel	IND	QB	144.94	127	171		17		
+142	20344	Mitchell, Keaton	LAC	RB	144.94	134	167		17		
+143	1989	Seahawks, Seattle	SEA	TDSP	146.29	134	163		17		
+144	20329	Spears, Tyjae	TEN	RB	147.06	125	174		17		
+145	1863	Broncos, Denver	DEN	TDSP	148.65	135	161		17		
+146	19458	Willis, Malik	MIA	QB	149.47	121	170		17		
+147	22099	Sampson, Dylan	CLE	RB	149.53	106	180		17		
+148	22941	Coleman, Jonah	DEN	RB	150.12	108	187		17		
+149	19633	Okonkwo, Chig	WAS	TE	150.65	123	179		17		
+150	14968	Henry, Hunter	NE	TE	151.41	122	180		17		
+151	19934	Shaheed, Rashid	SEA	WR	151.65	134	183		17		
+152	20280	Stroud, C.J.	HOU	QB	152.47	123	172		17		
+153	19715	Nailor, Jalen	LV	WR	153.71	132	198		17		
+154	20310	Ward, Cam	TEN	QB	155.65	112	179		17		
+155	22935	Sadiq, Kenyon	NYJ	TE	158.47	140	181		17		
+156	16077	Darnold, Sam	SEA	QB	162.24	132	219		17		
+157	19441	Allgeier, Tyler	ARZ	RB	162.47	135	194		17		
+158	17014	Hockenson, T.J.	MIN	TE	163.06	142	183		17		
+159	22134	TeSlaa, Isaac	DET	WR	164.24	133	186		17		
+160	18582	Johnson, Juwan	NO	TE	164.29	149	196		17		
+161	1919	Vikings, Minnesota	MIN	TDSP	164.65	152	184		17		
+162	4345	Texans, Houston	HOU	TK	164.88	137	205		17		
+163	20357	Tucker, Tre	LV	WR	165.00	142	191		17		
+164	22109	Marks, Woody	HOU	RB	165.94	135	209		17		
+165	22934	Boston, Denzel	CLE	WR	166.41	139	200		17		
+166	22058	Hunter, Travis	JAX	WR	171.29	141	206		17		
+167	22956	Williams, Antonio	WAS	WR	171.65	142	216		17		
+168	22955	Washington Jr., Mike	LV	RB	172.06	128	215		17		
+169	2969	Jaguars, Jacksonville	JAX	TK	173.06	145	189		17		
+170	22948	Cooper Jr., Omar	NYJ	WR	174.41	150	212		17		
+171	1961	Eagles, Philadelphia	PHI	TDSP	174.94	151	206		17		
+172	15293	Kamara, Alvin	NO	RB	176.06	143	256		17		
+173	21355	Flournoy, Ryan	DAL	WR	176.94	160	208		17		
+174	1926	Patriots, New England	NE	TDSP	178.29	163	197		17		
+175	22939	Johnson, Emmett	KC	RB	178.82	134	234		17		
+176	1975	Chargers, Los Angeles (LAC)	LAC	TDSP	178.94	156	207		17		
+177	19486	Pacheco, Isiah	DET	RB	179.12	140	224		17		
+178	22074	Harris, Tre'	LAC	WR	179.94	146	211		17		
+179	17019	Samuel, Deebo	SF	WR	180.47	143	222		17		
+180	18033	Jennings, Jauan	MIN	WR	184.47	123	242		17		
+181	20281	Young, Bryce	CAR	QB	185.35	148	249		17		
+182	1968	Steelers, Pittsburgh	PIT	TDSP	186.35	163	202		17		
+183	2980	Chargers, Los Angeles (LAC)	LAC	TK	187.00	163	203		17		
+184	1898	Jaguars, Jacksonville	JAX	TDSP	187.76	171	219		17		
+185	22940	Allen, Kaytron	WAS	RB	188.47	155	248		17		
+186	1807	Ravens, Baltimore	BAL	TDSP	188.59	158	214		17		
+187	2982	Seahawks, Seattle	SEA	TK	190.35	132	230		17		
+188	16255	Schultz, Dalton	HOU	TE	191.24	160	217		17		
+189	19468	Robinson, Brian	ATL	RB	191.71	142	232		17		
+190	19469	Charbonnet, Zach	SEA	RB	192.06	168	251		17		
+191	17983	Aiyuk, Brandon	SF	WR	194.47	138	260		14		
+192	21154	Washington, Malik	MIA	WR	194.53	155	234		17		
+193	20279	Bigsby, Tank	PHI	RB	195.71	165	237		17		
+194	22944	Claiborne, Demond	MIN	RB	195.88	172	235		17		
+195	2871	Browns, Cleveland	CLE	TDSP	196.18	168	239		17		
+196	14802	Brissett, Jacoby	ARZ	QB	198.94	154	235		16		
+197	21129	Mitchell, Adonai	NYJ	WR	199.29	165	218		15		
+198	23066	Stribling, De'Zhaun	SF	WR	205.00	157	233		17		
+199	1842	Bears, Chicago	CHI	TDSP	206.41	172	243		17		
+200	21169	Vidal, Kimani	LAC	RB	206.88	162	235		14		
+201	21315	Barner, AJ	SEA	TE	207.65	171	220		16		
+202	17964	Jeudy, Jerry	CLE	WR	208.35	158	258		17		
+203	1905	Chiefs, Kansas City	KC	TDSP	208.35	182	240		17		
+204	19477	Dulcich, Greg	MIA	TE	209.41	150	250		12		
+205	2983	Rams, Los Angeles (LAR)	LA	TK	211.06	173	246		17		
+206	1982	49ers, San Francisco	SF	TDSP	211.29	173	247		13		
+207	21132	Allen, Braelon	NYJ	RB	212.00	179	238		15		
+208	2972	Vikings, Minnesota	MIN	TK	213.76	165	235		17		
+209	22951	Branch, Zachariah	ATL	WR	214.06	182	239		14		
+210	22943	Singleton, Nicholas	TEN	RB	214.94	166	247		17		
+211	23064	Black, Kaelon	SF	RB	215.00	169	247		17		
+212	2981	49ers, San Francisco	SF	TK	215.65	175	254		17		
+213	1940	Giants, New York (NYG)	NYG	TDSP	217.59	193	248		16		
+214	22947	Bernard, Germie	PIT	WR	218.00	179	248		14		
+215	1814	Falcons, Atlanta	ATL	TDSP	219.06	177	250		17		
+216	18169	Mooney, Darnell	NYG	WR	219.59	156	255		15		
+217	22206	Ferguson, Terrance	LA	TE	220.18	193	257		17		
+218	1870	Lions, Detroit	DET	TDSP	220.47	192	251		15		
+219	21151	Davis, Ray	BUF	RB	221.12	189	255		16		
+220	1877	Packers, Green Bay	GB	TDSP	221.88	181	259		16		
+221	21001	Wilson, Emanuel	SEA	RB	222.00	151	259		12		
+222	1933	Saints, New Orleans	NO	TDSP	222.29	194	236		16		
+223	22123	Helm, Gunnar	TEN	TE	223.06	198	239		15		
+224	2979	Steelers, Pittsburgh	PIT	TK	224.06	203	241		17		
+225	20323	Dell, Tank	HOU	WR	224.18	183	260		15		
+226	5712	Rodgers, Aaron	PIT	QB	225.47	180	258		15		
+227	22942	Stowers, Eli	PHI	TE	226.65	178	248		11		
+228	20285	Tucker, Sean	TB	RB	227.53	183	233		12		
+229	2966	Lions, Detroit	DET	TK	228.53	197	256		17		
+230	1828	Bills, Buffalo	BUF	TDSP	228.82	186	247		16		
+231	21709	Holani, George	SEA	RB	229.35	197	239		13		
+232	21144	Lloyd, MarShawn	GB	RB	231.41	184	256		12		
+233	2965	Broncos, Denver	DEN	TK	233.65	203	255		16		
+234	1856	Cowboys, Dallas	DAL	TDSP	233.71	186	252		12		
+235	16065	Ridley, Calvin	TEN	WR	233.94	182	244		10		
+236	14725	Hill, Tyreek	MIA	WR	235.06	165	258		10		
+237	2962	Bengals, Cincinnati	CIN	TK	236.12	216	244		15		
+238	18018	Parkinson, Colby	LA	TE	236.71	179	246		9		
+239	20314	Wicks, Dontayvion	PHI	WR	236.76	199	256		13		
+240	2968	Colts, Indianapolis	IND	TK	236.88	222	259		17		
+241	2984	Buccaneers, Tampa Bay	TB	TK	237.35	210	259		17		
+242	22092	Blue, Jaydon	DAL	RB	239.41	195	235		8		
+243	10974	Cousins, Kirk	LV	QB	240.29	172	258		8		
+244	22946	Bell, Chris	MIA	WR	241.29	193	255		12		
+245	2973	Patriots, New England	NE	TK	241.59	217	258		14		
+246	15227	Njoku, David	LAC	TE	242.18	199	254		9		
+247	2970	Chiefs, Kansas City	KC	TK	242.47	218	254		15		
+248	2961	Bears, Chicago	CHI	TK	242.94	233	260		17		
+249	21171	Horton, Tory	SEA	WR	243.82	211	252		11		
+250	22957	Bell, Skyler	BUF	WR	244.53	182	248		7		
+251	11818	Smith, Geno	NYJ	QB	244.59	203	253		8		
+252	19632	Otton, Cade	TB	TE	244.82	205	259		11		
+253	20326	Boutte, Kayshon	NE	WR	245.59	190	253		9		
+254	2958	Ravens, Baltimore	BAL	TK	245.65	222	255		16		
+255	2974	Saints, New Orleans	NO	TK	245.76	223	260		16		
+256	18792	Freiermuth, Pat	PIT	TE	246.65	216	259		12		
+257	22090	Allen Jr., LeQuint	JAX	RB	248.12	211	260		11		
+258	15238	Engram, Evan	DEN	TE	248.29	183	259		7		
+259	1891	Colts, Indianapolis	IND	TDSP	248.35	212	255		8		
+260	22952	Fields, Malachi	NYG	WR	249.82	206	259		10		
+261	11857	Allen, Keenan	LAC	WR	250.06	201	247		5		
+262	22097	James, Jordan	SF	RB	250.35	229	258		12		
+263	16132	Kirk, Christian	SF	WR	250.53	179	260		8		
+264	22116	Noel, Jaylin	HOU	WR	252.41	208	243		4		
+265	2957	Falcons, Atlanta	ATL	TK	252.47	241	257		11		
+266	1835	Panthers, Carolina	CAR	TDSP	252.53	225	254		6		
+267	15306	Conner, James	ARZ	RB	253.35	230	256		7		
+268	19960	Tonges, Jake	SF	TE	254.06	235	260		8		
+269	20719	Demercado, Emari	KC	RB	254.12	224	260		7		
+270	22269	Dike, Chimere	TEN	WR	254.18	149	257		2		
+271	22128	Williams, Kyle	NE	WR	254.53	191	221		2		
+272	22098	Johnson, Kaleb	PIT	RB	254.71	211	252		3		
+273	23043	Douglas, Caleb	MIA	WR	255.00	225	258		7		
+274	19453	Tolbert, Jalen	MIA	WR	255.47	214	244		3		
+275	18785	Bateman, Rashod	BAL	WR	255.76	207	249		3		
+276	22967	Hurst III, Ted	TB	WR	255.94	237	260		9		
+277	21127	Franklin, Troy	DEN	WR	256.00	236	259		9		
+278	22960	Randall, Adam	BAL	RB	256.06	188	258		3		
+279	1884	Titans, Tennessee	TEN	TDSP	256.24	225	258		4		
+280	21160	Wright, Jaylen	MIA	RB	256.29	226	260		4		
+281	22969	Lance, Bryce	NO	WR	256.35	205	238		2		
+282	23165	Allen, Cyrus	KC	WR	256.65	211	237		2		
+283	21161	Davis, Isaiah	NYJ	RB	256.76	232	244		3		
+284	2003	Buccaneers, Tampa Bay	TB	TDSP	257.06	225	254		3		
+285	20100	Davis, Malik	DAL	RB	257.35	223	258		4		
+286	21130	Coleman, Keon	BUF	WR	257.41	225	258		4		
+287	1849	Bengals, Cincinnati	CIN	TDSP	257.47	227	258		4		
+288	15231	Watson, Deshaun	CLE	QB	257.71	213	253		2		
+289	22949	Sarratt, Elijah	BAL	WR	257.76	233	249		3		
+290	22061	Bond, Isaiah	CLE	WR	257.88	233	258		3		
+291	1954	Raiders, Las Vegas	LV	TDSP	258.00	229	242		2		
+292	17975	Tagovailoa, Tua	ATL	QB	258.00	238	257		4		
+293	23097	Thompson, Brenen	LAC	WR	258.12	241	254		4		
+294	2977	Raiders, Las Vegas	LV	TK	258.12	251	256		6		
+295	15362	Perine, Samaje	CIN	RB	258.18	242	260		4		
+296	22928	Mendoza, Fernando	LV	QB	258.41	244	257		5		
+297	22056	Sanders, Shedeur	CLE	QB	258.47	232	247		2		
+298	22124	Hunter, Jarquez	LA	RB	258.71	222	222		1		
+299	20954	Brooks, Chris	GB	RB	258.88	225	225		1		
+300	15283	Kupp, Cooper	SEA	WR	258.88	241	245		2		
+301	2959	Bills, Buffalo	BUF	TK	259.12	246	259		4		
+302	17020	Hill, Justice	BAL	RB	259.47	242	258		3		
+303	19491	Thornton, Tyquan	KC	WR	259.65	243	256		2		
+304	23176	Coleman Jr., Kevin	MIA	WR	259.71	239	239		1		
+305	2967	Packers, Green Bay	GB	TK	259.71	247	260		4		
+306	2985	Titans, Tennessee	TEN	TK	259.88	254	259		4		
+307	20282	Mayer, Michael	LV	TE	260.00	244	244		1		
+308	22115	Bryant, Pat	DEN	WR	260.00	244	244		1		
+309	22112	Bech, Jack	LV	WR	260.06	245	245		1		
+310	22950	Daniels, CJ	LA	WR	260.06	245	245		1		
+311	19429	Burks, Treylon	WAS	WR	260.12	246	246		1		
+312	22970	Delp, Oscar	NO	TE	260.29	249	249		1		
+313	21181	Johnson, Theo	NYG	TE	260.29	249	249		1		
+314	20341	Douglas, DeMario	NE	WR	260.35	250	250		1		
+315	22078	Burks, Deion	IND	WR	260.35	250	250		1		
+316	15355	Hollins, Mack	NE	WR	260.41	251	251		1		
+317	18800	Jones, Mac	SF	QB	260.47	252	252		1		
+318	22959	Lane, Ja'Kobi	BAL	WR	260.47	252	252		1		
+319	2975	Jets, New York (NYJ)	NYJ	TK	260.59	254	254		1		
+320	21135	Benson, Trey	ARZ	RB	260.59	254	254		1		
+321	17046	Johnson, Ty	BUF	RB	260.71	256	256		1		
+322	21295	All Jr., Erick	CIN	TE	260.76	257	257		1		
+323	21357	Vele, Devaughn	NO	WR	260.82	258	258		1		
+324	2976	Giants, New York (NYG)	NYG	TK	260.82	259	260		2		
+325	22104	Neal, Devin	NO	RB	260.94	260	260		1		

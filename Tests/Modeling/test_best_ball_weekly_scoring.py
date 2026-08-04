@@ -1430,6 +1430,14 @@ def test_non_nffc_v2_current_context_derives_qb_passing_component_before_filter(
     # its independently derived passing component remains authoritative.
     assert context["qb_avg_proj_pass_points"] == pytest.approx(280.5)
     assert context["team_qb1_ppg"] == pytest.approx(22.0)
+    if league == "beta":
+        assert context["avg_pick"] == pytest.approx(45.0)
+        assert context["current_adp_source"] == (
+            "v2_canonical_adp_family_consensus"
+        )
+    else:
+        assert context["avg_pick"] == pytest.approx(40.0)
+        assert context["current_adp_source"] == "canonical_avg_adps"
 
 
 def _model_input_scoring_projection(*, season=2025):

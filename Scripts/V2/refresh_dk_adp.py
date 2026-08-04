@@ -37,6 +37,13 @@ import requests
 
 from ff import data_clean
 
+from Scripts.V2.adp_policy import (
+    ADP_POLICY_VERSION,
+    ADP_PROVENANCE_COLUMNS,
+    DK_AGGREGATION_POLICY,
+    DK_BOUNDS_POLICY,
+    DK_STD_DEV_POLICY,
+)
 from Scripts.V2.contracts import normalize_player_name
 
 
@@ -282,10 +289,17 @@ def build_dk_adp_rows(
     merged.loc[invalid_upper, "max_pick"] = (
         1.2 * merged.loc[invalid_upper, "avg_pick"]
     )
-    # NFFC std_dev is defined as range / 5.  Once the range is scaled to the
-    # DK market, retaining the pre-scale NFFC value is internally inconsistent
-    # and materially distorts draft-pick sampling.
-    merged["std_dev"] = (merged["max_pick"] - merged["min_pick"]) / 5.0
+    # Scale the governed NFFC pooled SD so DK retains both within-feed range
+    # and between-feed center disagreement. Bounds remain synthetic ratios;
+    # the DraftKings API is authoritative only for the center.
+    merged["std_dev"] = merged["nffc_std_dev"] * scale
+    merged["std_dev"] = pd.concat(
+        [
+            merged["std_dev"],
+            (merged["max_pick"] - merged["min_pick"]) / 5.0,
+        ],
+        axis=1,
+    ).max(axis=1)
     merged.loc[missing_distribution, "std_dev"] = (
         0.2 * merged.loc[missing_distribution, "avg_pick"]
     )
@@ -388,6 +402,11 @@ def replace_current_dk_rows(
             raise ValueError(
                 f"ADP_Averages is missing required columns: {missing}"
             )
+        for column, sql_type in ADP_PROVENANCE_COLUMNS.items():
+            if column not in available:
+                connection.execute(
+                    f'ALTER TABLE "ADP_Averages" ADD COLUMN "{column}" {sql_type}'
+                )
 
         values = [
             tuple(
@@ -407,14 +426,24 @@ def replace_current_dk_rows(
                 """,
                 (int(year),),
             )
+            provenance_values = (
+                1,
+                None,
+                DK_AGGREGATION_POLICY,
+                DK_BOUNDS_POLICY,
+                DK_STD_DEV_POLICY,
+                ADP_POLICY_VERSION,
+            )
             connection.executemany(
                 """
                 INSERT INTO ADP_Averages
                     (player, pos, year, avg_pick, min_pick, max_pick,
-                     std_dev, league)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                     std_dev, league, source_count, feed_gap,
+                     aggregation_policy, bounds_policy, std_dev_policy,
+                     adp_policy_version)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
-                values,
+                [tuple(value) + provenance_values for value in values],
             )
             stored_count = connection.execute(
                 """

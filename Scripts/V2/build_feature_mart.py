@@ -8,6 +8,7 @@ from itertools import combinations
 import numpy as np
 import pandas as pd
 
+from Scripts.V2.adp_policy import canonical_adp_family_values
 from Scripts.V2.config import (
     POSITIONS,
     PROJECTION_THROUGH_SEASON,
@@ -616,8 +617,9 @@ def build_market_consensus(market_values: pd.DataFrame) -> pd.DataFrame:
     if market_values.empty:
         return pd.DataFrame(columns=["player_key", "season"])
     keys = ["player_key", "season"]
+    family_values = canonical_adp_family_values(market_values)
     base = _group_summary(
-        market_values,
+        family_values,
         "adp",
         "adp",
         ("median", "std", "iqr", "count"),

@@ -35,6 +35,7 @@ class ProductionCycle:
     next_target_version: str
     source_market_minimums: Mapping[str, int]
     nffc_source_feed_minimums: Mapping[str, int]
+    nffc_source_feed_pick_boundaries: Mapping[str, int]
     model_input_position_minimums: Mapping[str, int]
     production_population_minimums: Mapping[str, int]
     production_position_minimums: Mapping[str, Mapping[str, int]]
@@ -66,6 +67,9 @@ class ProductionCycle:
             "source_market_minimums": dict(self.source_market_minimums),
             "nffc_source_feed_minimums": dict(
                 self.nffc_source_feed_minimums
+            ),
+            "nffc_source_feed_pick_boundaries": dict(
+                self.nffc_source_feed_pick_boundaries
             ),
             "model_input_position_minimums": dict(
                 self.model_input_position_minimums
@@ -137,10 +141,12 @@ APPROVED_PRODUCTION_CYCLES: Mapping[int, ProductionCycle] = {
             "etr": 180,
         },
         nffc_source_feed_minimums={
-            "nffc_rotowire_online": 400,
             "nffc_best_ball_overall": 400,
             "nffc_best_ball_25s50s": 400,
-            "nffc_cutline": 250,
+        },
+        nffc_source_feed_pick_boundaries={
+            "nffc_best_ball_overall": 360,
+            "nffc_best_ball_25s50s": 360,
         },
         model_input_position_minimums={
             "QB": 40,
@@ -281,6 +287,29 @@ def get_production_cycle(year: int) -> ProductionCycle:
         raise ValueError(
             f"Season {year} has invalid NFFC source-feed floors: "
             f"{invalid_nffc_feed_floors}"
+        )
+    if set(cycle.nffc_source_feed_pick_boundaries) != set(
+        cycle.nffc_source_feed_minimums
+    ):
+        raise ValueError(
+            f"Season {year} NFFC source-feed boundary labels do not match "
+            "its row-floor labels"
+        )
+    invalid_nffc_feed_boundaries = {
+        str(label): boundary
+        for label, boundary in (
+            cycle.nffc_source_feed_pick_boundaries.items()
+        )
+        if not isinstance(label, str)
+        or not label.strip()
+        or isinstance(boundary, bool)
+        or not isinstance(boundary, int)
+        or boundary <= 0
+    }
+    if invalid_nffc_feed_boundaries:
+        raise ValueError(
+            f"Season {year} has invalid NFFC source-feed pick boundaries: "
+            f"{invalid_nffc_feed_boundaries}"
         )
     for contract_name, contract in (
         ("weekly horizons", cycle.weekly_horizons),

@@ -8,6 +8,10 @@ from pathlib import Path
 import pytest
 
 from Scripts.V2 import refresh_production as refresh
+from Scripts.V2.adp_policy import (
+    ADP_POLICY_VERSION,
+    NFFC_AGGREGATION_POLICY,
+)
 
 
 def _database(path: Path, statements: list[str]) -> None:
@@ -21,9 +25,24 @@ def _write_source_market_database(
     path: Path,
     *,
     nffc_feed_counts: dict[str, int],
+    nffc_feed_pick_boundaries: dict[str, int] | None = None,
 ) -> None:
+    boundaries = {
+        "nffc_best_ball_overall": 360,
+        "nffc_best_ball_25s50s": 360,
+        "nffc_rotowire_online": 240,
+        "nffc_cutline": 260,
+        **(nffc_feed_pick_boundaries or {}),
+    }
     statements = [
-        "CREATE TABLE ADP_Averages (year INTEGER, league TEXT)",
+        """
+        CREATE TABLE ADP_Averages (
+            player TEXT, pos TEXT, year INTEGER, league TEXT, avg_pick REAL,
+            source_count INTEGER, aggregation_policy TEXT,
+            bounds_policy TEXT, std_dev_policy TEXT,
+            adp_policy_version TEXT
+        )
+        """,
         """
         WITH RECURSIVE sequence(value) AS (
             SELECT 1
@@ -31,9 +50,33 @@ def _write_source_market_database(
             SELECT value + 1 FROM sequence WHERE value < 300
         )
         INSERT INTO ADP_Averages
-        SELECT 2026, 'dk' FROM sequence
+        SELECT 'DK Player ' || value, 'WR', 2026, 'dk', value,
+               1, 'draftkings_direct_center_v1',
+               'scaled_nffc_two_feed_bounds_v1',
+               'scaled_nffc_two_feed_pooled_sd_v1',
+               'canonical_market_adp_family_v2'
+        FROM sequence
         """,
-        "CREATE TABLE NFFC_ADP (year INTEGER, source TEXT)",
+        """
+        WITH RECURSIVE sequence(value) AS (
+            SELECT 1
+            UNION ALL
+            SELECT value + 1 FROM sequence WHERE value < 400
+        )
+        INSERT INTO ADP_Averages
+        SELECT 'NFFC Player ' || value, 'WR', 2026, 'nffc', value,
+               2, 'nffc_overall_25s50s_equal_mean_v1',
+               'nffc_overall_25s50s_equal_mean_bounds_v1',
+               'nffc_within_between_pooled_sd_v1',
+               'canonical_market_adp_family_v2'
+        FROM sequence
+        """,
+        """
+        CREATE TABLE NFFC_ADP (
+            player TEXT, pos TEXT, year INTEGER, source TEXT,
+            pick_nffc REAL, max_pick REAL
+        )
+        """,
         "CREATE TABLE ETR_Ranks (year INTEGER)",
         """
         WITH RECURSIVE sequence(value) AS (
@@ -56,7 +99,13 @@ def _write_source_market_database(
                 SELECT value + 1 FROM sequence WHERE value < {int(count)}
             )
             INSERT INTO NFFC_ADP
-            SELECT 2026, '{label}' FROM sequence
+            SELECT 'NFFC Player ' || value, 'WR', 2026, '{label}',
+                   value + CASE
+                       WHEN '{label}'='nffc_best_ball_25s50s' THEN 0.5
+                       ELSE 0.0
+                   END,
+                   {int(boundaries.get(label, 1))}
+            FROM sequence
             """
         )
     _database(path, statements)
@@ -226,10 +275,8 @@ def test_prepare_apps_vacuums_both_candidates(tmp_path, monkeypatch):
 def test_source_market_gate_returns_each_governed_nffc_feed(tmp_path):
     database = tmp_path / "source.sqlite3"
     expected_feeds = {
-        "nffc_rotowire_online": 400,
         "nffc_best_ball_overall": 400,
         "nffc_best_ball_25s50s": 400,
-        "nffc_cutline": 250,
     }
     _write_source_market_database(
         database,
@@ -240,50 +287,52 @@ def test_source_market_gate_returns_each_governed_nffc_feed(tmp_path):
 
     assert result == {
         "dk": 300,
-        "nffc": 1450,
+        "nffc": 400,
         "etr": 180,
         "nffc_feed_counts": dict(sorted(expected_feeds.items())),
+        "nffc_feed_pick_boundaries": {
+            "nffc_best_ball_25s50s": 360,
+            "nffc_best_ball_overall": 360,
+        },
+        "nffc_pair_agreement": {
+            "common_top_pick_rows": 240,
+            "spearman": pytest.approx(1.0),
+            "median_abs_gap": 0.5,
+        },
+        "adp_policy_version": ADP_POLICY_VERSION,
+        "adp_policy_sha256": refresh.adp_policy_sha256(),
     }
 
 
-@pytest.mark.parametrize(
-    "feed_counts, expected_fragment",
-    [
-        (
-            {
-                "nffc_rotowire_online": 400,
-                "nffc_best_ball_overall": 400,
-                "nffc_best_ball_25s50s": 400,
-            },
-            "missing=['nffc_cutline']",
-        ),
-        (
-            {
-                "nffc_rotowire_online": 400,
-                "nffc_best_ball_overall": 400,
-                "nffc_best_ball_25s50s": 400,
-                "nffc_cutline": 250,
-                "nffc_unreviewed_feed": 1,
-            },
-            "unexpected=['nffc_unreviewed_feed']",
-        ),
-    ],
-)
-def test_source_market_gate_requires_exact_nffc_feed_labels(
-    tmp_path,
-    feed_counts,
-    expected_fragment,
-):
+def test_source_market_gate_requires_both_modeled_nffc_feed_labels(tmp_path):
     database = tmp_path / "source.sqlite3"
     _write_source_market_database(
         database,
-        nffc_feed_counts=feed_counts,
+        nffc_feed_counts={"nffc_best_ball_overall": 400},
     )
 
     with pytest.raises(ValueError, match="do not match the annual contract") as error:
         refresh._validate_source_markets(database, 2026)
 
-    assert expected_fragment in str(error.value)
+    assert "nffc_best_ball_25s50s" in str(error.value)
+
+
+def test_source_market_gate_preserves_unmodeled_raw_nffc_feeds_as_archive(tmp_path):
+    database = tmp_path / "source.sqlite3"
+    _write_source_market_database(
+        database,
+        nffc_feed_counts={
+            "nffc_best_ball_overall": 400,
+            "nffc_best_ball_25s50s": 400,
+            "nffc_rotowire_online": 300,
+        },
+    )
+
+    result = refresh._validate_source_markets(database, 2026)
+
+    assert result["nffc_archived_feed_counts"] == {
+        "nffc_rotowire_online": 300
+    }
 
 
 def test_source_market_gate_enforces_each_nffc_feed_floor(tmp_path):
@@ -291,16 +340,34 @@ def test_source_market_gate_enforces_each_nffc_feed_floor(tmp_path):
     _write_source_market_database(
         database,
         nffc_feed_counts={
-            "nffc_rotowire_online": 399,
-            "nffc_best_ball_overall": 400,
+            "nffc_best_ball_overall": 399,
             "nffc_best_ball_25s50s": 400,
-            "nffc_cutline": 250,
         },
     )
 
     with pytest.raises(
         ValueError,
-        match="nffc_rotowire_online has only 399 rows",
+        match="nffc_best_ball_overall has only 399 rows",
+    ):
+        refresh._validate_source_markets(database, 2026)
+
+
+def test_source_market_gate_enforces_each_nffc_feed_pick_boundary(tmp_path):
+    database = tmp_path / "source.sqlite3"
+    _write_source_market_database(
+        database,
+        nffc_feed_counts={
+            "nffc_best_ball_overall": 400,
+            "nffc_best_ball_25s50s": 400,
+        },
+        nffc_feed_pick_boundaries={
+            "nffc_best_ball_overall": 359,
+        },
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="nffc_best_ball_overall ends at max_pick=359.0",
     ):
         refresh._validate_source_markets(database, 2026)
 

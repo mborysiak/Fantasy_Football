@@ -1,6 +1,6 @@
 # Production Refresh Runbook
 
-Last updated: 2026-08-02
+Last updated: 2026-08-04
 
 ## Scope and Manual Boundary
 
@@ -21,11 +21,21 @@ $env:FF_CURRENT_SEASON = '2026'
 Then complete `Scripts/Data_Generation/1_Update_Projections.py` in its normal
 interactive workflow, including any required downloaded exports, and verify
 that `Data/Databases/Season_Stats_New.sqlite3` contains the intended current
-DK, NFFC, ETR, and projection inputs. For 2026, `NFFC_ADP` must contain exactly
-`nffc_rotowire_online`, `nffc_best_ball_overall`,
-`nffc_best_ball_25s50s`, and `nffc_cutline`, with minimum depths of 400, 400,
-400, and 250 rows respectively. Missing, renamed, unexpected, or shallow feeds
-fail during `snapshot`, before model fitting.
+DK, NFFC, ETR, and projection inputs. Download NFFC Best Ball Overall first as
+the literal browser filename `ADP.tsv`, then Best Ball $25/$50 as
+`ADP (1).tsv`. Notebook 1 moves and archives those files semantically; no
+manual rename is required. For 2026, the two modeled feeds must contain at
+least 400 rows apiece and end at exact maximum pick 360. Rotowire Online and
+Cutline rows from older ingests may remain as raw audit history, but they are
+not modeled, aggregated, or required. Missing, shallow, wrong-boundary, or
+materially disagreeing Overall/$25-$50 feeds fail during `snapshot`, before
+model fitting.
+
+FantasyPros redraft and best-ball exports share a browser filename. Download
+best ball first (the base filename), then redraft half-PPR (the browser's
+`(1)` filename), and leave both in `Downloads`. The notebook validates their
+provider columns before archiving semantic copies, so a reversed or stale pair
+fails rather than being silently mislabeled.
 
 FantasyPros season projections are manual CSV exports rather than an HTML
 pull. Download all four position exports and leave these exact filenames in
@@ -39,6 +49,14 @@ pull. Download all four position exports and leave these exact filenames in
 The loader archives each file under
 `Data/OtherData/FantasyPros_Projections/`, maps duplicate stat headers by
 position, and rejects partial exports below QB/RB/WR/TE depths 50/80/100/60.
+
+The downstream Model Inputs compiler exposes only the canonical family median
+as `avg_pick`, its observed-family disagreement as `std_pick`, and
+`adp_source_count`. It does not row-impute missing ADP providers or retain the
+FantasyPros best-ball component columns as separate modeling features. MFL is
+eligible only through 2024; from 2025 onward the available family set is
+FantasyPros redraft, FantasyPros best-ball `AVG`, DraftKings, and the governed
+NFFC pair.
 
 An already-running notebook kernel does not inherit a newly set environment
 variable; restart it and confirm `YEAR` inside the notebook before any write.

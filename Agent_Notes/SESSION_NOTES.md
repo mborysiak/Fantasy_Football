@@ -10,18 +10,24 @@ template tables consumed by downstream draft apps.
 
 ## Current Focus
 
-- Fresh schema-5 release `20260804T131926Z_57a25fb4` completed all 24 refresh
-  steps after the preseason source update and is now live. The
-  active 2026 beta ESPN export is now governed by a terminal-`$0` boundary and
-  parsed 180/180 unique rows. All 328 projection-defined beta players retain
-  salary estimates, including 189 at the `$1` floor. DK/NFFC/beta production
-  key sets and current/next PPG are identical to live at 350/383/328 rows;
-  salary changes average `$0.24` absolute with a `$3.94` maximum. The fresh
-  reserve completed 1,000/1,000 trials with a `$9.21` expected roster reserve;
-  consolidated validation, app parity/size, and both app smokes passed. All ten
-  installed hashes/sizes and post-promotion SQLite integrity/foreign-key checks
-  pass; durable backups are under the run-ID folder in
-  `Data/Production_Refresh_Backups/`.
+- Canonical ADP governance v2 is implemented and live. MFL remains modeled only
+  through 2024. From 2025 onward the model
+  median gives one family vote each to FantasyPros redraft, FantasyPros
+  best-ball `AVG`, direct DraftKings ADP, and the NFFC Overall/$25-$50
+  aggregate. NFFC literal downloads are `ADP.tsv` (Overall) and `ADP (1).tsv`
+  ($25/$50); raw Rotowire/Cutline rows remain audit history. The NFFC center
+  and bounds average the two available feeds, pooled SD includes within-feed
+  range and between-feed disagreement, and one-feed fringe rows disclose
+  `source_count=1` with null `feed_gap`. Beta template matching now prefers the
+  same V2 canonical family ADP; ETR still controls beta eligibility and is only
+  the last-resort match fallback. Fresh stage
+  `20260804T193416Z_4136d153` completed all governed build/validation/app steps
+  with 348 DK, 382 NFFC, and 326 beta rows, 80 donors/player, 1,000/1,000
+  reserve trials, exact app parity, and zero smoke errors. It was promoted at
+  `2026-08-04T20:27:28Z`; all ten installed digests match the manifest, every
+  durable pre-refresh backup exists under
+  `Data/Production_Refresh_Backups/20260804T193416Z_b6992d72/`, and promotion
+  reported no cleanup warnings.
 - The frozen Ridge `alpha=10` replacement completed full corrected-lineage
   downstream validation. Annual 2017-2025 refits improve pooled RMSE by only
   0.001401 DK and 0.001264 beta with both player-cluster intervals crossing

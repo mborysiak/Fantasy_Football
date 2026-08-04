@@ -4,6 +4,7 @@
 import sys
 import os
 import re
+import hashlib
 from io import StringIO
 from pathlib import Path
 
@@ -34,6 +35,13 @@ from Scripts.Data_Generation.adp_rank_ingest import (
     FANTASYPROS_MINIMUM_ROWS,
     MFL_MINIMUM_ROWS,
     replace_adp_rank_slice,
+)
+from Scripts.V2.adp_policy import (
+    MFL_LAST_MODELED_SEASON,
+    NFFC_DOWNLOADS,
+    NFFC_MODELED_SOURCES,
+    replace_current_nffc_policy_rows,
+    utc_now as adp_utc_now,
 )
 
 # set the root path and database management object
@@ -100,7 +108,21 @@ def pull_fantasypros_adp(year_val):
     # to move the file from Downloads. Note: the best ball ADP page exports the same
     # filename, so download and process one at a time.
     fname = f'FantasyPros_{year_val}_Overall_ADP_Rankings (1).csv'
-    df = move_download_to_folder(root_path, 'FantasyPros_ADP', fname, year_val)
+    df = move_download_to_folder(
+        root_path,
+        'FantasyPros_ADP',
+        fname,
+        year_val,
+        archive_name='FantasyPros_Redraft_Half_PPR_ADP.csv',
+    )
+
+    best_ball_markers = {'BB10', 'Underdog', 'Drafters', 'DraftKings'}
+    redraft_markers = {'ESPN', 'Sleeper', 'CBS', 'NFL', 'RTSports', 'Fantrax'}
+    if best_ball_markers.intersection(df.columns) or not redraft_markers.intersection(df.columns):
+        raise ValueError(
+            f"{fname} is not the FantasyPros redraft ADP export; "
+            f"available columns are {list(df.columns)}"
+        )
 
     player_col = [c for c in df.columns if c.startswith('Player')][0]
     player_team = df[player_col].apply(split_fantasypros_best_ball_player)
@@ -173,11 +195,19 @@ def get_adp(year_val, pos, source):
 
     return df
 
-def move_download_to_folder(root_path, folder, fname, set_year, sep=','):
+def move_download_to_folder(
+    root_path,
+    folder,
+    fname,
+    set_year,
+    sep=',',
+    archive_name=None,
+):
 
     output_folder = Path(root_path) / 'Data' / 'OtherData' / folder
     output_folder.mkdir(parents=True, exist_ok=True)
-    output_path = output_folder / f'{set_year}{fname}'
+    archived_filename = fname if archive_name is None else archive_name
+    output_path = output_folder / f'{set_year}{archived_filename}'
 
     for download_folder in [Path.home() / 'Downloads', Path('/Users/borys/Downloads')]:
         download_path = download_folder / fname
@@ -493,17 +523,23 @@ def format_ffa(df, table_name, set_year):
 
 #%%
 
-for pos in POSITIONS:
-    print(YEAR, pos)
-    mfl_adp = get_adp(YEAR, pos, 'mfl')
-    replace_adp_rank_slice(
-        adp_db_path,
-        mfl_adp,
-        year=YEAR,
-        source='mfl',
-        position=pos,
-        allowed_positions=(pos,),
-        minimum_rows_by_position={pos: MFL_MINIMUM_ROWS[pos]},
+if YEAR <= MFL_LAST_MODELED_SEASON:
+    for pos in POSITIONS:
+        print(YEAR, pos)
+        mfl_adp = get_adp(YEAR, pos, 'mfl')
+        replace_adp_rank_slice(
+            adp_db_path,
+            mfl_adp,
+            year=YEAR,
+            source='mfl',
+            position=pos,
+            allowed_positions=(pos,),
+            minimum_rows_by_position={pos: MFL_MINIMUM_ROWS[pos]},
+        )
+else:
+    print(
+        f"Skipping MFL ADP for {YEAR}; governed model use ends after "
+        f"{MFL_LAST_MODELED_SEASON}."
     )
 
 fp_adp = get_adp(YEAR, 'all', 'fantasypros')
@@ -518,47 +554,69 @@ replace_adp_rank_slice(
 
 #%%
 
-def pull_nffc(filename, label):
+def pull_nffc(filename, label, archive_name):
 
-    df = move_download_to_folder(root_path, 'NFFC', filename, YEAR, sep='\t')
+    df = move_download_to_folder(
+        root_path,
+        'NFFC',
+        filename,
+        YEAR,
+        sep='\t',
+        archive_name=archive_name,
+    )
+    required = {
+        'Rank', 'Player', 'Team', 'Position(s)', 'ADP', 'Min Pick',
+        'Max Pick', '# Picks',
+    }
+    missing = sorted(required.difference(df.columns))
+    if missing:
+        raise ValueError(
+            f"NFFC {label} export is missing columns: {missing}"
+        )
+    snapshot_path = (
+        Path(root_path)
+        / 'Data'
+        / 'OtherData'
+        / 'NFFC'
+        / f'{YEAR}{archive_name}'
+    )
+    snapshot_sha256 = hashlib.sha256(snapshot_path.read_bytes()).hexdigest()
     df.Player = df.Player.apply(lambda x: x.split(',')[1] + ' ' + x.split(',')[0])
-    df = df[['Player', 'Team', 'Position(s)', 'ADP', 'Min Pick', 'Max Pick']]
-    df.columns = ['player', 'team', 'pos', 'pick_nffc', 'min_pick', 'max_pick']
+    df = df[[
+        'Player', 'Team', 'Position(s)', 'ADP', 'Min Pick', 'Max Pick',
+        'Rank', '# Picks',
+    ]]
+    df.columns = [
+        'player', 'team', 'pos', 'pick_nffc', 'min_pick', 'max_pick',
+        'source_rank', 'draft_count',
+    ]
     df['source'] = label
     df['year'] = YEAR
+    df['snapshot_file'] = snapshot_path.name
+    df['snapshot_sha256'] = snapshot_sha256
+    df['ingested_at_utc'] = adp_utc_now()
     df.player = df.player.apply(dc.name_clean)
     return df
 
 
-df = pull_nffc('ADP.tsv', 'nffc_rotowire_online')
-dm.delete_from_db(DB_NAME, 'NFFC_ADP', f"year={YEAR}", create_backup=False)
-dm.write_to_db(df, DB_NAME, 'NFFC_ADP', 'append')
-
-df = pull_nffc('ADP (1).tsv', 'nffc_best_ball_overall')
-dm.write_to_db(df, DB_NAME, 'NFFC_ADP', 'append')
-
-df = pull_nffc('ADP (2).tsv', 'nffc_best_ball_25s50s')
-dm.write_to_db(df, DB_NAME, 'NFFC_ADP', 'append')
-
-df = pull_nffc('ADP (3).tsv', 'nffc_cutline')
-dm.write_to_db(df, DB_NAME, 'NFFC_ADP', 'append')
-
-nffc_avg = dm.read(f'''SELECT player,
-                                pos,
-                                year,
-                                avg(pick_nffc) avg_pick,
-                                avg(min_pick) min_pick,
-                                avg(max_pick) max_pick
-                        FROM NFFC_ADP
-                        WHERE year = {YEAR}
-                        GROUP BY player, pos, year
-                        ''', f'Season_Stats_New')
-nffc_avg['std_dev'] = (nffc_avg['max_pick'] - nffc_avg['min_pick']) / 5
-nffc_avg['league'] = 'nffc'
-nffc_avg = nffc_avg.sort_values(by='avg_pick', ascending=True).reset_index(drop=True)
-
-dm.delete_from_db(DB_NAME, 'ADP_Averages', f"year={YEAR} AND league='nffc'", create_backup=False)
-dm.write_to_db(nffc_avg, DB_NAME, 'ADP_Averages', 'append')
+nffc_raw = []
+for download_name, feed in NFFC_DOWNLOADS.items():
+    nffc_raw.append(
+        pull_nffc(
+            download_name,
+            feed['source'],
+            feed['archive_name'],
+        )
+    )
+nffc_raw = pd.concat(nffc_raw, ignore_index=True)
+if set(nffc_raw.source.unique()) != set(NFFC_MODELED_SOURCES):
+    raise ValueError('NFFC ingest did not produce the two governed feeds')
+nffc_avg = replace_current_nffc_policy_rows(
+    adp_db_path,
+    nffc_raw,
+    year=YEAR,
+    rebuild_from_season=2025,
+)
 
 
 nffc = dm.read(f'''SELECT *
@@ -577,7 +635,21 @@ replace_current_dk_rows(
 
 #%%
 
-df = move_download_to_folder(root_path, 'FantasyPros_Best_Ball', f'FantasyPros_{YEAR}_Overall_ADP_Rankings.csv', YEAR)
+df = move_download_to_folder(
+    root_path,
+    'FantasyPros_Best_Ball',
+    f'FantasyPros_{YEAR}_Overall_ADP_Rankings.csv',
+    YEAR,
+    archive_name='FantasyPros_Best_Ball_ADP.csv',
+)
+
+required_best_ball_columns = {'BB10', 'Underdog', 'Drafters', 'AVG'}
+missing_best_ball_columns = sorted(required_best_ball_columns.difference(df.columns))
+if missing_best_ball_columns:
+    raise ValueError(
+        'FantasyPros best-ball export is missing columns '
+        f'{missing_best_ball_columns}; available columns are {list(df.columns)}'
+    )
 
 if 'Player (Bye)' in df.columns:
     df = df.rename(columns={'Player (Bye)': 'Player'})

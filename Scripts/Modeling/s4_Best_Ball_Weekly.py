@@ -4357,6 +4357,38 @@ def load_published_current_adp_context():
     return adp
 
 
+def load_canonical_model_adp_context(v2_database=None):
+    """Load the family-level ADP consensus used by the V2 training mart."""
+
+    v2_database = resolve_v2_database(v2_database)
+    with closing(sqlite3.connect(v2_database)) as connection:
+        adp = pd.read_sql_query(
+            """
+            SELECT player_key,
+                   CAST(season AS INTEGER) year,
+                   adp_median canonical_model_avg_pick,
+                   adp_source_count canonical_model_adp_source_count
+            FROM player_season_features
+            WHERE CAST(season AS INTEGER)=?
+            """,
+            connection,
+            params=(int(YEAR),),
+        )
+    if adp.empty:
+        raise ValueError(
+            f"V2 player_season_features has no canonical {YEAR} ADP context"
+        )
+    adp["player_key"] = adp["player_key"].astype("string").str.strip()
+    if adp["player_key"].isna().any() or adp["player_key"].eq("").any():
+        raise ValueError("V2 canonical ADP context contains missing player keys")
+    if adp.duplicated(["player_key", "year"]).any():
+        raise ValueError("V2 canonical ADP context contains duplicate player keys")
+    adp["canonical_model_avg_pick"] = pd.to_numeric(
+        adp["canonical_model_avg_pick"], errors="coerce"
+    )
+    return adp
+
+
 def load_current_player_context(v2_database=None):
     v2_database = resolve_v2_database(v2_database)
     current_context = pd.DataFrame()
@@ -4400,7 +4432,10 @@ def load_current_player_context(v2_database=None):
         projection_col="current_avg_proj_points",
     )
 
-    adp = load_published_current_adp_context()
+    adp = load_published_current_adp_context().rename(
+        columns={"adp_avg_pick": "published_adp_avg_pick"}
+    )
+    canonical_model_adp = load_canonical_model_adp_context(v2_database)
 
     current_context = current_context.merge(
         adp[[
@@ -4408,9 +4443,15 @@ def load_current_player_context(v2_database=None):
             "year",
             "adp_source_player",
             "adp_team",
-            "adp_avg_pick",
+            "published_adp_avg_pick",
             "adp_year_exp",
         ]],
+        on=["player_key", "year"],
+        how="left",
+        validate="one_to_one",
+    )
+    current_context = current_context.merge(
+        canonical_model_adp,
         on=["player_key", "year"],
         how="left",
         validate="one_to_one",
@@ -4424,21 +4465,41 @@ def load_current_player_context(v2_database=None):
         current_context["year_exp"].notna(),
         current_context["adp_year_exp"],
     )
-    current_context["avg_pick"] = current_context["adp_avg_pick"].where(
-        current_context["adp_avg_pick"].notna(),
-        current_context["model_input_avg_pick"],
-    )
-    current_context["current_adp_source"] = np.select(
-        [
-            current_context["adp_avg_pick"].notna(),
-            current_context["model_input_avg_pick"].notna(),
-        ],
-        [
-            "canonical_avg_adps",
-            "model_inputs_fallback",
-        ],
-        default="missing",
-    )
+    if LEAGUE == "beta":
+        current_context["adp_avg_pick"] = (
+            current_context["canonical_model_avg_pick"]
+            .combine_first(current_context["model_input_avg_pick"])
+            .combine_first(current_context["published_adp_avg_pick"])
+        )
+        current_context["current_adp_source"] = np.select(
+            [
+                current_context["canonical_model_avg_pick"].notna(),
+                current_context["model_input_avg_pick"].notna(),
+                current_context["published_adp_avg_pick"].notna(),
+            ],
+            [
+                "v2_canonical_adp_family_consensus",
+                "model_inputs_canonical_fallback",
+                "etr_rank_last_resort",
+            ],
+            default="missing",
+        )
+    else:
+        current_context["adp_avg_pick"] = current_context[
+            "published_adp_avg_pick"
+        ].combine_first(current_context["model_input_avg_pick"])
+        current_context["current_adp_source"] = np.select(
+            [
+                current_context["published_adp_avg_pick"].notna(),
+                current_context["model_input_avg_pick"].notna(),
+            ],
+            [
+                "canonical_avg_adps",
+                "model_inputs_fallback",
+            ],
+            default="missing",
+        )
+    current_context["avg_pick"] = current_context["adp_avg_pick"]
     current_context = attach_uncapped_template_experience(
         current_context,
         season_col="year",
@@ -4965,23 +5026,36 @@ def load_v2_current_player_context(
         fallback["published_adp_avg_pick"],
         errors="coerce",
     )
-    fallback["adp_avg_pick"] = fallback[
-        "published_adp_avg_pick"
-    ].where(
-        fallback["published_adp_avg_pick"].notna(),
-        fallback["feature_adp_median"],
-    )
-    fallback["current_adp_source"] = np.select(
-        [
-            fallback["published_adp_avg_pick"].notna(),
-            fallback["feature_adp_median"].notna(),
-        ],
-        [
-            "canonical_avg_adps",
-            "v2_feature_mart_fallback",
-        ],
-        default="missing",
-    )
+    if LEAGUE == "beta":
+        fallback["adp_avg_pick"] = fallback[
+            "feature_adp_median"
+        ].combine_first(fallback["published_adp_avg_pick"])
+        fallback["current_adp_source"] = np.select(
+            [
+                fallback["feature_adp_median"].notna(),
+                fallback["published_adp_avg_pick"].notna(),
+            ],
+            [
+                "v2_canonical_adp_family_consensus",
+                "etr_rank_last_resort",
+            ],
+            default="missing",
+        )
+    else:
+        fallback["adp_avg_pick"] = fallback[
+            "published_adp_avg_pick"
+        ].combine_first(fallback["feature_adp_median"])
+        fallback["current_adp_source"] = np.select(
+            [
+                fallback["published_adp_avg_pick"].notna(),
+                fallback["feature_adp_median"].notna(),
+            ],
+            [
+                "canonical_avg_adps",
+                "v2_feature_mart_fallback",
+            ],
+            default="missing",
+        )
     fallback["avg_pick"] = fallback["adp_avg_pick"]
     fallback["published_adp_year_exp"] = pd.to_numeric(
         fallback["published_adp_year_exp"],

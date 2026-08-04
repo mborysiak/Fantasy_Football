@@ -201,10 +201,19 @@ the row audit and receipt. The initial migration removes 476 duplicated
 year-null ETR rows. Raw `ETR_Ranks` remains the source authority, so generated
 `Avg_ADPs` junk is not retained as historical evidence.
 
-The current source snapshot contains 416 live DK rows, 497 NFFC rows (431
-offensive players plus 33 `TK` and 33 `TDSP` units), and 243 ETR rows. The
-latest local NFFC and ETR exports are both dated 2026-07-27; DK is refreshed
-from the live feed. Publication fails closed on unresolved/duplicate offensive
+NFFC `avg_pick`, `min_pick`, and `max_pick` are equal averages of Best Ball
+Overall and Best Ball $25/$50 where both contain the player. `std_dev` pools
+each feed's `(max_pick-min_pick)/5` within-feed spread with between-feed ADP
+disagreement. A fringe player present in only one of the two feeds retains
+that feed's center, bounds, and within-feed spread with `source_count=1` and a
+null `feed_gap`; zero is reserved for observed agreement between two feeds.
+`source_count`, `feed_gap`, aggregation/bounds/SD policy labels, and the ADP
+policy version remain on source `ADP_Averages`; the keyed publication preserves
+the runtime values. DraftKings keeps its direct API center, scales these NFFC
+bounds and pooled SD to that center, and labels the distribution as synthetic
+in the source provenance.
+
+Publication fails closed on unresolved/duplicate offensive
 keys, missing draft-entity keys, invalid ranks/picks, unsupported positions,
 lost source rows, or insufficient offensive depth. All three tables are
 generated/source-owned tables copied to Auction; Snake receives the full
@@ -290,8 +299,17 @@ legacy OOS center where available but uses the beta-scored expert consensus
 for fallback rows; its matcher fields come from the beta-scored V2 preseason
 context. NFFC uses the independently validated
 `nffc_scored_expert_consensus` rule described above.
-`V2_Production_Eligibility_Audit` retains all 1,490 reviewed eligibility rows,
-including governed exclusions.
+
+Beta eligibility remains ordered by ETR overall rank, but ETR does not define
+the current template-match ADP. Beta matcher `avg_pick` uses the same governed
+family-level `adp_median` as V2 training, falling back to the rebuilt canonical
+Model Inputs value and only then to ETR rank when a player lacks consensus
+coverage. This keeps the residual/upside comparison scale aligned between
+historical donors and the current player without changing the beta app's
+eligibility rule.
+
+`V2_Production_Eligibility_Audit` retains the full reviewed eligibility union
+for every league build, including governed exclusions and non-selected rows.
 
 Every live player requires a canonical `player_key` before context joins and
 receives exactly 80 historical donors. DK uses exact canonical ADP for 342

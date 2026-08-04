@@ -141,7 +141,7 @@ AVG_ADP_PUBLICATION_TABLES = (
     AVG_ADP_AUDIT_TABLE,
     AVG_ADP_RECEIPT_TABLE,
 )
-AVG_ADP_PUBLICATION_VERSION = "canonical_current_market_v1"
+AVG_ADP_PUBLICATION_VERSION = "canonical_current_market_v2"
 AVG_ADP_SOURCE_LEAGUES = ("dk", "nffc", "etr")
 AVG_ADP_ALLOWED_POSITIONS = {
     "dk": set(POSITIONS),
@@ -194,9 +194,6 @@ GOVERNED_PRODUCTION_EXCLUSIONS_BY_YEAR: Mapping[
             "f973b1c8-3470-57f5-bc68-42e35a830411": (
                 "market_only_without_current_projection_center"
             ),
-            "0c370254-2acd-5345-a009-d0744ed3affe": (
-                "market_only_without_current_projection_center"
-            ),
             "380d2c7d-99ef-5ddc-a057-fab93f1480ba": (
                 "market_only_without_current_projection_center"
             ),
@@ -205,6 +202,9 @@ GOVERNED_PRODUCTION_EXCLUSIONS_BY_YEAR: Mapping[
             ),
         },
         "nffc": {
+            "0fa72b32-393b-5f55-bb48-0f21f5283baf": (
+                "market_only_without_current_projection_center"
+            ),
             "0c370254-2acd-5345-a009-d0744ed3affe": (
                 "market_only_without_current_projection_center"
             ),
@@ -214,16 +214,19 @@ GOVERNED_PRODUCTION_EXCLUSIONS_BY_YEAR: Mapping[
             "3f0b675d-ef58-5606-8f9e-73bc2a9b4118": (
                 "market_only_without_current_projection_center"
             ),
-            "6a9a206f-e15c-53c7-a74e-1946694240b4": (
-                "market_only_without_current_projection_center"
-            ),
-            "6fa42987-c7cb-5523-b13f-3edc75481002": (
+            "49dce437-30ec-5752-9739-75ed09f72042": (
                 "market_only_without_current_projection_center"
             ),
             "7ae33581-c9ae-51b6-a8d5-fe24f3e5615a": (
                 "market_only_without_current_projection_center"
             ),
+            "862eb067-7abb-5156-9cf1-33c3ad11333c": (
+                "market_only_without_current_projection_center"
+            ),
             "86efb1f0-e04a-5f4d-b8cb-048353f1d3f5": (
+                "market_only_without_current_projection_center"
+            ),
+            "89aacaaa-acba-5185-83b3-7b68130c4465": (
                 "market_only_without_current_projection_center"
             ),
             "f973b1c8-3470-57f5-bc68-42e35a830411": (
@@ -1227,6 +1230,14 @@ def _validate_source_market_frames(
         "std_dev",
         "league",
     )
+    adp_policy_columns = (
+        "source_count",
+        "feed_gap",
+        "aggregation_policy",
+        "bounds_policy",
+        "std_dev_policy",
+        "adp_policy_version",
+    )
     etr_required = (
         "player",
         "team",
@@ -1241,7 +1252,11 @@ def _validate_source_market_frames(
     _require_columns(adp_rows, adp_required, "ADP_Averages")
     _require_columns(etr_rows, etr_required, "ETR_Ranks")
 
-    adp = adp_rows.loc[:, list(adp_required)].copy()
+    adp = adp_rows.copy()
+    for column in adp_policy_columns:
+        if column not in adp:
+            adp[column] = pd.NA
+    adp = adp.loc[:, [*adp_required, *adp_policy_columns]].copy()
     adp["year"] = pd.to_numeric(adp["year"], errors="coerce").astype(
         "Int64"
     )
@@ -1671,6 +1686,12 @@ def build_current_avg_adp_publication(
         "max_pick",
         "std_dev",
         "league",
+        "source_count",
+        "feed_gap",
+        "aggregation_policy",
+        "bounds_policy",
+        "std_dev_policy",
+        "adp_policy_version",
     )
     etr_source_columns = (
         "player",
@@ -1717,6 +1738,15 @@ def build_current_avg_adp_publication(
     etr_standard["team"] = etr_standard["source_team"]
     etr_standard["source_table"] = "ETR_Ranks"
     etr_standard["source_metric"] = "etr_rank"
+    for column in (
+        "source_count",
+        "feed_gap",
+        "aggregation_policy",
+        "bounds_policy",
+        "std_dev_policy",
+        "adp_policy_version",
+    ):
+        etr_standard[column] = pd.NA
 
     standardized_columns = (
         "source_player",
@@ -1737,6 +1767,12 @@ def build_current_avg_adp_publication(
         "source_table",
         "source_metric",
         "source_row_sha256",
+        "source_count",
+        "feed_gap",
+        "aggregation_policy",
+        "bounds_policy",
+        "std_dev_policy",
+        "adp_policy_version",
     )
     source = pd.concat(
         [
@@ -2089,6 +2125,12 @@ def build_current_avg_adp_publication(
         "source_table",
         "source_metric",
         "source_row_sha256",
+        "source_count",
+        "feed_gap",
+        "aggregation_policy",
+        "bounds_policy",
+        "std_dev_policy",
+        "adp_policy_version",
         "removed_invalid_year_row_count",
     )
     current = source.loc[:, list(publish_columns)].copy()
@@ -2209,6 +2251,12 @@ def build_current_avg_adp_publication(
         "source_table",
         "source_metric",
         "source_row_sha256",
+        "source_count",
+        "feed_gap",
+        "aggregation_policy",
+        "bounds_policy",
+        "std_dev_policy",
+        "adp_policy_version",
         "removed_invalid_year_row_count",
         "source_snapshot_sha256",
         "publication_snapshot_id",
@@ -2252,10 +2300,29 @@ def load_current_avg_adp_publication(
         V2_DATABASES["dk"] if v2_database is None else Path(v2_database)
     )
     with sqlite3.connect(source_db) as connection:
+        adp_columns = {
+            str(row[1])
+            for row in connection.execute(
+                'PRAGMA table_info("ADP_Averages")'
+            )
+        }
+        policy_columns = (
+            "source_count",
+            "feed_gap",
+            "aggregation_policy",
+            "bounds_policy",
+            "std_dev_policy",
+            "adp_policy_version",
+        )
+        policy_select = ",\n                   ".join(
+            column if column in adp_columns else f"NULL AS {column}"
+            for column in policy_columns
+        )
         adp_rows = pd.read_sql_query(
-            """
+            f"""
             SELECT player, pos, year, avg_pick, min_pick, max_pick,
-                   std_dev, league
+                   std_dev, league,
+                   {policy_select}
             FROM ADP_Averages
             WHERE CAST(year AS INTEGER)=?
               AND LOWER(league) IN ('dk', 'nffc')

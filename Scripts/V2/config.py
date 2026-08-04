@@ -571,11 +571,12 @@ MARKET_VALUE_SPECS = {
         "source": "fantasypros_best_ball_adp",
         "metrics": {"adp": "pick_best_ball"},
     },
-    # ADP_Averages already contains one player-level NFFC composite built from
-    # the four contest feeds in NFFC_ADP.  Keep those raw contest rows as
-    # candidate/identity evidence above, but do not admit them here: ingesting
-    # both the four rows and their composite would give one provider family
-    # five votes in the cross-market ADP consensus.
+    # ADP_Averages contains one player-level NFFC observation built from Best
+    # Ball Overall plus Best Ball $25/$50. Raw NFFC contest rows remain
+    # candidate/identity evidence above but never receive separate model votes.
+    # build_market_consensus applies the governed family policy: MFL through
+    # 2024, FantasyPros redraft once, FantasyPros best ball once, DK once, and
+    # NFFC once. Other ADP fields remain raw audit/challenger observations.
     "FFA_Projections": {
         "source": "ffa_projection",
         "metrics": {

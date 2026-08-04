@@ -151,11 +151,18 @@ One row exists per `player_key, season, source`. It retains normalized ADP,
 expert rank, and provider position rank plus source table and identity context.
 
 NFFC contributes one modeled ADP row per player-season:
-`adp_average_nffc`, the existing player-level composite of Rotowire Online,
-Best Ball Overall, Best Ball $25/$50, and Cutline. The four underlying
-`NFFC_ADP` contest rows remain candidate/identity evidence but do not enter
-`player_season_market_values`; this prevents one correlated provider family
-from receiving five votes in the cross-market ADP consensus.
+`adp_average_nffc`, the equal-center composite of Best Ball Overall and Best
+Ball $25/$50. Raw `NFFC_ADP` contest rows remain candidate/identity evidence
+but do not enter `player_season_market_values` as separate model votes.
+
+The canonical `adp_median` first reduces observations to one vote per approved
+provider family, then takes the player-season median. Families are MFL through
+2024 only, FantasyPros redraft, FantasyPros best ball `AVG`, DraftKings, and
+the two-feed NFFC aggregate. The canonical `ADP_Averages` DraftKings row takes
+precedence over the legacy `DraftKings_ADP` row when both exist. FFA,
+FantasyPoints, ETR, and component FantasyPros best-ball fields remain raw
+audit/challenger evidence and do not silently expand the consensus. The active
+policy version and SHA-256 are written to the V2 source manifest.
 
 Neither long table contains realized NFL outcomes. These tables are the
 rebuildable source for future feature challengers even when those challengers

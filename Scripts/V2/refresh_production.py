@@ -28,7 +28,19 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Iterable, Mapping, Sequence
 
+import pandas as pd
+
 from Scripts.Modeling.salary_source_parser import governed_salary_source_specs
+from Scripts.V2.adp_policy import (
+    ADP_POLICY_VERSION,
+    DK_AGGREGATION_POLICY,
+    DK_BOUNDS_POLICY,
+    DK_STD_DEV_POLICY,
+    NFFC_AGGREGATION_POLICY,
+    NFFC_MODELED_SOURCES,
+    adp_policy_sha256,
+    validate_nffc_pair_agreement,
+)
 from Scripts.V2.contracts import scoring_hash
 from Scripts.V2.production_cycle import (
     APPROVED_PRODUCTION_CYCLES,
@@ -1790,7 +1802,7 @@ def _validate_source_markets(path: Path, year: int) -> dict[str, Any]:
     minimums = cycle.source_market_minimums
     specs = {
         "dk": ("ADP_Averages", "year=? AND league='dk'"),
-        "nffc": ("NFFC_ADP", "year=?"),
+        "nffc": ("ADP_Averages", "year=? AND league='nffc'"),
         "etr": ("ETR_Ranks", "year=?"),
     }
     results: dict[str, Any] = {}
@@ -1812,11 +1824,28 @@ def _validate_source_markets(path: Path, year: int) -> dict[str, Any]:
                 )
             results[source] = count
 
-        nffc_feed_counts = {
-            str(label): int(count)
-            for label, count in connection.execute(
+        nffc_columns = {
+            str(row[1])
+            for row in connection.execute('PRAGMA table_info("NFFC_ADP")')
+        }
+        if "max_pick" not in nffc_columns:
+            raise ValueError(
+                "Raw NFFC source database is missing max_pick required by "
+                f"the {year} feed-boundary contract"
+            )
+        nffc_feed_stats = {
+            str(label): {
+                "count": int(count),
+                "max_pick": (
+                    None if max_pick is None else float(max_pick)
+                ),
+            }
+            for label, count, max_pick in connection.execute(
                 """
-                SELECT COALESCE(source, '<NULL>'), COUNT(*)
+                SELECT
+                    COALESCE(source, '<NULL>'),
+                    COUNT(*),
+                    MAX(CAST(max_pick AS REAL))
                 FROM NFFC_ADP
                 WHERE year=?
                 GROUP BY COALESCE(source, '<NULL>')
@@ -1824,14 +1853,18 @@ def _validate_source_markets(path: Path, year: int) -> dict[str, Any]:
                 (year,),
             )
         }
+        nffc_feed_counts = {
+            label: int(stats["count"])
+            for label, stats in nffc_feed_stats.items()
+        }
         expected_labels = set(cycle.nffc_source_feed_minimums)
         actual_labels = set(nffc_feed_counts)
-        if actual_labels != expected_labels:
+        if not expected_labels.issubset(actual_labels):
             raise ValueError(
-                f"NFFC_ADP source labels for {year} do not match the annual "
+                f"NFFC_ADP modeled source labels for {year} do not match the annual "
                 "contract: "
                 f"missing={sorted(expected_labels - actual_labels)}, "
-                f"unexpected={sorted(actual_labels - expected_labels)}"
+                f"archived={sorted(actual_labels - expected_labels)}"
             )
         for label, minimum in cycle.nffc_source_feed_minimums.items():
             count = nffc_feed_counts[label]
@@ -1840,7 +1873,148 @@ def _validate_source_markets(path: Path, year: int) -> dict[str, Any]:
                     f"Raw NFFC feed {label} has only {count} rows for {year}; "
                     f"the {year} release floor is {minimum}"
                 )
-        results["nffc_feed_counts"] = dict(sorted(nffc_feed_counts.items()))
+        nffc_feed_pick_boundaries: dict[str, int] = {}
+        for label, expected_boundary in (
+            cycle.nffc_source_feed_pick_boundaries.items()
+        ):
+            observed_boundary = nffc_feed_stats[label]["max_pick"]
+            if (
+                observed_boundary is None
+                or not math.isclose(
+                    observed_boundary,
+                    float(expected_boundary),
+                    rel_tol=0.0,
+                    abs_tol=1e-9,
+                )
+            ):
+                raise ValueError(
+                    f"Raw NFFC feed {label} ends at max_pick="
+                    f"{observed_boundary} for {year}; the annual source "
+                    f"boundary is {expected_boundary}"
+                )
+            nffc_feed_pick_boundaries[label] = int(expected_boundary)
+        results["nffc_feed_counts"] = {
+            label: nffc_feed_counts[label]
+            for label in sorted(expected_labels)
+        }
+        archived_feed_counts = {
+            label: nffc_feed_counts[label]
+            for label in sorted(actual_labels - expected_labels)
+        }
+        if archived_feed_counts:
+            results["nffc_archived_feed_counts"] = archived_feed_counts
+        results["nffc_feed_pick_boundaries"] = dict(
+            sorted(nffc_feed_pick_boundaries.items())
+        )
+
+        aggregate_columns = {
+            str(row[1])
+            for row in connection.execute(
+                'PRAGMA table_info("ADP_Averages")'
+            )
+        }
+        required_aggregate_columns = {
+            "player",
+            "pos",
+            "avg_pick",
+            "source_count",
+            "aggregation_policy",
+            "bounds_policy",
+            "std_dev_policy",
+            "adp_policy_version",
+        }
+        missing_aggregate_columns = sorted(
+            required_aggregate_columns.difference(aggregate_columns)
+        )
+        if missing_aggregate_columns:
+            raise ValueError(
+                "NFFC ADP aggregate has not been rebuilt under the governed "
+                f"two-feed policy; missing columns={missing_aggregate_columns}"
+            )
+        invalid_aggregate_rows = int(
+            connection.execute(
+                """
+                SELECT COUNT(*)
+                FROM ADP_Averages
+                WHERE year=? AND league='nffc'
+                  AND (
+                    aggregation_policy IS NULL
+                    OR aggregation_policy<>?
+                    OR adp_policy_version IS NULL
+                    OR adp_policy_version<>?
+                    OR source_count NOT BETWEEN 1 AND 2
+                  )
+                """,
+                (year, NFFC_AGGREGATION_POLICY, ADP_POLICY_VERSION),
+            ).fetchone()[0]
+        )
+        if invalid_aggregate_rows:
+            raise ValueError(
+                f"NFFC ADP aggregate has {invalid_aggregate_rows} rows outside "
+                "the governed Overall + 25/50 policy"
+            )
+        invalid_dk_policy_rows = int(
+            connection.execute(
+                """
+                SELECT COUNT(*)
+                FROM ADP_Averages
+                WHERE year=? AND league='dk'
+                  AND (
+                    aggregation_policy IS NULL
+                    OR aggregation_policy<>?
+                    OR bounds_policy IS NULL
+                    OR bounds_policy<>?
+                    OR std_dev_policy IS NULL
+                    OR std_dev_policy<>?
+                    OR adp_policy_version IS NULL
+                    OR adp_policy_version<>?
+                  )
+                """,
+                (
+                    year,
+                    DK_AGGREGATION_POLICY,
+                    DK_BOUNDS_POLICY,
+                    DK_STD_DEV_POLICY,
+                    ADP_POLICY_VERSION,
+                ),
+            ).fetchone()[0]
+        )
+        if invalid_dk_policy_rows:
+            raise ValueError(
+                f"DraftKings ADP has {invalid_dk_policy_rows} rows without "
+                "direct-center/two-feed synthetic distribution provenance"
+            )
+        incomplete_top_rows = int(
+            connection.execute(
+                """
+                SELECT COUNT(*)
+                FROM ADP_Averages
+                WHERE year=? AND league='nffc'
+                  AND avg_pick<=240
+                  AND source_count<>2
+                """,
+                (year,),
+            ).fetchone()[0]
+        )
+        if incomplete_top_rows:
+            raise ValueError(
+                f"NFFC ADP aggregate has {incomplete_top_rows} top-240 rows "
+                "without both modeled feeds"
+            )
+        pair_rows = pd.read_sql_query(
+            """
+            SELECT player, pos, source, pick_nffc
+            FROM NFFC_ADP
+            WHERE year=? AND source IN (?, ?)
+            """,
+            connection,
+            params=(year, *NFFC_MODELED_SOURCES),
+        )
+        results["nffc_pair_agreement"] = validate_nffc_pair_agreement(
+            pair_rows
+        )
+        results["adp_policy_version"] = ADP_POLICY_VERSION
+        results["adp_policy_sha256"] = adp_policy_sha256()
     return results
 
 

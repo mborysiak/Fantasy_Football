@@ -27,10 +27,12 @@ def test_2026_cycle_is_explicit_and_complete():
     assert cycle.next_target_version == "v2_next_year_expert_residual_v1"
     assert cycle.source_market_minimums["nffc"] == 360
     assert cycle.nffc_source_feed_minimums == {
-        "nffc_rotowire_online": 400,
         "nffc_best_ball_overall": 400,
         "nffc_best_ball_25s50s": 400,
-        "nffc_cutline": 250,
+    }
+    assert cycle.nffc_source_feed_pick_boundaries == {
+        "nffc_best_ball_overall": 360,
+        "nffc_best_ball_25s50s": 360,
     }
     assert cycle.production_population_minimums["nffc"] == 360
     assert cycle.weekly_horizons == {"dk": 16, "nffc": 17, "beta": 16}
@@ -54,10 +56,12 @@ def test_cycle_contract_hash_is_deterministic():
     cycle = get_production_cycle(2026)
 
     assert cycle.receipt()["nffc_source_feed_minimums"] == {
-        "nffc_rotowire_online": 400,
         "nffc_best_ball_overall": 400,
         "nffc_best_ball_25s50s": 400,
-        "nffc_cutline": 250,
+    }
+    assert cycle.receipt()["nffc_source_feed_pick_boundaries"] == {
+        "nffc_best_ball_overall": 360,
+        "nffc_best_ball_25s50s": 360,
     }
     assert cycle.contract_sha256() == cycle.contract_sha256()
     assert len(cycle.contract_sha256()) == 64
@@ -69,7 +73,7 @@ def test_cycle_rejects_invalid_nffc_source_feed_floor(monkeypatch):
         cycle,
         nffc_source_feed_minimums={
             **cycle.nffc_source_feed_minimums,
-            "nffc_cutline": 0,
+            "nffc_best_ball_overall": 0,
         },
     )
     monkeypatch.setitem(
@@ -79,6 +83,28 @@ def test_cycle_rejects_invalid_nffc_source_feed_floor(monkeypatch):
     )
 
     with pytest.raises(ValueError, match="invalid NFFC source-feed floors"):
+        get_production_cycle(2026)
+
+
+def test_cycle_rejects_invalid_nffc_source_feed_boundary(monkeypatch):
+    cycle = get_production_cycle(2026)
+    invalid = replace(
+        cycle,
+        nffc_source_feed_pick_boundaries={
+            **cycle.nffc_source_feed_pick_boundaries,
+            "nffc_best_ball_overall": 0,
+        },
+    )
+    monkeypatch.setitem(
+        cycle_module.APPROVED_PRODUCTION_CYCLES,
+        2026,
+        invalid,
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="invalid NFFC source-feed pick boundaries",
+    ):
         get_production_cycle(2026)
 
 

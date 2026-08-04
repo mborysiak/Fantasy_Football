@@ -6,6 +6,12 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from Scripts.V2.adp_policy import (
+    ADP_POLICY_VERSION,
+    DK_AGGREGATION_POLICY,
+    DK_BOUNDS_POLICY,
+    DK_STD_DEV_POLICY,
+)
 from Scripts.V2.refresh_dk_adp import (
     ADP_COLUMNS,
     build_dk_adp_rows,
@@ -192,7 +198,7 @@ def test_replace_current_dk_rows_changes_only_target_slice(tmp_path):
             connection,
         )
 
-    assert list(stored.columns) == list(ADP_COLUMNS)
+    assert list(stored.columns[: len(ADP_COLUMNS)]) == list(ADP_COLUMNS)
     assert len(stored.loc[stored["league"].eq("nffc")]) == 3
     assert (
         stored.loc[
@@ -211,3 +217,11 @@ def test_replace_current_dk_rows_changes_only_target_slice(tmp_path):
         current_stored["std_dev"],
         (current_stored["max_pick"] - current_stored["min_pick"]) / 5.0,
     )
+    assert set(current_stored["aggregation_policy"]) == {
+        DK_AGGREGATION_POLICY
+    }
+    assert set(current_stored["bounds_policy"]) == {DK_BOUNDS_POLICY}
+    assert set(current_stored["std_dev_policy"]) == {DK_STD_DEV_POLICY}
+    assert set(current_stored["adp_policy_version"]) == {
+        ADP_POLICY_VERSION
+    }

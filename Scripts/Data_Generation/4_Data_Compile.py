@@ -19,6 +19,10 @@ from config import YEAR, LEAGUE, DB_NAME, CLASS_CUTS, POSITIONS, get_scoring_dic
 
 from ff.db_operations import DataManage
 from ff import general
+from Scripts.V2.adp_policy import (
+    LEGACY_CANONICAL_PICK_COLUMNS,
+    mask_disallowed_mfl,
+)
 
 with warnings.catch_warnings():
     warnings.filterwarnings(
@@ -294,9 +298,13 @@ def add_adp(df, pos, source, bad_ty_adp=False):
     
     adp = adp.rename(columns={'pick': f'pick_{source}'})
     
-    # early in the YEAR, the QB ADP is not accurate, so we remove it
-    if source == 'mfl' and bad_ty_adp:
-        adp.loc[adp.year==YEAR, f'pick_{source}'] = np.nan
+    # MFL remains historical evidence through 2024, but its recent report can
+    # mix formats such as superflex. It is never admitted from 2025 onward.
+    if source == 'mfl':
+        adp[f'pick_{source}'] = mask_disallowed_mfl(
+            adp[f'pick_{source}'],
+            adp['year'],
+        )
     
     df = pd.merge(df, adp, on=['player', 'year'], how='left')
 
@@ -308,21 +316,34 @@ def add_nffc_adp(df, pos):
     """
     nffc = dm.read(f'''SELECT player,
                              year,
-                             avg(pick_nffc) AS pick_nffc
-                      FROM NFFC_ADP
+                             avg_pick AS pick_nffc
+                      FROM ADP_Averages
                       WHERE pos = '{pos}'
-                      GROUP BY player, year
+                            AND league = 'nffc'
                       ''', DB_NAME)
     df = pd.merge(df, nffc, on=['player', 'year'], how='left')
+    return df
+
+
+def add_dk_adp(df, pos):
+    """Pull the canonical direct-center DraftKings family observation."""
+    dk = dm.read(f'''SELECT player,
+                           year,
+                           avg_pick AS pick_dk
+                    FROM ADP_Averages
+                    WHERE pos = '{pos}'
+                          AND league = 'dk'
+                    ''', DB_NAME)
+    df = pd.merge(df, dk, on=['player', 'year'], how='left')
     return df
 
 def add_fpros_bestball_adp(df):
     """
     Pull FantasyPros BestBall ADP data for a given position.
     """
-    fpros = dm.read(f'''SELECT *
+    fpros = dm.read(f'''SELECT player, year, pick_best_ball
                         FROM FantasyPros_Best_Ball_ADP
-                      ''', DB_NAME).drop('team', axis=1, errors='ignore')
+                      ''', DB_NAME)
     df = pd.merge(df, fpros, on=['player', 'year'], how='left')
     return df
 
@@ -383,8 +404,7 @@ def consensus_fill(df, pos):
         'proj_points': get_cols_to_fill('proj_points', sources),
         'pos_rank': get_cols_to_fill('pos_rank', sources) + ['etr_pos_rank', 'evan_silva_pos_rank'],
 
-        'pick': ['pick_mfl', 'pick_fpros', 'pick_nffc', 'pick_bb10', 'pick_rtsports',
-                 'pick_underdog', 'pick_drafters', 'pick_best_ball']
+        'pick': list(LEGACY_CANONICAL_PICK_COLUMNS)
     }
 
     for k, tf in to_fill.items():
@@ -406,12 +426,19 @@ def consensus_fill(df, pos):
         tf = [c for c in tf if c in df.columns]
 
         
-        # fill in nulls based on available data
-        for c in tf:
-            df.loc[df[c].isnull(), c] = df.loc[df[c].isnull(), tf].mean(axis=1)
+        # Projection families retain the legacy within-row source fill. ADP is
+        # different: imputing a missing source from the other providers creates
+        # fake votes and understates disagreement, so keep only observed family
+        # values and take their robust median.
+        if k != 'pick':
+            for c in tf:
+                df.loc[df[c].isnull(), c] = df.loc[df[c].isnull(), tf].mean(axis=1)
 
-        # fill in the average for all cols
-        df['avg_' + k] = df[tf].mean(axis=1, skipna=True)
+        if k == 'pick':
+            df['adp_source_count'] = df[tf].notna().sum(axis=1).astype(int)
+            df['avg_' + k] = df[tf].median(axis=1, skipna=True)
+        else:
+            df['avg_' + k] = df[tf].mean(axis=1, skipna=True)
         df['std_' + k] = df[tf].std(axis=1, skipna=True)
 
         global_cv = (df.loc[df['std_' + k] != 0, 'std_' + k] / df.loc[df['std_' + k] != 0, 'avg_' + k]).mean()
@@ -419,6 +446,12 @@ def consensus_fill(df, pos):
 
         df['avg_' + k] = df['avg_' + k].round(2)
         df['std_' + k] = df['std_' + k].round(2)
+
+        if k == 'pick':
+            # Provider-family rows are retained in source tables for audit, but
+            # the compiled modeling/template surface exposes only the governed
+            # family median and its observed-family disagreement.
+            df = df.drop(columns=tf)
 
     df['etr_pos_rank_log'] = np.log(df['etr_pos_rank'] + 1)
 
@@ -517,6 +550,7 @@ def get_team_projections():
         df = add_adp(df, pos, 'mfl', bad_adps); print(df.shape[0])
         df = add_adp(df, pos, 'fpros', bad_adps); print(df.shape[0])
         df = add_nffc_adp(df, pos); print(df.shape[0])
+        df = add_dk_adp(df, pos); print(df.shape[0])
         df = add_fpros_bestball_adp(df); print(df.shape[0])
 
         df = consensus_fill(df, pos)
@@ -603,7 +637,7 @@ def proj_market_share(df, proj_col_name):
     return df
 
 def get_pick_vs_team_stats(df):
-    pick_rank_cols = ['avg_pick_log', 'avg_pos_rank', 'pick_fpros_log', 'pick_best_ball_log', 'avg_proj_points']
+    pick_rank_cols = ['avg_pick_log', 'avg_pos_rank', 'avg_proj_points']
     team_adp = df.groupby(['team', 'pos', 'year']).agg({r: ['sum', 'mean', 'min', 'max'] for r in pick_rank_cols}).reset_index()
     team_adp.columns = ['team_' + c[0] + '_' + c[1] if c[1]!='' else c[0] for c in team_adp.columns]
     df = pd.merge(df, team_adp, on=['team', 'pos', 'year'])
@@ -632,6 +666,7 @@ def get_max_qb():
     df = add_adp(df, pos, 'mfl', bad_adps); print(df.shape[0])
     df = add_adp(df, pos, 'fpros', bad_adps); print(df.shape[0])
     df = add_nffc_adp(df, pos); print(df.shape[0])
+    df = add_dk_adp(df, pos); print(df.shape[0])
     df = add_fpros_bestball_adp(df); print(df.shape[0])
 
     df = consensus_fill(df, pos); print(df.shape[0])
@@ -772,8 +807,8 @@ def drop_duplicate_players(df, order_col, rookie=False):
 def remove_low_corrs(df, corr_cut = 3, collinear_cut = 0.995):
     obj_cols = list(df.dtypes[df.dtypes=='object'].index)
     obj_cols.extend(['year', 'pos', 'games', 'season', 'games_next', 'year_exp', 
-                     'avg_pick', 'avg_pick_log', 'pick_fpros', 'pick_fpros_log', 'pick_nffc', 'pick_best_ball',
-                     'avg_pos_rank', 'fpros_avg_pos_rank', 'fpros_pos_rank_log', 'pick_mfl_log',
+                     'avg_pick', 'avg_pick_log', 'adp_source_count',
+                     'avg_pos_rank', 'fpros_avg_pos_rank', 'fpros_pos_rank_log',
                      'avg_proj_pass_yds', 'avg_proj_pass_td', 'avg_proj_rush_yds', 'avg_proj_rush_td', 'avg_proj_rec_yds', 'avg_proj_rec_td', 'avg_proj_rec',
                      'avg_proj_points', 'avg_proj_rush_points', 'avg_proj_pass_points', 'avg_proj_rec_points',
                      'avg_proj_points_exp', 'avg_proj_points_exp_diff', 'avg_proj_points_exp_diff', 'avg_pick_exp', 'avg_pick_exp_diff',
@@ -1024,6 +1059,7 @@ for pos in POSITIONS:
     df = add_adp(df, pos, 'mfl', bad_adps); print(df.shape[0])
     df = add_adp(df, pos, 'fpros', bad_adps); print(df.shape[0])
     df = add_nffc_adp(df, pos); print(df.shape[0])
+    df = add_dk_adp(df, pos); print(df.shape[0])
     df = add_fpros_bestball_adp(df); print(df.shape[0])
 
     df = consensus_fill(df, pos); print(df.shape[0])

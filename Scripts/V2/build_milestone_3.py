@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from Scripts.V2.adp_policy import adp_policy_receipt
 from Scripts.V2.build_feature_mart import build_feature_mart
 from Scripts.V2.build_feature_sources import (
     build_market_values,
@@ -355,6 +356,7 @@ def _source_manifest(
             "row_count": int(spine_rows),
         }
     )
+    rows.append(adp_policy_receipt(run_id))
     return align_columns(
         pd.DataFrame(rows),
         SOURCE_MANIFEST_COLUMNS,
