@@ -1,0 +1,24 @@
+{
+  "point_all_gates_pass": false,
+  "point_gates": {
+    "controlled_at_least_3_positions_nonworse": false,
+    "controlled_at_least_6_season_wins": false,
+    "controlled_player_interval_upper_nonpositive": false,
+    "controlled_pooled_improvement_at_least_0_001": false,
+    "controlled_recent_nonworse": false,
+    "controlled_season_interval_upper_nonpositive": false,
+    "production_pooled_nonworse": false,
+    "production_recent_nonworse": false
+  },
+  "point_next_action": "retain_outside_production",
+  "scale_all_gates_pass": false,
+  "scale_gates": {
+    "at_least_5_season_wins": false,
+    "coverage_error_nonworse": true,
+    "player_interval_upper_nonpositive": false,
+    "pooled_crps_improvement_at_least_0_25_percent": false,
+    "recent_crps_nonworse": false,
+    "season_interval_upper_nonpositive": false
+  },
+  "scale_next_action": "retain_outside_production"
+}

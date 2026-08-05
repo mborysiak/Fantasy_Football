@@ -1,0 +1,22 @@
+{
+  "all_league_gates_pass": false,
+  "coverage_50": 0.496583850931677,
+  "coverage_80": 0.7953416149068323,
+  "gates": {
+    "coverage_50_acceptable": true,
+    "coverage_80_acceptable": true,
+    "no_position_worsens_more_than_0_01": false,
+    "player_cluster_interval_upper_nonpositive": false,
+    "pooled_distribution_crps_nonworse": false,
+    "pooled_rmse_improves": false,
+    "recent_rmse_improves": false
+  },
+  "max_position_rmse_delta": 0.012798601290280764,
+  "player_cluster_95": [
+    -0.0030194863024518683,
+    0.00313256314675152
+  ],
+  "pooled_distribution_crps_delta": 0.00042473695123179667,
+  "pooled_rmse_delta": 7.681172645135348e-05,
+  "recent_rmse_delta": 3.8595562962928653e-05
+}

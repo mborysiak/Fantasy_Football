@@ -1,0 +1,7 @@
+__pycache__/
+results_projection_*/grid_predictions_*.csv
+results_projection_*/component_predictions.csv
+results_projection_*/paired_point_predictions.csv
+results_projection_*/strict_prior_residuals.csv
+results_projection_*/distribution_rows.csv
+results_projection_*/shadow_2026_predictions.csv

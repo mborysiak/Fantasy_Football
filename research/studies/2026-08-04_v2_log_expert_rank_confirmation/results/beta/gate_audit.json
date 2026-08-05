@@ -1,0 +1,14 @@
+{
+  "all_gates_pass": false,
+  "gates": {
+    "controlled_at_least_3_positions_nonworse": true,
+    "controlled_at_least_6_season_wins": false,
+    "controlled_player_interval_upper_nonpositive": false,
+    "controlled_pooled_improvement_at_least_0_001": true,
+    "controlled_recent_nonworse": true,
+    "controlled_season_interval_upper_nonpositive": false,
+    "production_pooled_nonworse": true,
+    "production_recent_nonworse": true
+  },
+  "next_action": "retain_normalized_rank_as_challenger"
+}

@@ -14,6 +14,34 @@ reproducible bundles.
   data contract/runbook.
 
 ## Current Study Types
+- Normalized expert-rank promotion decision. The final test reselects the full
+  locked Lasso/RandomForest/LightGBM grids at every origin after adding only
+  the scoring-specific normalized rank feature. DK improves pooled/recent
+  RMSE by 0.00181/0.00370 and player CRPS by 0.00112, but its player interval
+  crosses zero and its recent gain is entirely 2025. Beta is flat-worse on
+  pooled/recent RMSE, worsens player CRPS by 0.00042, and worsens QB RMSE by
+  0.01280. Only 3/6 recent league-season cells improve. Stage A fails, so the
+  frozen protocol does not run template/roster Stage B. Reject production
+  promotion and retain rank only for research/audit. See
+  `studies/2026-08-04_v2_normalized_rank_promotion/`.
+- Logged expert-rank level confirmation. On the current promoted DK/beta
+  lineages, `log1p(median raw overall rank)` is compared directly with the
+  normalized within-source season-position percentile median. Raw log worsens
+  controlled/production RMSE by 0.00076/0.00174 in DK but improves by
+  0.00162/0.00249 in beta; both controlled comparisons win only 5/9 seasons,
+  DK and beta point in opposite directions, and relevant intervals cross zero.
+  Retain normalized rank as the more depth- and QB-placement-robust unpromoted
+  challenger. See `studies/2026-08-04_v2_log_expert_rank_confirmation/`.
+- Logged expert-rank disagreement. Published ranks are normalized within
+  source/season/position, mapped to a common position depth, transformed with
+  `log1p`, and summarized by cross-source MAD; one-source rows remain missing.
+  Against the already useful normalized rank-level challenger, the added
+  disagreement/count/coverage family worsens controlled RMSE by 0.00803 DK
+  and 0.00326 beta and improves only RB. A strictly-prior residual-scale Ridge
+  also worsens Gaussian CRPS by 0.07%/0.03%; excess-over-prior disagreement
+  does not rescue either use. Reject global point and scale use, retain rank
+  level as the unpromoted challenger, and treat RB-only movement as post-hoc.
+  See `studies/2026-08-04_v2_logged_rank_disagreement/`.
 - Projection V2 Ridge downstream decision. The frozen equal-third
   Ridge(alpha 10)/RF/LightGBM swap was replayed on the corrected live lineage
   with annual 2017-2025 refits, strict-prior residuals, frozen player cohorts,

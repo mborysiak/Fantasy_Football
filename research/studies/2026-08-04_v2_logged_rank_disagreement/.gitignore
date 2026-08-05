@@ -1,0 +1,7 @@
+# Rebuildable row-level artifacts; retain compact scores, audits, and findings.
+__pycache__/
+results/*/inherited_raw_rank_features.csv
+results/*/logged_rank_features.csv
+results/*/point_oof_predictions.csv
+results/*/rank_source_detail.csv
+results/*/scale_oof_predictions.csv

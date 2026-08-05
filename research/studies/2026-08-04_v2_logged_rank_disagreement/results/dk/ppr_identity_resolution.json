@@ -1,0 +1,21 @@
+{
+  "seasons": {
+    "2025": {
+      "match_methods": {
+        "alias_confirmed_unique": 237
+      },
+      "resolved_rows": 237,
+      "rows": 237,
+      "staged_position_disagreements": 0
+    },
+    "2026": {
+      "match_methods": {
+        "alias_confirmed_unique": 240
+      },
+      "resolved_rows": 240,
+      "rows": 240,
+      "staged_position_disagreements": 0
+    }
+  },
+  "source_table": "ETR_Ranks_PPR"
+}

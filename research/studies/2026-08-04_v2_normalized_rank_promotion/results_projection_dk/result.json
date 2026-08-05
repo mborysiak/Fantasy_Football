@@ -1,0 +1,46 @@
+{
+  "database": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Databases\\Projection_V2.sqlite3",
+  "database_sha256": "F3F8BAC5D82FC5F00EF8771E90871739570C15133F24D2897258ADEB185FB082",
+  "feature_run_id": "milestone_3_20260804T193552Z_d67a2d3f",
+  "gate": {
+    "all_league_gates_pass": false,
+    "coverage_50": 0.49559136515658253,
+    "coverage_80": 0.7935542718151414,
+    "gates": {
+      "coverage_50_acceptable": true,
+      "coverage_80_acceptable": true,
+      "no_position_worsens_more_than_0_01": true,
+      "player_cluster_interval_upper_nonpositive": false,
+      "pooled_distribution_crps_nonworse": true,
+      "pooled_rmse_improves": true,
+      "recent_rmse_improves": true
+    },
+    "max_position_rmse_delta": 0.001007469859384269,
+    "player_cluster_95": [
+      -0.0045207730100436435,
+      0.0008732430302375567
+    ],
+    "pooled_distribution_crps_delta": -0.0011195181507457352,
+    "pooled_rmse_delta": -0.0018128508759875928,
+    "recent_rmse_delta": -0.0036992006044060943
+  },
+  "league": "dk",
+  "recent_season_deltas": [
+    {
+      "rmse_delta": 0.0033268606194565287,
+      "slice_value": "2023"
+    },
+    {
+      "rmse_delta": 0.0007461198470135599,
+      "slice_value": "2024"
+    },
+    {
+      "rmse_delta": -0.015920567908890515,
+      "slice_value": "2025"
+    }
+  ],
+  "selection_changes": 8,
+  "selection_rows": 30,
+  "shadow_complete_rows": 615,
+  "shadow_median_abs_delta": 0.056147843129374486
+}

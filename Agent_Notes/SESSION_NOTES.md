@@ -45,6 +45,31 @@ template tables consumed by downstream draft apps.
   development by 0.378%, and beta temporal by 0.527% versus the 0.5% gate.
   Reject the Ridge swap for 2026 and retain equal-third Lasso/RF/LightGBM.
   HistGBM remains rejected; production is unchanged.
+- Logged cross-provider expert-rank disagreement is rejected for both point
+  prediction and residual uncertainty. After within-source season-position
+  normalization, common-depth mapping, and `log1p` MAD, adding disagreement,
+  source count, and coverage to normalized rank level worsens controlled RMSE
+  by 0.00803 DK and 0.00326 beta and improves only RB. Strictly-prior scale
+  CRPS also worsens by 0.07%/0.03%, and causal excess disagreement does not
+  rescue the result. Keep normalized rank level as the unpromoted challenger;
+  the RB-only movement is post-hoc. See
+  `research/studies/2026-08-04_v2_logged_rank_disagreement/`.
+- A direct current-lineage raw-log confirmation also leaves normalized expert
+  rank preferred. `log1p(median raw overall rank)` worsens normalized-rank
+  controlled/production RMSE by 0.00076/0.00174 in DK but improves by
+  0.00162/0.00249 in beta. Both win only 5/9 controlled seasons and the
+  relevant intervals cross zero. The scoring disagreement plus normalized
+  rank's better depth/QB-placement semantics rejects raw log as a replacement.
+  See `research/studies/2026-08-04_v2_log_expert_rank_confirmation/`.
+- The final normalized-rank promotion test reselected the complete locked
+  model grids at every forecast origin. DK improves pooled/recent RMSE by
+  0.00181/0.00370 and player CRPS by 0.00112, but its interval crosses zero
+  and only 2025 improves recently. Beta is flat-worse, worsens player CRPS by
+  0.00042, and worsens QB RMSE by 0.01280. Only 3/6 recent league-season cells
+  win. Stage A therefore rejects promotion and intentionally does not run
+  post-failure template or roster transport. Keep normalized rank in
+  research/audit only. See
+  `research/studies/2026-08-04_v2_normalized_rank_promotion/`.
 - A follow-up expanded both LightGBM and CatBoost from eight to 16 pre-2023
   candidates. DK retained the exact LightGBM 0.05/100 incumbent. Beta selected
   a new 0.01/500 schedule pre-2023 but worsened pooled 2023-2025 blend RMSE by

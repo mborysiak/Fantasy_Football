@@ -1,0 +1,31 @@
+model_name,forecast_origin,candidate_id,parameters_json,selection_metric,selection_score,selection_start_season,selection_end_season,selection_seasons
+conditional_ppg_lasso,2017,3,"{""alpha"": 0.03}",rmse,3.621845371762706,2013,2016,4
+conditional_ppg_lasso,2018,3,"{""alpha"": 0.03}",rmse,3.5249684613361887,2013,2017,5
+conditional_ppg_lasso,2019,3,"{""alpha"": 0.03}",rmse,3.5148884608885758,2013,2018,6
+conditional_ppg_lasso,2020,3,"{""alpha"": 0.03}",rmse,3.4716952994984602,2013,2019,7
+conditional_ppg_lasso,2021,3,"{""alpha"": 0.03}",rmse,3.4546139541735243,2013,2020,8
+conditional_ppg_lasso,2022,3,"{""alpha"": 0.03}",rmse,3.413923557338342,2013,2021,9
+conditional_ppg_lasso,2023,3,"{""alpha"": 0.03}",rmse,3.3539630638578104,2013,2022,10
+conditional_ppg_lasso,2024,3,"{""alpha"": 0.03}",rmse,3.3387048017035594,2013,2023,11
+conditional_ppg_lasso,2025,2,"{""alpha"": 0.01}",rmse,3.323192832506446,2013,2024,12
+conditional_ppg_lasso,2026,3,"{""alpha"": 0.03}",rmse,3.2979396039350317,2013,2025,13
+conditional_ppg_random_forest,2017,0,"{""bootstrap"": true, ""max_depth"": 6, ""max_features"": 0.5, ""min_samples_leaf"": 5, ""n_estimators"": 250, ""random_state"": 1234}",rmse,3.610548059517305,2013,2016,4
+conditional_ppg_random_forest,2018,0,"{""bootstrap"": true, ""max_depth"": 6, ""max_features"": 0.5, ""min_samples_leaf"": 5, ""n_estimators"": 250, ""random_state"": 1234}",rmse,3.510546627281564,2013,2017,5
+conditional_ppg_random_forest,2019,0,"{""bootstrap"": true, ""max_depth"": 6, ""max_features"": 0.5, ""min_samples_leaf"": 5, ""n_estimators"": 250, ""random_state"": 1234}",rmse,3.489265223960814,2013,2018,6
+conditional_ppg_random_forest,2020,0,"{""bootstrap"": true, ""max_depth"": 6, ""max_features"": 0.5, ""min_samples_leaf"": 5, ""n_estimators"": 250, ""random_state"": 1234}",rmse,3.4334386961483796,2013,2019,7
+conditional_ppg_random_forest,2021,0,"{""bootstrap"": true, ""max_depth"": 6, ""max_features"": 0.5, ""min_samples_leaf"": 5, ""n_estimators"": 250, ""random_state"": 1234}",rmse,3.420248804327904,2013,2020,8
+conditional_ppg_random_forest,2022,0,"{""bootstrap"": true, ""max_depth"": 6, ""max_features"": 0.5, ""min_samples_leaf"": 5, ""n_estimators"": 250, ""random_state"": 1234}",rmse,3.3818568076815803,2013,2021,9
+conditional_ppg_random_forest,2023,0,"{""bootstrap"": true, ""max_depth"": 6, ""max_features"": 0.5, ""min_samples_leaf"": 5, ""n_estimators"": 250, ""random_state"": 1234}",rmse,3.329706333480659,2013,2022,10
+conditional_ppg_random_forest,2024,6,"{""bootstrap"": true, ""max_depth"": 10, ""max_features"": 0.5, ""min_samples_leaf"": 15, ""n_estimators"": 250, ""random_state"": 1234}",rmse,3.3166545887966405,2013,2023,11
+conditional_ppg_random_forest,2025,6,"{""bootstrap"": true, ""max_depth"": 10, ""max_features"": 0.5, ""min_samples_leaf"": 15, ""n_estimators"": 250, ""random_state"": 1234}",rmse,3.30283673409555,2013,2024,12
+conditional_ppg_random_forest,2026,6,"{""bootstrap"": true, ""max_depth"": 10, ""max_features"": 0.5, ""min_samples_leaf"": 15, ""n_estimators"": 250, ""random_state"": 1234}",rmse,3.2734648203483405,2013,2025,13
+conditional_ppg_lightgbm,2017,7,"{""learning_rate"": 0.05, ""max_depth"": 3, ""min_child_samples"": 20, ""n_estimators"": 100, ""num_leaves"": 7, ""reg_lambda"": 1.0}",rmse,3.639910289375519,2013,2016,4
+conditional_ppg_lightgbm,2018,7,"{""learning_rate"": 0.05, ""max_depth"": 3, ""min_child_samples"": 20, ""n_estimators"": 100, ""num_leaves"": 7, ""reg_lambda"": 1.0}",rmse,3.5364815449884026,2013,2017,5
+conditional_ppg_lightgbm,2019,7,"{""learning_rate"": 0.05, ""max_depth"": 3, ""min_child_samples"": 20, ""n_estimators"": 100, ""num_leaves"": 7, ""reg_lambda"": 1.0}",rmse,3.511907666028653,2013,2018,6
+conditional_ppg_lightgbm,2020,7,"{""learning_rate"": 0.05, ""max_depth"": 3, ""min_child_samples"": 20, ""n_estimators"": 100, ""num_leaves"": 7, ""reg_lambda"": 1.0}",rmse,3.456625003236862,2013,2019,7
+conditional_ppg_lightgbm,2021,7,"{""learning_rate"": 0.05, ""max_depth"": 3, ""min_child_samples"": 20, ""n_estimators"": 100, ""num_leaves"": 7, ""reg_lambda"": 1.0}",rmse,3.4365876881298476,2013,2020,8
+conditional_ppg_lightgbm,2022,7,"{""learning_rate"": 0.05, ""max_depth"": 3, ""min_child_samples"": 20, ""n_estimators"": 100, ""num_leaves"": 7, ""reg_lambda"": 1.0}",rmse,3.3964665310692914,2013,2021,9
+conditional_ppg_lightgbm,2023,7,"{""learning_rate"": 0.05, ""max_depth"": 3, ""min_child_samples"": 20, ""n_estimators"": 100, ""num_leaves"": 7, ""reg_lambda"": 1.0}",rmse,3.33945837454428,2013,2022,10
+conditional_ppg_lightgbm,2024,7,"{""learning_rate"": 0.05, ""max_depth"": 3, ""min_child_samples"": 20, ""n_estimators"": 100, ""num_leaves"": 7, ""reg_lambda"": 1.0}",rmse,3.3294754809691907,2013,2023,11
+conditional_ppg_lightgbm,2025,7,"{""learning_rate"": 0.05, ""max_depth"": 3, ""min_child_samples"": 20, ""n_estimators"": 100, ""num_leaves"": 7, ""reg_lambda"": 1.0}",rmse,3.3134403828914145,2013,2024,12
+conditional_ppg_lightgbm,2026,7,"{""learning_rate"": 0.05, ""max_depth"": 3, ""min_child_samples"": 20, ""n_estimators"": 100, ""num_leaves"": 7, ""reg_lambda"": 1.0}",rmse,3.283896829589611,2013,2025,13
