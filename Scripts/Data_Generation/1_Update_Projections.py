@@ -5,6 +5,7 @@ import sys
 import os
 import re
 import hashlib
+import time
 from io import StringIO
 from pathlib import Path
 
@@ -29,6 +30,9 @@ from Scripts.Data_Generation.fantasypros_projection_csv import (
     FANTASYPROS_PROJECTION_POSITIONS,
     build_fantasypros_projection_rows,
     fantasypros_projection_filename,
+)
+from Scripts.Data_Generation.fantasypoints_projection_csv import (
+    normalize_fantasypoints_projection_csv,
 )
 from Scripts.Data_Generation.adp_rank_ingest import (
     FANTASYPROS_ADP_POSITIONS,
@@ -202,6 +206,7 @@ def move_download_to_folder(
     set_year,
     sep=',',
     archive_name=None,
+    header='infer',
 ):
 
     output_folder = Path(root_path) / 'Data' / 'OtherData' / folder
@@ -215,7 +220,12 @@ def move_download_to_folder(
             os.replace(download_path, output_path)
             break
 
-    df = pd.read_csv(output_path, sep=sep, on_bad_lines='skip')
+    df = pd.read_csv(
+        output_path,
+        sep=sep,
+        header=header,
+        on_bad_lines='skip',
+    )
 
     return df
 
@@ -373,7 +383,15 @@ def convert_to_float(df):
             pass
     return df
 
-def pull_fftoday(pos, year_val):
+FFTODAY_MINIMUM_ROWS = {
+    'QB': 40,
+    'RB': 80,
+    'WR': 100,
+    'TE': 40,
+}
+
+
+def pull_fftoday(pos, year_val, max_attempts=3):
 
     pos_ids = {
         'QB': 10,
@@ -400,25 +418,62 @@ def pull_fftoday(pos, year_val):
 
     df = pd.DataFrame()
     for page_num in num_pages[pos]:
-        try:
+        last_error = None
+        for attempt in range(1, max_attempts + 1):
             fft_url = f"https://fftoday.com/rankings/playerproj.php?Season={year_val}&PosID={pos_ids[pos]}&LeagueID=193033&order_by=FFPts&sort_order=DESC&cur_page={page_num}"
 
-            df_cur = pd.read_html(fft_url)[7]
-            df_cur = df_cur.iloc[2:, 1:]
-            df_cur.columns = cols[pos]
+            try:
+                tables = pd.read_html(fft_url)
+                matching_tables = [
+                    table
+                    for table in tables
+                    if table.shape[0] >= 3
+                    and table.shape[1] == len(cols[pos]) + 1
+                ]
+                if len(matching_tables) != 1:
+                    raise ValueError(
+                        f"expected one FFToday projection table, found "
+                        f"{len(matching_tables)}"
+                    )
 
-            df_cur = df_cur.assign(pos=pos, year=year_val)
+                df_cur = matching_tables[0].iloc[2:, 1:].copy()
+                df_cur.columns = cols[pos]
+                df_cur = df_cur.assign(pos=pos, year=year_val)
 
-            col_arr = ['player', 'pos', 'team', 'year']
-            col_arr.extend([c for c in df_cur.columns if 'fft' in c])
-            df_cur = df_cur[col_arr].drop('fft_proj_pts', axis=1, errors='ignore')
-            
-            df = pd.concat([df, df_cur], axis=0)
-            
-        except:
-            print(pos,year_val, 'failed')
+                col_arr = ['player', 'pos', 'team', 'year']
+                col_arr.extend([c for c in df_cur.columns if 'fft' in c])
+                df_cur = df_cur[col_arr].drop(
+                    'fft_proj_pts', axis=1, errors='ignore'
+                )
+                df = pd.concat([df, df_cur], axis=0)
+                last_error = None
+                break
+            except Exception as exc:
+                last_error = exc
+                if attempt < max_attempts:
+                    time.sleep(attempt)
+
+        if last_error is not None:
+            raise RuntimeError(
+                f"FFToday {pos} {year_val} page {page_num} failed after "
+                f"{max_attempts} attempts"
+            ) from last_error
 
     return df
+
+
+def validate_fftoday_rows(df, year_val):
+    position_counts = df['pos'].value_counts().to_dict()
+    failures = {
+        pos: {'actual': int(position_counts.get(pos, 0)), 'minimum': minimum}
+        for pos, minimum in FFTODAY_MINIMUM_ROWS.items()
+        if position_counts.get(pos, 0) < minimum
+    }
+    if failures:
+        raise ValueError(
+            f"FFToday {year_val} coverage validation failed: {failures}"
+        )
+    return position_counts
 
 
 def predict_fft_sacks(df_ty):
@@ -551,6 +606,12 @@ replace_adp_rank_slice(
     allowed_positions=FANTASYPROS_ADP_POSITIONS,
     minimum_rows_by_position=FANTASYPROS_MINIMUM_ROWS,
 )
+fp_position_counts = fp_adp['pos'].value_counts()
+print(
+    f"FantasyPros ADP save confirmed for {YEAR}: {len(fp_adp):,} rows "
+    "saved to ADP_Ranks "
+    f"({', '.join(f'{pos}={int(fp_position_counts.get(pos, 0)):,}' for pos in FANTASYPROS_ADP_POSITIONS)})."
+)
 
 #%%
 
@@ -617,6 +678,15 @@ nffc_avg = replace_current_nffc_policy_rows(
     year=YEAR,
     rebuild_from_season=2025,
 )
+nffc_current_avg = nffc_avg.loc[
+    pd.to_numeric(nffc_avg['year'], errors='coerce').eq(YEAR)
+]
+nffc_feed_counts = nffc_raw['source'].value_counts()
+print(
+    f"NFFC ADP save confirmed for {YEAR}: {len(nffc_raw):,} raw rows "
+    f"({', '.join(f'{source}={int(nffc_feed_counts.get(source, 0)):,}' for source in NFFC_MODELED_SOURCES)}) "
+    f"and {len(nffc_current_avg):,} aggregate rows saved."
+)
 
 
 nffc = dm.read(f'''SELECT *
@@ -631,6 +701,11 @@ replace_current_dk_rows(
     Path(db_path) / f"{DB_NAME}.sqlite3",
     dk,
     year=YEAR,
+)
+dk_position_counts = dk['pos'].value_counts()
+print(
+    f"DraftKings ADP save confirmed for {YEAR}: {len(dk):,} rows saved "
+    f"({', '.join(f'{pos}={int(dk_position_counts.get(pos, 0)):,}' for pos in POSITIONS)})."
 )
 
 #%%
@@ -680,6 +755,7 @@ for pos in POSITIONS:
     df = pull_fftoday(pos, YEAR)
     output = pd.concat([output, df], axis=0, sort=False)
 
+fftoday_position_counts = validate_fftoday_rows(output, YEAR)
 output = output.fillna(0)
 output = convert_to_float(output)
 output['player'] = output.player.apply(dc.name_clean)
@@ -688,6 +764,19 @@ output.loc[output.pos.isin(['RB', 'WR', 'TE']), 'fft_sacks'] = 0
 
 dm.delete_from_db(DB_NAME, 'FFToday_Projections', f"year={YEAR}", create_backup=False)
 dm.write_to_db(output, DB_NAME, 'FFToday_Projections', 'append')
+saved_fftoday = dm.read(
+    f"SELECT pos FROM FFToday_Projections WHERE year={YEAR}", DB_NAME
+)
+saved_fftoday_counts = saved_fftoday['pos'].value_counts().to_dict()
+if saved_fftoday_counts != fftoday_position_counts:
+    raise RuntimeError(
+        f"FFToday save verification failed for {YEAR}: expected "
+        f"{fftoday_position_counts}, found {saved_fftoday_counts}"
+    )
+print(
+    f"FFToday projections save confirmed for {YEAR}: {len(saved_fftoday):,} "
+    f"rows saved to FFToday_Projections {saved_fftoday_counts}."
+)
 
 #%%
 
@@ -834,43 +923,22 @@ dm.write_to_db(df, DB_NAME, 'Evan_Silva_Ranks', 'append')
 
 #%%
 
-df = move_download_to_folder(root_path, 'FantasyPoints', f'{YEAR} NFL Fantasy Football Season Rankings  Projections  Fantasy Points.csv', YEAR)
-df = df.drop(['POS.1', 'UP', 'DOWN','MOVE', 'TARGET', 'WIN'], axis=1)
-
-df = df.rename(columns={
-    'RK': 'fpts_overall_rank', 
-    'Name': 'player', 
-    'POS': 'pos', 
-    'Team': 'team',
-    'Bye': 'bye', 
-    'ADP': 'fpts_adp',
-    'FPTS': 'fpts_proj_points', 
-    'G': 'fpts_games',
-    'TIER': 'fpts_tier',
-    'FPTS/G': 'fpts_proj_points_per_game',
-    'ATT': 'fpts_pass_att', 
-    'CMP': 'fpts_pass_cmp', 
-    'YDS': 'fpts_pass_yds', 
-    'TD': 'fpts_pass_td',
-    'INT': 'fpts_pass_int', 
-    'ATT.1': 'fpts_rush_att', 
-    'YDS.1': 'fpts_rush_yds', 
-    'TD.1': 'fpts_rush_td', 
-    'REC': 'fpts_rec', 
-    'YDS.2': 'fpts_rec_yds', 
-    'TD.2': 'fpts_rec_td', 
-})
-
-for c in df.columns:
-    try: df[c] = df[c].apply(lambda x: x.replace('-', '0')).astype('float')
-    except: pass
-
-df = df.assign(year=YEAR)
+df = move_download_to_folder(
+    root_path,
+    'FantasyPoints',
+    'projections.season.csv',
+    YEAR,
+    header=1,
+)
+df = normalize_fantasypoints_projection_csv(df, year=YEAR)
 df.player = df.player.apply(dc.name_clean)
-
-cols = ['player', 'pos', 'team', 'year']
-cols.extend([c for c in df.columns if 'fpts' in c])
-df = df[cols]
+duplicate_fpts_keys = df.duplicated(['player', 'pos'], keep=False)
+if duplicate_fpts_keys.any():
+    duplicates = df.loc[duplicate_fpts_keys, ['player', 'pos']]
+    raise ValueError(
+        'FantasyPoints projections have duplicate cleaned player-position '
+        f"keys: {duplicates.head(20).to_dict('records')}"
+    )
 dm.delete_from_db(DB_NAME, 'FantasyPoints_Projections', f"year={YEAR}", create_backup=False)
 dm.write_to_db(df, DB_NAME, 'FantasyPoints_Projections', 'append')
 #%%
@@ -911,6 +979,8 @@ dm.write_to_db(df, DB_NAME, 'FFF_Projections', 'append')
 
 #%%
 
+
+#%%
 barret = f'Scott Barretts {YEAR} Redraft Fantasy Football Rankings  Fantasy Points'
 df = move_download_to_folder(root_path, 'FantasyPoints', f'{barret}.csv', YEAR)
 cols = {

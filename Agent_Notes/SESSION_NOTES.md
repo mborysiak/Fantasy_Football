@@ -1,6 +1,6 @@
 # Session Notes Landing
 
-Last updated: 2026-08-04
+Last updated: 2026-08-08
 
 ## Project Objective
 
@@ -10,6 +10,30 @@ template tables consumed by downstream draft apps.
 
 ## Current Focus
 
+- Complete refreshes now produce a hash-bound pre-promotion change report. It
+  prints every added/dropped league-player row, the ten largest published PPG
+  increases/decreases, and the ten most positive/negative probability-weighted
+  template residuals with prior values/deltas. JSON and Markdown copies are
+  saved in staging, verified again before installation, and archived beside the
+  durable rollback databases. A retrospective report for the August 8 release
+  is under `Data/Production_Refresh_Backups/20260808T171956Z_710ed569/`.
+- Refreshed stage `20260808T171956Z_9604d0b4` completed all 25
+  governed steps with 345 DK, 382 NFFC, and 326 beta players, 80 weekly donors
+  per player, 1,000/1,000 auction trials, exact Auction/Snake parity, and clean
+  app smokes and was explicitly promoted at `2026-08-08T19:20:34Z`. All ten
+  installed hashes and SQLite checks pass, and all ten durable pre-refresh
+  backups exist. Ricky Pearsall is explicitly excluded from
+  DK/NFFC because his user-confirmed season-ending PCL injury has no current or
+  next projection center while recent ADP is still decaying; the canonical ADP
+  rows remain for audit. NFFC reviews the first 363 offensive ADP candidates so
+  three reviewed incomplete rows can be omitted while retaining the full
+  360-pick market surface.
+- Notebook 1 now handles FantasyPoints' grouped-header
+  `projections.season.csv`, prints post-commit FantasyPros/NFFC/DK ADP save
+  confirmations, and hardens FFToday against partial page pulls with retries,
+  structural table selection, per-position depth floors, atomic replacement,
+  and exact post-write confirmation. The repaired 2026 FFToday slice is
+  QB/RB/WR/TE 50/95/131/50.
 - Canonical ADP governance v2 is implemented and live. MFL remains modeled only
   through 2024. From 2025 onward the model
   median gives one family vote each to FantasyPros redraft, FantasyPros
@@ -142,7 +166,7 @@ template tables consumed by downstream draft apps.
   eras; its receipt/hash is immutable through resume and promotion. Only
   current season 2026 is approved, so current season 2027 fails closed until
   new annual inputs and evidence are registered. The NFFC candidate uses the
-  core plus top-360 canonical offensive ADP union, NFFC scoring, and 17-week
+  core plus first-363 canonical offensive ADP union, NFFC scoring, and 17-week
   2021-forward templates. Snake labels it offense-only 3RR: canonical TK/TDSP
   remain audit rows, while K/DST and alternate contest formats are unsupported.
   The complete 24-step 2026 production run and atomic promotion passed: all

@@ -223,8 +223,11 @@ source database.
 
 The approved 2026 production cycle adds an independently scored NFFC V2,
 handoff, weekly-template, and Snake-app path. NFFC production eligibility is
-the union of the core projection population and top-360 canonical NFFC ADP
-rows after filtering to QB/RB/WR/TE. Every projection and weekly-map row still
+the union of the core projection population and the first 363 canonical NFFC
+ADP rows after filtering to QB/RB/WR/TE. The three extra 2026 candidates backfill
+the reviewed protected-market exclusions for season-ending Ricky Pearsall and
+unprojected market-only Khalil Herbert and Haynes King, so the selected surface
+still covers all 360 draft slots. Every projection and weekly-map row still
 requires a canonical `player_key`. The `TK` and `TDSP` rows remain in
 `Avg_ADPs` as audited draft entities but do not enter the model population,
 template pools, or Snake player pool.

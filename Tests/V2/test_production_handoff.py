@@ -10,6 +10,7 @@ from Scripts.V2.production_handoff import (
     AUTOMATIC_MARKET_BUFFER_EXCLUSION_REASON,
     CURRENT_RESIDUAL_COLUMNS,
     GOVERNED_PRODUCTION_EXCLUSIONS_BY_YEAR,
+    MARKET_ELIGIBILITY_RULES,
     MARKET_HANDOFF_PROTECTED_PICK_DEPTH,
     MARKET_HANDOFF_REQUIRED_DEPTH,
     NEXT_RESIDUAL_SOURCE_COLUMNS,
@@ -677,7 +678,7 @@ def test_nffc_eligibility_uses_its_own_keyed_market_flag():
 
 def test_reviewed_dk_exclusion_policy_is_exact_and_versioned():
     assert PRODUCTION_EXCLUSION_POLICY_VERSION == (
-        "v2_market_only_incomplete_buffer_exclusion_v3"
+        "v2_market_only_incomplete_buffer_exclusion_v4"
     )
     assert MARKET_HANDOFF_REQUIRED_DEPTH == {
         "dk": 240,
@@ -689,7 +690,16 @@ def test_reviewed_dk_exclusion_policy_is_exact_and_versioned():
         "nffc": 300,
         "beta": 150,
     }
+    assert MARKET_ELIGIBILITY_RULES["nffc"] == (
+        "nffc",
+        363,
+        "nffc_adp",
+    )
     assert GOVERNED_PRODUCTION_EXCLUSIONS_BY_YEAR[2026]["dk"] == {
+        "ad848f28-4066-522c-b352-43abce87fbcb": (
+            "season_ending_pcl_injury_adp_lag_without_current_"
+            "projection_center"
+        ),
         "3f0b675d-ef58-5606-8f9e-73bc2a9b4118": (
             "market_only_without_current_projection_center"
         ),
@@ -713,10 +723,25 @@ def test_reviewed_dk_exclusion_policy_is_exact_and_versioned():
         ),
     }
     nffc_exclusions = GOVERNED_PRODUCTION_EXCLUSIONS_BY_YEAR[2026]["nffc"]
-    assert len(nffc_exclusions) == 10
+    assert len(nffc_exclusions) == 13
     assert set(nffc_exclusions.values()) == {
-        "market_only_without_current_projection_center"
+        "market_only_without_current_projection_center",
+        (
+            "season_ending_pcl_injury_adp_lag_without_current_"
+            "projection_center"
+        ),
     }
+    assert nffc_exclusions[
+        "ad848f28-4066-522c-b352-43abce87fbcb"
+    ] == (
+        "season_ending_pcl_injury_adp_lag_without_current_"
+        "projection_center"
+    )
+    assert "c5e3e9a4-cc91-5fc7-83f6-2367cbd3793b" not in nffc_exclusions
+    assert {
+        "06b12c47-18b2-51ac-ba66-64de763baac2",
+        "38e3ae60-9300-500c-8036-46d77358cd97",
+    }.issubset(nffc_exclusions)
     assert "31c3fcf7-3f74-524e-8b8f-67177f592742" in nffc_exclusions
     assert {
         "0fa72b32-393b-5f55-bb48-0f21f5283baf",
@@ -771,7 +796,7 @@ def test_missing_required_center_fails_unless_explicitly_excluded():
     )
     assert (
         excluded["governed_exclusion_policy_version"]
-        == "v2_market_only_incomplete_buffer_exclusion_v3"
+        == "v2_market_only_incomplete_buffer_exclusion_v4"
     )
 
 

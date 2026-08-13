@@ -378,8 +378,11 @@ superseded. Every tested prior-only calibration policy worsens pooled RMSE.
 NFFC-scored candidate registered for the 2026 production cycle. Its scoring
 hash, feature lineage, current-model comparisons, and following-season
 comparisons must pass the same fail-closed acceptance checks before release.
-NFFC eligibility is the core population unioned with the top-360 canonical
-NFFC ADP rows after filtering to QB/RB/WR/TE. Canonical `TK` and `TDSP` market
+NFFC eligibility is the core population unioned with the first 363 canonical
+NFFC ADP rows after filtering to QB/RB/WR/TE. The three extra 2026 candidates
+replace reviewed protected-market exclusions for Ricky Pearsall, Khalil
+Herbert, and Haynes King, so the market surface still covers all 360 draft
+slots. Canonical `TK` and `TDSP` market
 units remain audit data; they are not model targets. This offense-only lock
 does not assert K/DST or complete contest support.
 

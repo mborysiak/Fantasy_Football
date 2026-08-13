@@ -8,7 +8,9 @@ Eligibility is preseason-only:
 
 * every current-year QB/RB/WR/TE ``ProjOnly`` player is in the core;
 * DK adds the first 280 canonical players in current DK ADP;
-* NFFC adds the first 360 canonical offensive players in current NFFC ADP;
+* NFFC considers the first 363 canonical offensive players in current NFFC
+  ADP so the three reviewed 2026 protected-market exclusions still leave a
+  complete 360-player draft surface;
 * beta adds the first 180 canonical players in current ETR overall rank and every
   current beta keeper.
 
@@ -72,9 +74,10 @@ POSITION_ORDER = {position: index for index, position in enumerate(POSITIONS)}
 MARKET_ELIGIBILITY_RULES = {
     "dk": ("dk", 280, "dk_adp"),
     # A 12-team, 30-round NFFC room requires a 360-player offensive market
-    # surface for the current offense-only runtime; this is materially deeper
-    # than DK and prevents a late-round availability truncation.
-    "nffc": ("nffc", 360, "nffc_adp"),
+    # surface for the current offense-only runtime. The 2026 candidate window
+    # reaches three rows deeper so its reviewed protected-market exclusions are
+    # replaced instead of truncating availability.
+    "nffc": ("nffc", 363, "nffc_adp"),
     # The canonical Avg_ADPs ``etr`` slice mirrors ETR_Ranks.etr_rank in
     # avg_pick while retaining exact etr_rank and etr_pos_rank fields.
     # The internal ``etr_adp`` label predates that contract; selection is
@@ -123,12 +126,15 @@ NEXT_RESIDUAL_SOURCE_COLUMNS = {
     "pred_resid_95_ny_shadow": "pred_resid_95_ny",
 }
 PRODUCTION_HANDOFF_VERSION = "v2_current_next_production_handoff_v2"
-PRODUCTION_ELIGIBILITY_VERSION = "v2_preseason_master_eligibility_v1"
+PRODUCTION_ELIGIBILITY_VERSION = "v2_preseason_master_eligibility_v3"
 PRODUCTION_EXCLUSION_POLICY_VERSION = (
-    "v2_market_only_incomplete_buffer_exclusion_v3"
+    "v2_market_only_incomplete_buffer_exclusion_v4"
 )
 PRODUCTION_EXCLUSION_REFERENCE_BY_YEAR = {
-    2026: "2026 V2 feature mart + ProjOnly/salary-source coverage audit",
+    2026: (
+        "2026 V2 feature mart + ProjOnly/salary-source coverage + "
+        "season-ending injury review"
+    ),
 }
 ELIGIBILITY_AUDIT_TABLE = "V2_Production_Eligibility_Audit"
 LEGACY_BACKUP_TABLE = "V2_Projection_Legacy_Backup"
@@ -150,7 +156,7 @@ AVG_ADP_ALLOWED_POSITIONS = {
 }
 AVG_ADP_MIN_OFFENSIVE_DEPTH = {
     "dk": 280,
-    "nffc": 360,
+    "nffc": 363,
     "etr": 180,
 }
 GOVERNED_MARKET_POSITION_MISMATCHES_BY_YEAR: Mapping[
@@ -179,6 +185,10 @@ GOVERNED_PRODUCTION_EXCLUSIONS_BY_YEAR: Mapping[
 ] = {
     2026: {
         "dk": {
+            "ad848f28-4066-522c-b352-43abce87fbcb": (
+                "season_ending_pcl_injury_adp_lag_without_current_"
+                "projection_center"
+            ),
             "3f0b675d-ef58-5606-8f9e-73bc2a9b4118": (
                 "market_only_without_current_projection_center"
             ),
@@ -202,6 +212,16 @@ GOVERNED_PRODUCTION_EXCLUSIONS_BY_YEAR: Mapping[
             ),
         },
         "nffc": {
+            "ad848f28-4066-522c-b352-43abce87fbcb": (
+                "season_ending_pcl_injury_adp_lag_without_current_"
+                "projection_center"
+            ),
+            "06b12c47-18b2-51ac-ba66-64de763baac2": (
+                "market_only_without_current_projection_center"
+            ),
+            "38e3ae60-9300-500c-8036-46d77358cd97": (
+                "market_only_without_current_projection_center"
+            ),
             "0fa72b32-393b-5f55-bb48-0f21f5283baf": (
                 "market_only_without_current_projection_center"
             ),

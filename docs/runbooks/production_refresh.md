@@ -1,6 +1,6 @@
 # Production Refresh Runbook
 
-Last updated: 2026-08-04
+Last updated: 2026-08-08
 
 ## Scope and Manual Boundary
 
@@ -50,6 +50,22 @@ The loader archives each file under
 `Data/OtherData/FantasyPros_Projections/`, maps duplicate stat headers by
 position, and rejects partial exports below QB/RB/WR/TE depths 50/80/100/60.
 
+FantasyPoints season projections download as the literal filename
+`projections.season.csv`. Leave that file in `Downloads`; notebook 1 archives
+it with the current-year prefix. The export's first row contains grouped
+labels and its second row contains the actual field names. The loader maps the
+new `RANK`/`NAME`/`Position`/`GP` schema to the existing
+`FantasyPoints_Projections` columns, ignores the numeric `POS` rank and other
+non-modeled fields, and rejects missing, nonnumeric, duplicate, or shallow
+QB/RB/WR/TE data before replacing the current slice.
+
+FFToday remains an HTML pull. Notebook 1 retries each position page, identifies
+the projection table from its columns rather than a fixed page-table index,
+and validates QB/RB/WR/TE minimum depths of 40/80/100/40 before opening the
+replacement transaction. It then queries the saved slice and prints the exact
+position counts after commit. Do not continue to the governed refresh if that
+confirmation is absent.
+
 The downstream Model Inputs compiler exposes only the canonical family median
 as `avg_pick`, its observed-family disagreement as `std_pick`, and
 `adp_source_count`. It does not row-impute missing ADP providers or retain the
@@ -93,6 +109,29 @@ artifacts. Promotion is a separate, explicit command:
 
 `--promote` requires all staged steps, including both app smoke tests, to be
 complete. It cannot be combined with an earlier `--through` target.
+
+After a complete stage, the runner compares the unchanged live
+`Simulation.sqlite3` baseline with the validated candidate and saves
+`release_change_report.json` plus `release_change_report.md` in the stage
+directory. It prints the concise Markdown report at stage completion and again
+immediately before promotion. The report contains:
+
+- old/new/added/dropped population counts by league plus every added or dropped
+  player;
+- the ten largest published `pred_fp_per_game` increases and decreases across
+  league/player keys; and
+- the ten most positive and most negative candidate weighted-template
+  residuals, including the old value and delta when the player existed in both
+  releases.
+
+The weighted-template residual is the exact app-sampling expectation:
+`sum(template_sample_prob * active_ppg_resid) / sum(template_sample_prob)`.
+Report generation requires one unique published key, exact projection/template
+population parity, 80 distinct donors per candidate player, finite residuals,
+and donor probabilities summing to one. A missing, changed, or stale report
+blocks promotion. Successful promotion copies both report files beside the
+durable rollback databases and records their paths and SHA-256 hashes in the
+promotion receipt.
 
 The beta scoring-context correction was promoted from immutable stage
 `ff_beta_context_promotion_20260802_03`, run

@@ -49,6 +49,12 @@ from Scripts.V2.production_cycle import (
     ProductionCycle,
     get_production_cycle,
 )
+from Scripts.V2.release_change_report import (
+    build_release_change_report,
+    load_verified_release_change_report,
+    render_release_change_report,
+    write_release_change_report,
+)
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -3377,6 +3383,83 @@ def assert_staged_release_unchanged(
             )
 
 
+def ensure_release_change_report(
+    manifest: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Create or verify the saved live-versus-candidate review receipt."""
+
+    if manifest["steps"]["app_smoke"]["status"] != "completed":
+        raise ValueError(
+            "Release change reporting requires the complete staged pipeline"
+        )
+    assert_live_state_unchanged(manifest, ("simulation",))
+    assert_staged_release_unchanged(manifest)
+    paths = _resolved_paths(manifest)
+    baseline = paths["live"]["simulation"]
+    candidate = paths["staged"]["simulation"]
+    receipt = manifest.get("release_change_report")
+    if receipt:
+        report = load_verified_release_change_report(
+            receipt,
+            baseline_database=baseline,
+            candidate_database=candidate,
+        )
+        return report, dict(receipt)
+
+    report = build_release_change_report(
+        baseline,
+        candidate,
+        year=int(manifest["options"]["year"]),
+        dataset=str(manifest["options"]["dataset"]),
+        run_id=str(manifest["run_id"]),
+        leagues=tuple(manifest["options"]["production_leagues"]),
+    )
+    receipt = write_release_change_report(
+        Path(manifest["stage_dir"]),
+        report,
+    )
+    manifest["release_change_report"] = receipt
+    _save_manifest(manifest)
+    return report, receipt
+
+
+def _archive_release_change_report(
+    manifest: Mapping[str, Any],
+    backup_dir: Path,
+) -> dict[str, Any]:
+    """Copy the reviewed report beside durable pre-refresh rollback files."""
+
+    paths = _resolved_paths(manifest)
+    receipt = manifest.get("release_change_report")
+    if not receipt:
+        raise ValueError("Promotion requires a saved release change report")
+    load_verified_release_change_report(
+        receipt,
+        baseline_database=paths["live"]["simulation"],
+        candidate_database=paths["staged"]["simulation"],
+    )
+    archived: dict[str, Any] = {}
+    for label, filename in (
+        ("json", "release_change_report.json"),
+        ("markdown", "release_change_report.md"),
+    ):
+        source_state = receipt[label]
+        source = Path(source_state["path"]).resolve()
+        destination = Path(backup_dir).resolve() / filename
+        temporary = destination.with_name(
+            f".{destination.name}.{uuid.uuid4().hex}.tmp"
+        )
+        shutil.copy2(source, temporary)
+        if sha256_file(temporary) != source_state["sha256"]:
+            temporary.unlink(missing_ok=True)
+            raise RuntimeError(
+                f"Durable release change {label} copy differs from staging"
+            )
+        os.replace(temporary, destination)
+        archived[label] = regular_file_state(destination)
+    return archived
+
+
 def _promotion_sources(
     manifest: Mapping[str, Any],
 ) -> list[tuple[str, Path, Path]]:
@@ -3424,9 +3507,16 @@ def promote_release(manifest: dict[str, Any]) -> dict[str, Any]:
 
     backup_dir = PRODUCTION_BACKUP_ROOT / str(manifest["run_id"])
     backup_dir.mkdir(parents=True, exist_ok=True)
+    promotion_sources = _promotion_sources(manifest)
+    release_change_report = None
+    if any(label == "simulation" for label, _, _ in promotion_sources):
+        release_change_report = _archive_release_change_report(
+            manifest,
+            backup_dir,
+        )
     artifacts = []
     try:
-        for label, staged, destination in _promotion_sources(manifest):
+        for label, staged, destination in promotion_sources:
             staged_state = database_state(staged)
             expected_live = manifest["baseline"][label]
             destination_existed = expected_live.get("exists", True) is not False
@@ -3554,6 +3644,7 @@ def promote_release(manifest: dict[str, Any]) -> dict[str, Any]:
     return {
         "promoted_at_utc": utc_now(),
         "cleanup_warnings": cleanup_warnings,
+        "release_change_report": release_change_report,
         "artifacts": {
             artifact["label"]: {
                 "destination": str(artifact["destination"]),
@@ -3870,6 +3961,14 @@ def main(argv: Sequence[str] | None = None) -> None:
     assert_pipeline_code_unchanged(manifest)
     if manifest["steps"]["snapshot"]["status"] == "completed":
         assert_external_inputs_unchanged(manifest)
+
+    if manifest["steps"]["app_smoke"]["status"] == "completed":
+        change_report, _ = ensure_release_change_report(manifest)
+        print(
+            "\nRelease change preview (saved before promotion):\n",
+            flush=True,
+        )
+        print(render_release_change_report(change_report), flush=True)
 
     if args.promote:
         manifest["promotion"] = {
