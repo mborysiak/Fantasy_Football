@@ -23,6 +23,7 @@ import sys
 import tempfile
 import traceback
 import uuid
+from collections import deque
 from contextlib import closing
 from datetime import datetime, timezone
 from pathlib import Path
@@ -80,7 +81,7 @@ DEFAULT_SELECTION_TRIALS = 1000
 DEFAULT_SELECTION_WORKERS = max(1, min(8, os.cpu_count() or 1))
 DEFAULT_APP_TIMEOUT = 90
 GITHUB_BLOB_LIMIT_BYTES = 100 * 1024 * 1024
-MANIFEST_SCHEMA_VERSION = 5
+MANIFEST_SCHEMA_VERSION = 6
 NATIVE_THREAD_ENVIRONMENT_VARIABLES = (
     "OMP_NUM_THREADS",
     "OPENBLAS_NUM_THREADS",
@@ -94,6 +95,14 @@ WINDOWS_NATIVE_CRASH_CLASSES = {
     -1073741819: "windows_access_violation",
     3221226356: "windows_heap_corruption",
     -1073740940: "windows_heap_corruption",
+    3221226505: "windows_stack_buffer_overrun",
+    -1073740791: "windows_stack_buffer_overrun",
+}
+WINDOWS_WRAPPED_NATIVE_FAILURE_PATTERNS = {
+    "oserror: exception: access violation": "windows_access_violation",
+    "brokenprocesspool: a process in the process pool was terminated abruptly": (
+        "windows_worker_process_terminated"
+    ),
 }
 MAX_NATIVE_CRASH_ATTEMPTS = 5
 BETA_SCORING_CONTEXT_UNAVAILABLE_REASON = (
@@ -155,8 +164,8 @@ def external_file_inputs(year: int) -> dict[str, Path]:
 
     salary_inputs = {
         (
-            "current_auction_salaries"
-            if spec.year == int(year) and spec.league == "beta"
+            f"current_auction_salaries_{spec.league}"
+            if spec.year == int(year)
             else f"historical_auction_salaries_{spec.year}_{spec.league}"
         ): spec.path
         for spec in governed_salary_source_specs(
@@ -183,6 +192,7 @@ DATABASE_FILES = {
     "v2_dk": "Projection_V2.sqlite3",
     "v2_nffc": "Projection_V2_nffc.sqlite3",
     "v2_beta": "Projection_V2_beta.sqlite3",
+    "v2_nv": "Projection_V2_nv.sqlite3",
     "simulation": "Simulation.sqlite3",
     "validations": "Validations.sqlite3",
     "parameter_cache": "V2_Parameter_Cache.sqlite3",
@@ -197,11 +207,14 @@ PROMOTED_DATABASES = (
     "v2_dk",
     "v2_nffc",
     "v2_beta",
+    "v2_nv",
     "simulation",
     "validations",
     "parameter_cache",
 )
-BOOTSTRAPPABLE_DATABASES = frozenset({"v2_nffc", "parameter_cache"})
+BOOTSTRAPPABLE_DATABASES = frozenset(
+    {"v2_nffc", "v2_nv", "parameter_cache"}
+)
 GOVERNED_HANDOFF_TABLES = (
     "Avg_ADPs",
     "Avg_ADPs_Publication_Audit",
@@ -240,20 +253,25 @@ PIPELINE_STEPS = (
     "v2_dk",
     "v2_nffc",
     "v2_beta",
+    "v2_nv",
     "locked_dk",
     "locked_nffc",
     "locked_beta",
+    "locked_nv",
     "next_dk",
     "next_nffc",
     "next_beta",
+    "next_nv",
     "keepers",
     "handoff",
     "weekly_dk",
     "weekly_nffc",
     "weekly_beta",
+    "weekly_nv",
     "template_audit_dk",
     "template_audit_nffc",
     "template_audit_beta",
+    "template_audit_nv",
     "salary",
     "selection_premium",
     "compact_simulation",
@@ -784,6 +802,9 @@ def _subprocess_environment(
     environment = _native_thread_limited_environment()
     for pipeline_flag in (
         "FF_CANONICAL_INPUTS_ONLY",
+        "FF_AUCTION_LEAGUE",
+        "FF_V2_AUCTION_DATABASE",
+        "FF_ALLOW_EMPTY_KEEPERS",
         "SALARY_KEEPERS_ONLY",
         "SALARY_VALIDATION_DATASETS_ONLY",
     ):
@@ -806,6 +827,36 @@ def _subprocess_environment(
     environment["PYTHONPATH"] = os.pathsep.join(
         item for item in python_path if item
     )
+    return environment
+
+
+def _auction_subprocess_environment(
+    staged_paths: Mapping[str, Path],
+    *,
+    year: int,
+    league: str,
+) -> dict[str, str]:
+    """Return an isolated environment for one auction-league salary build."""
+
+    league = str(league).strip().lower()
+    if league not in {"beta", "nv"}:
+        raise ValueError(f"Unsupported auction salary league: {league}")
+    environment = _subprocess_environment(staged_paths, year=year)
+    environment.update(
+        {
+            "FF_AUCTION_LEAGUE": league,
+            "FF_V2_AUCTION_DATABASE": str(staged_paths[f"v2_{league}"]),
+            "FF_KEEPERS_FILE": str(
+                REPO_ROOT
+                / "Data"
+                / "OtherData"
+                / "Keepers"
+                / f"keepers_{int(year)}_{league}.csv"
+            ),
+        }
+    )
+    if league == "nv":
+        environment["FF_ALLOW_EMPTY_KEEPERS"] = "1"
     return environment
 
 
@@ -894,8 +945,10 @@ def run_logged_command(
             )
             assert process.stdout is not None
             console_available = True
+            output_tail: deque[str] = deque(maxlen=400)
             try:
                 for line in process.stdout:
+                    output_tail.append(line)
                     if console_available:
                         try:
                             print(line, end="", flush=True)
@@ -919,6 +972,14 @@ def run_logged_command(
             native_failure_class = WINDOWS_NATIVE_CRASH_CLASSES.get(
                 return_code
             )
+            if native_failure_class is None and return_code != 0:
+                normalized_output_tail = "".join(output_tail).casefold()
+                for pattern, failure_class in (
+                    WINDOWS_WRAPPED_NATIVE_FAILURE_PATTERNS.items()
+                ):
+                    if pattern in normalized_output_tail:
+                        native_failure_class = failure_class
+                        break
             native_crash = native_failure_class is not None
             will_retry = (
                 native_crash
@@ -1254,20 +1315,29 @@ def step_next(manifest: dict[str, Any], league: str) -> dict[str, Any]:
 
 def step_keepers(manifest: dict[str, Any]) -> dict[str, Any]:
     paths = _resolved_paths(manifest)
-    environment = _subprocess_environment(
-        paths["staged"],
-        year=int(manifest["options"]["year"]),
-    )
-    environment["SALARY_KEEPERS_ONLY"] = "1"
-    return run_logged_command(
-        [
-            _python(manifest),
-            str(REPO_ROOT / "Scripts" / "Modeling" / "s4_Salaries_Injuries.py"),
-        ],
-        step="keepers",
-        stage_dir=Path(manifest["stage_dir"]),
-        environment=environment,
-    )
+    results = {}
+    for league in ("beta", "nv"):
+        environment = _auction_subprocess_environment(
+            paths["staged"],
+            year=int(manifest["options"]["year"]),
+            league=league,
+        )
+        environment["SALARY_KEEPERS_ONLY"] = "1"
+        results[league] = run_logged_command(
+            [
+                _python(manifest),
+                str(
+                    REPO_ROOT
+                    / "Scripts"
+                    / "Modeling"
+                    / "s4_Salaries_Injuries.py"
+                ),
+            ],
+            step=f"keepers_{league}",
+            stage_dir=Path(manifest["stage_dir"]),
+            environment=environment,
+        )
+    return results
 
 
 def _handoff_command(
@@ -1290,6 +1360,8 @@ def _handoff_command(
         str(staged["v2_nffc"]),
         "--beta-v2-db",
         str(staged["v2_beta"]),
+        "--nv-v2-db",
+        str(staged["v2_nv"]),
         "--year",
         str(manifest["options"]["year"]),
         "--dataset",
@@ -1396,20 +1468,29 @@ def step_template_audit(
 
 def step_salary(manifest: dict[str, Any]) -> dict[str, Any]:
     paths = _resolved_paths(manifest)
-    environment = _subprocess_environment(
-        paths["staged"],
-        year=int(manifest["options"]["year"]),
-    )
-    environment.pop("SALARY_KEEPERS_ONLY", None)
-    return run_logged_command(
-        [
-            _python(manifest),
-            str(REPO_ROOT / "Scripts" / "Modeling" / "s4_Salaries_Injuries.py"),
-        ],
-        step="salary",
-        stage_dir=Path(manifest["stage_dir"]),
-        environment=environment,
-    )
+    results = {}
+    for league in ("beta", "nv"):
+        environment = _auction_subprocess_environment(
+            paths["staged"],
+            year=int(manifest["options"]["year"]),
+            league=league,
+        )
+        environment.pop("SALARY_KEEPERS_ONLY", None)
+        results[league] = run_logged_command(
+            [
+                _python(manifest),
+                str(
+                    REPO_ROOT
+                    / "Scripts"
+                    / "Modeling"
+                    / "s4_Salaries_Injuries.py"
+                ),
+            ],
+            step=f"salary_{league}",
+            stage_dir=Path(manifest["stage_dir"]),
+            environment=environment,
+        )
+    return results
 
 
 def step_selection_premium(manifest: dict[str, Any]) -> dict[str, Any]:
@@ -2226,6 +2307,111 @@ def _count_invalid_beta_template_context_rows(
     )
 
 
+def _count_invalid_nv_template_context_rows(
+    connection: sqlite3.Connection,
+    *,
+    expected_context_source: str,
+    expected_scoring_hash: str,
+) -> int:
+    """Count NV rows violating the scored expert-center contract."""
+
+    return int(
+        connection.execute(
+            """
+            SELECT COUNT(*)
+            FROM Best_Ball_Weekly_Templates
+            WHERE league='nv'
+              AND (
+                  scoring_context_available IS NULL
+                  OR scoring_context_available NOT IN (0, 1)
+                  OR projection_context_scoring_hash IS NULL
+                  OR projection_context_scoring_hash<>?
+                  OR projection_context_run_id IS NULL
+                  OR TRIM(projection_context_run_id)=''
+                  OR model_input_avg_proj_points IS NULL
+                  OR projection_context_avg_proj_points_delta IS NULL
+                  OR avg_proj_points IS NULL
+                  OR historical_pred_fp_per_game IS NULL
+                  OR COALESCE(v2_recenter_promoted, -1)<>0
+                  OR team_qb_scoring_context_available IS NULL
+                  OR team_qb_scoring_context_available NOT IN (0, 1)
+                  OR (
+                      team_qb_scoring_context_available=0
+                      AND (
+                          team_qb_scoring_context_unavailable_reason IS NULL
+                          OR team_qb_scoring_context_unavailable_reason<>?
+                          OR ABS(team_qb_pass_proj_rank_pct - 0.5)
+                              > 0.000000001
+                      )
+                  )
+                  OR (
+                      team_qb_scoring_context_available=1
+                      AND team_qb_scoring_context_unavailable_reason IS NOT NULL
+                      AND TRIM(team_qb_scoring_context_unavailable_reason)<>''
+                  )
+                  OR (
+                      scoring_context_available=1
+                      AND (
+                          projection_context_source IS NULL
+                          OR projection_context_source<>?
+                          OR scoring_context_unavailable_reason IS NOT NULL
+                             AND TRIM(scoring_context_unavailable_reason)<>''
+                          OR avg_proj_pass_points IS NULL
+                          OR avg_proj_rush_points IS NULL
+                          OR avg_proj_rec_points IS NULL
+                          OR ABS(
+                              avg_proj_pass_points +
+                              avg_proj_rush_points +
+                              avg_proj_rec_points -
+                              avg_proj_points
+                          ) > 0.000000001
+                          OR ABS(
+                              avg_proj_points -
+                              model_input_avg_proj_points -
+                              projection_context_avg_proj_points_delta
+                          ) > 0.000000001
+                          OR historical_center_policy<>
+                              'nv_scored_expert_consensus'
+                          OR historical_projection_source<>
+                              'v2_nv_expert_consensus'
+                          OR ABS(
+                              avg_proj_points /
+                                  CASE WHEN season>=2021
+                                       THEN 17.0 ELSE 16.0 END -
+                              historical_pred_fp_per_game
+                          ) > 0.000000001
+                      )
+                  )
+                  OR (
+                      scoring_context_available=0
+                      AND (
+                          season<>2018
+                          OR pos<>'QB'
+                          OR projection_context_source<>
+                              'v2_nv_scoring_context_unavailable'
+                          OR scoring_context_unavailable_reason<>?
+                          OR historical_center_policy<>
+                              'preseason_projection_fallback'
+                          OR historical_projection_source<>
+                              'preseason_projection_fallback'
+                          OR COALESCE(template_eligible, -1)<>0
+                          OR template_exclusion_reason<>
+                              'scoring_context_unavailable:' || ?
+                      )
+                  )
+              )
+            """,
+            (
+                expected_scoring_hash,
+                BETA_SCORING_CONTEXT_UNAVAILABLE_REASON,
+                expected_context_source,
+                BETA_SCORING_CONTEXT_UNAVAILABLE_REASON,
+                BETA_SCORING_CONTEXT_UNAVAILABLE_REASON,
+            ),
+        ).fetchone()[0]
+    )
+
+
 def _count_invalid_nffc_player_map_context_rows(
     connection: sqlite3.Connection,
     *,
@@ -2635,8 +2821,8 @@ def _validate_simulation(
                         cycle.template_center_policies["nffc"][0]
                     ),
                 }
-            if league == "beta":
-                required_beta_context_columns = {
+            if league in {"beta", "nv"}:
+                required_auction_context_columns = {
                     "projection_context_source",
                     "projection_context_scoring_hash",
                     "projection_context_run_id",
@@ -2650,44 +2836,50 @@ def _validate_simulation(
                     "template_eligible",
                     "template_exclusion_reason",
                 }
-                missing_beta_context_columns = sorted(
-                    required_beta_context_columns - template_columns
+                missing_auction_context_columns = sorted(
+                    required_auction_context_columns - template_columns
                 )
-                if missing_beta_context_columns:
+                if missing_auction_context_columns:
                     raise ValueError(
-                        "Beta templates lack scored-context audit columns: "
-                        f"{missing_beta_context_columns}"
+                        f"{league.upper()} templates lack scored-context audit "
+                        f"columns: {missing_auction_context_columns}"
                     )
                 expected_context_source = (
-                    cycle.template_context_sources["beta"]
+                    cycle.template_context_sources[league]
                 )
-                expected_scoring_hash = scoring_hash("beta")
-                invalid_beta_context = (
+                expected_scoring_hash = scoring_hash(league)
+                invalid_auction_context = (
                     _count_invalid_beta_template_context_rows(
                         connection,
                         expected_context_source=expected_context_source,
                         expected_scoring_hash=expected_scoring_hash,
                     )
-                )
-                if invalid_beta_context:
-                    raise ValueError(
-                        "Beta scored template context/center contract failed "
-                        f"for {invalid_beta_context} rows"
+                    if league == "beta"
+                    else _count_invalid_nv_template_context_rows(
+                        connection,
+                        expected_context_source=expected_context_source,
+                        expected_scoring_hash=expected_scoring_hash,
                     )
-                beta_context_runs = {
+                )
+                if invalid_auction_context:
+                    raise ValueError(
+                        f"{league.upper()} scored template context/center "
+                        f"contract failed for {invalid_auction_context} rows"
+                    )
+                auction_context_runs = {
                     str(row[0])
                     for row in connection.execute(
-                        """
+                        f"""
                         SELECT DISTINCT projection_context_run_id
                         FROM Best_Ball_Weekly_Templates
-                        WHERE league='beta'
+                        WHERE league='{league}'
                         """
                     )
                 }
-                if len(beta_context_runs) != 1:
+                if len(auction_context_runs) != 1:
                     raise ValueError(
-                        "Beta templates do not have one feature-context run: "
-                        f"{sorted(beta_context_runs)}"
+                        f"{league.upper()} templates do not have one "
+                        f"feature-context run: {sorted(auction_context_runs)}"
                     )
                 player_map_columns = {
                     str(row[1])
@@ -2695,41 +2887,41 @@ def _validate_simulation(
                         'PRAGMA table_info("Best_Ball_Weekly_Player_Map")'
                     )
                 }
-                required_beta_map_columns = {
+                required_auction_map_columns = {
                     "current_context_source",
                     "projection_context_scoring_hash",
                     "projection_context_run_id",
                 }
-                missing_beta_map_columns = sorted(
-                    required_beta_map_columns - player_map_columns
+                missing_auction_map_columns = sorted(
+                    required_auction_map_columns - player_map_columns
                 )
-                if missing_beta_map_columns:
+                if missing_auction_map_columns:
                     raise ValueError(
-                        "Beta player map lacks scored-context audit columns: "
-                        f"{missing_beta_map_columns}"
+                        f"{league.upper()} player map lacks scored-context "
+                        f"audit columns: {missing_auction_map_columns}"
                     )
-                expected_feature_run_id = next(iter(beta_context_runs))
-                invalid_beta_map_context = (
+                expected_feature_run_id = next(iter(auction_context_runs))
+                invalid_auction_map_context = (
                     _count_invalid_nffc_player_map_context_rows(
                         connection,
-                        league="beta",
+                        league=league,
                         year=year,
                         dataset=dataset,
                         expected_scoring_hash=expected_scoring_hash,
                         expected_feature_run_id=expected_feature_run_id,
                     )
                 )
-                if invalid_beta_map_context:
+                if invalid_auction_map_context:
                     raise ValueError(
-                        "Beta current player-map scoring context failed for "
-                        f"{invalid_beta_map_context} rows"
+                        f"{league.upper()} current player-map scoring context "
+                        f"failed for {invalid_auction_map_context} rows"
                     )
-                results["beta_template_context"] = {
+                results[f"{league}_template_context"] = {
                     "source": expected_context_source,
                     "scoring_hash": expected_scoring_hash,
                     "feature_run_id": expected_feature_run_id,
                     "center_policies": list(
-                        cycle.template_center_policies["beta"]
+                        cycle.template_center_policies[league]
                     ),
                     "unavailable_reason": (
                         BETA_SCORING_CONTEXT_UNAVAILABLE_REASON
@@ -2758,28 +2950,36 @@ def _validate_simulation(
                 f"high_impact_unresolved={bad_adp[2]}"
             )
 
-        salary_rows = connection.execute(
-            """
-            SELECT player_key
-            FROM Salaries_Pred
-            WHERE year=? AND league='betapred'
-            """,
-            (year,),
-        ).fetchall()
-        salary_keys = [row[0] for row in salary_rows]
-        if not salary_keys or any(key is None for key in salary_keys):
-            raise ValueError("Current salary predictions lack canonical keys")
-        if len(salary_keys) != len(set(salary_keys)):
-            raise ValueError("Current salary predictions duplicate player keys")
-        salary_key_set = {str(key) for key in salary_keys}
-        if salary_key_set != prediction_keys["beta"]:
-            raise ValueError(
-                "Current salary/projection population mismatch: "
-                f"projection_only="
-                f"{len(prediction_keys['beta'] - salary_key_set)}, "
-                f"salary_only="
-                f"{len(salary_key_set - prediction_keys['beta'])}"
-            )
+        salary_keys_by_league = {}
+        for auction_league in ("beta", "nv"):
+            salary_rows = connection.execute(
+                """
+                SELECT player_key
+                FROM Salaries_Pred
+                WHERE year=? AND league=?
+                """,
+                (year, f"{auction_league}pred"),
+            ).fetchall()
+            salary_keys = [row[0] for row in salary_rows]
+            if not salary_keys or any(key is None for key in salary_keys):
+                raise ValueError(
+                    f"Current {auction_league} salary predictions lack "
+                    "canonical keys"
+                )
+            if len(salary_keys) != len(set(salary_keys)):
+                raise ValueError(
+                    f"Current {auction_league} salary predictions duplicate "
+                    "player keys"
+                )
+            salary_key_set = {str(key) for key in salary_keys}
+            if salary_key_set != prediction_keys[auction_league]:
+                raise ValueError(
+                    f"Current {auction_league} salary/projection population "
+                    "mismatch: "
+                    f"projection_only={len(prediction_keys[auction_league] - salary_key_set)}, "
+                    f"salary_only={len(salary_key_set - prediction_keys[auction_league])}"
+                )
+            salary_keys_by_league[auction_league] = salary_keys
 
         keeper_keys = {
             str(row[0])
@@ -2853,7 +3053,13 @@ def _validate_simulation(
                     "defaults": int(bad_adp[1]),
                     "high_impact_unresolved": int(bad_adp[2]),
                 },
-                "salary_prediction_count": len(salary_keys),
+                "salary_prediction_count": len(
+                    salary_keys_by_league["beta"]
+                ),
+                "salary_prediction_counts": {
+                    league: len(keys)
+                    for league, keys in salary_keys_by_league.items()
+                },
                 "selection_premium_count": int(premium_row[0]),
                 "selection_success_trials": int(premium_row[4]),
             }
@@ -3019,7 +3225,7 @@ def validate_release(manifest: Mapping[str, Any]) -> dict[str, Any]:
         dataset=str(manifest["options"]["dataset"]),
         selection_trials=int(manifest["options"]["selection_trials"]),
     )
-    for league in ("nffc", "beta"):
+    for league in ("nffc", "beta", "nv"):
         template_context = simulation.get(
             f"{league}_template_context", {}
         )
@@ -3219,6 +3425,9 @@ def step_app_smoke(manifest: dict[str, Any]) -> dict[str, Any]:
             "--expected-year",
             str(manifest["options"]["year"]),
         ]
+        if app == "auction":
+            for league in ("beta", "nv"):
+                command.extend(["--require-league", league])
         if app == "snake":
             for league in ("dk", "nffc"):
                 command.extend(["--require-league", league])

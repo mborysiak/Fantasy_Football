@@ -17,7 +17,7 @@ from typing import Any, Mapping
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-PRODUCTION_LEAGUES = ("dk", "nffc", "beta")
+PRODUCTION_LEAGUES = ("dk", "nffc", "beta", "nv")
 
 
 @dataclass(frozen=True)
@@ -133,6 +133,7 @@ APPROVED_PRODUCTION_CYCLES: Mapping[int, ProductionCycle] = {
             "dk": "v2_conditional_ppg_2026_candidate_v1",
             "nffc": "v2_conditional_ppg_2026_candidate_nffc_v1",
             "beta": "v2_conditional_ppg_2026_candidate_beta_v1",
+            "nv": "v2_conditional_ppg_2026_candidate_nv_v1",
         },
         next_target_version="v2_next_year_expert_residual_v1",
         source_market_minimums={
@@ -158,6 +159,7 @@ APPROVED_PRODUCTION_CYCLES: Mapping[int, ProductionCycle] = {
             "dk": 300,
             "nffc": 360,
             "beta": 300,
+            "nv": 300,
         },
         production_position_minimums={
             "dk": {
@@ -178,16 +180,24 @@ APPROVED_PRODUCTION_CYCLES: Mapping[int, ProductionCycle] = {
                 "WR": 105,
                 "TE": 38,
             },
+            "nv": {
+                "QB": 40,
+                "RB": 75,
+                "WR": 105,
+                "TE": 38,
+            },
         },
         weekly_horizons={
             "dk": 16,
             "nffc": 17,
             "beta": 16,
+            "nv": 16,
         },
         template_min_seasons={
             "dk": 2008,
             "nffc": 2021,
             "beta": 2008,
+            "nv": 2008,
         },
         template_center_policies={
             "dk": (
@@ -199,10 +209,19 @@ APPROVED_PRODUCTION_CYCLES: Mapping[int, ProductionCycle] = {
                 "legacy_validated_oos",
                 "beta_scored_expert_fallback",
             ),
+            # NV has no legacy validation-ensemble surface. Eligible donors
+            # therefore use the NV-scored expert consensus. The preseason
+            # fallback is retained only on governed, donor-ineligible 2018 QB
+            # audit rows whose sack context is unavailable.
+            "nv": (
+                "nv_scored_expert_consensus",
+                "preseason_projection_fallback",
+            ),
         },
         template_context_sources={
             "nffc": "v2_nffc_scoring_matched_preseason",
             "beta": "v2_beta_scoring_matched_preseason",
+            "nv": "v2_nv_scoring_matched_preseason",
         },
     ),
 }

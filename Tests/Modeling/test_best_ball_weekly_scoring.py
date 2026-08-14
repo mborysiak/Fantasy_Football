@@ -287,13 +287,22 @@ def test_qb_scoring_is_explicitly_league_specific():
         league="beta",
         filter_qb_workload=False,
     ).iloc[0]
+    nv = weekly_builder.add_fantasy_points(
+        _quarterback_week(),
+        "QB",
+        league="nv",
+        filter_qb_workload=False,
+    ).iloc[0]
 
     assert dk["fantasy_pts_pass"] == pytest.approx(22.0)
     assert beta["fantasy_pts_pass"] == pytest.approx(20.0)
+    assert nv["fantasy_pts_pass"] == pytest.approx(19.0)
     assert dk["fantasy_pts_rush"] == pytest.approx(28.0)
     assert beta["fantasy_pts_rush"] == pytest.approx(28.0)
+    assert nv["fantasy_pts_rush"] == pytest.approx(28.0)
     assert dk["fantasy_pts"] == pytest.approx(50.0)
     assert beta["fantasy_pts"] == pytest.approx(48.0)
+    assert nv["fantasy_pts"] == pytest.approx(47.0)
 
 
 def test_beta_passing_applies_sacks_and_both_yardage_bonus_thresholds():
@@ -1368,7 +1377,7 @@ def test_nffc_v2_current_context_uses_scoring_components_and_17_week_ppg(
     assert context["std_proj_points"] == pytest.approx(25.5)
 
 
-@pytest.mark.parametrize("league", ["dk", "beta"])
+@pytest.mark.parametrize("league", ["dk", "beta", "nv"])
 def test_non_nffc_v2_current_context_derives_qb_passing_component_before_filter(
     monkeypatch,
     tmp_path,
@@ -1430,7 +1439,7 @@ def test_non_nffc_v2_current_context_derives_qb_passing_component_before_filter(
     # its independently derived passing component remains authoritative.
     assert context["qb_avg_proj_pass_points"] == pytest.approx(280.5)
     assert context["team_qb1_ppg"] == pytest.approx(22.0)
-    if league == "beta":
+    if league in weekly_builder.AUCTION_ETR_LEAGUES:
         assert context["avg_pick"] == pytest.approx(45.0)
         assert context["current_adp_source"] == (
             "v2_canonical_adp_family_consensus"
@@ -1741,6 +1750,32 @@ def test_beta_historical_scoring_context_allows_signed_components(
     )
 
 
+def test_nv_historical_scoring_context_uses_nv_expert_consensus(
+    monkeypatch,
+    tmp_path,
+):
+    context = _exercise_historical_scoring_context(
+        monkeypatch,
+        tmp_path,
+        league="nv",
+        scoring_matched_context=True,
+        scoring_matched_fallback_center=False,
+        receiver_shares=(-0.10, 0.50, 0.60),
+    )
+
+    assert context["historical_pred_fp_per_game"] == pytest.approx(12.0)
+    assert context["historical_projection_source"] == (
+        "v2_nv_expert_consensus"
+    )
+    assert context["historical_center_policy"] == (
+        "nv_scored_expert_consensus"
+    )
+    assert context["avg_proj_pass_points"] == pytest.approx(-20.4)
+    assert context["projection_context_source"] == (
+        "v2_nv_scoring_matched_preseason"
+    )
+
+
 def test_beta_historical_scoring_context_replaces_only_dk_fallback_center(
     monkeypatch,
     tmp_path,
@@ -1902,9 +1937,10 @@ def test_beta_scoring_context_preserves_signed_team_qb_passing_component():
     assert receiver["team_qb_pass_points"] == pytest.approx(-5.0)
 
 
-def test_beta_current_join_uses_promoted_v2_scoring_context():
+@pytest.mark.parametrize("league", ["beta", "nv"])
+def test_auction_current_join_uses_promoted_v2_scoring_context(league):
     prediction = _current_prediction("scoring-key", "Scoring Receiver")
-    prediction["version"] = "beta"
+    prediction["version"] = league
     model_context = pd.DataFrame(
         [
             _scoring_match_context(
@@ -1938,7 +1974,7 @@ def test_beta_current_join_uses_promoted_v2_scoring_context():
 
     original_league = weekly_builder.LEAGUE
     try:
-        weekly_builder.set_active_league("beta")
+        weekly_builder.set_active_league(league)
         attached = weekly_builder.attach_current_context_by_player_key(
             pd.DataFrame([prediction]),
             model_context,

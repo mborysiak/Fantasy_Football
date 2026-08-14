@@ -11,8 +11,8 @@ Eligibility is preseason-only:
 * NFFC considers the first 363 canonical offensive players in current NFFC
   ADP so the three reviewed 2026 protected-market exclusions still leave a
   complete 360-player draft surface;
-* beta adds the first 180 canonical players in current ETR overall rank and every
-  current beta keeper.
+* beta and NV add the first 180 canonical players in current ETR overall rank
+  and every current keeper in their respective league.
 
 All source labels resolve through the governed V2 identity tables before they
 can affect eligibility.  Core players and keepers always fail closed when their
@@ -66,6 +66,10 @@ V2_DATABASES = {
     / "Data"
     / "Databases"
     / "Projection_V2_beta.sqlite3",
+    "nv": REPO_ROOT
+    / "Data"
+    / "Databases"
+    / "Projection_V2_nv.sqlite3",
 }
 PRODUCTION_YEAR = DEFAULT_PRODUCTION_YEAR
 PRODUCTION_DATASET = "final_ensemble"
@@ -83,6 +87,7 @@ MARKET_ELIGIBILITY_RULES = {
     # The internal ``etr_adp`` label predates that contract; selection is
     # intentionally ordered by ETR overall rank.
     "beta": ("etr", 180, "etr_adp"),
+    "nv": ("etr", 180, "etr_adp"),
 }
 # The minimum complete population must still cover the full draft.  Within that
 # surface, the first five-sixths of expected picks are protected and fail closed
@@ -94,6 +99,7 @@ MARKET_HANDOFF_REQUIRED_DEPTH = {
     "dk": 240,
     "nffc": 360,
     "beta": 180,
+    "nv": 180,
 }
 MARKET_HANDOFF_PROTECTED_PICK_DEPTH = {
     league: (required_depth * 5) // 6
@@ -243,9 +249,6 @@ GOVERNED_PRODUCTION_EXCLUSIONS_BY_YEAR: Mapping[
             "862eb067-7abb-5156-9cf1-33c3ad11333c": (
                 "market_only_without_current_projection_center"
             ),
-            "86efb1f0-e04a-5f4d-b8cb-048353f1d3f5": (
-                "market_only_without_current_projection_center"
-            ),
             "89aacaaa-acba-5185-83b3-7b68130c4465": (
                 "market_only_without_current_projection_center"
             ),
@@ -254,6 +257,7 @@ GOVERNED_PRODUCTION_EXCLUSIONS_BY_YEAR: Mapping[
             ),
         },
         "beta": {},
+        "nv": {},
     },
 }
 
@@ -2554,7 +2558,8 @@ def _load_keeper_source(
 ) -> pd.DataFrame:
     if not _table_exists(simulation_db, "League_Keepers"):
         raise ValueError(
-            "League_Keepers is required for beta production eligibility"
+            "League_Keepers is required for auction-league production "
+            "eligibility"
         )
     with sqlite3.connect(simulation_db) as connection:
         columns = {
@@ -2695,13 +2700,13 @@ def build_eligibility_membership(
     market.drop(columns="_normalized_label", inplace=True)
 
     source_frames = [core, market]
-    if league == "beta" and not keeper_rows.empty:
+    if league in {"beta", "nv"} and not keeper_rows.empty:
         keepers = resolve_source_player_keys(
             keeper_rows,
             aliases,
             identities,
             year=year,
-            source_name="beta_league_keepers",
+            source_name=f"{league}_league_keepers",
         )
         keepers["eligibility_source"] = "league_keeper"
         keepers["source_rank"] = np.nan
@@ -2826,7 +2831,7 @@ def load_eligibility_membership(
             year=year,
             league=league,
         )
-        if league == "beta"
+        if league in {"beta", "nv"}
         else pd.DataFrame(columns=["player"])
     )
     membership = build_eligibility_membership(
@@ -3749,6 +3754,11 @@ def parse_args(argv=None) -> argparse.Namespace:
         type=Path,
         default=V2_DATABASES["beta"],
     )
+    parser.add_argument(
+        "--nv-v2-db",
+        type=Path,
+        default=V2_DATABASES["nv"],
+    )
     parser.add_argument("--year", type=int, default=PRODUCTION_YEAR)
     parser.add_argument("--dataset", default=PRODUCTION_DATASET)
     return parser.parse_args(argv)
@@ -3762,6 +3772,7 @@ def main(argv=None) -> None:
             "dk": args.dk_v2_db.resolve(),
             "nffc": args.nffc_v2_db.resolve(),
             "beta": args.beta_v2_db.resolve(),
+            "nv": args.nv_v2_db.resolve(),
         },
         model_inputs_db=args.model_inputs_db.resolve(),
         market_source_db=args.market_source_db.resolve(),

@@ -361,8 +361,11 @@ V2_SCORING_SENSITIVE_CURRENT_CONTEXT_COLS = {
     "std_proj_points",
     *MATCH_OUTPUT_COLS,
 }
-V2_SCORING_CONTEXT_CAPABLE_LEAGUES = frozenset({"beta", "nffc"})
-SIGNED_PROJECTION_COMPONENT_SHARE_LEAGUES = frozenset({"beta"})
+AUCTION_ETR_LEAGUES = frozenset({"beta", "nv"})
+V2_SCORING_CONTEXT_CAPABLE_LEAGUES = frozenset(
+    {"beta", "nffc", "nv"}
+)
+SIGNED_PROJECTION_COMPONENT_SHARE_LEAGUES = AUCTION_ETR_LEAGUES
 
 # These fields are the minimum non-neutral context required to match a current
 # production player to historical weekly templates. Position-specific room
@@ -473,7 +476,7 @@ def projection_schedule_games(seasons):
 def current_adp_source_league(league=None):
     """Return the market source that governs the active population policy."""
     league = resolve_league(LEAGUE if league is None else league)
-    return "etr" if league == "beta" else league
+    return "etr" if league in AUCTION_ETR_LEAGUES else league
 
 
 def validate_published_avg_adp_keys(frame, source_name):
@@ -1820,7 +1823,7 @@ def load_v2_scored_projection_context(
             connection,
             params=(int(min_season), int(max_season)),
         )
-        if LEAGUE == "beta":
+        if LEAGUE in AUCTION_ETR_LEAGUES:
             projection_value_columns = {
                 str(row[1])
                 for row in connection.execute(
@@ -1841,7 +1844,7 @@ def load_v2_scored_projection_context(
             )
             if missing_projection_value_columns:
                 raise ValueError(
-                    "V2 beta projection values lack scored rank-context "
+                    f"V2 {LEAGUE} projection values lack scored rank-context "
                     f"columns: {missing_projection_value_columns}"
                 )
             beta_rank_values = pd.read_sql_query(
@@ -1931,10 +1934,10 @@ def load_v2_scored_projection_context(
             f"locked={sorted(locked_feature_runs)}"
         )
 
-    if LEAGUE == "beta":
+    if LEAGUE in AUCTION_ETR_LEAGUES:
         if beta_rank_values.empty:
             raise ValueError(
-                "V2 beta projection values contain no scored provider ranks "
+                f"V2 {LEAGUE} projection values contain no scored provider ranks "
                 f"for {min_season}-{max_season}."
             )
         if beta_rank_values.duplicated(
@@ -1948,7 +1951,7 @@ def load_v2_scored_projection_context(
                 ["player_key", "season", "provider"],
             ].head(10)
             raise ValueError(
-                "V2 beta scored provider rank context contains duplicate "
+                f"V2 {LEAGUE} scored provider rank context contains duplicate "
                 f"keys: {preview.to_dict('records')}"
             )
         beta_rank_values["provider_projected_points"] = pd.to_numeric(
@@ -1961,7 +1964,7 @@ def load_v2_scored_projection_context(
         )
         if invalid_rank_points.any():
             raise ValueError(
-                "V2 beta scored provider rank context contains invalid points."
+                f"V2 {LEAGUE} scored provider rank context contains invalid points."
             )
         beta_rank_runs = {
             str(run_id).strip()
@@ -1970,7 +1973,7 @@ def load_v2_scored_projection_context(
         }
         if beta_rank_runs != observed_feature_runs:
             raise ValueError(
-                "V2 beta scored provider ranks are not from the exact feature "
+                f"V2 {LEAGUE} scored provider ranks are not from the exact feature "
                 "run used by player_season_features: "
                 f"ranks={sorted(beta_rank_runs)}, "
                 f"features={sorted(observed_feature_runs)}"
@@ -2025,7 +2028,7 @@ def load_v2_scored_projection_context(
                 ["player_key", "season", "feature_context_position"],
             ].head(20)
             raise ValueError(
-                "V2 beta scored provider-rank coverage is incomplete: "
+                f"V2 {LEAGUE} scored provider-rank coverage is incomplete: "
                 f"{preview.to_dict('records')}"
             )
     else:
@@ -2261,7 +2264,7 @@ def apply_v2_scored_projection_context(
         .str.strip()
     )
     governed_context_unavailable_candidate = (
-        (LEAGUE == "beta")
+        (LEAGUE in AUCTION_ETR_LEAGUES)
         & projections["pos"].eq("QB")
         & pd.to_numeric(
             projections[season_column], errors="coerce"
@@ -2277,7 +2280,7 @@ def apply_v2_scored_projection_context(
         .replace(TEAM_ALIASES)
     )
     projections["_projection_context_team_normalized"] = projection_team
-    if LEAGUE == "beta":
+    if LEAGUE in AUCTION_ETR_LEAGUES:
         scored_team_qb = scored_team_qb.rename(
             columns={
                 "_feature_context_team_normalized": (
@@ -2566,7 +2569,7 @@ def apply_v2_scored_projection_context(
             assigned_team & team_qb1_pass_points.lt(0)
         )
     governed_team_qb_unavailable = (
-        (LEAGUE == "beta")
+        (LEAGUE in AUCTION_ETR_LEAGUES)
         & pd.to_numeric(
             projections[season_column], errors="coerce"
         ).eq(2018)
@@ -2663,7 +2666,7 @@ def apply_v2_scored_projection_context(
         scoring_context_available,
         projections["std_proj_points"],
     )
-    if LEAGUE == "beta":
+    if LEAGUE in AUCTION_ETR_LEAGUES:
         scored_position_rank_std = pd.to_numeric(
             projections["beta_scored_position_rank_std"],
             errors="coerce",
@@ -2675,7 +2678,7 @@ def apply_v2_scored_projection_context(
     projections["projection_context_source"] = np.where(
         scoring_context_available,
         scoring_matched_context_source(),
-        "v2_beta_scoring_context_unavailable",
+        f"v2_{LEAGUE}_scoring_context_unavailable",
     )
     projections["projection_context_avg_proj_points_delta"] = (
         projections["avg_proj_points"]
@@ -2685,23 +2688,33 @@ def apply_v2_scored_projection_context(
         )
     )
     if use_expert_donor_center:
-        approved_policies = (
-            _PRODUCTION_CYCLE.template_center_policies["nffc"]
+        expected_policy = f"{LEAGUE}_scored_expert_consensus"
+        approved_policies = set(
+            _PRODUCTION_CYCLE.template_center_policies[LEAGUE]
         )
-        if approved_policies != ("nffc_scored_expert_consensus",):
+        allowed_policies = {expected_policy}
+        if LEAGUE == "nv":
+            allowed_policies.add("preseason_projection_fallback")
+        if approved_policies != allowed_policies:
             raise ValueError(
-                "The approved NFFC donor-center contract is not the "
-                "scoring-matched expert consensus."
+                f"The approved {LEAGUE.upper()} donor-center contract is "
+                "not the scoring-matched expert consensus contract."
             )
-        projections["historical_pred_fp_per_game"] = projections[
-            "expert_ppg_team_game_median"
+        projections.loc[
+            scoring_context_available,
+            "historical_pred_fp_per_game",
+        ] = projections.loc[
+            scoring_context_available,
+            "expert_ppg_team_game_median",
         ]
-        projections["historical_projection_source"] = (
-            "v2_nffc_expert_consensus"
-        )
-        projections["historical_center_policy"] = (
-            approved_policies[0]
-        )
+        projections.loc[
+            scoring_context_available,
+            "historical_projection_source",
+        ] = f"v2_{LEAGUE}_expert_consensus"
+        projections.loc[
+            scoring_context_available,
+            "historical_center_policy",
+        ] = expected_policy
         projections["v2_recenter_promoted"] = 0
     elif use_expert_fallback_center:
         if LEAGUE != "beta":
@@ -2842,7 +2855,7 @@ def load_historical_projection_context(
             proj,
             v2_database=v2_database,
             season_column="season",
-            use_expert_donor_center=LEAGUE == "nffc",
+            use_expert_donor_center=LEAGUE in {"nffc", "nv"},
             use_expert_fallback_center=use_scoring_fallback_center,
         )
         proj = add_qb_team_rank_fields(
@@ -2937,10 +2950,10 @@ def _beta_2018_qb_center_fallback_proof(
             FROM build_runs
             WHERE run_id=?
               AND component='milestone_3'
-              AND league='beta'
+              AND league=?
               AND status='complete'
             """,
-            (feature_run_id,),
+            (feature_run_id, LEAGUE),
         ).fetchall()
         if len(feature_builds) != 1 or feature_builds[0][0] is None:
             return None
@@ -3006,10 +3019,9 @@ def attach_locked_v2_historical_centers(
 ):
     """Attach strict-OOS V2 centers without replacing validated donor centers.
 
-    The 2026-07-29 rolling replay found that recentering the historical donor
-    residuals on V2 predictions degraded PPG CRPS in both supported leagues.
-    Keep those centers available for audit/research, but leave the production
-    donor residuals centered on the previously validated OOS projections.
+    The locked V2 centers remain audit evidence. Each league's registered
+    production center policy is applied later, after its scoring-matched
+    context has been attached.
     """
 
     projections = projections.copy()
@@ -3177,7 +3189,7 @@ def attach_locked_v2_historical_centers(
         & projections["template_center_available"].eq(0)
         & projections["pos"].eq("QB")
         & projections["season"].eq(2018)
-        & (LEAGUE == "beta")
+        & (LEAGUE in AUCTION_ETR_LEAGUES)
     )
     unexpected_missing = missing_v2 & ~allowed_fallback
     if unexpected_missing.any():
@@ -3203,7 +3215,7 @@ def attach_locked_v2_historical_centers(
             )
         if fallback_proof is None:
             raise ValueError(
-                "beta 2018 QB historical V2 center fallback lacks the active "
+                f"{LEAGUE} 2018 QB historical V2 center fallback lacks the active "
                 "FFToday quarantine proof"
             )
         projections.loc[
@@ -4274,13 +4286,16 @@ def validate_weekly_template_audits(player_pool_audit, template_audit=None):
                 governed_beta_unavailable["pos"].ne("QB")
                 | governed_seasons.ne(2018)
             ]
-            if LEAGUE != "beta" or not invalid_governed_unavailable.empty:
+            if (
+                LEAGUE not in AUCTION_ETR_LEAGUES
+                or not invalid_governed_unavailable.empty
+            ):
                 preview = governed_beta_unavailable[
                     ["player", "pos", "season", "template_exclusion_reason"]
                 ].head(10)
                 raise ValueError(
-                    "The governed beta scoring-context exclusion appeared "
-                    "outside beta 2018 QB templates: "
+                    "The governed scoring-context exclusion appeared outside "
+                    f"{LEAGUE} 2018 QB templates: "
                     f"{preview.to_dict('records')}"
                 )
             expected_exclusions.update(
@@ -4465,7 +4480,7 @@ def load_current_player_context(v2_database=None):
         current_context["year_exp"].notna(),
         current_context["adp_year_exp"],
     )
-    if LEAGUE == "beta":
+    if LEAGUE in AUCTION_ETR_LEAGUES:
         current_context["adp_avg_pick"] = (
             current_context["canonical_model_avg_pick"]
             .combine_first(current_context["model_input_avg_pick"])
@@ -5026,7 +5041,7 @@ def load_v2_current_player_context(
         fallback["published_adp_avg_pick"],
         errors="coerce",
     )
-    if LEAGUE == "beta":
+    if LEAGUE in AUCTION_ETR_LEAGUES:
         fallback["adp_avg_pick"] = fallback[
             "feature_adp_median"
         ].combine_first(fallback["published_adp_avg_pick"])
@@ -5093,15 +5108,15 @@ def load_v2_current_player_context(
         )
         * projection_schedule_games(fallback["year"])
     )
-    # Beta provider ranks are recomputed from the same configured, beta-scored
-    # V2 points. Other scoring contexts retain the governed group fallback
-    # until an equivalent league-specific rank contract is promoted.
+    # Auction provider ranks are recomputed from the same configured,
+    # league-scored V2 points. Other scoring contexts retain the governed group
+    # fallback until an equivalent league-specific rank contract is promoted.
     fallback["std_pos_rank"] = (
         pd.to_numeric(
             fallback["beta_scored_position_rank_std"],
             errors="coerce",
         )
-        if LEAGUE == "beta" and use_scoring_context
+        if LEAGUE in AUCTION_ETR_LEAGUES and use_scoring_context
         else np.nan
     )
 
@@ -6638,7 +6653,7 @@ def copy_simulation_db_to_apps():
             FROM Final_Predictions_Resid
             WHERE year=?
               AND dataset=?
-              AND version IN ('dk', 'nffc', 'beta')
+              AND version IN ('dk', 'nffc', 'beta', 'nv')
               AND (
                     player_key IS NULL
                  OR pred_fp_per_game IS NULL
@@ -6652,7 +6667,7 @@ def copy_simulation_db_to_apps():
         ).fetchone()[0]
         if incomplete_projection_rows:
             raise ValueError(
-                f"{incomplete_projection_rows} DK/NFFC/beta projection rows violate "
+                f"{incomplete_projection_rows} DK/NFFC/beta/NV projection rows violate "
                 "the V2 production handoff"
             )
 

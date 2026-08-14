@@ -980,6 +980,8 @@ dm.write_to_db(df, DB_NAME, 'FFF_Projections', 'append')
 #%%
 
 
+
+
 #%%
 barret = f'Scott Barretts {YEAR} Redraft Fantasy Football Rankings  Fantasy Points'
 df = move_download_to_folder(root_path, 'FantasyPoints', f'{barret}.csv', YEAR)

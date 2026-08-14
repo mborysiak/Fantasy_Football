@@ -31,6 +31,8 @@ from Scripts.V2.production_handoff import (
     resolve_source_player_keys,
 )
 from Scripts.Modeling.salary_source_parser import (
+    build_causal_v2_salary_validation_features,
+    collapse_identical_salary_rows,
     governed_salary_fallback_null_team_keys,
     governed_salary_source_specs,
     parse_espn_salary_records,
@@ -70,7 +72,11 @@ dm = DataManage(db_path)
 
 # set core path
 PATH = f'{root_path}/Data/'
-LEAGUE = 'beta'
+LEAGUE = os.getenv('FF_AUCTION_LEAGUE', 'beta').strip().lower()
+if LEAGUE not in {'beta', 'nv'}:
+    raise ValueError(
+        f'FF_AUCTION_LEAGUE must be beta or nv; found {LEAGUE!r}'
+    )
 NUM_TEAMS = 12
 TEAM_BUDGET = 298
 TEAM_ROSTER_SIZE = 13
@@ -87,19 +93,28 @@ SALARY_CALIBRATION_START_YEAR = 2021
 SALARY_METHOD_VERSION = 'current_locked_spec_v6_v2_population_11f'
 VALIDATION_DATASETS_ONLY = os.getenv('SALARY_VALIDATION_DATASETS_ONLY', '0') == '1'
 KEEPERS_ONLY = os.getenv('SALARY_KEEPERS_ONLY', '0') == '1'
+ALLOW_EMPTY_KEEPERS = os.getenv('FF_ALLOW_EMPTY_KEEPERS', '0') == '1'
 IS_STAGED_DATABASE_RUN = (
     Path(db_path).resolve()
     != (Path(root_path) / 'Data' / 'Databases').resolve()
 )
-V2_BETA_DATABASE = Path(
-    os.getenv(
+default_v2_database_name = (
+    'Projection_V2_beta.sqlite3'
+    if LEAGUE == 'beta'
+    else f'Projection_V2_{LEAGUE}.sqlite3'
+)
+default_v2_database_path = str(
+    Path(root_path) / 'Data' / 'Databases' / default_v2_database_name
+)
+if LEAGUE == 'beta':
+    default_v2_database_path = os.getenv(
         'FF_V2_BETA_DATABASE',
-        str(
-            Path(root_path)
-            / 'Data'
-            / 'Databases'
-            / 'Projection_V2_beta.sqlite3'
-        ),
+        default_v2_database_path,
+    )
+V2_AUCTION_DATABASE = Path(
+    os.getenv(
+        'FF_V2_AUCTION_DATABASE',
+        default_v2_database_path,
     )
 )
 ENSEMBLE_FALLBACK_GAMES = 16.5
@@ -203,11 +218,15 @@ KEEPERS_FILE = Path(
         ),
     )
 ).expanduser().resolve()
-if not KEEPERS_FILE.is_file():
+if not KEEPERS_FILE.is_file() and not ALLOW_EMPTY_KEEPERS:
     raise FileNotFoundError(
         f'Missing required {YEAR} {LEAGUE} keeper input: {KEEPERS_FILE}'
     )
-ty_keepers = pd.read_csv(KEEPERS_FILE)
+ty_keepers = (
+    pd.read_csv(KEEPERS_FILE)
+    if KEEPERS_FILE.is_file()
+    else pd.DataFrame(columns=['player', 'keeper_salary'])
+)
 required_keeper_columns = {'player', 'keeper_salary'}
 missing_keeper_columns = sorted(
     required_keeper_columns.difference(ty_keepers.columns)
@@ -349,7 +368,7 @@ else:
         Path(db_path) / 'Simulation.sqlite3',
         YEAR,
         LEAGUE,
-        v2_database=V2_BETA_DATABASE,
+        v2_database=V2_AUCTION_DATABASE,
     )
 
 if KEEPERS_ONLY:
@@ -378,7 +397,7 @@ if IS_STAGED_DATABASE_RUN and not VALIDATION_DATASETS_ONLY:
     )
 else:
     # Preserve the interactive/non-refresh behavior: validate and replace only
-    # the current beta source slice.
+    # the active auction-league source slice.
     df = pd.read_csv(
         f'{PATH}/OtherData/Salaries/salaries_{YEAR}_{LEAGUE}.csv',
         header=None,
@@ -552,7 +571,7 @@ def get_adp():
         if current_mask.any():
             current = attach_v2_player_keys(
                 stats.loc[current_mask].copy(),
-                V2_BETA_DATABASE,
+                V2_AUCTION_DATABASE,
                 season_column='year',
                 require_complete=True,
             )
@@ -615,7 +634,7 @@ def get_adp():
         ~production_population.player_key.astype(str).isin(current_core_keys)
     ].copy()
     if len(missing_population) > 0:
-        with sqlite3.connect(V2_BETA_DATABASE) as connection:
+        with sqlite3.connect(V2_AUCTION_DATABASE) as connection:
             v2_features = pd.read_sql_query(
                 f'''SELECT player_key,
                            display_name,
@@ -869,17 +888,40 @@ def get_ensemble_projection_predictions():
     Historical rows use the persisted production-style OOS validation ensemble.
     Current rows use the final ensemble that feeds the auction simulation.
     """
-    historical = dm.read(f'''
-        SELECT player,
-               CAST(season AS INTEGER) year,
-               pos,
-               pred_fp_per_game,
-               {', '.join(ENSEMBLE_SOURCE_RESID_COLS)}
-        FROM Final_Validations_Resid
-        WHERE version='{LEAGUE}'
-              AND model_spec_asof_year={YEAR}
-              AND season < {YEAR}
-    ''', 'Validations')
+    if LEAGUE == 'nv':
+        with sqlite3.connect(V2_AUCTION_DATABASE) as connection:
+            locked_predictions = pd.read_sql_query(
+                '''SELECT player_key,
+                          season,
+                          position,
+                          target_name,
+                          method,
+                          prediction,
+                          residual
+                     FROM locked_whole_season_predictions''',
+                connection,
+            )
+            identities = pd.read_sql_query(
+                'SELECT player_key, display_name FROM player_identity',
+                connection,
+            )
+        historical = build_causal_v2_salary_validation_features(
+            locked_predictions,
+            identities,
+            current_year=YEAR,
+        )
+    else:
+        historical = dm.read(f'''
+            SELECT player,
+                   CAST(season AS INTEGER) year,
+                   pos,
+                   pred_fp_per_game,
+                   {', '.join(ENSEMBLE_SOURCE_RESID_COLS)}
+            FROM Final_Validations_Resid
+            WHERE version='{LEAGUE}'
+                  AND model_spec_asof_year={YEAR}
+                  AND season < {YEAR}
+        ''', 'Validations')
     historical = historical.dropna(
         subset=['player', 'year', 'pos', 'pred_fp_per_game']
     ).copy()
@@ -893,9 +935,10 @@ def get_ensemble_projection_predictions():
         keys,
         as_index=False,
     )[projection_columns].mean()
-    historical['ensemble_uncertainty_feature_source'] = (
-        'oos_ensemble_residual_quantiles'
-    )
+    if 'ensemble_uncertainty_feature_source' not in historical:
+        historical['ensemble_uncertainty_feature_source'] = (
+            'oos_ensemble_residual_quantiles'
+        )
 
     current = dm.read(f'''
         SELECT player,
@@ -1063,11 +1106,17 @@ def add_ensemble_projection_features(projection_rows):
         projection_rows.ensemble_pred_fallback
         & projection_rows.year.astype(int).isin(validation_years)
     )
-    if unexpected_fallback.any():
+    if unexpected_fallback.any() and LEAGUE != 'nv':
         missing = projection_rows.loc[unexpected_fallback, keys].to_dict('records')
         raise ValueError(
             'Historical ensemble projections failed to join covered validation years: '
             f'{missing[:10]}'
+        )
+    if unexpected_fallback.any():
+        print(
+            'NV locked OOS history intentionally uses consensus point fallbacks '
+            'outside the governed V2 validation population:',
+            int(unexpected_fallback.sum()),
         )
 
     projection_rows = _fill_ensemble_residual_fallbacks(
@@ -1222,7 +1271,7 @@ def _canonicalize_current_salary_source_labels(source, source_name):
     ).eq(YEAR)
     if not current_mask.any():
         return source
-    aliases, identities = load_identity_frames(V2_BETA_DATABASE)
+    aliases, identities = load_identity_frames(V2_AUCTION_DATABASE)
     resolved = resolve_source_player_keys(
         source.loc[current_mask].copy(),
         aliases,
@@ -1287,17 +1336,13 @@ def get_salaries():
             source_name,
         )
         source.loc[:, 'player'] = canonicalized.player
-        duplicate_keys = source.duplicated(['player', 'year'], keep=False)
-        if duplicate_keys.any():
-            duplicates = (
-                source.loc[duplicate_keys, ['player', 'year']]
-                .drop_duplicates()
-                .to_dict('records')
-            )
-            raise ValueError(
-                f'{source_name} has duplicate player-year rows after name cleaning: '
-                f'{duplicates[:10]}'
-            )
+        source.drop(source.index, inplace=True)
+        source_rows = collapse_identical_salary_rows(
+            canonicalized,
+            source_name,
+        )
+        for column in source_rows.columns:
+            source[column] = source_rows[column]
     # Preserve actual-only purchases long enough to join them to the pre-auction
     # projection universe. The old right join silently discarded deep players
     # whose ESPN values were not copied into ``Salaries``.

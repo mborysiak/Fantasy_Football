@@ -1048,7 +1048,7 @@ def test_one_missing_required_component_uses_two_provider_median():
     assert scored.loc[2, "points_method"] == "configured_components_imputed"
 
 
-def test_beta_requires_and_imputes_qb_sacks_but_dk_does_not():
+def test_auction_leagues_require_qb_sacks_and_nv_uses_four_point_pass_tds():
     quarterback = {
         "position": "QB",
         "passing_yards": 4000,
@@ -1084,6 +1084,14 @@ def test_beta_requires_and_imputes_qb_sacks_but_dk_does_not():
         4000 * 0.04 + 30 * 5 - 10 * 2 - 35
     )
 
+    nv = _score_projection_values(frame, "nv")
+    assert "sacks" in _required_projection_components("nv")["QB"]
+    assert nv.loc[2, "sacks"] == 35
+    assert nv.loc[2, "configured_points_complete"] == 1
+    assert nv.loc[2, "passing_points"] == pytest.approx(
+        4000 * 0.04 + 30 * 4 - 10 * 2 - 35
+    )
+
     dk_without_sack_donors = _score_projection_values(frame.iloc[[2]], "dk")
     assert "sacks" not in _required_projection_components("dk")["QB"]
     assert pd.isna(dk_without_sack_donors.loc[2, "sacks"])
@@ -1115,7 +1123,10 @@ def test_beta_requires_and_imputes_qb_sacks_but_dk_does_not():
     )
 
 
-def test_beta_qb_sacks_allow_one_donor_without_weakening_other_components():
+@pytest.mark.parametrize("league", ["beta", "nv"])
+def test_auction_qb_sacks_allow_one_donor_without_weakening_other_components(
+    league,
+):
     quarterback = {
         "position": "QB",
         "passing_yards": 4000,
@@ -1134,16 +1145,16 @@ def test_beta_qb_sacks_allow_one_donor_without_weakening_other_components():
             ),
         ]
     )
-    beta = _score_projection_values(quarterback_rows, "beta")
-    assert beta.loc[1, "sacks"] == 32
-    assert beta.loc[1, "configured_points_complete"] == 1
-    assert beta.loc[1, "configured_points_imputed_component_count"] == 1
-    assert beta.loc[1, "configured_points_imputed_components"] == "sacks"
-    assert beta.loc[
+    scored = _score_projection_values(quarterback_rows, league)
+    assert scored.loc[1, "sacks"] == 32
+    assert scored.loc[1, "configured_points_complete"] == 1
+    assert scored.loc[1, "configured_points_imputed_component_count"] == 1
+    assert scored.loc[1, "configured_points_imputed_components"] == "sacks"
+    assert scored.loc[
         1, "configured_points_imputation_donor_providers"
     ] == "fftoday"
-    assert beta.loc[1, "configured_points_imputation_donor_count"] == 1
-    assert beta.loc[1, "points_method"] == "configured_components_imputed"
+    assert scored.loc[1, "configured_points_imputation_donor_count"] == 1
+    assert scored.loc[1, "points_method"] == "configured_components_imputed"
 
     receiver_rows = pd.DataFrame(
         [

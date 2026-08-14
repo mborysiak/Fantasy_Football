@@ -78,6 +78,28 @@ class SalaryPopulationContractError(ValueError):
     """Raised when a V2 salary fallback row lacks a model input."""
 
 
+def collapse_identical_salary_rows(
+    frame: pd.DataFrame,
+    source_name: str,
+) -> pd.DataFrame:
+    """Collapse literal repeats while rejecting conflicting player-year rows."""
+    deduplicated = frame.drop_duplicates().reset_index(drop=True)
+    duplicate_keys = deduplicated.duplicated(
+        ["player", "year"], keep=False
+    )
+    if duplicate_keys.any():
+        duplicates = (
+            deduplicated.loc[duplicate_keys, ["player", "year"]]
+            .drop_duplicates()
+            .to_dict("records")
+        )
+        raise SalaryPopulationContractError(
+            f"{source_name} has conflicting duplicate player-year rows "
+            f"after name cleaning: {duplicates[:10]}"
+        )
+    return deduplicated
+
+
 @dataclass(frozen=True)
 class SalarySourceSpec:
     """One governed ESPN salary export consumed by a production cycle."""
@@ -101,6 +123,9 @@ _GOVERNED_SALARY_SLICES = {
         # copied boundary (through a terminal $0 record), not a mutable row
         # count; the stage manifest separately freezes the exact file hash.
         (2026, "beta", None, True),
+        # NV uses the complete fixed 200-player ESPN export supplied for the
+        # 2026 auction. It is independently hash-bound by the stage manifest.
+        (2026, "nv", 200, False),
     ),
 }
 
@@ -117,6 +142,163 @@ _GOVERNED_SALARY_FALLBACK_NULL_TEAM_KEYS = {
     ),
 }
 SALARY_FALLBACK_TEAM_POLICY_VERSION = "v2_nullable_team_conflict_v1"
+V2_SALARY_VALIDATION_METHOD = "conditional_ppg_primary_blend"
+V2_SALARY_VALIDATION_TARGET = "conditional_ppg"
+V2_SALARY_RESIDUAL_PERCENTILES = (5, 10, 25, 75, 90, 95)
+V2_SALARY_UNCERTAINTY_SOURCE = (
+    "v2_locked_oos_strict_prior_position_residual_quantiles"
+)
+
+
+def build_causal_v2_salary_validation_features(
+    predictions: pd.DataFrame,
+    identities: pd.DataFrame,
+    *,
+    current_year: int,
+) -> pd.DataFrame:
+    """Build salary features from locked V2 OOS point predictions.
+
+    A target season's uncertainty is estimated only from locked residuals in
+    earlier seasons at the same position.  The first locked season is omitted
+    because it has no strictly prior residual pool.
+    """
+    prediction_columns = {
+        "player_key",
+        "season",
+        "position",
+        "target_name",
+        "method",
+        "prediction",
+        "residual",
+    }
+    missing_predictions = prediction_columns.difference(predictions.columns)
+    if missing_predictions:
+        raise SalaryPopulationContractError(
+            "Locked V2 salary validation predictions are missing columns: "
+            f"{sorted(missing_predictions)}."
+        )
+    identity_columns = {"player_key", "display_name"}
+    missing_identities = identity_columns.difference(identities.columns)
+    if missing_identities:
+        raise SalaryPopulationContractError(
+            "V2 salary validation identities are missing columns: "
+            f"{sorted(missing_identities)}."
+        )
+
+    locked = predictions.loc[
+        predictions["target_name"].eq(V2_SALARY_VALIDATION_TARGET)
+        & predictions["method"].eq(V2_SALARY_VALIDATION_METHOD)
+    ].copy()
+    locked["season"] = pd.to_numeric(locked["season"], errors="coerce")
+    locked["prediction"] = pd.to_numeric(
+        locked["prediction"], errors="coerce"
+    )
+    locked["residual"] = pd.to_numeric(locked["residual"], errors="coerce")
+    locked["position"] = (
+        locked["position"].astype("string").str.strip().str.upper()
+    )
+    locked = locked.loc[
+        locked["season"].lt(int(current_year))
+        & locked["position"].isin({"QB", "RB", "WR", "TE"})
+    ].dropna(
+        subset=["player_key", "season", "position", "prediction", "residual"]
+    )
+    locked["season"] = locked["season"].astype(int)
+    duplicate_keys = locked.duplicated(
+        ["player_key", "season", "position"], keep=False
+    )
+    if locked.empty or duplicate_keys.any():
+        duplicate_values = locked.loc[
+            duplicate_keys,
+            ["player_key", "season", "position"],
+        ].head(20).to_dict("records")
+        raise SalaryPopulationContractError(
+            "Locked V2 salary validation rows must be non-empty and unique by "
+            "player-season-position; duplicates="
+            f"{duplicate_values}."
+        )
+
+    identity_bridge = identities[["player_key", "display_name"]].drop_duplicates()
+    if (
+        identity_bridge["player_key"].isna().any()
+        or identity_bridge["display_name"].isna().any()
+        or identity_bridge["player_key"].duplicated().any()
+    ):
+        raise SalaryPopulationContractError(
+            "V2 salary validation identities must provide one display name per "
+            "player key."
+        )
+    locked = locked.merge(
+        identity_bridge,
+        on="player_key",
+        how="left",
+        validate="many_to_one",
+    )
+    if locked["display_name"].isna().any():
+        missing_keys = locked.loc[
+            locked["display_name"].isna(), "player_key"
+        ].head(20).tolist()
+        raise SalaryPopulationContractError(
+            "Locked V2 salary validation rows lack canonical identities: "
+            f"{missing_keys}."
+        )
+
+    records: list[pd.DataFrame] = []
+    for target_season in sorted(locked["season"].unique()):
+        target = locked.loc[locked["season"].eq(target_season)].copy()
+        for position, position_target in target.groupby("position", sort=True):
+            donors = locked.loc[
+                locked["season"].lt(target_season)
+                & locked["position"].eq(position),
+                "residual",
+            ]
+            if donors.empty:
+                # The earliest locked season has no causal uncertainty pool.
+                continue
+            quantiles = donors.quantile(
+                [percentile / 100 for percentile in V2_SALARY_RESIDUAL_PERCENTILES]
+            ).to_numpy()
+            for percentile, value in zip(
+                V2_SALARY_RESIDUAL_PERCENTILES,
+                quantiles,
+            ):
+                position_target[f"pred_resid_{percentile}"] = float(value)
+            records.append(position_target)
+
+    if not records:
+        raise SalaryPopulationContractError(
+            "Locked V2 salary validation history has no seasons with strictly "
+            "prior residual donors."
+        )
+    result = pd.concat(records, ignore_index=True)
+    residual_columns = [
+        f"pred_resid_{percentile}"
+        for percentile in V2_SALARY_RESIDUAL_PERCENTILES
+    ]
+    if result[residual_columns].isna().any().any():
+        raise SalaryPopulationContractError(
+            "Locked V2 salary validation uncertainty quantiles are incomplete."
+        )
+    result["ensemble_uncertainty_feature_source"] = (
+        V2_SALARY_UNCERTAINTY_SOURCE
+    )
+    return result.rename(
+        columns={
+            "display_name": "player",
+            "season": "year",
+            "position": "pos",
+            "prediction": "pred_fp_per_game",
+        }
+    )[
+        [
+            "player",
+            "year",
+            "pos",
+            "pred_fp_per_game",
+            *residual_columns,
+            "ensemble_uncertainty_feature_source",
+        ]
+    ]
 
 
 def governed_salary_source_specs(

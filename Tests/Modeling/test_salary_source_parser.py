@@ -9,12 +9,106 @@ from Scripts.Modeling.salary_source_parser import (
     SalaryPopulationContractError,
     SalarySourceSpec,
     SalarySourceFormatError,
+    V2_SALARY_UNCERTAINTY_SOURCE,
+    build_causal_v2_salary_validation_features,
+    collapse_identical_salary_rows,
     governed_salary_fallback_null_team_keys,
     governed_salary_source_specs,
     parse_espn_salary_records,
     repair_governed_salary_slices,
     validate_v2_salary_fallback_context,
 )
+
+
+def test_v2_salary_validation_uncertainty_uses_only_strict_prior_seasons():
+    identities = pd.DataFrame(
+        {
+            "player_key": ["a", "b", "c", "d"],
+            "display_name": ["A", "B", "C", "D"],
+        }
+    )
+    predictions = pd.DataFrame(
+        [
+            {
+                "player_key": "a",
+                "season": 2020,
+                "position": "RB",
+                "target_name": "conditional_ppg",
+                "method": "conditional_ppg_primary_blend",
+                "prediction": 10.0,
+                "residual": -2.0,
+            },
+            {
+                "player_key": "b",
+                "season": 2020,
+                "position": "RB",
+                "target_name": "conditional_ppg",
+                "method": "conditional_ppg_primary_blend",
+                "prediction": 12.0,
+                "residual": 2.0,
+            },
+            {
+                "player_key": "c",
+                "season": 2021,
+                "position": "RB",
+                "target_name": "conditional_ppg",
+                "method": "conditional_ppg_primary_blend",
+                "prediction": 14.0,
+                # This extreme target-season outcome must not affect its own
+                # uncertainty features.
+                "residual": 100.0,
+            },
+            {
+                "player_key": "d",
+                "season": 2022,
+                "position": "RB",
+                "target_name": "conditional_ppg",
+                "method": "conditional_ppg_primary_blend",
+                "prediction": 16.0,
+                "residual": 0.0,
+            },
+        ]
+    )
+
+    result = build_causal_v2_salary_validation_features(
+        predictions,
+        identities,
+        current_year=2023,
+    )
+
+    assert result[["player", "year"]].to_dict("records") == [
+        {"player": "C", "year": 2021},
+        {"player": "D", "year": 2022},
+    ]
+    row_2021 = result.loc[result.year.eq(2021)].iloc[0]
+    assert row_2021.pred_resid_5 == pytest.approx(-1.8)
+    assert row_2021.pred_resid_95 == pytest.approx(1.8)
+    assert row_2021.ensemble_uncertainty_feature_source == (
+        V2_SALARY_UNCERTAINTY_SOURCE
+    )
+    # By 2022, the 2021 residual is eligible as a strictly prior donor.
+    assert result.loc[result.year.eq(2022), "pred_resid_95"].iloc[0] > 2.0
+
+
+def test_identical_historical_salary_rows_collapse_but_conflicts_fail():
+    identical = pd.DataFrame(
+        [
+            {"player": "Player A", "year": 2019, "actual_salary": 10.0},
+            {"player": "Player A", "year": 2019, "actual_salary": 10.0},
+        ]
+    )
+    collapsed = collapse_identical_salary_rows(identical, "Actual_Salaries")
+    assert collapsed.to_dict("records") == [
+        {"player": "Player A", "year": 2019, "actual_salary": 10.0}
+    ]
+
+    conflicting = identical.copy()
+    conflicting.loc[1, "actual_salary"] = 11.0
+    with pytest.raises(
+        SalaryPopulationContractError,
+        match="conflicting duplicate player-year rows",
+    ):
+        collapse_identical_salary_rows(conflicting, "Actual_Salaries")
 
 
 def _source(*values):
@@ -84,6 +178,7 @@ def test_2026_governed_salary_contract_is_exact():
         (2025, "beta", 200, False, "salaries_2025_beta.csv"),
         (2025, "nv", 160, False, "salaries_2025_nv.csv"),
         (2026, "beta", None, True, "salaries_2026_beta.csv"),
+        (2026, "nv", 200, False, "salaries_2026_nv.csv"),
     ]
 
 

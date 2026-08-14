@@ -1,6 +1,6 @@
 # Best-Ball Weekly Tables Contract
 
-Last updated: 2026-08-03
+Last updated: 2026-08-13
 
 ## Owner
 
@@ -49,7 +49,7 @@ Important columns:
   `active_ppg_resid`, `profile_total`, `managed_profile_total`,
   `template_eligible`, `template_exclusion_reason`
 - weekly multipliers: `week_1` through the league horizon (`week_16` for
-  DK/beta and `week_17` for NFFC in the approved 2026 cycle)
+  DK/beta/NV and `week_17` for NFFC in the approved 2026 cycle)
 - managed weekly multipliers: `managed_week_1` through the same league horizon
 - weekly played evidence: `played_week_1` through the same league horizon
 
@@ -116,7 +116,7 @@ template league from that marker and fails if the requested league differs.
 The marker is an in-memory build guard; the durable template row stores the
 result as `league`, and its globally offset `template_id` uses the same league.
 
-This boundary is methodologically important because beta, DK, and NFFC have
+This boundary is methodologically important because beta, NV, DK, and NFFC have
 distinct configured reception, touchdown, sack, and yardage-bonus rules.
 Historical `active_ppg`, `season_points`, centered residuals, and weekly
 trajectories are all league-scored outcomes. Configured yardage bonuses
@@ -235,17 +235,18 @@ template pools, or Snake player pool.
 The canonical ADP table remains complete even when a fringe market-only player
 cannot produce a valid current or next-year V2 center. Core players and keepers
 always fail closed. New market-only gaps also fail closed through the first
-five-sixths of the draft surface (`200` DK, `300` NFFC, and `150` beta) unless
+five-sixths of the draft surface (`200` DK, `300` NFFC, and `150` beta/NV) unless
 separately accepted in the annual explicit-exclusion review. An incomplete row
 beyond that protected pick depth may be omitted from projections and weekly maps only
 under exclusion policy `v2_market_only_incomplete_buffer_exclusion_v3`; the row
 and reason remain in `V2_Production_Eligibility_Audit`, and the handoff still
-requires at least `240`/`360`/`180` complete players for DK/NFFC/beta. Legacy
+requires at least `240`/`360`/`180`/`180` complete players for
+DK/NFFC/beta/NV. Legacy
 current or next-year projections must not fill the missing V2 center.
 
 NFFC uses a 17-week template horizon and modern 2021-forward historical donors.
 Its `week_17`, `managed_week_17`, and `played_week_17` values must be populated;
-those columns are null for the 16-week DK and beta slices and consumers drop
+those columns are null for the 16-week DK, beta, and NV slices and consumers drop
 only a wholly null trailing horizon for the selected league.
 
 NFFC historical and current scoring-sensitive matcher context is authoritative
@@ -282,7 +283,32 @@ alternate NFFC contest formats. The governed adapter is live after the full
 season-registered refresh, NFFC model-acceptance and template gates, both app
 smokes, and explicit promotion.
 
-## Live 2026 Population and Context Contract
+## Registered 2026 NV Auction Candidate
+
+The approved 2026 cycle registers NV as a fourth independent V2/handoff/weekly
+objective for the Auction app. NV scoring is identical to beta for rushing,
+receiving, interceptions, sacks, fumbles, and yardage bonuses; passing
+touchdowns are four points in NV and five in beta. NV must therefore be scored
+and modeled from its own `Projection_V2_nv.sqlite3` database and cannot reuse or
+relabel beta weekly rows.
+
+NV eligibility is the union of the core projection population, the first 180
+canonical ETR overall ranks, and any governed NV keepers. The 2026 keeper slice
+is explicitly empty until `keepers_2026_nv.csv` is supplied. NV uses a 16-week
+horizon, 2008-forward donor history, exact
+`v2_nv_scoring_matched_preseason` context, and
+`nv_scored_expert_consensus` as the authoritative center for context-available
+historical donors. The quarantined 2018 QB rows without sack-aware preseason
+context retain an audit-only preseason fallback and are donor-ineligible.
+
+The production gate requires at least 300 NV projection rows, including
+40 QB/75 RB/105 WR/38 TE, at least 180 complete auction-market rows, exact
+projection/weekly/salary key parity, 80 donors per player, and a fully populated
+16-week map. This section describes the registered candidate contract; it does
+not claim that an NV database has been promoted until a complete staged refresh,
+app smoke, review, and explicit promotion succeed.
+
+## Live Pre-NV 2026 Population and Context Contract
 
 The current production population is selected before weekly context and donor
 construction:
@@ -354,7 +380,7 @@ zero room features rather than being grouped into a synthetic team room.
   (`Template_Pools.template_league`/`pool_version` to `Templates.league`) when
   the app or audit logic does not rely on globally offset IDs.
 - Preserve `week_1` through the registered league horizon as profile
-  multipliers, not raw points. The approved 2026 horizons are 16 for DK/beta
+  multipliers, not raw points. The approved 2026 horizons are 16 for DK/beta/NV
   and 17 for NFFC.
 - Preserve `managed_week_1` through the registered league horizon as the
   auction app's managed-season profile multipliers. They match `week_*` for
@@ -399,8 +425,12 @@ zero room features rather than being grouped into a synthetic team room.
   both matcher context and the donor center
   (`historical_center_policy = nffc_scored_expert_consensus`). The locked OOF
   center remains diagnostic after failing its prespecified replay gates.
-- A missing beta scoring context normally fails the build. The only governed
-  exception is a beta 2018 QB locked-handoff row with both center and scoring
+- NV production candidates use exact `v2_nv_scoring_matched_preseason` matcher
+  context and `nv_scored_expert_consensus` donor centers for every available
+  row. The 2018 QB audit exception remains a preseason fallback and is never
+  template-eligible.
+- A missing beta or NV scoring context normally fails the build. The only governed
+  exception is an auction-league 2018 QB locked-handoff row with both center and scoring
   context availability set to zero when the active FFToday quarantine receipt
   proves that no valid beta sack donor exists. Keep
   `v2_historical_pred_fp_per_game` null, retain the auditable
@@ -444,7 +474,7 @@ zero room features rather than being grouped into a synthetic team room.
   from the current donor bank, so retaining an older player map against a new
   unversioned template table is prohibited. The Snake year selector exposes
   only prediction slices present in the current weekly player map.
-- Rebuild beta, DK, and NFFC separately with explicit league arguments. As a
+- Rebuild beta, NV, DK, and NFFC separately with explicit league arguments. As a
   cross-league audit, paired historical rows should not have identical
   `active_ppg` and weekly paths throughout the full population; complete
   equality indicates a scoring-dictionary routing failure.

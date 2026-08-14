@@ -731,7 +731,7 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
 
 def main(argv: Sequence[str] | None = None) -> None:
     args = parse_args(argv)
-    leagues = tuple(args.leagues or ("dk", "nffc", "beta"))
+    leagues = tuple(args.leagues or ("dk", "nffc", "beta", "nv"))
     report = build_release_change_report(
         args.baseline,
         args.candidate,

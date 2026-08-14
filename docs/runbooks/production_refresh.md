@@ -1,6 +1,6 @@
 # Production Refresh Runbook
 
-Last updated: 2026-08-08
+Last updated: 2026-08-13
 
 ## Scope and Manual Boundary
 
@@ -166,8 +166,8 @@ Omitting `--through` on the next resume continues through `app_smoke`.
 the manifest's model options; only `--app-timeout` is treated as a retry-time
 override. Start a new refresh if any snapshotted live database, external weekly
 input, governed salary export, keeper file, or fingerprinted pipeline/app
-source file changed. Manifest schema 5 is current and retains immutable
-Model_Inputs retry bases; any non-5 stage manifest fails closed and must be
+source file changed. Manifest schema 6 is current and retains immutable
+Model_Inputs retry bases; any non-6 stage manifest fails closed and must be
 rebuilt rather than resumed.
 
 Every production refresh runs a fresh 1,000-trial Auction selection seed.
@@ -209,11 +209,12 @@ optimization but still refit every selected historical/current model and make
 fresh predictions. The cache database is validated, backed up, and promoted in
 the same rollback set as the model databases.
 
-At the outer step level, Windows access violation `0xC0000005` and heap
-corruption `0xC0000374` are retried up to four times; every automatic attempt
-is retained in the step receipt. Ordinary Python errors fail immediately. A native
-LightGBM fault is normally contained inside its worker and reaches the runner
-as `BrokenProcessPool` if the small-batch retry also fails. Python's
+At the outer step level, Windows access violation `0xC0000005`, heap
+corruption `0xC0000374`, and stack-buffer overrun `0xC0000409` are retried up
+to four times; every automatic attempt is retained in the step receipt. The
+same retry applies when a spawned worker's native access violation is wrapped
+by the parent as `OSError: exception: access violation`, or when it reaches the
+parent as `BrokenProcessPool`. Other Python errors fail immediately. Python's
 fatal-signal handler is enabled in every subprocess so the failing fit remains
 visible in the step log.
 
@@ -250,20 +251,25 @@ model_inputs
 v2_dk
 v2_nffc
 v2_beta
+v2_nv
 locked_dk
 locked_nffc
 locked_beta
+locked_nv
 next_dk
 next_nffc
 next_beta
+next_nv
 keepers
 handoff
 weekly_dk
 weekly_nffc
 weekly_beta
+weekly_nv
 template_audit_dk
 template_audit_nffc
 template_audit_beta
+template_audit_nv
 salary
 selection_premium
 compact_simulation
@@ -272,32 +278,34 @@ prepare_apps
 app_smoke
 ```
 
-- `snapshot` copies and hashes the nine source/model databases plus both live
+- `snapshot` copies and hashes the ten source/model databases plus both live
   app databases, and retains immutable current/next Model_Inputs retry bases.
   It also records the read-only weekly-history database, current keeper file,
   historical selection bootstrap files, and every governed salary export that
   remains outside the staged database directory. For the 2026 cycle, the salary
   inputs are `salaries_2025_beta.csv` (200 records),
-  `salaries_2025_nv.csv` (160), and the variable-length
-  `salaries_2026_beta.csv` export ending at an ESPN `$0` record; each external
+  `salaries_2025_nv.csv` (160), the variable-length
+  `salaries_2026_beta.csv` export ending at an ESPN `$0` record, and
+  `salaries_2026_nv.csv` (200); each external
   input is recorded by size and SHA-256.
 - `model_inputs` runs the canonical-input portion of
   `4_Data_Compile.py`, producing current and next-year model inputs. Both
   writable outputs are reset from the snapshot bases before every attempt.
-- `v2_*` rebuilds the DK, NFFC, and beta V2 feature/model databases.
+- `v2_*` rebuilds the DK, NFFC, beta, and NV V2 feature/model databases.
 - `locked_*` publishes the accepted current-year locked shadows; `next_*`
   publishes next-year residual/appearance shadows.
-- `keepers` publishes canonical keeper identities before beta eligibility is
-  resolved.
+- `keepers` publishes canonical keeper identities before beta/NV eligibility is
+  resolved. The registered 2026 NV run permits a missing keeper file and
+  publishes an explicit empty NV keeper slice.
 - `handoff` publishes current/next projections and DK/NFFC/ETR market surfaces
   into staged Simulation, then reruns and hashes all eight governed tables to
   prove idempotence.
-- `weekly_*` builds DK, NFFC, and beta weekly templates/pools with app sync
-  disabled; `template_audit_*` validates all three handoffs.
+- `weekly_*` builds DK, NFFC, beta, and NV weekly templates/pools with app sync
+  disabled; `template_audit_*` validates all four handoffs.
 - `salary` first parses all governed salary files and atomically repairs only
   their staged `Salaries` slices without changing the table schema or indexes.
-  It logs `GOVERNED_SALARY_REPAIR_RECEIPT`, then writes staged keeper/salary
-  outputs and salary validation tables.
+  It logs `GOVERNED_SALARY_REPAIR_RECEIPT`, then writes independent staged
+  beta/NV keeper, salary, and salary-validation slices.
 - `selection_premium` writes a fresh beta reserve surface plus its seed and
   calibrator.
 - `compact_simulation` runs SQLite `VACUUM` on the staged source
@@ -320,6 +328,7 @@ databases/
   Projection_V2.sqlite3
   Projection_V2_nffc.sqlite3
   Projection_V2_beta.sqlite3
+  Projection_V2_nv.sqlite3
   V2_Parameter_Cache.sqlite3
   Simulation.sqlite3
   Validations.sqlite3
@@ -336,13 +345,14 @@ logs/
 results/
 ```
 
-Promotion replaces these eight main-repo databases:
+Promotion replaces these nine main-repo databases:
 
 - `Model_Inputs.sqlite3`
 - `Model_Inputs_next.sqlite3`
 - `Projection_V2.sqlite3`
 - `Projection_V2_nffc.sqlite3`
 - `Projection_V2_beta.sqlite3`
+- `Projection_V2_nv.sqlite3`
 - `V2_Parameter_Cache.sqlite3`
 - `Simulation.sqlite3`
 - `Validations.sqlite3`
@@ -351,10 +361,10 @@ It also replaces the Auction and Snake app databases. The staged
 `Season_Stats_New.sqlite3` is evidence for the run, not a promotion source; the
 live file remains owned by the manual ingest boundary.
 
-The first approved NFFC refresh may create
-`Data/Databases/Projection_V2_nffc.sqlite3`; its absence at snapshot is recorded
+The first approved NV refresh may create
+`Data/Databases/Projection_V2_nv.sqlite3`; its absence at snapshot is recorded
 rather than treated as prior production evidence. Promotion installs it only as
-part of the same validated rollback set as the other nine destinations.
+part of the same validated rollback set as the other ten destinations.
 
 The downstream Validation outputs are `Salary_Validations_Resid`,
 `Salary_Backtest_Predictions`, `Salary_Selection_Seeds`, and
@@ -433,6 +443,14 @@ strict replay passed every player gate but worsened development roster CRPS by
 `+0.9061%` versus the `0.5%` gate (2023-2025: `+0.3790%`). This release does not
 claim predictive superiority.
 
+NV is an Auction-only production surface. It uses the same rushing, receiving,
+sack, and bonus rules as beta but scores passing touchdowns at four points. Its
+V2 database, current/next shadows, 16-week templates, expert-consensus donor
+centers, salary slice, and key-parity gates are independent from beta. The
+Auction app must render both beta and NV selectors after staging. NV currently
+publishes an empty keeper slice and has no selection-premium calibration;
+missing NV premium rows are intentionally neutral rather than copied from beta.
+
 ## Release Gates and Promotion Safety
 
 Before preparing app candidates, validation requires:
@@ -444,8 +462,8 @@ Before preparing app candidates, validation requires:
   annual depth floors before model fitting
 - unique QB/RB/WR/TE current model-input tables above conservative
   cycle-specific population floors
-- exact DK/NFFC/beta identity, alias, spine-key, and feature-key agreement
-- exact DK/NFFC/beta agreement on every hashed nflverse player/weekly payload
+- exact DK/NFFC/beta/NV identity, alias, spine-key, and feature-key agreement
+- exact DK/NFFC/beta/NV agreement on every hashed nflverse player/weekly payload
   used by the active feature foundations
 - registered current and next-year shadow tables with zero unmatched templates
 - current-model improvement over expert recalibration and next-model
@@ -454,30 +472,35 @@ Before preparing app candidates, validation requires:
   exact projection/weekly-map parity
 - NFFC eligibility from the top-360 canonical offensive ADP union, excluding
   `TK` and `TDSP` from model/app player rows
+- beta and NV eligibility from their independent core plus top-180 ETR unions,
+  plus each league's own keeper slice
 - fail-closed current/next V2 completeness for every core player, keeper, and
   market-only player in the protected first five-sixths of the draft; audited
   omission is allowed only for incomplete market-only tail rows when the
-  remaining complete pool still covers 240 DK, 360 NFFC, or 180 beta picks
+  remaining complete pool still covers 240 DK, 360 NFFC, or 180 beta/NV picks
 - exact registered historical center policy and scoring-context source for
   every league; NFFC must use `nffc_scored_expert_consensus` plus NFFC-scored
   V2 context, beta must use `legacy_validated_oos` or
   `beta_scored_expert_fallback` plus beta-scored V2 context, and DK retains its
-  legacy/preseason contract
+  legacy/preseason contract; NV must use `nv_scored_expert_consensus` for
+  context-available donors plus NV-scored V2 context, with only the governed
+  2018 QB audit rows allowed to retain a donor-ineligible preseason fallback
 - exactly 80 weekly donors per production player
-- populated league-specific weekly horizons: 16 weeks for DK/beta and 17 for
+- populated league-specific weekly horizons: 16 weeks for DK/beta/NV and 17 for
   NFFC in the 2026 cycle; NFFC donors must begin in 2021
 - zero weekly ADP review, default-ADP, or high-impact unresolved flags
 - exact governed salary marker, parsed-row, and unique-player counts of 200/160
-  for the frozen 2025 beta/nv exports; the variable-length 2026 beta export must
-  end at `$0`, and its staged row/unique counts must exactly match its parsed
-  count, with transactional, schema/index-preserving staged repair
+  for the frozen 2025 beta/nv exports and 200 for the 2026 NV export; the
+  variable-length 2026 beta export must end at `$0`, and each staged row/unique
+  count must exactly match its parsed count, with transactional,
+  schema/index-preserving staged repair
 - the 2026 `v2_nullable_team_conflict_v1` salary-fallback receipt: unresolved
   team rows must be source conflicts and a subset of the reviewed Stefon Diggs
   and Deebo Samuel Sr. player keys; the promoted release contains exactly those
   two rows
 - complete, unique keyed salary predictions with exact key parity to the
-  current beta `Final_Predictions_Resid` production population
-- a keyed selection-premium surface with the configured trial count and at
+  current beta and NV `Final_Predictions_Resid` production populations
+- a keyed beta selection-premium surface with the configured trial count and at
   least one successful seed trial
 - an idempotent production handoff across all eight governed tables
 
@@ -492,7 +515,8 @@ changes only the physical SQLite layout: Auction app-owned/generated-table
 parity and full Snake table/content parity are checked afterward.
 `app_smoke` launches each Streamlit app against its explicit candidate database
 and requires zero rendered errors or exceptions. The Snake smoke must render
-both the DK and NFFC selectors from the staged candidate. This is a
+both the DK and NFFC selectors from the staged candidate; the Auction smoke
+must render both beta and NV. This is a
 startup/render smoke, not a clicked optimizer recommendation test; run the
 repository test suites separately when application or optimizer code changed.
 
@@ -503,7 +527,7 @@ external weekly input, keeper, and all governed salary-export hashes to match
 the start of the run. It creates
 durable
 `Data/Production_Refresh_Backups/<run-id>/*.pre_refresh.sqlite3` files, and
-installs all ten destinations as one rollback set. Each installed file must
+installs all eleven destinations as one rollback set. Each installed file must
 match the staged SHA-256. SQLite cannot provide a true transaction across
 multiple files, so keep both apps and all database writers closed until the
 command reports success.
@@ -511,7 +535,7 @@ command reports success.
 ## Approved Cycle and Annual Rollover
 
 The only approved current-season cycle is 2026. It binds current 2026 and
-following-season 2027 table names, exact DK/NFFC/beta model versions,
+following-season 2027 table names, exact DK/NFFC/beta/NV model versions,
 source/model/production floors, league weekly horizons, template history
 minimums, and the accepted locked-current, next-year, and template-audit
 runners. Requesting current season 2027 fails before staging; the existence of
@@ -523,7 +547,7 @@ For annual rollover:
 1. set `FF_CURRENT_SEASON` before launching/restarting the notebook kernel,
    confirm `Scripts.config.YEAR`, finish the new raw-source ingest, and verify
    source years;
-2. create the current beta keeper file and every salary export required by the
+2. create the current auction-league keeper files and every salary export required by the
    new cycle; add the exact `(year, league, expected_count)` entries to
    `_GOVERNED_SALARY_SLICES`, and review
    `_GOVERNED_SALARY_FALLBACK_NULL_TEAM_KEYS` rather than carrying forward the
@@ -542,12 +566,12 @@ the dated validation evidence remains explicitly annual.
 
 ## Reproducibility Caveat
 
-The V2 DK, NFFC, and beta builds download the current nflverse player release and
+The V2 DK, NFFC, beta, and NV builds download the current nflverse player release and
 historical weekly releases during the run. Their URLs and SHA-256 values are
 recorded in the V2 source manifests, but the orchestrator does not freeze those
 payloads before execution. The release is therefore auditable but not fully
 hermetic: a changed upstream release can change a later rebuild. The release
-gate does require DK, NFFC, and beta to have consumed the exact same hashed
+gate does require DK, NFFC, beta, and NV to have consumed the exact same hashed
 nflverse player and weekly payloads, so a change between their sequential
 downloads fails closed. Exact reproducibility across future rebuilds still
 requires pinned local inputs. The external `FastR_Beta` data used by weekly

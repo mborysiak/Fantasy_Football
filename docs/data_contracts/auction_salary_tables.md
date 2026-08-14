@@ -14,6 +14,11 @@ script reads `FF_KEEPERS_FILE` when provided and otherwise requires
 `Data/OtherData/Keepers/keepers_<year>_<league>.csv` with `player` and
 `keeper_salary` columns. A missing file, blank player, or non-numeric salary
 fails the build so a future season cannot silently inherit 2026 keepers.
+The registered 2026 NV refresh is the sole exception: its isolated subprocess
+sets `FF_ALLOW_EMPTY_KEEPERS=1`, so an absent `keepers_2026_nv.csv` publishes an
+explicit empty NV slice. If that file is added later, the same pipeline reads
+and validates it without a code change. Beta remains fail-closed on a missing
+keeper file.
 
 | Column | Type | Meaning |
 | --- | --- | --- |
@@ -39,6 +44,7 @@ cycle. The 2026 contract is:
 | 2025 beta | `Data/OtherData/Salaries/salaries_2025_beta.csv` | 200 |
 | 2025 nv | `Data/OtherData/Salaries/salaries_2025_nv.csv` | 160 |
 | 2026 beta | `Data/OtherData/Salaries/salaries_2026_beta.csv` | Variable; terminal record must be `$0` |
+| 2026 nv | `Data/OtherData/Salaries/salaries_2026_nv.csv` | 200 |
 
 Each file is a one-column vertical ESPN stream. A `$` token starts one record;
 the following fields must contain a non-negative whole-dollar salary, a valid
@@ -59,18 +65,18 @@ cleaning, and invalid salaries.
 
 All governed files are parsed and validated before the staged database is
 opened for writing. The repair refuses the live `Simulation.sqlite3`, replaces
-only the three governed `(year, league)` slices inside one `BEGIN IMMEDIATE`
+only the four governed `(year, league)` slices inside one `BEGIN IMMEDIATE`
 transaction, rechecks exact row and case-insensitive unique-player counts, and
 requires the `Salaries` table schema and indexes to remain unchanged. Any
-failure rolls back all three slices. The salary log emits
+failure rolls back all four slices. The salary log emits
 `GOVERNED_SALARY_REPAIR_RECEIPT` with source path, optional expected count,
 terminal-zero policy, terminal salary, marker count, and parsed count for every
 slice. Post-write row and unique-player counts must equal the parsed source
 count even when the active source has no fixed count.
 
-The production-refresh snapshot records file size and SHA-256 for all three
-salary exports and the current keeper file. Resume and promotion reject any
-post-snapshot change.
+The production-refresh snapshot records file size and SHA-256 for all four
+salary exports and the current beta keeper file. Resume and promotion reject
+any post-snapshot change.
 
 ## `Salaries_Pred` Calibration
 
@@ -168,10 +174,10 @@ copying the simulation database to the auction app.
 `current_locked_spec_v3_resid_share_features` extends the v2 point-ensemble
 feature surface with two causal preseason feature groups:
 
-- projection residual quantiles from `Final_Validations_Resid` historically
-  and `Final_Predictions_Resid` currently, including P75/P90/P95 ceilings,
-  P10 downside, 50%/80%/90% interval widths, ceiling-versus-price ranks, and
-  ceiling PPG per source dollar; and
+- projection residual quantiles from the scoring-matched locked history
+  historically and `Final_Predictions_Resid` currently, including
+  P75/P90/P95 ceilings, P10 downside, 50%/80%/90% interval widths,
+  ceiling-versus-price ranks, and ceiling PPG per source dollar; and
 - row-median team and position-room shares across the available projection
   sources for projected points, rush attempts, receptions, and receiving yards,
   plus within-row source disagreement for each share family.
@@ -184,6 +190,20 @@ residual history receive neutral zero residuals rather than future information.
 Missing role shares are filled only from the same year/position preseason pool,
 then zero when a share family is not applicable, such as QB positional-room
 share.
+
+Beta historical rows retain `Final_Validations_Resid` as their locked source.
+NV has no legacy validation slice, so it uses
+`Projection_V2_nv.locked_whole_season_predictions` rows where
+`target_name = 'conditional_ppg'` and
+`method = 'conditional_ppg_primary_blend'`. Each NV point center is the locked
+out-of-sample prediction for that player-season. Its P5/P10/P25/P75/P90/P95
+uncertainty values are estimated by position using residuals from strictly
+earlier locked seasons only; the earliest season is omitted because it has no
+causal donor pool. Historical preseason rows outside the governed V2
+validation population keep the existing consensus point fallback and inherit
+same-season/position residual quantiles. The persisted source label is
+`v2_locked_oos_strict_prior_position_residual_quantiles`; current rows remain
+`joint_weekly_template_centered_active_ppg_residual`.
 
 Point, residual, and share fallback flags are retained for audit but excluded
 from the salary model matrix. The v3 search uses 15 Optuna iterations per model
@@ -302,6 +322,15 @@ fallbacks for Stefon Diggs and Deebo Samuel. All 14 keepers have canonical
 keys. After keeper commitments, the highest 142 non-keeper point salaries total
 exactly the `$3,071` available market budget.
 
+The registered NV build uses the same v6 feature and additive-calibration
+method against the independent `Projection_V2_nv.sqlite3` population. It
+writes `league='nvpred'`, requires exact key parity with the NV production
+projection/weekly map, uses a 12-team `$298` offense-only cap, and currently
+has zero keepers. NV does not borrow beta predictions or its calibrated
+selection-premium surface; the app treats a missing NV premium as zero.
+The first staged NV salary proof produced 326 unique 2026 player keys with
+zero missing or extra keys versus the NV final projection surface.
+
 The V2 fallback remains fail-closed for unique `player_key`, QB/RB/WR/TE
 position, `year_exp`, `adp_median`, `adp_log`, `expert_points_median`, and a
 numeric `team_conflict` value in `{0, 1}`. Team is retained for provenance but
@@ -323,14 +352,19 @@ identity anywhere outside the salary fallback.
 `salary_method_version` provenance. Name-only or independently pruned salary
 populations are not valid production inputs.
 
-League-scored yardage bonuses and beta sacks flow through weekly
+League-scored yardage bonuses, beta/NV sacks, and NV's four-point passing TDs
+flow through weekly
 `active_ppg`, matched donor paths, and optimizer selection. They are not forced
 into the preseason salary point estimate. Two-point conversions and
 special-teams touchdowns remain omitted by explicit modeling decision.
 
 ## Auction App Consumption
 
-`Fantasy_Football_App` reads `League_Keepers` for the selected `year` and
+`Fantasy_Football_App` derives its year/league dropdown from complete
+`Salaries_Pred` and weekly-map contexts and supports `beta` and `nv`.
+Beta defaults to 1 QB/2 RB/2 WR/1 TE/2 FLEX; NV defaults to
+2 QB/2 RB/2 WR/1 TE/1 FLEX. Both use five bench slots, a 13-player offensive
+roster, and a `$298` cap after K/DEF. The app reads `League_Keepers` for the selected `year` and
 `league`, pre-fills keeper costs, and removes unowned keepers from the auction
 candidate pool. Keeper rows are excluded from auction-pace calculations because
 their inflation is already represented in `Salaries_Pred`.

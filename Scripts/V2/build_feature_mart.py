@@ -541,10 +541,10 @@ def build_projection_consensus(
         ("proj_rushing_points", "projected_rush_point_share"),
         ("proj_receiving_points", "projected_receiving_point_share"),
     ):
-        # Beta sack deductions can make a fringe QB's projected passing
+        # Beta/NV sack deductions can make a fringe QB's projected passing
         # component and total negative. Preserve the signed composition as
         # long as the component sum is nonzero; requiring a positive total
-        # silently erased exactly the scoring context the beta matcher needs.
+        # silently erased exactly the scoring context the auction matchers need.
         base[output] = base[component] / component_denominator
     ceiling = _group_summary(
         projection_values,

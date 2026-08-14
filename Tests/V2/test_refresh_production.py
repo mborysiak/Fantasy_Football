@@ -118,20 +118,25 @@ def test_release_plan_covers_every_downstream_surface():
         "v2_dk",
         "v2_nffc",
         "v2_beta",
+        "v2_nv",
         "locked_dk",
         "locked_nffc",
         "locked_beta",
+        "locked_nv",
         "next_dk",
         "next_nffc",
         "next_beta",
+        "next_nv",
         "keepers",
         "handoff",
         "weekly_dk",
         "weekly_nffc",
         "weekly_beta",
+        "weekly_nv",
         "template_audit_dk",
         "template_audit_nffc",
         "template_audit_beta",
+        "template_audit_nv",
         "salary",
         "selection_premium",
         "compact_simulation",
@@ -143,7 +148,7 @@ def test_release_plan_covers_every_downstream_surface():
     assert len(set(refresh.GENERATED_AUCTION_TABLES)) == 20
     assert "V2_Projection_Legacy_Backup" in refresh.GENERATED_AUCTION_TABLES
     assert "Salary_Selection_Premium" in refresh.GENERATED_AUCTION_TABLES
-    assert refresh.MANIFEST_SCHEMA_VERSION == 5
+    assert refresh.MANIFEST_SCHEMA_VERSION == 6
     assert refresh.DATABASE_FILES["parameter_cache"] == (
         "V2_Parameter_Cache.sqlite3"
     )
@@ -162,12 +167,14 @@ def test_refresh_fingerprints_every_governed_salary_export():
     } == {
         "historical_auction_salaries_2025_beta": "salaries_2025_beta.csv",
         "historical_auction_salaries_2025_nv": "salaries_2025_nv.csv",
-        "current_auction_salaries": "salaries_2026_beta.csv",
+        "current_auction_salaries_beta": "salaries_2026_beta.csv",
+        "current_auction_salaries_nv": "salaries_2026_nv.csv",
     }
     for key in (
         "historical_auction_salaries_2025_beta",
         "historical_auction_salaries_2025_nv",
-        "current_auction_salaries",
+        "current_auction_salaries_beta",
+        "current_auction_salaries_nv",
     ):
         state = refresh.regular_file_state(inputs[key])
         assert state["sha256"]
@@ -529,6 +536,25 @@ def test_subprocess_environment_propagates_cycle_year_and_keeper_input(
     assert environment["PYTHONFAULTHANDLER"] == "1"
 
 
+def test_auction_environment_selects_nv_database_and_empty_keepers(tmp_path):
+    staged = {
+        "simulation": tmp_path / "Simulation.sqlite3",
+        "v2_beta": tmp_path / "Projection_V2_beta.sqlite3",
+        "v2_nv": tmp_path / "Projection_V2_nv.sqlite3",
+    }
+
+    environment = refresh._auction_subprocess_environment(
+        staged,
+        year=2026,
+        league="nv",
+    )
+
+    assert environment["FF_AUCTION_LEAGUE"] == "nv"
+    assert environment["FF_V2_AUCTION_DATABASE"] == str(staged["v2_nv"])
+    assert environment["FF_KEEPERS_FILE"].endswith("keepers_2026_nv.csv")
+    assert environment["FF_ALLOW_EMPTY_KEEPERS"] == "1"
+
+
 class _FakeLoggedProcess:
     def __init__(self, return_code: int, output: str = "") -> None:
         self.return_code = return_code
@@ -547,9 +573,11 @@ class _FakeLoggedProcess:
 def _install_fake_logged_processes(
     monkeypatch,
     return_codes: list[int],
+    outputs: list[str] | None = None,
 ) -> list[dict]:
     calls: list[dict] = []
     pending_codes = iter(return_codes)
+    pending_outputs = iter(outputs) if outputs is not None else None
 
     def fake_popen(command, **kwargs):
         return_code = next(pending_codes)
@@ -562,7 +590,11 @@ def _install_fake_logged_processes(
         )
         return _FakeLoggedProcess(
             return_code,
-            output=f"native process returned {return_code}\n",
+            output=(
+                next(pending_outputs)
+                if pending_outputs is not None
+                else f"native process returned {return_code}\n"
+            ),
         )
 
     monkeypatch.setattr(refresh.subprocess, "Popen", fake_popen)
@@ -659,6 +691,65 @@ def test_logged_command_retries_windows_heap_corruption(
         "Windows heap corruption on attempt "
         f"1/{refresh.MAX_NATIVE_CRASH_ATTEMPTS}; retrying"
     ) in log_text
+
+
+@pytest.mark.parametrize("return_code", (3221226505, -1073740791))
+def test_logged_command_retries_windows_stack_buffer_overrun(
+    monkeypatch,
+    tmp_path,
+    return_code,
+):
+    calls = _install_fake_logged_processes(
+        monkeypatch,
+        [return_code, 0],
+    )
+
+    receipt = refresh.run_logged_command(
+        ["python", "model.py"],
+        step="handoff",
+        stage_dir=tmp_path,
+    )
+
+    assert len(calls) == 2
+    assert [
+        attempt["failure_class"]
+        for attempt in receipt["attempts"]
+        if "failure_class" in attempt
+    ] == ["windows_stack_buffer_overrun"]
+    log_text = Path(receipt["log"]).read_text(encoding="utf-8")
+    assert (
+        "Windows stack buffer overrun on attempt "
+        f"1/{refresh.MAX_NATIVE_CRASH_ATTEMPTS}; retrying"
+    ) in log_text
+
+
+def test_logged_command_retries_wrapped_worker_access_violation(
+    monkeypatch,
+    tmp_path,
+):
+    calls = _install_fake_logged_processes(
+        monkeypatch,
+        [1, 0],
+        outputs=[
+            "concurrent.futures.process._RemoteTraceback\n"
+            "OSError: exception: access violation writing 0x0000000000000000\n",
+            "completed\n",
+        ],
+    )
+
+    receipt = refresh.run_logged_command(
+        ["python", "model.py"],
+        step="locked_nffc",
+        stage_dir=tmp_path,
+    )
+
+    assert len(calls) == 2
+    assert receipt["attempts"][0]["failure_class"] == (
+        "windows_access_violation"
+    )
+    assert receipt["attempts"][0]["outcome"] == (
+        "retryable_native_failure"
+    )
 
 
 def test_v2_step_isolates_foundation_from_feature_mart(monkeypatch, tmp_path):

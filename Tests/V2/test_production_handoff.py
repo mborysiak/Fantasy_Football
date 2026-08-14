@@ -612,7 +612,8 @@ def test_eligibility_is_deterministic_and_market_limit_is_canonical():
     assert keyed.loc["new-key", "eligible_core_projonly"] == 1
 
 
-def test_beta_eligibility_unions_keepers_outside_the_etr_limit():
+@pytest.mark.parametrize("league", ["beta", "nv"])
+def test_auction_eligibility_unions_keepers_outside_the_etr_limit(league):
     aliases, identities = identity_frames()
     core = pd.DataFrame(
         {"player": ["Tet Mcmillan"], "pos": ["WR"], "team": ["CAR"]}
@@ -628,7 +629,7 @@ def test_beta_eligibility_unions_keepers_outside_the_etr_limit():
         keepers,
         aliases,
         identities,
-        league="beta",
+        league=league,
         year=2026,
         market_limit=1,
         market_source_name="etr_adp",
@@ -684,11 +685,13 @@ def test_reviewed_dk_exclusion_policy_is_exact_and_versioned():
         "dk": 240,
         "nffc": 360,
         "beta": 180,
+        "nv": 180,
     }
     assert MARKET_HANDOFF_PROTECTED_PICK_DEPTH == {
         "dk": 200,
         "nffc": 300,
         "beta": 150,
+        "nv": 150,
     }
     assert MARKET_ELIGIBILITY_RULES["nffc"] == (
         "nffc",
@@ -723,7 +726,7 @@ def test_reviewed_dk_exclusion_policy_is_exact_and_versioned():
         ),
     }
     nffc_exclusions = GOVERNED_PRODUCTION_EXCLUSIONS_BY_YEAR[2026]["nffc"]
-    assert len(nffc_exclusions) == 13
+    assert len(nffc_exclusions) == 12
     assert set(nffc_exclusions.values()) == {
         "market_only_without_current_projection_center",
         (
@@ -738,6 +741,7 @@ def test_reviewed_dk_exclusion_policy_is_exact_and_versioned():
         "projection_center"
     )
     assert "c5e3e9a4-cc91-5fc7-83f6-2367cbd3793b" not in nffc_exclusions
+    assert "86efb1f0-e04a-5f4d-b8cb-048353f1d3f5" not in nffc_exclusions
     assert {
         "06b12c47-18b2-51ac-ba66-64de763baac2",
         "38e3ae60-9300-500c-8036-46d77358cd97",
@@ -750,6 +754,7 @@ def test_reviewed_dk_exclusion_policy_is_exact_and_versioned():
         "89aacaaa-acba-5185-83b3-7b68130c4465",
     }.issubset(nffc_exclusions)
     assert GOVERNED_PRODUCTION_EXCLUSIONS_BY_YEAR[2026]["beta"] == {}
+    assert GOVERNED_PRODUCTION_EXCLUSIONS_BY_YEAR[2026]["nv"] == {}
 
 
 def test_missing_required_center_fails_unless_explicitly_excluded():

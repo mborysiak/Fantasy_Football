@@ -5,7 +5,7 @@ from dataclasses import replace
 import pytest
 
 from Scripts.V2 import production_cycle as cycle_module
-from Scripts.V2.contracts import scoring_hash
+from Scripts.V2.contracts import configured_scoring, scoring_hash
 from Scripts.V2.production_cycle import (
     DEFAULT_PRODUCTION_YEAR,
     PRODUCTION_LEAGUES,
@@ -20,7 +20,12 @@ def test_2026_cycle_is_explicit_and_complete():
     assert cycle.status == "approved"
     assert cycle.current_season == 2026
     assert cycle.next_season == 2027
-    assert cycle.leagues == PRODUCTION_LEAGUES == ("dk", "nffc", "beta")
+    assert cycle.leagues == PRODUCTION_LEAGUES == (
+        "dk",
+        "nffc",
+        "beta",
+        "nv",
+    )
     assert cycle.current_shadow_table == "locked_2026_shadow_predictions"
     assert cycle.next_shadow_table == "next_year_2027_shadow_predictions"
     assert set(cycle.locked_versions) == set(PRODUCTION_LEAGUES)
@@ -35,7 +40,12 @@ def test_2026_cycle_is_explicit_and_complete():
         "nffc_best_ball_25s50s": 360,
     }
     assert cycle.production_population_minimums["nffc"] == 360
-    assert cycle.weekly_horizons == {"dk": 16, "nffc": 17, "beta": 16}
+    assert cycle.weekly_horizons == {
+        "dk": 16,
+        "nffc": 17,
+        "beta": 16,
+        "nv": 16,
+    }
     assert cycle.template_min_seasons["nffc"] == 2021
     assert cycle.template_center_policies["nffc"] == (
         "nffc_scored_expert_consensus",
@@ -44,11 +54,18 @@ def test_2026_cycle_is_explicit_and_complete():
         "legacy_validated_oos",
         "beta_scored_expert_fallback",
     )
+    assert cycle.template_center_policies["nv"] == (
+        "nv_scored_expert_consensus",
+        "preseason_projection_fallback",
+    )
     assert cycle.template_context_sources["nffc"] == (
         "v2_nffc_scoring_matched_preseason"
     )
     assert cycle.template_context_sources["beta"] == (
         "v2_beta_scoring_matched_preseason"
+    )
+    assert cycle.template_context_sources["nv"] == (
+        "v2_nv_scoring_matched_preseason"
     )
 
 
@@ -65,6 +82,25 @@ def test_cycle_contract_hash_is_deterministic():
     }
     assert cycle.contract_sha256() == cycle.contract_sha256()
     assert len(cycle.contract_sha256()) == 64
+
+
+def test_nv_scoring_matches_beta_except_for_one_point_per_passing_td():
+    beta = configured_scoring("beta")
+    nv = configured_scoring("nv")
+
+    assert nv["rushing"] == beta["rushing"]
+    assert nv["receiving"] == beta["receiving"]
+    assert {
+        key: value
+        for key, value in nv["passing"].items()
+        if key != "pass_pass_touchdown_sum"
+    } == {
+        key: value
+        for key, value in beta["passing"].items()
+        if key != "pass_pass_touchdown_sum"
+    }
+    assert beta["passing"]["pass_pass_touchdown_sum"] == 5
+    assert nv["passing"]["pass_pass_touchdown_sum"] == 4
 
 
 def test_cycle_rejects_invalid_nffc_source_feed_floor(monkeypatch):

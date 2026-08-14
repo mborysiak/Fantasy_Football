@@ -57,10 +57,13 @@ PROVIDER_POINTS_ESTIMAND_VERSION = "core_offensive_season_components_v1"
 
 # FFToday's modeled sack projection is the only sack source in several
 # historical seasons. Permit one available sack donor to standardize the other
-# beta QB providers; every other missing component still requires two
-# independent provider donors.
+# beta/NV QB providers; every other missing component still requires two
+# independent provider donors. Both auction leagues score sacks identically.
 _SINGLE_DONOR_IMPUTATION_EXCEPTIONS = frozenset(
-    {("beta", "QB", "sacks")}
+    {
+        ("beta", "QB", "sacks"),
+        ("nv", "QB", "sacks"),
+    }
 )
 
 
@@ -99,11 +102,11 @@ def _required_projection_components(
     """Return position components with a nonzero configured scoring weight."""
     rules = configured_scoring(league)
     return {
-        position: tuple(
+        position: (*[
             column
             for column, scoring_family, scoring_key in components
             if float(rules[scoring_family].get(scoring_key, 0.0)) != 0.0
-        )
+        ],)
         for position, components in _POSITION_SCORING_COMPONENTS.items()
     }
 
@@ -300,8 +303,8 @@ def resolve_source_rows(
         record = dict(zip(identity_columns, row))
         player_key: object = pd.NA
         for lookup, columns in lookups:
-            values = tuple(record[column] for column in columns)
-            if any(pd.isna(value) for value in values):
+            values = (*[record[column] for column in columns],)
+            if any([pd.isna(value) for value in values]):
                 continue
             candidate = lookup.get(values)
             if candidate is not None:
@@ -640,14 +643,16 @@ def _score_projection_values(
         ["passing_points", "rushing_points", "receiving_points"]
     ].sum(axis=1)
 
-    complete: list[int] = []
-    for row in scored.itertuples(index=False):
-        required = required_by_position.get(str(row.position), ())
-        complete.append(
-            int(
-                bool(required)
-                and all(pd.notna(getattr(row, column)) for column in required)
-            )
+    complete = pd.Series(0, index=scored.index, dtype=int)
+    for position, required in required_by_position.items():
+        if not required:
+            continue
+        position_mask = scored["position"].eq(position)
+        complete.loc[position_mask] = (
+            scored.loc[position_mask, list(required)]
+            .notna()
+            .all(axis=1)
+            .astype(int)
         )
     scored["configured_points_complete"] = complete
     use_configured = scored["configured_points_complete"].eq(1)

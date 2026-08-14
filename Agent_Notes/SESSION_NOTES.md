@@ -1,6 +1,6 @@
 # Session Notes Landing
 
-Last updated: 2026-08-08
+Last updated: 2026-08-14
 
 ## Project Objective
 
@@ -10,6 +10,21 @@ template tables consumed by downstream draft apps.
 
 ## Current Focus
 
+- Schema-6 stage `20260814T153232Z_d5feb5a5` completed all 30
+  governed steps and both app smokes. Final populations are 344 DK, 381 NFFC,
+  326 beta, and 326 NV with exact weekly-map parity, 80 donors/player, and no
+  unresolved ADP audit rows. NV publishes 326 unique `nvpred` salary rows with
+  exact projection-key parity, zero keepers, and a top-156 total of `$3,576`
+  (12 teams times the `$298` offensive cap). Auction smoke rendered beta and NV
+  with zero errors/exceptions; Snake smoke rendered DK/NFFC cleanly. The saved
+  release report treats NV as 326 first-time additions. The release was
+  explicitly promoted at `2026-08-14T17:31:42Z`; all 11 installed model/app
+  artifacts match their staged hashes, every SQLite quick/foreign-key check
+  passes, and durable rollback copies plus the release report are under
+  `Data/Production_Refresh_Backups/20260814T153233Z_2a4365dd/`. The final
+  app-parity resume needed explicit SQLite digest-connection closure to avoid
+  transient Windows read corruption; harden that connection lifetime before
+  the next fresh refresh.
 - Complete refreshes now produce a hash-bound pre-promotion change report. It
   prints every added/dropped league-player row, the ten largest published PPG
   increases/decreases, and the ten most positive/negative probability-weighted
