@@ -261,6 +261,15 @@ null until that provider has three prior projection seasons. This allows
 future learning of persistent provider differences without fitting a
 provider adjustment from one recent season.
 
+FTN enters this contract as provider `ftn` from `FTN_Projections`. Its
+published `FPTS` remains audit-only; passing, rushing, and receiving components
+are reconstructed under each league's configured scoring before the row can
+join consensus. The initial 2026 export has no projected-games or QB-sack
+field, so FTN contributes team-game PPG and beta/NV QB rows use the governed
+same-position sack-imputation rule. Because FTN has no prior projection
+seasons yet, its provider-specific feature remains masked even though its
+configured current-season rows can join the equal-provider median.
+
 Team and room features use only same-season preseason point estimates. They do
 not use realized depth charts, games, targets, or touches from the target
 season. Provider-specific room summaries and consensus-room summaries are
@@ -324,7 +333,7 @@ The initial manifests are candidate sets, not selected final models:
 |---|---:|---|
 | `residual_candidate_v1` | 31 | Predict conditional-PPG residual around expert consensus |
 | `residual_legacy_challenger_v1` | 12 | Test experience, teammate-market, and opportunity-share additions without changing the incumbent |
-| `residual_projection_challenger_v1` | 26 | Test standardized provider, projection-shape, and component-disagreement additions without changing the incumbent |
+| `residual_projection_challenger_v1` | 27 | Test standardized provider, projection-shape, and component-disagreement additions without changing the incumbent |
 | `residual_projection_trajectory_challenger_v1` | 5 | Test current-versus-prior preseason projection level, availability, depth, and volatility |
 | `residual_adp_transform_challenger_v1` | 1 | Test logged ADP as a replacement for raw ADP |
 | `residual_team_environment_challenger_v1` | 11 | Test QB pass/rush context, capped supporting cast, team rushing, and non-duplicated scoring environment |

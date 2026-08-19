@@ -137,6 +137,12 @@ PLAYER_POOL_AUDIT_TABLE = "Best_Ball_Weekly_Player_Pool_Audit"
 BUCKET_AUDIT_TABLE = "Best_Ball_Weekly_Bucket_Audit"
 ADP_AUDIT_TABLE = "Best_Ball_ADP_Audit"
 
+MANAGED_PROFILE_PPG_COLUMN = "managed_profile_ppg"
+MANAGED_RESIDUAL_CENTER_COLUMN = "managed_residual_center_ppg"
+MANAGED_ACTIVE_PPG_RESID_COLUMN = "managed_active_ppg_resid"
+MANAGED_CENTER_POLICY_COLUMN = "managed_center_policy"
+MANAGED_PROFILE_TOTAL_TOLERANCE = 0.5
+
 TEMPLATE_ID_OFFSET_STEP = 1_000_000
 TEMPLATE_ID_LEAGUE_OFFSETS = {
     "beta": 1 * TEMPLATE_ID_OFFSET_STEP,
@@ -3399,9 +3405,38 @@ def build_weekly_templates(proj, weekly, league=None):
         template_id_offset(league) + template_index["template_local_id"]
     )
 
+    historical_centers = pd.to_numeric(
+        template_index["historical_pred_fp_per_game"],
+        errors="coerce",
+    )
+    conditional_centers = pd.to_numeric(
+        template_index["v2_historical_pred_fp_per_game"],
+        errors="coerce",
+    )
+    valid_conditional_center = (
+        conditional_centers.notna()
+        & np.isfinite(conditional_centers)
+        & conditional_centers.gt(0)
+    )
+    template_index[MANAGED_RESIDUAL_CENTER_COLUMN] = conditional_centers.where(
+        valid_conditional_center,
+        historical_centers,
+    )
+    template_index[MANAGED_CENTER_POLICY_COLUMN] = np.where(
+        valid_conditional_center,
+        "v2_conditional",
+        "historical_center_unavailable_fallback",
+    )
+
     week_grid = pd.DataFrame({"week": WEEKS})
     expanded = template_index[
-        ["template_id", "player", "pos", "season", "historical_pred_fp_per_game"]
+        [
+            "template_id",
+            "player",
+            "pos",
+            "season",
+            MANAGED_RESIDUAL_CENTER_COLUMN,
+        ]
     ].merge(
         week_grid, how="cross"
     )
@@ -3465,14 +3500,14 @@ def build_weekly_templates(proj, weekly, league=None):
         expanded["fantasy_pts"] / expanded["active_ppg"],
         0,
     )
-    expanded["managed_profile_ppg"] = np.where(
+    expanded[MANAGED_PROFILE_PPG_COLUMN] = np.where(
         expanded["active_ppg"] > 0,
         expanded["active_ppg"],
-        expanded["historical_pred_fp_per_game"],
+        expanded[MANAGED_RESIDUAL_CENTER_COLUMN],
     )
     expanded["managed_week_profile"] = np.where(
-        expanded["managed_profile_ppg"] > 0,
-        expanded["managed_fantasy_pts"] / expanded["managed_profile_ppg"],
+        expanded[MANAGED_PROFILE_PPG_COLUMN] > 0,
+        expanded["managed_fantasy_pts"] / expanded[MANAGED_PROFILE_PPG_COLUMN],
         0,
     )
 
@@ -3517,6 +3552,14 @@ def build_weekly_templates(proj, weekly, league=None):
     )
     templates["active_ppg_resid"] = (
         templates["active_ppg"] - templates["historical_pred_fp_per_game"]
+    )
+    templates[MANAGED_PROFILE_PPG_COLUMN] = np.where(
+        templates["active_ppg"] > 0,
+        templates["active_ppg"],
+        templates[MANAGED_RESIDUAL_CENTER_COLUMN],
+    )
+    templates[MANAGED_ACTIVE_PPG_RESID_COLUMN] = (
+        templates["active_ppg"] - templates[MANAGED_RESIDUAL_CENTER_COLUMN]
     )
     templates["profile_total"] = templates[[f"week_{w}" for w in WEEKS]].sum(axis=1)
     templates["managed_profile_total"] = templates[
@@ -3588,6 +3631,10 @@ def build_weekly_templates(proj, weekly, league=None):
         "played_games",
         "active_ppg",
         "active_ppg_resid",
+        MANAGED_PROFILE_PPG_COLUMN,
+        MANAGED_RESIDUAL_CENTER_COLUMN,
+        MANAGED_ACTIVE_PPG_RESID_COLUMN,
+        MANAGED_CENTER_POLICY_COLUMN,
         "season_points",
         "profile_total",
         "managed_profile_total",
@@ -3632,8 +3679,51 @@ def build_weekly_templates(proj, weekly, league=None):
             f"{preview}"
         )
     managed_values = templates[managed_week_cols].to_numpy(dtype=float)
-    if not np.isfinite(managed_values).all():
-        raise ValueError("Managed weekly template profiles contain non-finite values.")
+    managed_profile_ppg = pd.to_numeric(
+        templates[MANAGED_PROFILE_PPG_COLUMN],
+        errors="coerce",
+    ).to_numpy(dtype=float)
+    managed_residual_center = pd.to_numeric(
+        templates[MANAGED_RESIDUAL_CENTER_COLUMN],
+        errors="coerce",
+    ).to_numpy(dtype=float)
+    managed_active_resid = pd.to_numeric(
+        templates[MANAGED_ACTIVE_PPG_RESID_COLUMN],
+        errors="coerce",
+    ).to_numpy(dtype=float)
+    managed_profile_totals = managed_values.sum(axis=1)
+    max_managed_magnitude = np.max(np.abs(managed_values), axis=1)
+    max_allowed_profile = float(len(WEEKS)) + MANAGED_PROFILE_TOTAL_TOLERANCE
+    invalid_managed = (
+        ~np.isfinite(managed_values).all(axis=1)
+        | ~np.isfinite(managed_profile_ppg)
+        | ~np.isfinite(managed_residual_center)
+        | ~np.isfinite(managed_active_resid)
+        | (
+            (managed_profile_ppg <= 0)
+            & (max_managed_magnitude > 0.00001)
+        )
+        | (managed_profile_totals > max_allowed_profile)
+        | (max_managed_magnitude > max_allowed_profile)
+    )
+    if invalid_managed.any():
+        preview = templates.loc[
+            invalid_managed,
+            [
+                "league",
+                "player",
+                "season",
+                "active_games",
+                "played_games",
+                MANAGED_PROFILE_PPG_COLUMN,
+                MANAGED_RESIDUAL_CENTER_COLUMN,
+                "managed_profile_total",
+            ],
+        ].head(10).to_dict("records")
+        raise ValueError(
+            "Managed weekly template profiles violate the conditional-PPG "
+            f"normalization contract: {preview}"
+        )
     return templates[
         front_cols + match_cols + week_cols + managed_week_cols + played_cols
     ]
@@ -3939,6 +4029,10 @@ def build_template_join_audit(templates):
             "played_games",
             "active_ppg",
             "active_ppg_resid",
+            MANAGED_PROFILE_PPG_COLUMN,
+            MANAGED_RESIDUAL_CENTER_COLUMN,
+            MANAGED_ACTIVE_PPG_RESID_COLUMN,
+            MANAGED_CENTER_POLICY_COLUMN,
             "season_points",
             "profile_total",
             "managed_profile_total",
@@ -6481,7 +6575,22 @@ def validate_weekly_template_export(connection):
             f'PRAGMA table_info("{TEMPLATE_TABLE}")'
         )
     }
-    missing_base_cols = sorted({"league", "player_key"} - template_cols)
+    managed_contract_cols = {
+        "active_ppg",
+        "historical_pred_fp_per_game",
+        "v2_historical_pred_fp_per_game",
+        "managed_profile_total",
+        MANAGED_PROFILE_PPG_COLUMN,
+        MANAGED_RESIDUAL_CENTER_COLUMN,
+        MANAGED_ACTIVE_PPG_RESID_COLUMN,
+        MANAGED_CENTER_POLICY_COLUMN,
+    }
+    managed_nonnull_cols = (
+        managed_contract_cols - {"v2_historical_pred_fp_per_game"}
+    )
+    missing_base_cols = sorted(
+        ({"league", "player_key"} | managed_contract_cols) - template_cols
+    )
     if missing_base_cols:
         raise ValueError(
             "Production app export weekly-template schema is incomplete: "
@@ -6527,7 +6636,11 @@ def validate_weekly_template_export(connection):
             [f"managed_week_{week}" for week in range(1, horizon + 1)]
             + [f"played_week_{week}" for week in range(1, horizon + 1)]
         )
-        required_cols = ["player_key", *week_cols]
+        required_cols = [
+            "player_key",
+            *sorted(managed_contract_cols),
+            *week_cols,
+        ]
         missing_cols = sorted(set(required_cols) - template_cols)
         if missing_cols:
             raise ValueError(
@@ -6536,7 +6649,8 @@ def validate_weekly_template_export(connection):
                 + ", ".join(missing_cols)
             )
         null_predicate = " OR ".join(
-            f'"{column}" IS NULL' for column in week_cols
+            f'"{column}" IS NULL'
+            for column in [*sorted(managed_nonnull_cols), *week_cols]
         )
         incomplete_rows = int(
             connection.execute(
@@ -6559,6 +6673,75 @@ def validate_weekly_template_export(connection):
                 f"{incomplete_rows} retained {league} template rows lack "
                 f"canonical-key or played/managed-week fields through week "
                 f"{horizon}."
+            )
+        max_allowed_profile = horizon + MANAGED_PROFILE_TOTAL_TOLERANCE
+        managed_week_predicate = " OR ".join(
+            f'ABS("managed_week_{week}") > ?'
+            for week in range(1, horizon + 1)
+        )
+        nonzero_managed_week_predicate = " OR ".join(
+            f'ABS("managed_week_{week}") > 0.00001'
+            for week in range(1, horizon + 1)
+        )
+        managed_week_sum = " + ".join(
+            f'"managed_week_{week}"'
+            for week in range(1, horizon + 1)
+        )
+        invalid_managed_rows = int(
+            connection.execute(
+                f"""
+                SELECT COUNT(*)
+                FROM "{TEMPLATE_TABLE}"
+                WHERE LOWER(TRIM(CAST(league AS TEXT)))=?
+                  AND (
+                      ABS(
+                          {MANAGED_ACTIVE_PPG_RESID_COLUMN}
+                          - (active_ppg - {MANAGED_RESIDUAL_CENTER_COLUMN})
+                      ) > 0.00001
+                      OR ABS(
+                          {MANAGED_RESIDUAL_CENTER_COLUMN}
+                          - CASE
+                                WHEN v2_historical_pred_fp_per_game IS NOT NULL
+                                     AND v2_historical_pred_fp_per_game > 0
+                                THEN v2_historical_pred_fp_per_game
+                                ELSE historical_pred_fp_per_game
+                            END
+                      ) > 0.00001
+                      OR {MANAGED_CENTER_POLICY_COLUMN} <>
+                         CASE
+                             WHEN v2_historical_pred_fp_per_game IS NOT NULL
+                                  AND v2_historical_pred_fp_per_game > 0
+                             THEN 'v2_conditional'
+                             ELSE 'historical_center_unavailable_fallback'
+                         END
+                      OR ABS(
+                          {MANAGED_PROFILE_PPG_COLUMN}
+                          - CASE
+                                WHEN active_ppg > 0 THEN active_ppg
+                                ELSE {MANAGED_RESIDUAL_CENTER_COLUMN}
+                            END
+                      ) > 0.00001
+                      OR (
+                          {MANAGED_PROFILE_PPG_COLUMN} <= 0
+                          AND ({nonzero_managed_week_predicate})
+                      )
+                      OR ABS(managed_profile_total - ({managed_week_sum})) > 0.00001
+                      OR managed_profile_total > ?
+                      OR {managed_week_predicate}
+                  )
+                """,
+                (
+                    league,
+                    max_allowed_profile,
+                    *([max_allowed_profile] * horizon),
+                ),
+            ).fetchone()[0]
+        )
+        if invalid_managed_rows:
+            raise ValueError(
+                "Production app export contains "
+                f"{invalid_managed_rows} implausibly scaled {league} "
+                "managed weekly templates."
             )
         validated_horizons[league] = horizon
     return validated_horizons

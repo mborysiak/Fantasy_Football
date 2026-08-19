@@ -34,6 +34,10 @@ from Scripts.Data_Generation.fantasypros_projection_csv import (
 from Scripts.Data_Generation.fantasypoints_projection_csv import (
     normalize_fantasypoints_projection_csv,
 )
+from Scripts.Data_Generation.ftn_projection_csv import (
+    ftn_projection_filename,
+    normalize_ftn_projection_csv,
+)
 from Scripts.Data_Generation.adp_rank_ingest import (
     FANTASYPROS_ADP_POSITIONS,
     FANTASYPROS_MINIMUM_ROWS,
@@ -890,6 +894,55 @@ for c in ['pff_pass_comp', 'pff_pass_att', 'pff_pass_yds', 'pff_pass_td', 'pff_p
 
 dm.delete_from_db(DB_NAME, 'PFF_Projections', f"year={YEAR}", create_backup=False)
 dm.write_to_db(df, DB_NAME, 'PFF_Projections', 'append')
+
+#%%
+
+ftn_fname = ftn_projection_filename(YEAR)
+df = move_download_to_folder(
+    root_path,
+    'FTN_Projections',
+    ftn_fname,
+    YEAR,
+    header=1,
+)
+df = normalize_ftn_projection_csv(df, year=YEAR)
+df.player = df.player.apply(dc.name_clean)
+duplicate_ftn_keys = df.duplicated(['player', 'pos'], keep=False)
+if duplicate_ftn_keys.any():
+    duplicates = df.loc[duplicate_ftn_keys, ['player', 'pos']]
+    raise ValueError(
+        'FTN projections have duplicate cleaned player-position keys: '
+        f"{duplicates.head(20).to_dict('records')}"
+    )
+expected_ftn_counts = df.groupby('pos').size().sort_index().to_dict()
+ftn_table = dm.read(
+    """SELECT name
+       FROM sqlite_master
+       WHERE type='table' AND name='FTN_Projections'""",
+    DB_NAME,
+)
+if not ftn_table.empty:
+    dm.delete_from_db(
+        DB_NAME,
+        'FTN_Projections',
+        f"year={YEAR}",
+        create_backup=False,
+    )
+dm.write_to_db(df, DB_NAME, 'FTN_Projections', 'append')
+saved_ftn = dm.read(
+    f"SELECT pos FROM FTN_Projections WHERE year={YEAR}",
+    DB_NAME,
+)
+saved_ftn_counts = saved_ftn.groupby('pos').size().sort_index().to_dict()
+if saved_ftn_counts != expected_ftn_counts:
+    raise RuntimeError(
+        'FTN projection save verification failed: '
+        f'expected {expected_ftn_counts}, saved {saved_ftn_counts}'
+    )
+print(
+    f"FTN projections save confirmed for {YEAR}: {len(saved_ftn):,} "
+    f"rows saved to FTN_Projections {saved_ftn_counts}."
+)
 
 #%%
 

@@ -1511,6 +1511,56 @@ def test_nffc_template_context_rejects_null_required_fields(
         ) == 1
 
 
+def test_managed_template_contract_rejects_tiny_center_scaling():
+    with closing(sqlite3.connect(":memory:")) as connection:
+        connection.execute(
+            """
+            CREATE TABLE Best_Ball_Weekly_Templates (
+                league TEXT,
+                active_ppg REAL,
+                historical_pred_fp_per_game REAL,
+                v2_historical_pred_fp_per_game REAL,
+                managed_profile_ppg REAL,
+                managed_residual_center_ppg REAL,
+                managed_active_ppg_resid REAL,
+                managed_center_policy TEXT,
+                managed_profile_total REAL,
+                managed_week_1 REAL,
+                managed_week_2 REAL
+            )
+            """
+        )
+        connection.execute(
+            """
+            INSERT INTO Best_Ball_Weekly_Templates
+            VALUES ('nv', 0, 0.01, 10, 10, 10, -10,
+                    'v2_conditional', 0.5, 0.5, 0)
+            """
+        )
+
+        assert refresh._count_invalid_managed_template_rows(
+            connection,
+            league="nv",
+            expected_horizon=2,
+        ) == 0
+
+        connection.execute(
+            """
+            UPDATE Best_Ball_Weekly_Templates
+            SET managed_profile_ppg=0.01,
+                managed_residual_center_ppg=0.01,
+                managed_active_ppg_resid=-0.01,
+                managed_profile_total=500,
+                managed_week_1=500
+            """
+        )
+        assert refresh._count_invalid_managed_template_rows(
+            connection,
+            league="nv",
+            expected_horizon=2,
+        ) == 1
+
+
 def test_beta_template_context_accepts_promoted_and_quarantined_rows():
     expected_hash = refresh.scoring_hash("beta")
     expected_source = "v2_beta_scoring_matched_preseason"

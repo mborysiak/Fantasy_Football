@@ -263,6 +263,20 @@ def fantasy_points_proj(df, pos):
 
     return df
 
+def ftn_proj(df, pos):
+    ftn = dm.read(f'''SELECT *
+                      FROM FTN_Projections
+                      WHERE pos='{pos}'
+                   ''', DB_NAME)
+    ftn = ftn.drop(
+        ['team', 'pos', 'ftn_auction_value', 'ftn_proj_pts'],
+        axis=1,
+    )
+    ftn = name_cleanup(ftn)
+    ftn = calc_total_tds(ftn, 'ftn')
+    df = pd.merge(df, ftn, on=['player', 'year'], how='left')
+    return df
+
 def fanduel_proj(df):
     fpts = dm.read(f'''SELECT * 
                        FROM Fanduel_Projections
@@ -377,7 +391,9 @@ def get_cols_to_fill(stat_name, data_sources, drop_sources=[]):
 
 def consensus_fill(df, pos):
 
-    sources = ['fpros', 'ffa', 'fft', 'fdta', 'pff', 'fpts', 'fanduel', 'fff']
+    sources = [
+        'fpros', 'ffa', 'fft', 'fdta', 'pff', 'fpts', 'ftn', 'fanduel', 'fff'
+    ]
 
     to_fill = {
 
@@ -387,7 +403,7 @@ def consensus_fill(df, pos):
         'proj_pass_int': get_cols_to_fill('pass_int', sources),
         'proj_pass_comp': get_cols_to_fill('pass_comp', sources, drop_sources=['ffa', 'fdta']),
         'proj_pass_att':  get_cols_to_fill('pass_att', sources, drop_sources=['ffa', 'fdta']),
-        'proj_pass_sacks': get_cols_to_fill('pass_sacks', sources, drop_sources=['ffa', 'fdta', 'fpts', 'fpros', 'fanduel', 'fff']),
+        'proj_pass_sacks': get_cols_to_fill('pass_sacks', sources, drop_sources=['ffa', 'fdta', 'fpts', 'fpros', 'ftn', 'fanduel', 'fff']),
 
         # rushing stats
         'proj_rush_yds': get_cols_to_fill('rush_yds', sources),
@@ -543,6 +559,7 @@ def get_team_projections():
         df = ffa_compile_stats(df, pos)
         df = fantasy_data_proj(df, pos)
         df = fantasy_points_proj(df, pos)
+        df = ftn_proj(df, pos)
         df = fanduel_proj(df)
         df = fff_proj(df, pos)
         df = add_etr_rank(df, pos)
@@ -566,14 +583,17 @@ def get_team_projections():
     cnts = team_proj.groupby(['team', 'year']).agg({'avg_proj_points': 'count'})
     print('Team counts that do not equal 7:', cnts[cnts.avg_proj_points!=7])
 
-    sources = ['fft', 'fpros', 'ffa', 'fdta', 'pff', 'fpts', 'fanduel', 'fff', 'avg_proj']
+    sources = [
+        'fft', 'fpros', 'ffa', 'fdta', 'pff', 'fpts', 'ftn', 'fanduel',
+        'fff', 'avg_proj'
+    ]
     cols = []
     cols.extend(get_cols_to_fill('pass_yds', sources))
     cols.extend(get_cols_to_fill('pass_td', sources))
     cols.extend(get_cols_to_fill('pass_int', sources))
     cols.extend(get_cols_to_fill('pass_comp', sources, drop_sources=['ffa', 'fdta']))
     cols.extend(get_cols_to_fill('pass_att', sources, drop_sources=['ffa', 'fdta']))
-    cols.extend(get_cols_to_fill('pass_sacks', sources, drop_sources=['ffa', 'fdta', 'fpts', 'fpros', 'fanduel', 'fff']))
+    cols.extend(get_cols_to_fill('pass_sacks', sources, drop_sources=['ffa', 'fdta', 'fpts', 'fpros', 'ftn', 'fanduel', 'fff']))
     cols.extend(get_cols_to_fill('rush_yds', sources))
     cols.extend(get_cols_to_fill('rush_td', sources))
     cols.extend(get_cols_to_fill('rush_att', sources, drop_sources=['ffa', 'fdta']))
@@ -661,6 +681,7 @@ def get_max_qb():
     df = ffa_compile_stats(df, pos)
     df = fantasy_data_proj(df, pos)
     df = fantasy_points_proj(df, pos)
+    df = ftn_proj(df, pos)
     df = add_etr_rank(df, pos)
 
     df = add_adp(df, pos, 'mfl', bad_adps); print(df.shape[0])
@@ -1049,6 +1070,7 @@ for pos in POSITIONS:
     df = fantasy_data_proj(df, pos); print(df.shape[0])
     df = fanduel_proj(df);  print(df.shape[0])
     df = fantasy_points_proj(df, pos); print(df.shape[0])
+    df = ftn_proj(df, pos); print(df.shape[0])
     df = add_etr_rank(df, pos); print(df.shape[0])
     df = add_evan_silva_rank(df, pos); print(df.shape[0])
 

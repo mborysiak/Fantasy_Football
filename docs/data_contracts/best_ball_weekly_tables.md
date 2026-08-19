@@ -48,6 +48,9 @@ Important columns:
 - quality/context: `active_games`, `played_games`, `active_ppg`, `season_points`,
   `active_ppg_resid`, `profile_total`, `managed_profile_total`,
   `template_eligible`, `template_exclusion_reason`
+- auction managed normalization: `managed_profile_ppg`,
+  `managed_residual_center_ppg`, `managed_active_ppg_resid`, and
+  `managed_center_policy`
 - weekly multipliers: `week_1` through the league horizon (`week_16` for
   DK/beta/NV and `week_17` for NFFC in the approved 2026 cycle)
 - managed weekly multipliers: `managed_week_1` through the same league horizon
@@ -386,6 +389,15 @@ zero room features rather than being grouped into a synthetic team room.
   auction app's managed-season profile multipliers. They match `week_*` for
   workload-qualified outcomes and additionally retain scores from short QB
   appearances. The Snake best-ball app continues to use only `week_*`.
+- Persist the auction-only managed normalization contract alongside those
+  paths: `managed_profile_ppg` is the path denominator,
+  `managed_residual_center_ppg` is the conditional center,
+  `managed_active_ppg_resid` is `active_ppg` minus that center, and
+  `managed_center_policy` records whether the V2 conditional center or the
+  governed historical fallback was available. When a positive V2 center is
+  available, it must be used for both the managed residual and any nonpositive-
+  active-PPG fallback path. Keep the legacy `active_ppg_resid` unchanged for
+  Snake.
 - Preserve `played_week_1` through the registered league horizon as separate
   0/1 masks.
   A value of `1` means the source weekly play-by-play table contained a
@@ -402,8 +414,12 @@ zero room features rather than being grouped into a synthetic team room.
   remain valid outcomes rather than being reclassified as missed games.
 - A short QB week has `played_week_N = 1`, retains the existing filtered
   `week_N = 0` best-ball multiplier, and stores its unfiltered score relative to
-  the template PPG denominator in `managed_week_N`. This preserves the managed
-  outcome without injecting small-workload QB games into the best-ball profile.
+  `managed_profile_ppg` in `managed_week_N`. This preserves the managed outcome
+  without injecting small-workload QB games into the best-ball profile. Builds
+  and release validation must reject non-finite managed rows, managed totals or
+  individual multipliers above the league horizon plus the governed `0.5`
+  tolerance, and any row whose persisted center, denominator, residual, or
+  policy is internally inconsistent.
 - Preserve `active_ppg_resid` as template active-game PPG minus historical
   predicted PPG.
 - DK production donor residuals use the previously validated historical OOS
@@ -414,7 +430,9 @@ zero room features rather than being grouped into a synthetic team room.
   context. Donor residuals retain `legacy_validated_oos` for 2,696 rows and use
   the beta-scored expert consensus fallback for 2,602 rows
   (`historical_center_policy = beta_scored_expert_fallback`). The strict-OOS V2
-  center remains audit-only and `v2_recenter_promoted = 0`.
+  center remains audit-only for Snake's legacy `active_ppg_resid`, and
+  `v2_recenter_promoted = 0`; the auction-only managed residual contract uses
+  the conditional V2 center without changing that Snake decision.
 - Strict rolling validation did not establish a predictive promotion: the full
   beta arm passed all player gates but worsened development roster CRPS by
   `+0.9061%` against the `0.5%` limit; 2023-2025 worsened `+0.3790%`. The
@@ -493,9 +511,12 @@ zero room features rather than being grouped into a synthetic team room.
 - Compute current room shares/ranks/concentration on the complete preseason
   projection universe before pruning to final model predictions.
 - For the managed auction consumer, a sampled donor jointly supplies its
-  centered `active_ppg_resid` and its `managed_week_*` trajectory. Apply both to
-  the current calibrated point forecast; do not draw a second independent PPG
-  residual or rescale the historical residual to the model-residual spread.
+  centered `managed_active_ppg_resid` and its `managed_week_*` trajectory.
+  Apply both to the current calibrated point forecast; do not draw a second
+  independent PPG residual or rescale the historical residual to the
+  model-residual spread. Older databases without the managed contract may be
+  repaired at load time, but newly generated databases must pass the persisted
+  source-owned contract without runtime rescaling.
 - In the V2 production handoff, current residual quantiles are deliberately
   zero, `independent_current_residual_draw_allowed = 0`, and
   `current_uncertainty_source = joint_weekly_template_only`. Snake and auction

@@ -604,7 +604,7 @@ def test_projection_shape_rates_require_observed_denominators():
 
 
 def test_manifests_are_compact_and_template_budgets_cover_one_vote_per_family():
-    assert len(FEATURE_MART_FEATURES) == 160
+    assert len(FEATURE_MART_FEATURES) == 161
     candidate_features = sorted(
         RESIDUAL_CANDIDATE_FEATURES
         | LEGACY_RESIDUAL_CHALLENGER_FEATURES
@@ -628,7 +628,7 @@ def test_manifests_are_compact_and_template_budgets_cover_one_vote_per_family():
     counts = manifests.groupby("manifest_name")["feature_name"].nunique()
     assert counts["residual_candidate_v1"] == 31
     assert counts["residual_legacy_challenger_v1"] == 12
-    assert counts["residual_projection_challenger_v1"] == 26
+    assert counts["residual_projection_challenger_v1"] == 27
     assert counts["residual_history_gap_challenger_v1"] == 13
     assert counts["residual_projection_trajectory_challenger_v1"] == 5
     assert counts["residual_adp_transform_challenger_v1"] == 1

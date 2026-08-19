@@ -67,6 +67,76 @@ def test_rank_style_position_labels_are_normalized():
     assert normalize_source_position("DST") == "DST"
 
 
+def test_ftn_projection_source_is_resolved_and_scored_from_components(tmp_path):
+    raw = pd.DataFrame(
+        [
+            {
+                "player": "Fixture Runner",
+                "pos": "RB",
+                "team": "BUF",
+                "year": 2026,
+                "ftn_auction_value": 42.0,
+                "ftn_proj_pts": 999.0,
+                "ftn_pass_comp": 0.0,
+                "ftn_pass_att": 0.0,
+                "ftn_pass_yds": 0.0,
+                "ftn_pass_td": 0.0,
+                "ftn_pass_int": 0.0,
+                "ftn_rush_att": 250.0,
+                "ftn_rush_yds": 1200.0,
+                "ftn_rush_td": 10.0,
+                "ftn_rec_targets": 70.0,
+                "ftn_rec": 55.0,
+                "ftn_rec_yds": 450.0,
+                "ftn_rec_td": 3.0,
+            }
+        ]
+    )
+    identity_spec = CANDIDATE_SOURCE_TABLES["FTN_Projections"]
+    standardized = _standardize_identity_rows(
+        raw,
+        "FTN_Projections",
+        identity_spec,
+    )
+    aliases = standardized[
+        [
+            "source_table",
+            "source",
+            "source_player_id",
+            "normalized_name",
+            "position",
+            "team",
+            "season",
+            SOURCE_STORED_SEASON_COLUMN,
+        ]
+    ].copy()
+    aliases["player_key"] = "fixture-runner"
+    source_database = tmp_path / "ftn_projection.sqlite3"
+    with sqlite3.connect(source_database) as connection:
+        raw.to_sql("FTN_Projections", connection, index=False)
+
+    values, audit = build_projection_values(
+        aliases,
+        "dk",
+        "ftn_projection_fixture",
+        source_database=source_database,
+        start_season=2026,
+        projection_through_season=2026,
+    )
+
+    assert len(values) == 1
+    row = values.iloc[0]
+    assert row["provider"] == "ftn"
+    assert row["configured_points_complete"] == 1
+    assert row["raw_projected_points"] == 999
+    assert row["rushing_yards"] == 1200
+    assert row["targets"] == 70
+    assert row["provider_projected_points"] != 999
+    assert audit.loc[audit["source_table"].eq("FTN_Projections")].iloc[0][
+        "resolved_rows"
+    ] == 1
+
+
 @pytest.mark.parametrize(
     ("stored_season", "effective_season", "override_id", "reference"),
     [

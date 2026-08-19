@@ -110,6 +110,19 @@ BETA_SCORING_CONTEXT_UNAVAILABLE_REASON = (
     "fftoday_qb_stored_2018_2019_vintage_quarantine_v1:"
     "no_valid_beta_qb_sack_donor"
 )
+MANAGED_TEMPLATE_CONTRACT_COLUMNS = frozenset(
+    {
+        "active_ppg",
+        "historical_pred_fp_per_game",
+        "v2_historical_pred_fp_per_game",
+        "managed_profile_ppg",
+        "managed_residual_center_ppg",
+        "managed_active_ppg_resid",
+        "managed_center_policy",
+        "managed_profile_total",
+    }
+)
+MANAGED_PROFILE_TOTAL_TOLERANCE = 0.5
 
 PIPELINE_CODE_ROOTS = {
     "main_scripts": REPO_ROOT / "Scripts",
@@ -2184,6 +2197,97 @@ def _count_invalid_nffc_template_context_rows(
     )
 
 
+def _count_invalid_managed_template_rows(
+    connection: sqlite3.Connection,
+    *,
+    league: str,
+    expected_horizon: int,
+) -> int:
+    """Count rows that violate the auction managed-template contract."""
+
+    managed_week_columns = [
+        f"managed_week_{week}"
+        for week in range(1, int(expected_horizon) + 1)
+    ]
+    null_predicate = " OR ".join(
+        f'"{column}" IS NULL'
+        for column in [
+            *sorted(
+                MANAGED_TEMPLATE_CONTRACT_COLUMNS
+                - {"v2_historical_pred_fp_per_game"}
+            ),
+            *managed_week_columns,
+        ]
+    )
+    nonzero_week_predicate = " OR ".join(
+        f'ABS("{column}") > 0.00001'
+        for column in managed_week_columns
+    )
+    extreme_week_predicate = " OR ".join(
+        f'ABS("{column}") > ?'
+        for column in managed_week_columns
+    )
+    managed_week_sum = " + ".join(
+        f'"{column}"' for column in managed_week_columns
+    )
+    max_allowed_profile = (
+        float(expected_horizon) + MANAGED_PROFILE_TOTAL_TOLERANCE
+    )
+    return int(
+        connection.execute(
+            f"""
+            SELECT COUNT(*)
+            FROM Best_Ball_Weekly_Templates
+            WHERE league=?
+              AND (
+                  {null_predicate}
+                  OR ABS(
+                      managed_residual_center_ppg
+                      - CASE
+                            WHEN v2_historical_pred_fp_per_game IS NOT NULL
+                                 AND v2_historical_pred_fp_per_game > 0
+                            THEN v2_historical_pred_fp_per_game
+                            ELSE historical_pred_fp_per_game
+                        END
+                  ) > 0.00001
+                  OR managed_center_policy <>
+                     CASE
+                         WHEN v2_historical_pred_fp_per_game IS NOT NULL
+                              AND v2_historical_pred_fp_per_game > 0
+                         THEN 'v2_conditional'
+                         ELSE 'historical_center_unavailable_fallback'
+                     END
+                  OR ABS(
+                      managed_profile_ppg
+                      - CASE
+                            WHEN active_ppg > 0 THEN active_ppg
+                            ELSE managed_residual_center_ppg
+                        END
+                  ) > 0.00001
+                  OR ABS(
+                      managed_active_ppg_resid
+                      - (active_ppg - managed_residual_center_ppg)
+                  ) > 0.00001
+                  OR (
+                      managed_profile_ppg <= 0
+                      AND ({nonzero_week_predicate})
+                  )
+                  OR ABS(
+                      managed_profile_total - ({managed_week_sum})
+                  ) > 0.00001
+                  OR managed_profile_total > ?
+                  OR {extreme_week_predicate}
+              )
+            """,
+            (
+                str(league),
+                max_allowed_profile,
+                *([max_allowed_profile] * int(expected_horizon)),
+            ),
+        ).fetchone()[0]
+    )
+
+
 def _count_invalid_beta_template_context_rows(
     connection: sqlite3.Connection,
     *,
@@ -2680,6 +2784,45 @@ def _validate_simulation(
                     f"{league} weekly templates lack "
                     f"{required_week_column}"
                 )
+            required_managed_columns = set(
+                MANAGED_TEMPLATE_CONTRACT_COLUMNS
+            ) | {
+                f"managed_week_{week}"
+                for week in range(1, expected_horizon + 1)
+            }
+            missing_managed_columns = sorted(
+                required_managed_columns - template_columns
+            )
+            if missing_managed_columns:
+                raise ValueError(
+                    f"{league} weekly templates lack managed-template "
+                    "contract columns: "
+                    + ", ".join(missing_managed_columns)
+                )
+            invalid_managed_rows = _count_invalid_managed_template_rows(
+                connection,
+                league=league,
+                expected_horizon=expected_horizon,
+            )
+            if invalid_managed_rows:
+                raise ValueError(
+                    f"{league} has {invalid_managed_rows} managed weekly "
+                    "templates outside the conditional-PPG contract"
+                )
+            results.setdefault("managed_template_contract", {})[league] = {
+                "horizon": expected_horizon,
+                "invalid_rows": 0,
+                "max_profile_total": float(
+                    connection.execute(
+                        """
+                        SELECT MAX(managed_profile_total)
+                        FROM Best_Ball_Weekly_Templates
+                        WHERE league=?
+                        """,
+                        (league,),
+                    ).fetchone()[0]
+                ),
+            }
             invalid_horizon_rows = int(
                 connection.execute(
                     f"""

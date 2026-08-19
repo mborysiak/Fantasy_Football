@@ -557,11 +557,19 @@ def test_weekly_template_export_validates_each_league_horizon(tmp_path):
             CREATE TABLE "{weekly_builder.TEMPLATE_TABLE}" (
                 league TEXT,
                 player_key TEXT,
+                active_ppg REAL,
+                managed_profile_total REAL,
+                {weekly_builder.MANAGED_PROFILE_PPG_COLUMN} REAL,
+                {weekly_builder.MANAGED_RESIDUAL_CENTER_COLUMN} REAL,
+                {weekly_builder.MANAGED_ACTIVE_PPG_RESID_COLUMN} REAL,
+                {weekly_builder.MANAGED_CENTER_POLICY_COLUMN} TEXT,
+                historical_pred_fp_per_game REAL,
+                v2_historical_pred_fp_per_game REAL,
                 {", ".join(f'"{column}" REAL' for column in week_columns)}
             )
             """
         )
-        placeholders = ", ".join("?" for _ in range(2 + len(week_columns)))
+        placeholders = ", ".join("?" for _ in range(10 + len(week_columns)))
         connection.executemany(
             f'INSERT INTO "{weekly_builder.TEMPLATE_TABLE}" '
             f"VALUES ({placeholders})",
@@ -569,6 +577,14 @@ def test_weekly_template_export_validates_each_league_horizon(tmp_path):
                 (
                     "dk",
                     "dk-player",
+                    1.0,
+                    16.0,
+                    1.0,
+                    1.0,
+                    0.0,
+                    "v2_conditional",
+                    1.0,
+                    1.0,
                     *([1.0] * 16),
                     None,
                     *([1.0] * 16),
@@ -577,6 +593,14 @@ def test_weekly_template_export_validates_each_league_horizon(tmp_path):
                 (
                     "nffc",
                     "nffc-player",
+                    1.0,
+                    17.0,
+                    1.0,
+                    1.0,
+                    0.0,
+                    "v2_conditional",
+                    1.0,
+                    1.0,
                     *([1.0] * 17),
                     *([1.0] * 17),
                 ),
@@ -588,6 +612,25 @@ def test_weekly_template_export_validates_each_league_horizon(tmp_path):
             "dk": 16,
             "nffc": 17,
         }
+
+        connection.execute(
+            f'UPDATE "{weekly_builder.TEMPLATE_TABLE}" '
+            "SET managed_week_1=100, managed_profile_total=115 "
+            "WHERE league='dk'"
+        )
+        connection.commit()
+
+        with pytest.raises(
+            ValueError,
+            match="implausibly scaled dk managed weekly templates",
+        ):
+            weekly_builder.validate_weekly_template_export(connection)
+
+        connection.execute(
+            f'UPDATE "{weekly_builder.TEMPLATE_TABLE}" '
+            "SET managed_week_1=1, managed_profile_total=16 "
+            "WHERE league='dk'"
+        )
 
         connection.execute(
             f'UPDATE "{weekly_builder.TEMPLATE_TABLE}" '
@@ -635,6 +678,14 @@ def test_app_export_prepares_both_apps_from_one_source_snapshot(
     template_columns = [
         "league TEXT",
         "player_key TEXT",
+        "active_ppg REAL",
+        "managed_profile_total REAL",
+        f"{weekly_builder.MANAGED_PROFILE_PPG_COLUMN} REAL",
+        f"{weekly_builder.MANAGED_RESIDUAL_CENTER_COLUMN} REAL",
+        f"{weekly_builder.MANAGED_ACTIVE_PPG_RESID_COLUMN} REAL",
+        f"{weekly_builder.MANAGED_CENTER_POLICY_COLUMN} TEXT",
+        "historical_pred_fp_per_game REAL",
+        "v2_historical_pred_fp_per_game REAL",
         *[
             f"managed_week_{week} REAL"
             for week in weekly_builder.WEEKS

@@ -10,6 +10,38 @@ template tables consumed by downstream draft apps.
 
 ## Current Focus
 
+- FTN season projections are now a validated Notebook 1 source and are wired
+  into both expert-consensus paths. The archived/current source contains 111
+  2026 players (11/43/48/9 QB/RB/WR/TE). V2 reconstructs league-specific
+  points from components, treats published FTN points/auction values as audit
+  only, and masks the provider-specific feature until three prior seasons.
+  Focused tests pass 112/112 and an isolated legacy compile produced all four
+  positional surfaces. Live downstream models/apps have not been refreshed;
+  run a fresh governed stage before claiming FTN-adjusted production outputs.
+- Repaired the local Git object database after four large loose database blobs
+  failed zlib validation. The one reachable blob—commit `4b44a678`'s
+  `Data/Databases/Simulation.sqlite3`—was reconstructed byte-for-byte from the
+  exact-hash managed-template pre-fix backup. Three objects absent from all
+  branch and reflog reachability were quarantined outside `.git`; two also have
+  exact governed database backups. The damaged originals and SHA-256-preserving
+  copies are under
+  `Data/Production_Refresh_Backups/20260815T0038Z_managed_template_contract/git_object_recovery_20260814/`.
+  Full strict `git fsck`, connectivity, `git diff --check`, committed-blob reads,
+  and normal status/diff operations now pass. The live working databases and
+  unrelated changes were not altered by the repair.
+- The weekly-template builder now owns a separate managed-auction center contract:
+  `managed_profile_ppg`, `managed_residual_center_ppg`,
+  `managed_active_ppg_resid`, and `managed_center_policy`. Zero-active donors use
+  a positive conditional V2 center when available, otherwise a governed
+  historical fallback, so a near-zero legacy prediction can no longer inflate
+  a partial-season QB path. Build, export, and production-release gates reject
+  inconsistent centers/residuals or any per-week/season multiplier above the
+  league horizon. Rebuilt beta/DK/NFFC/NV templates were promoted to the source,
+  Auction, and Snake databases with exact generated-table parity; the source and
+  Snake files share SHA-256 `27ca20d41296f544932861040c2a4e10cdf7075ef583b1dc249c6f4479493be5`.
+  Snake deliberately continues to consume its validated legacy/V2 fields and
+  ignores the auction-only columns. Durable pre-fix copies are under
+  `Data/Production_Refresh_Backups/20260815T0038Z_managed_template_contract/`.
 - Schema-6 stage `20260814T153232Z_d5feb5a5` completed all 30
   governed steps and both app smokes. Final populations are 344 DK, 381 NFFC,
   326 beta, and 326 NV with exact weekly-map parity, 80 donors/player, and no

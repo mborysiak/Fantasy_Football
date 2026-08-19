@@ -433,6 +433,50 @@ def test_template_league_uses_weekly_marker_and_rejects_mismatch(monkeypatch):
         )
 
 
+def test_zero_active_managed_qb_uses_conditional_center(monkeypatch):
+    monkeypatch.setattr(weekly_builder, "WEEKS", list(range(1, 17)))
+    projection = _projection_context()
+    projection.loc[0, ["player", "pos"]] = ["Cameo Quarterback", "QB"]
+    projection.loc[0, "historical_pred_fp_per_game"] = 0.01
+    projection.loc[0, "v2_historical_pred_fp_per_game"] = 10.0
+    projection.loc[0, "v2_template_center_available"] = 1
+    projection["v2_point_center_source"] = projection[
+        "v2_point_center_source"
+    ].astype("object")
+    projection.loc[0, "v2_point_center_source"] = "fixture_conditional"
+    weekly = pd.DataFrame(
+        [
+            {
+                "player": "Cameo Quarterback",
+                "pos": "QB",
+                "season": 2025,
+                "week": 1,
+                "fantasy_pts": None,
+                "managed_fantasy_pts": 5.0,
+                "played_week": True,
+                "scoring_league": "nv",
+            }
+        ]
+    )
+
+    template = weekly_builder.build_weekly_templates(
+        projection,
+        weekly,
+        league="nv",
+    ).iloc[0]
+
+    assert template["active_games"] == 0
+    assert template["played_games"] == 1
+    assert template["active_ppg_resid"] == pytest.approx(-0.01)
+    assert template[weekly_builder.MANAGED_PROFILE_PPG_COLUMN] == pytest.approx(10.0)
+    assert template[weekly_builder.MANAGED_RESIDUAL_CENTER_COLUMN] == pytest.approx(10.0)
+    assert template[weekly_builder.MANAGED_ACTIVE_PPG_RESID_COLUMN] == pytest.approx(-10.0)
+    assert template[weekly_builder.MANAGED_CENTER_POLICY_COLUMN] == "v2_conditional"
+    assert template["managed_week_1"] == pytest.approx(0.5)
+    assert template["managed_profile_total"] == pytest.approx(0.5)
+    assert template["profile_total"] == pytest.approx(0.0)
+
+
 def test_template_excludes_governed_unavailable_scoring_context():
     projection = _projection_context()
     projection["scoring_context_available"] = 0

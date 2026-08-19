@@ -59,6 +59,17 @@ new `RANK`/`NAME`/`Position`/`GP` schema to the existing
 non-modeled fields, and rejects missing, nonnumeric, duplicate, or shallow
 QB/RB/WR/TE data before replacing the current slice.
 
+FTN season projections download as the literal filename
+`NFL Fantasy Football Player Projections (<YEAR> Season).csv`. Leave that file
+in `Downloads`; notebook 1 archives it under
+`Data/OtherData/FTN_Projections/`. The export uses grouped labels on row one
+and field names on row two. The loader maps FTN passing, rushing, receiving,
+published-point, and auction columns to `FTN_Projections`, ignores the empty
+`Opp.` and `Fum.` fields, and rejects missing, nonnumeric, negative, duplicate,
+or shallow QB/RB/WR/TE data. The initial 2026 file is a 111-player top-of-pool
+source (11 QB, 43 RB, 48 WR, and 9 TE), so it supplements rather than defines
+the eligible player population.
+
 FFToday remains an HTML pull. Notebook 1 retries each position page, identifies
 the projection table from its columns rather than a fixed page-table index,
 and validates QB/RB/WR/TE minimum depths of 40/80/100/40 before opening the
