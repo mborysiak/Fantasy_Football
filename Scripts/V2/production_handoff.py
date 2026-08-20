@@ -225,9 +225,6 @@ GOVERNED_PRODUCTION_EXCLUSIONS_BY_YEAR: Mapping[
             "06b12c47-18b2-51ac-ba66-64de763baac2": (
                 "market_only_without_current_projection_center"
             ),
-            "38e3ae60-9300-500c-8036-46d77358cd97": (
-                "market_only_without_current_projection_center"
-            ),
             "0fa72b32-393b-5f55-bb48-0f21f5283baf": (
                 "market_only_without_current_projection_center"
             ),
@@ -247,9 +244,6 @@ GOVERNED_PRODUCTION_EXCLUSIONS_BY_YEAR: Mapping[
                 "market_only_without_current_projection_center"
             ),
             "862eb067-7abb-5156-9cf1-33c3ad11333c": (
-                "market_only_without_current_projection_center"
-            ),
-            "89aacaaa-acba-5185-83b3-7b68130c4465": (
                 "market_only_without_current_projection_center"
             ),
             "f973b1c8-3470-57f5-bc68-42e35a830411": (

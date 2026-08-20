@@ -1,6 +1,6 @@
 # Session Notes Landing
 
-Last updated: 2026-08-14
+Last updated: 2026-08-20
 
 ## Project Objective
 
@@ -10,14 +10,18 @@ template tables consumed by downstream draft apps.
 
 ## Current Focus
 
-- FTN season projections are now a validated Notebook 1 source and are wired
-  into both expert-consensus paths. The archived/current source contains 111
-  2026 players (11/43/48/9 QB/RB/WR/TE). V2 reconstructs league-specific
-  points from components, treats published FTN points/auction values as audit
-  only, and masks the provider-specific feature until three prior seasons.
-  Focused tests pass 112/112 and an isolated legacy compile produced all four
-  positional surfaces. Live downstream models/apps have not been refreshed;
-  run a fresh governed stage before claiming FTN-adjusted production outputs.
+- FTN-adjusted schema-6 stage `20260820T025601Z_a672217a` completed all 30
+  governed steps from the refreshed 2026 inputs. The live release publishes 347
+  DK, 382 NFFC, 327 beta, and 327 NV projections with exact weekly-map parity,
+  80 donors/player, 1,000/1,000 auction trials, exact Auction/Snake database
+  parity, and clean app smokes. The change report records 20 added and 14
+  dropped league-player rows versus live. Haynes King and J'Mari Taylor now
+  have complete NFFC current/next handoff evidence, so their stale
+  `market_only_without_current_projection_center` exclusions were removed;
+  focused handoff tests pass 37/37. The stage was explicitly promoted at
+  `2026-08-20T15:29:51Z`; all 11 installed model/app artifacts match their
+  staged hashes, and durable pre-refresh backups plus the release report are
+  under `Data/Production_Refresh_Backups/20260820T025602Z_7b2e9926/`.
 - Repaired the local Git object database after four large loose database blobs
   failed zlib validation. The one reachable blob—commit `4b44a678`'s
   `Data/Databases/Simulation.sqlite3`—was reconstructed byte-for-byte from the
