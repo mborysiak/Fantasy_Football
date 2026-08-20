@@ -905,6 +905,8 @@ df = move_download_to_folder(
     YEAR,
     header=1,
 )
+df = df[df.Position.isin(POSITIONS)].reset_index(drop=True)
+
 df = normalize_ftn_projection_csv(df, year=YEAR)
 df.player = df.player.apply(dc.name_clean)
 duplicate_ftn_keys = df.duplicated(['player', 'pos'], keep=False)
