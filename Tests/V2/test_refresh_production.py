@@ -180,6 +180,19 @@ def test_refresh_fingerprints_every_governed_salary_export():
         assert state["sha256"]
         assert state["size_bytes"] > 0
 
+    assert {
+        key: path.name
+        for key, path in inputs.items()
+        if key.endswith("_keepers")
+    } == {
+        "current_beta_keepers": "keepers_2026_beta.csv",
+        "current_nv_keepers": "keepers_2026_nv.csv",
+    }
+    for key in ("current_beta_keepers", "current_nv_keepers"):
+        state = refresh.regular_file_state(inputs[key])
+        assert state["sha256"]
+        assert state["size_bytes"] > 0
+
 
 def test_vacuum_sqlite_reclaims_pages_without_changing_content(tmp_path):
     database = tmp_path / "compact.sqlite3"
@@ -536,7 +549,7 @@ def test_subprocess_environment_propagates_cycle_year_and_keeper_input(
     assert environment["PYTHONFAULTHANDLER"] == "1"
 
 
-def test_auction_environment_selects_nv_database_and_empty_keepers(tmp_path):
+def test_auction_environment_selects_nv_database_and_keepers(tmp_path):
     staged = {
         "simulation": tmp_path / "Simulation.sqlite3",
         "v2_beta": tmp_path / "Projection_V2_beta.sqlite3",
@@ -552,7 +565,7 @@ def test_auction_environment_selects_nv_database_and_empty_keepers(tmp_path):
     assert environment["FF_AUCTION_LEAGUE"] == "nv"
     assert environment["FF_V2_AUCTION_DATABASE"] == str(staged["v2_nv"])
     assert environment["FF_KEEPERS_FILE"].endswith("keepers_2026_nv.csv")
-    assert environment["FF_ALLOW_EMPTY_KEEPERS"] == "1"
+    assert "FF_ALLOW_EMPTY_KEEPERS" not in environment
 
 
 class _FakeLoggedProcess:

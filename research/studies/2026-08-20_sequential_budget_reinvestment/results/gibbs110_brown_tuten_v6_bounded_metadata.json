@@ -1,0 +1,24 @@
+{
+  "arms": [
+    "bounded_replan"
+  ],
+  "bounded_candidate_limit": 24,
+  "bounded_outgoing_limit": 8,
+  "bounded_swap_limit": 3,
+  "candidate": "Jahmyr Gibbs",
+  "candidate_price": 110,
+  "compiled_plan_key": "gibbs110_brown_tuten",
+  "fixed_salaries": {
+    "Bhayshul Tuten": 11.0,
+    "Chase Brown": 34.0
+  },
+  "personal_exclusions": [],
+  "pool_exclusions": [],
+  "production_code_changed": false,
+  "slack_floor": 5.0,
+  "slack_trigger": "max(slack_floor, open_slots)",
+  "stable_required_roster_solver": true,
+  "variations": [
+    6
+  ]
+}

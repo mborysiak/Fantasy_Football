@@ -195,6 +195,9 @@ GOVERNED_PRODUCTION_EXCLUSIONS_BY_YEAR: Mapping[
                 "season_ending_pcl_injury_adp_lag_without_current_"
                 "projection_center"
             ),
+            "b5862397-0d45-5560-8aa7-44b046621b96": (
+                "market_only_without_current_projection_center"
+            ),
             "3f0b675d-ef58-5606-8f9e-73bc2a9b4118": (
                 "market_only_without_current_projection_center"
             ),
@@ -221,6 +224,9 @@ GOVERNED_PRODUCTION_EXCLUSIONS_BY_YEAR: Mapping[
             "ad848f28-4066-522c-b352-43abce87fbcb": (
                 "season_ending_pcl_injury_adp_lag_without_current_"
                 "projection_center"
+            ),
+            "b5862397-0d45-5560-8aa7-44b046621b96": (
+                "market_only_without_current_projection_center"
             ),
             "06b12c47-18b2-51ac-ba66-64de763baac2": (
                 "market_only_without_current_projection_center"

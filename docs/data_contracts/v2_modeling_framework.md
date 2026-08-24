@@ -285,7 +285,7 @@ pooled correlation alone does not.
 contracts. A cycle binds:
 
 - current and following seasons plus exact shadow table names;
-- exact accepted model versions for DK, NFFC, and beta;
+- exact accepted model versions for DK, NFFC, beta, and NV;
 - the locked-current, following-season, and template-audit runners;
 - source, model-input, and league/position production floors; and
 - league weekly horizons and minimum template seasons.
@@ -378,17 +378,15 @@ superseded. Every tested prior-only calibration policy worsens pooled RMSE.
 NFFC-scored candidate registered for the 2026 production cycle. Its scoring
 hash, feature lineage, current-model comparisons, and following-season
 comparisons must pass the same fail-closed acceptance checks before release.
-NFFC eligibility is the core population unioned with the first 363 canonical
-NFFC ADP rows after filtering to QB/RB/WR/TE. The three extra 2026 candidates
-replace reviewed protected-market exclusions for Ricky Pearsall, Khalil
-Herbert, and Haynes King, so the market surface still covers all 360 draft
-slots. Canonical `TK` and `TDSP` market
+NFFC eligibility is the core population unioned with enough canonical NFFC ADP
+rows after filtering to QB/RB/WR/TE to preserve all 360 draft slots after
+reviewed protected-market exclusions. Canonical `TK` and `TDSP` market
 units remain audit data; they are not model targets. This offense-only lock
 does not assert K/DST or complete contest support.
 
-The staged NFFC weekly handoff contains 1,509 2021-2025 templates with 17
-populated weeks and a 385-player current map. Neither these artifacts nor the
-NFFC model database have been promoted live.
+The live NFFC weekly handoff contains 1,509 2021-2025 templates with 17
+populated weeks and a 385-player current map. The model, handoff, weekly, and
+Snake artifacts were promoted by governed run `20260823T162821Z_0490d19d`.
 
 Raw provider rank numbers remain audit-only because provider list depths and
 objectives are not commensurate. A strict-prior challenger normalizes each
@@ -407,55 +405,53 @@ production architecture, and rank-provider coverage changes sharply in
 2024-2025. The normalized level remains a governed challenger for
 future-season confirmation.
 
-The DK and beta locks are active for the expanded 2026 production population:
-351 DK rows (56 QB, 101 RB, 143 WR, and 51 TE) and 328 beta rows (50 QB,
-95 RB, 133 WR, and 50 TE). DK is the 326-player core plus the top-280 DK
-market union after eight governed market-only/no-center exclusions: Tyreek
-Hill, Joe Mixon,
-DeAndre Hopkins, Nick Chubb, Austin Ekeler, Kareem Hunt, Brandin Cooks, and
-Taysom Hill. Beta is the core plus the top-180 ETR overall-rank union and all
-keepers. `production_handoff.py` joins each league lock by canonical
+All four locks are active for the current 2026 production population: 343 DK
+rows (51 QB, 101 RB, 140 WR, 51 TE), 385 NFFC rows (59 QB, 110 RB, 156 WR,
+60 TE), and 324 rows each for beta and NV (50 QB, 94 RB, 130 WR, 50 TE).
+Beta/NV are the core plus the top-180 ETR overall-rank union and governed
+keepers; DK/NFFC add their canonical market unions. `production_handoff.py`
+joins each league lock by canonical
 `player_key`, fails closed on incomplete coverage or scoring-hash mismatches,
 and publishes `Final_Predictions_Resid`,
 `V2_Production_Projection_Handoff`, and
-`V2_Production_Projection_Audit`. The 1,490-row
+`V2_Production_Projection_Audit`. The 3,148-row
 `V2_Production_Eligibility_Audit` records the complete reviewed inclusion and
 exclusion population. The original rows are retained once in
 `V2_Projection_Legacy_Backup`.
 
-The NFFC population and its audit rows become production data only through a
-complete approved-cycle stage and explicit promotion. They must not be
-described as part of the earlier live DK/beta release merely because canonical
-NFFC ADP already exists.
+Every league population and its audit rows become production data only through
+a complete approved-cycle stage and explicit promotion; the presence of a
+canonical market row alone is never publication authority.
 
 Beginning with exclusion policy
 `v2_market_only_incomplete_buffer_exclusion_v3`, a refresh does not fail for
 an incomplete market-only tail row merely because it appears in the requested
 ADP surface. Core `ProjOnly` players and league keepers always fail closed.
 New market-only gaps also fail closed through the first five-sixths of the
-expected draft (`200` DK picks, `300` NFFC picks, and `150` beta/ETR ranks)
+expected draft (`200` DK picks, `300` NFFC picks, and `150` beta/NV ETR ranks)
 unless separately accepted in the annual explicit-exclusion review. Beyond that
 protected depth, an incomplete current or next-year handoff is omitted rather
 than filled from legacy projections, is retained as a governed exclusion in
 `V2_Production_Eligibility_Audit`, and is allowed only when the remaining
-complete population still covers the full `240`/`360`/`180`-player draft.
+complete population still covers the full `240`/`360`/`180`/`180`-player draft.
 `Avg_ADPs` continues to retain the full canonical market surface.
 The audit records the required depth, protected depth, effective market draft
 position, and whether the exclusion was automatic.
 
-The canonical current market snapshot contains 416 live DK rows, 497 NFFC
-rows (431 offense plus 33 `TK` and 33 `TDSP` draft units), and 243 ETR rows.
-The latest local NFFC and ETR exports are dated 2026-07-27. ETR's exact source
-ranks remain the beta population ordering, while NFFC contributes one
-composite market vote. DK resolves 343 production rows to exact canonical ADP
-and uses eight governed fallbacks; beta resolves 238 exactly and uses 90
-governed fallbacks. Neither league permits a generic default or review route.
+The canonical August 23 market snapshot contains 442 DK, 530 NFFC-family, and
+244 ETR source rows; app publication resolves 442 DK, 463 NFFC, and 244 ETR
+keys. ETR's exact source ranks remain the beta/NV population ordering, while
+NFFC contributes one composite market vote. The released weekly audit has zero
+generic defaults, high-impact unresolved rows, or review routes.
 
-The corrected live DK/beta fit-through-2025 shadows contain 745 candidates in
-each league, 715 DK point centers, 673 beta point centers, and 745
-participation probabilities. Production coverage is 100% for the 351/328 app
-populations. Tetairoa McMillan and Amon-Ra St. Brown retain their governed
-canonical identities.
+The corrected live fit-through-2025 shadows contain 787 current and 787
+following-season candidates per league, with 638 current point centers in
+DK/NFFC and 618 in beta/NV. Production coverage is 100% for all four app
+populations. Fresh providers no longer supply Jayden Higgins' current center;
+his market/audit rows remain, but his canonical key is explicitly excluded from
+the protected DK/NFFC handoff under
+`market_only_without_current_projection_center` rather than filled from July,
+legacy, or another scoring lineage.
 `production_handoff.py` is refresh-safe: a republish replaces its governed key
 and metadata columns from the canonical weekly map rather than creating merge
 suffixes. A second identical publish must produce zero point deltas.
@@ -465,15 +461,17 @@ The production current residual quantiles are exactly zero,
 `current_uncertainty_source = joint_weekly_template_only`. A consumer must add
 the sampled donor's centered `active_ppg_resid` directly to the V2 point center
 and use that same donor's weekly path. It must not scale that residual to the
-zeroed legacy model spread. DK, NFFC, and beta retain separate V2 databases and
+zeroed legacy model spread. DK, NFFC, beta, and NV retain separate V2 databases and
 scoring hashes, and every join is by league plus canonical key rather than
 display name.
 
 For current and following-season production, the locked V2 shadow is the point
 and appearance authority. Legacy current/next fields are audit-only and must
 not silently fill a missing locked center. This current/next rule is separate
-from the historical donor-center contract: validated legacy OOS for DK/beta
-and scoring-matched preseason expert consensus for NFFC.
+from the historical donor-center contract: validated legacy OOS with governed
+preseason/scoring-matched fallbacks for DK/beta, scoring-matched expert or
+preseason centers for NV, and scoring-matched preseason expert consensus for
+NFFC.
 The second production handoff reproduced unchanged hashes for all eight
 governed handoff/audit tables. The canonical release passed 187
 main-repository, 69 strict-release, 49 Auction, and 16 Snake tests; Snake
@@ -536,14 +534,12 @@ The output databases publish:
 | `next_year_template_handoff` | Historical and shadow matching context by canonical key |
 | `next_year_2027_shadow_predictions` | Current 2026-origin forecast for 2027 |
 
-The complete corrected 2027 shadow contains 745 canonical candidates per
-league, 715 DK and 673 beta conditional PPG centers, and 745 appearance
-probabilities per league. The production handoff publishes the intersection
-with the current app population: 351 DK and 328 beta rows. DK and beta use
-independent scoring-specific features and fits. The approved NFFC refresh runs
-the same embargoed following-season methodology under NFFC scoring, but its
-output is not covered by the historical DK/beta metrics in the table above and
-must clear its own acceptance gate.
+The current corrected 2027 shadow contains 787 canonical candidates per league.
+The production handoff publishes its governed intersection with the current app
+population: 343 DK, 385 NFFC, 324 beta, and 324 NV rows. All four leagues use
+independent scoring-specific features/fits and must clear their own acceptance
+gates; the historical DK/beta metrics in the table above do not stand in for
+the NFFC or NV comparisons recorded by the current release manifest.
 
 The rolling weekly-template replay does not promote the two next-year fields
 as donor-matching features. Residual rank improves weekly-PPG CRPS by only

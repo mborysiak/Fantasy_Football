@@ -123,9 +123,10 @@ _GOVERNED_SALARY_SLICES = {
         # copied boundary (through a terminal $0 record), not a mutable row
         # count; the stage manifest separately freezes the exact file hash.
         (2026, "beta", None, True),
-        # NV uses the complete fixed 200-player ESPN export supplied for the
-        # 2026 auction. It is independently hash-bound by the stage manifest.
-        (2026, "nv", 200, False),
+        # The active NV export is copied to the same practical terminal-$0
+        # boundary as beta. Its exact contents remain hash-bound by the stage
+        # manifest even though ESPN can change the displayed pool depth.
+        (2026, "nv", None, True),
     ),
 }
 

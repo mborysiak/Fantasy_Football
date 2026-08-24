@@ -291,13 +291,13 @@ app_smoke
 
 - `snapshot` copies and hashes the ten source/model databases plus both live
   app databases, and retains immutable current/next Model_Inputs retry bases.
-  It also records the read-only weekly-history database, current keeper file,
-  historical selection bootstrap files, and every governed salary export that
-  remains outside the staged database directory. For the 2026 cycle, the salary
-  inputs are `salaries_2025_beta.csv` (200 records),
-  `salaries_2025_nv.csv` (160), the variable-length
-  `salaries_2026_beta.csv` export ending at an ESPN `$0` record, and
-  `salaries_2026_nv.csv` (200); each external
+  It also records the read-only weekly-history database, both current keeper
+  files, historical selection bootstrap files, and every governed salary export
+  that remains outside the staged database directory. For the 2026 cycle, the
+  salary inputs are `salaries_2025_beta.csv` (200 records),
+  `salaries_2025_nv.csv` (160), and the variable-length
+  `salaries_2026_beta.csv` and `salaries_2026_nv.csv` exports, each ending at
+  an ESPN `$0` record; every external
   input is recorded by size and SHA-256.
 - `model_inputs` runs the canonical-input portion of
   `4_Data_Compile.py`, producing current and next-year model inputs. Both
@@ -306,8 +306,7 @@ app_smoke
 - `locked_*` publishes the accepted current-year locked shadows; `next_*`
   publishes next-year residual/appearance shadows.
 - `keepers` publishes canonical keeper identities before beta/NV eligibility is
-  resolved. The registered 2026 NV run permits a missing keeper file and
-  publishes an explicit empty NV keeper slice.
+  resolved. Both 2026 auction leagues require a snapshotted keeper file.
 - `handoff` publishes current/next projections and DK/NFFC/ETR market surfaces
   into staged Simulation, then reruns and hashes all eight governed tables to
   prove idempotence.
@@ -501,16 +500,17 @@ Before preparing app candidates, validation requires:
   NFFC in the 2026 cycle; NFFC donors must begin in 2021
 - zero weekly ADP review, default-ADP, or high-impact unresolved flags
 - exact governed salary marker, parsed-row, and unique-player counts of 200/160
-  for the frozen 2025 beta/nv exports and 200 for the 2026 NV export; the
-  variable-length 2026 beta export must end at `$0`, and each staged row/unique
+  for the frozen 2025 beta/nv exports; the variable-length 2026 beta and NV
+  exports must end at `$0`, and each staged row/unique
   count must exactly match its parsed count, with transactional,
   schema/index-preserving staged repair
 - the 2026 `v2_nullable_team_conflict_v1` salary-fallback receipt: unresolved
   team rows must be source conflicts and a subset of the reviewed Stefon Diggs
-  and Deebo Samuel Sr. player keys; the promoted release contains exactly those
-  two rows
+  and Deebo Samuel Sr. player keys; the current salary-only release contains no
+  unresolved-team fallback rows
 - complete, unique keyed salary predictions with exact key parity to the
-  current beta and NV `Final_Predictions_Resid` production populations
+  current beta and NV `Final_Predictions_Resid` production populations, with
+  every keeper resolved to a canonical production key
 - a keyed beta selection-premium surface with the configured trial count and at
   least one successful seed trial
 - an idempotent production handoff across all eight governed tables
@@ -534,7 +534,7 @@ repository test suites separately when application or optimizer code changed.
 Promotion rechecks every live database against its snapshot hash, revalidates
 the staged release, verifies that candidate hashes are unchanged since
 validation/AppTest, and requires the pipeline/app source-code fingerprint and
-external weekly input, keeper, and all governed salary-export hashes to match
+external weekly input, both keeper files, and all governed salary-export hashes to match
 the start of the run. It creates
 durable
 `Data/Production_Refresh_Backups/<run-id>/*.pre_refresh.sqlite3` files, and
@@ -587,6 +587,6 @@ nflverse player and weekly payloads, so a change between their sequential
 downloads fails closed. Exact reproducibility across future rebuilds still
 requires pinned local inputs. The external `FastR_Beta` data used by weekly
 generation remains outside the staged copy, but its starting hash is recorded
-and promotion is rejected if it changes. The same immutability check covers the
-current keeper file, every governed Auction salary export, and historical
+and promotion is rejected if it changes. The same immutability check covers
+both current keeper files, every governed Auction salary export, and historical
 selection bootstrap files.

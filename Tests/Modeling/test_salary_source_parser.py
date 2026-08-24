@@ -178,7 +178,7 @@ def test_2026_governed_salary_contract_is_exact():
         (2025, "beta", 200, False, "salaries_2025_beta.csv"),
         (2025, "nv", 160, False, "salaries_2025_nv.csv"),
         (2026, "beta", None, True, "salaries_2026_beta.csv"),
-        (2026, "nv", 200, False, "salaries_2026_nv.csv"),
+        (2026, "nv", None, True, "salaries_2026_nv.csv"),
     ]
 
 

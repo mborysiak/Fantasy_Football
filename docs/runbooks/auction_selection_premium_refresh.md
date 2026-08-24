@@ -5,10 +5,10 @@ residuals, and managed weekly templates have been rebuilt. It is also the
 refresh step when those inputs materially change before the auction.
 
 The live 2026 beta prerequisite is salary method
-`current_locked_spec_v6_v2_population_11f`: exactly 328 canonical player keys,
-including 326 `ProjOnly` rows plus governed V2 fallbacks for Stefon Diggs and
-Deebo Samuel, and 14 keyed keepers. The highest 142 non-keeper point salaries
-must total the `$3,071` available market budget before the reserve is built.
+`current_locked_spec_v6_v2_population_11f`: exactly 327 canonical player keys,
+including 326 `ProjOnly` rows plus the governed Keenan Allen V2 fallback, and 14
+keyed keepers. The highest 142 non-keeper point salaries must total the `$3,135`
+available market budget before the reserve is built.
 
 From the Fantasy Football model repo:
 
@@ -59,7 +59,7 @@ After a normal refresh, verify:
 - the active seed uses `app_target_selection_only_keeper_portfolio_v3`;
 - the training cutoff is strictly earlier than the target year;
 - the source and app premium slices have the same canonical player keys;
-- the active 2026 beta slice has 314 non-keeper rows and no missing or duplicate
+- the active 2026 beta slice has 313 non-keeper rows and no missing or duplicate
   `player_key`;
 - `salary_method_version` is
   `current_locked_spec_v6_v2_population_11f`;
@@ -78,8 +78,8 @@ rosters stabilized the aggregate reserve but left avoidable noise in individual
 player premiums; the larger offline seed materially improves table stability
 without adding any live-app cost.
 
-The promoted v6-population refresh completed 1,000/1,000 Target rosters across
-314 non-keepers and produced an expected 13-player reserve of `$8.5598`. The
+The current v6-population refresh completed 1,000/1,000 Target rosters across
+313 non-keepers and produced an expected 13-player reserve of `$9.0908`. The
 transfer retains v5 historical calibration because v5/v6 current common-player
 point salaries are nearly unchanged (correlation `0.99957`, MAE `$0.274`);
 this is explicit transfer evidence, not a claim that historical v6 seeds were

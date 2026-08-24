@@ -1,0 +1,7 @@
+scenario,stage,branch,completion_rate_baseline,completion_rate_bounded,mean_unused_baseline,mean_unused_bounded,completion_delta,unused_delta
+early_brown_tuten_gibbs,early,buy,0.9791666666666666,1.0,46.93617021276596,18.270833333333332,0.02083333333333337,-28.665336879432626
+early_brown_tuten_gibbs,early,pass,1.0,1.0,85.79166666666667,26.625,0.0,-59.16666666666667
+late_cap_squeeze_pitts,late_cap_squeeze,buy,0.9791666666666666,0.9791666666666666,1.574468085106383,1.574468085106383,0.0,0.0
+late_cap_squeeze_pitts,late_cap_squeeze,pass,1.0,1.0,3.6666666666666665,3.6458333333333335,0.0,-0.020833333333333037
+middle_balanced_bowers,middle,buy,1.0,1.0,27.6875,15.916666666666666,0.0,-11.770833333333334
+middle_balanced_bowers,middle,pass,1.0,1.0,47.083333333333336,22.9375,0.0,-24.145833333333336

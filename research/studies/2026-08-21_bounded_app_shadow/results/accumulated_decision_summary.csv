@@ -1,0 +1,7 @@
+scenario,stage,candidate,candidate_price,arm,recommendation,gain,lcb80,evidence_blocks,buy_completion,pass_completion,paired_rate
+early_brown_tuten_gibbs,early,Jahmyr Gibbs,110,baseline,TARGET,29.971314134922892,26.479913786107545,16,98.4375,98.95833333333333,98.4375
+early_brown_tuten_gibbs,early,Jahmyr Gibbs,110,bounded,TARGET,8.227877428134283,5.379602377105908,16,100.0,100.0,100.0
+middle_balanced_bowers,middle,Brock Bowers,51,baseline,TARGET,9.98798805475235,7.633259217443348,16,100.0,100.0,100.0
+middle_balanced_bowers,middle,Brock Bowers,51,bounded,PASS,-0.2572677433490754,-2.356180506344616,16,100.0,100.0,100.0
+late_cap_squeeze_pitts,late_cap_squeeze,Kyle Pitts,11,baseline,PASS,-7.960125486959111,-9.388650430863278,16,97.91666666666667,100.0,97.91666666666667
+late_cap_squeeze_pitts,late_cap_squeeze,Kyle Pitts,11,bounded,PASS,-9.625586901650285,-11.15219452559286,16,97.91666666666667,99.47916666666667,97.39583333333333

@@ -1,0 +1,13 @@
+scenario,stage,arm,branch,paths,completion_rate,failures,mean_spend,mean_unused,median_unused,p90_unused,max_unused,cap_legal_rate,position_legal_rate,top_n_legal_rate,mean_bounded_swaps,mean_bounded_rebuilds
+early_brown_tuten_gibbs,early,baseline,buy,48,1.0,0,251.375,46.625,46.5,65.30000000000001,81.0,1.0,1.0,1.0,0.0,0.0
+early_brown_tuten_gibbs,early,baseline,pass,48,1.0,0,220.58333333333334,77.41666666666667,75.0,119.30000000000001,160.0,1.0,1.0,1.0,0.0,0.0
+early_brown_tuten_gibbs,early,bounded,buy,48,1.0,0,271.5625,26.4375,24.5,41.300000000000004,77.0,1.0,1.0,1.0,7.395833333333333,0.0
+early_brown_tuten_gibbs,early,bounded,pass,48,1.0,0,268.5208333333333,29.479166666666668,27.0,53.90000000000001,79.0,1.0,1.0,1.0,9.979166666666666,0.14583333333333334
+late_cap_squeeze_pitts,late_cap_squeeze,baseline,buy,48,0.9583333333333334,2,296.69565217391306,1.3043478260869565,1.0,3.0,3.0,1.0,1.0,1.0,0.0,0.0
+late_cap_squeeze_pitts,late_cap_squeeze,baseline,pass,48,1.0,0,294.0208333333333,3.9791666666666665,4.0,8.0,10.0,1.0,1.0,1.0,0.0,0.0
+late_cap_squeeze_pitts,late_cap_squeeze,bounded,buy,48,0.9583333333333334,2,296.69565217391306,1.3043478260869565,1.0,3.0,3.0,1.0,1.0,1.0,0.0,0.0
+late_cap_squeeze_pitts,late_cap_squeeze,bounded,pass,48,1.0,0,294.4166666666667,3.5833333333333335,3.0,6.0,10.0,1.0,1.0,1.0,0.7708333333333334,0.0625
+middle_balanced_bowers,middle,baseline,buy,48,1.0,0,266.8541666666667,31.145833333333332,30.5,44.0,56.0,1.0,1.0,1.0,0.0,0.0
+middle_balanced_bowers,middle,baseline,pass,48,1.0,0,257.7916666666667,40.208333333333336,39.0,65.60000000000001,80.0,1.0,1.0,1.0,0.0,0.0
+middle_balanced_bowers,middle,bounded,buy,48,1.0,0,278.0208333333333,19.979166666666668,20.0,30.900000000000013,53.0,1.0,1.0,1.0,4.25,0.0
+middle_balanced_bowers,middle,bounded,pass,48,1.0,0,275.8958333333333,22.104166666666668,20.5,37.300000000000004,55.0,1.0,1.0,1.0,5.416666666666667,0.020833333333333332

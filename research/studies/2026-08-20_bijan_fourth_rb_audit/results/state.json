@@ -1,0 +1,52 @@
+{
+  "candidate": "Bijan Robinson",
+  "candidate_price": 105,
+  "compute_budget": 320,
+  "database": "C:\\Users\\borys\\GitHub\\Fantasy_Football_App\\app\\Simulation.sqlite3",
+  "fixed_salaries": {
+    "Bhayshul Tuten": 11.0,
+    "Chase Brown": 34.0,
+    "Jahmyr Gibbs": 110.0
+  },
+  "fixed_spend": 155.0,
+  "gibbs_satisfies_top_n": true,
+  "keeper_count": 14,
+  "keeper_spend": 441.0,
+  "league": "beta",
+  "lineup_require": {
+    "FLEX": 2,
+    "QB": 1,
+    "RB": 2,
+    "TE": 1,
+    "WR": 2
+  },
+  "nonkeeper_fixed_spend": 110.0,
+  "owned_keeper_players": [
+    "Bhayshul Tuten",
+    "Chase Brown"
+  ],
+  "personal_open_slots_after_candidate": 9,
+  "personal_salary_after_candidate": 38.0,
+  "position_maximums": {
+    "QB": 1,
+    "RB": 6,
+    "TE": 2,
+    "WR": 6
+  },
+  "position_minimums": {
+    "QB": 1,
+    "RB": 4,
+    "TE": 1,
+    "WR": 4
+  },
+  "remaining_market_budget": 3025.0,
+  "remaining_market_slots": 141,
+  "top_n": 12,
+  "waiver_baselines": {
+    "QB": 13.5,
+    "RB": 5.8,
+    "TE": 7.0,
+    "WR": 6.8
+  },
+  "year": 2026
+}

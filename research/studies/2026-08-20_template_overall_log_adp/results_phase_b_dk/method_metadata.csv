@@ -1,0 +1,4 @@
+method,retain_adp_rank,add_log_adp,log_adp_weight,log_adp_cap,recency_half_life,feature_count_total,total_match_weight
+production,True,False,0.0,300.0,12.0,55,58.25
+replace_adp_rank_with_log_adp,False,True,0.5,300.0,12.0,55,58.25
+add_log_adp,True,True,0.5,300.0,12.0,59,60.25

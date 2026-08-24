@@ -429,6 +429,16 @@ reproducible bundles.
   guardrails. Retain the reference relative weights for the pending update and
   treat sampling-kernel sharpness as a separate future calibration problem. See
   `studies/2026-07-23_template_weight_sensitivity/`.
+- Weekly-template overall log ADP. The 2026-08-20 fresh role-tiered replay
+  tests replacing the direct within-position ADP-rank distance with fixed-scale
+  overall `log1p(ADP)` and adding the new field alongside production at weight
+  0.50. Both DK and beta use 2,647 strictly rolling expanded-cohort targets
+  with complete ADP coverage. Replacement is flat-worse in both development
+  core cells; addition has opposite league and period signs. Neither clears
+  the cross-league Phase-B screen, so roster transport is skipped. The added
+  field increases Brock Bowers' premium-TE donor share but does not improve his
+  centered upper tail. See
+  `studies/2026-08-20_template_overall_log_adp/`.
 - Weekly-template projection-weight sensitivity. The 2026-07-29 strict rolling
   replay tests higher absolute PPG, component-rank, and scoring-aligned raw
   component-magnitude weights in DK and beta. The explicit-league corrective
@@ -542,6 +552,39 @@ reproducible bundles.
   state delta to +0.37 mean / 0.96 SD, and reduced Bijan seed SD from 21.07 to
   7.99-8.15. Between-block disagreement is included in the action SE. See
   `studies/2026-07-20_sequential_seed_stability/`.
+- Bijan fourth-RB auction audit. The 2026-08-20 current-release reconstruction
+  owns Gibbs at `$110` plus keeper RBs Chase Brown/Bhayshul Tuten at `$34/$11`
+  and evaluates Bijan at `$105`. All eight standard evidence variations return
+  `TARGET` (mean Buy-minus-Pass `+22.54` managed-season points), and neither
+  Top-N nor the four-RB minimum mechanically forces him. The ordinary Pass
+  rollouts strand about `$45` relative to Buy, however. A full-cap central
+  completion forcing Tee Higgins plus Emeka Egbuka essentially ties Bijan's
+  mean (`1654.96` versus `1655.14`) and has the higher p10. Treat Bijan as
+  supported under the current non-anticipating policy, not as strictly dominant
+  over a deliberately executable mid-WR allocation. See
+  `studies/2026-08-20_bijan_fourth_rb_audit/`.
+- Sequential budget-reinvestment follow-up. A deterministic same-position
+  bounded-upgrade policy recovers 93.5% of the exact replan's Pass-EV gain in
+  the eight Bijan variations: Pass EV reaches `1659.19` versus `1661.00` exact
+  and `1633.04` baseline, while unused salary falls from `$44.69` to `$22.81`
+  and completion remains 99.5%. Decisions become two `TARGET`, two `WATCH`,
+  and four `PASS`; variation 14 is `+1.47` / `-5.49` LCB80 (`WATCH`). Fresh
+  replays average `0.67` seconds without rollout-time solves. Reject the
+  cross-position prototype for completion loss and the final-two-slot guard
+  for a >90-second rejection chain. Advance bounded upgrades only to a broader
+  prespecified early/middle/late state replay; production remains unchanged.
+  See `studies/2026-08-20_sequential_budget_reinvestment/`.
+- Bounded reinvestment App shadow and promotion. Four paired evidence
+  variations across prespecified early, middle, and late-cap states reuse the
+  same hidden tapes and compiled plans between baseline and candidate. Every
+  completed bounded roster is cap/position/top-N legal; completion is not
+  materially worse, while mean unused salary falls `$11.57` on Buy and `$24.81`
+  on Pass paths. Accumulated Gibbs remains TARGET and late-cap Pitts remains
+  PASS. Bowers at `$51` changes from TARGET to PASS because the improved Pass
+  policy deploys another roughly `$24` rather than because its projection
+  changes. Promote bounded same-position upgrades as the App v12 default; keep
+  cross-position upgrades, direct spend rewards, and rollout-time solves
+  rejected. See `studies/2026-08-21_bounded_app_shadow/`.
 - Managed bench call-option and waiver-hurdle replay. The 2026-07-19 frozen
   four-origin study rejects a higher construction waiver threshold as a proxy
   for studs-and-scrubs: `+1` bought a more expensive bench while lowering

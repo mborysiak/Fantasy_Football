@@ -1,0 +1,3 @@
+arm,variation,branch,paths,completion_rate,mean_spend,mean_unused,median_unused,p90_unused,max_unused,mean_full_replans,mean_budget_replans,mean_bounded_triggers,mean_bounded_swaps,mean_bounded_rebuilds,mean_guard_rejections
+bounded_replan,1,buy,48,1.0,271.5625,26.4375,24.5,41.300000000000004,77.0,0.0,0.0,9.354166666666666,7.395833333333333,0.0,0.0
+bounded_replan,1,pass,48,1.0,267.2708333333333,30.729166666666668,27.0,58.10000000000003,79.0,0.0,0.0,11.145833333333334,10.604166666666666,0.20833333333333334,0.0

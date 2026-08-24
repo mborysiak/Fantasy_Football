@@ -1,0 +1,2 @@
+arm,variation,price,recommendation,gain,se,lcb80,buy_ev,pass_ev,buy_season_p10,pass_season_p10,season_p10_delta,gain_p10,win_rate,buy_completion,pass_completion,paired_rate,block_positive_rate,runtime_seconds
+bounded_replan,1,105,WATCH,1.6671189069747927,7.39345075013225,-4.555366233712101,1655.388166109721,1653.7210472027461,1465.1672668457031,1471.628106689453,-6.46083984375008,-26.857621574401854,52.083333333333336,100.0,100.0,100.0,50.0,0.6606247000163421

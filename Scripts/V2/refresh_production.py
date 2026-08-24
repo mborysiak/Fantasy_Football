@@ -195,6 +195,13 @@ def external_file_inputs(year: int) -> dict[str, Path]:
             / "Keepers"
             / f"keepers_{int(year)}_beta.csv"
         ),
+        "current_nv_keepers": (
+            REPO_ROOT
+            / "Data"
+            / "OtherData"
+            / "Keepers"
+            / f"keepers_{int(year)}_nv.csv"
+        ),
         **STATIC_EXTERNAL_FILE_INPUTS,
     }
 
@@ -647,7 +654,7 @@ def stable_table_digest(path: Path, table: str) -> str:
     """Digest a SQLite table as an unordered row multiset plus its schema."""
 
     digest = hashlib.sha256()
-    with sqlite3.connect(path) as connection:
+    with closing(sqlite3.connect(path)) as connection:
         schema = connection.execute(
             "SELECT COALESCE(sql, '') FROM sqlite_master "
             "WHERE type='table' AND name=?",
@@ -670,13 +677,14 @@ def stable_table_digest(path: Path, table: str) -> str:
         for name, statement in indexes:
             digest.update(str(name).encode("utf-8"))
             digest.update(str(statement).encode("utf-8"))
-        rows = sorted(
-            repr(tuple(row)).encode("utf-8")
+        row_digests = sorted(
+            hashlib.sha256(
+                repr(tuple(row)).encode("utf-8")
+            ).digest()
             for row in connection.execute(f'SELECT * FROM "{table}"')
         )
-    for row in rows:
-        digest.update(row)
-        digest.update(b"\n")
+    for row_digest in row_digests:
+        digest.update(row_digest)
     return digest.hexdigest()
 
 
@@ -868,8 +876,6 @@ def _auction_subprocess_environment(
             ),
         }
     )
-    if league == "nv":
-        environment["FF_ALLOW_EMPTY_KEEPERS"] = "1"
     return environment
 
 

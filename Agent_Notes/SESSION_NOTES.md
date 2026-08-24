@@ -1,6 +1,6 @@
 # Session Notes Landing
 
-Last updated: 2026-08-20
+Last updated: 2026-08-24
 
 ## Project Objective
 
@@ -10,6 +10,98 @@ template tables consumed by downstream draft apps.
 
 ## Current Focus
 
+- Auction League Settings now defaults to predicted salaries and offers a
+  governed `Use Actual Salaries` hindsight toggle when completed results have
+  been published. The active 2026 NV actual slice contains exactly 156 drafted
+  offensive players totaling `$3,435`; prices and keeper costs are exact,
+  salary rescaling/selection reserve are disabled, and variation 0 is the
+  baseline weekly-outcome view. Source/app slice parity, 92 App tests, a
+  one-trial managed optimizer run, and the rendered UI smoke pass.
+- Full governed refresh `20260823T162821Z_0490d19d` is live from the August 23
+  source pulls. All 30 build/validation/app steps completed before explicit
+  promotion. The release publishes 343 DK, 385 NFFC, 324 beta, and 324 NV
+  projections with exact weekly-map parity, 80 donors/player, and horizons
+  16/17/16/16. Each league has 787 current and 787 next-season shadow rows;
+  all locked comparison gates beat their baselines. Beta/NV salary surfaces
+  have 324 keyed rows each. Beta retains 14 keepers spending `$441` with
+  `$3,135` across 142 market slots; NV retains 16 spending `$453` with `$3,123`
+  across 140. The beta reserve seed completed 1,000/1,000 trials and published
+  310 premiums. Both candidate and live hashes, SQLite integrity/foreign-key
+  checks, source/app parity, and Auction/Snake smokes pass. Durable rollbacks
+  and the release report are under
+  `Data/Production_Refresh_Backups/20260823T162821Z_0490d19d/`.
+- Fresh projection providers no longer supply a current expert center for
+  Jayden Higgins, although DK/NFFC market feeds still rank him inside protected
+  depth. The handoff therefore retains his market/audit evidence but does not
+  fabricate a center from July or legacy data. DK and NFFC carry the explicit
+  reviewed reason `market_only_without_current_projection_center`; the fresh
+  production release omits him from all four league surfaces. The exclusion
+  map compiles and all 37 handoff tests pass.
+- Bounded same-position salary reinvestment is now the
+  Fantasy_Football_App Sequential default (cache version 13). Four paired
+  evidence variations across prespecified early, middle, and late-cap states
+  pass legality, completion, budget-use, and accumulated anchor-stability
+  gates; unused salary falls by `$11.57` on Buy and `$24.81` on Pass paths.
+  Gibbs remains an accumulated TARGET and late-cap Pitts remains PASS. Bowers
+  at `$51` changes from baseline TARGET to bounded PASS because the Pass roster
+  can now deploy its budget, not because his projection or weekly outcomes
+  changed. The rollout uses no new solver and no direct spend reward. Durable
+  study: `research/studies/2026-08-21_bounded_app_shadow/`. Its execution path
+  now scans a pre-ranked salary order for dynamic top-N checks and applies
+  incremental cap/top-N legality to same-position reinvestment swaps. Top-10
+  low/high max-bid anchors are deferred to an explicit UI action; repeated Add
+  Evidence runs remain market-only and invalidate any previously derived max
+  bids until the final replay across all retained seeds. Fixed-seed checks are
+  frame-exact; the focused mechanisms reduced direct reinvestment time 20.4%
+  and initial-board time 12.3% at budget 120. Runtime study:
+  `research/studies/2026-08-21_sequential_runtime_optimization/`. A follow-up
+  incremental ordinary-refresh challenger preserved exact paths but was
+  rejected and reverted: fresh early-state processes were 84% slower, while
+  middle/late states were flat-to-slower. App v13 remains active.
+- Reconstructed the current beta Bijan decision after Gibbs `$110`, Chase
+  Brown `$34`, and Bhayshul Tuten `$11`. At Bijan `$105`, eight production
+  evidence variations all return TARGET with mean Buy-minus-Pass `+22.54`
+  managed-season points; Top-N and the four-RB minimum do not force the result.
+  Ordinary Pass rollouts leave about `$45` more unspent, though. A deliberate
+  full-cap Tee Higgins plus Emeka Egbuka completion ties Bijan's mean within
+  `0.18` season points and improves p10 by `15.28`. The engine is functioning
+  as designed, but the action is policy-contingent rather than proof of strict
+  roster dominance. No production change. Durable study:
+  `research/studies/2026-08-20_bijan_fourth_rb_audit/`.
+- Tested fixed-scale overall `log1p(ADP)` in the weekly-template matcher as a
+  same-weight replacement for positional ADP rank and as an added 0.50-weight
+  field. The 2,647-target-per-league role-tiered replay has complete coverage,
+  but neither arm replicates across DK/beta and development/temporal cells.
+  Adding it raises Brock Bowers' beta ADP-35-or-earlier donor weight from
+  38.26% to 41.33% without improving centered q90 or P(+5), so production is
+  unchanged and the field remains diagnostic-only. Durable study:
+  `research/studies/2026-08-20_template_overall_log_adp/`.
+- A staged salary-only refresh from the August 20 Beta/NV ESPN copies is live.
+  Both active exports now use the variable-length terminal-`$0` contract: Beta
+  parsed 180/180 records and NV parsed the user-confirmed 240/240. Beta replaces
+  Puka Nacua at `$75` with Tucker Kraft at `$11` in the 14-player keeper set,
+  leaving `$3,135` across 142 non-keeper slots; NV initially retained zero
+  keepers and a `$3,576` top-156 budget before the August 22 keeper refresh
+  above. Both leagues publish 327 keyed salary rows.
+  The fresh Beta reserve completed 1,000/1,000 trials and publishes 313 rows
+  with an expected roster reserve of `$9.0908`. Source/Snake share SHA-256
+  `bae74108f2729194703fb2c7d2b5dfdbf2e7766ae636382b66ca2ad9a1a55a72`;
+  Auction is `c4fcccd33e298774b1dccffd67f931b5c84ea6b385accb3b348286b44a814cd6`.
+  All SQLite, parity, and live app-smoke gates pass. Rollbacks and the input
+  receipt are under `Data/Production_Refresh_Backups/20260820T2132Z_salary_only/`.
+  GitHub branches `codex/salary-refresh-20260820` are synchronized at Auction
+  commit `e52af13` and Snake commit `a6ce708`; `main` is unchanged pending
+  separate merge authorization.
+- App/Snake publication for the FTN-adjusted release is complete. The first
+  App push exposed corrupt loose database objects in both sibling repositories:
+  App `fe8bc519142f7efafd20feb1ae0f61fcb7a27ae0` and Snake
+  `ed6641a1b8d05589b818ccd886375ae2828a682b`. Each promoted working database
+  matched its manifest SHA-256 and independently hashed to the exact missing
+  Git blob ID. The corrupt compressed files were preserved under
+  `Data/Production_Refresh_Backups/20260820T025602Z_7b2e9926/git_object_recovery_20260820/`,
+  both objects were reconstructed, and strict full `git fsck` passed in both
+  repositories. App commit `f306114` and Snake commit `ce3c4ff` are now live on
+  GitHub `main`, with clean synchronized local branches.
 - FTN-adjusted schema-6 stage `20260820T025601Z_a672217a` completed all 30
   governed steps from the refreshed 2026 inputs. The live release publishes 347
   DK, 382 NFFC, 327 beta, and 327 NV projections with exact weekly-map parity,
@@ -189,12 +281,12 @@ template tables consumed by downstream draft apps.
   Diggs=MIN, and Winston=TB; Christian Kirk and Trevor Lawrence share exact JAC
   QB context in 2022-2023.
 - ESPN salary ingestion is structural rather than player-name-length based.
-  The 2026 cycle atomically repairs only staged 2025 beta, 2025 nv, and 2026
-  beta slices. The frozen historical counts remain exact at 200/160; the live
-  preseason beta export is variable-length but must end at an ESPN `$0` record
-  and preserve exact parsed/post-write parity. Bo Nix is `$5` in all three and
-  Isaiah Likely is `$2` in 2026 beta. The 328-key current salary population has
-  exact projection parity. Team remains provenance-only for salary modeling;
+  The 2026 cycle atomically repairs only staged governed salary slices. The
+  frozen historical counts remain exact at 200/160; the live preseason Beta
+  and NV exports are variable-length, must end at an ESPN `$0` record, and
+  preserve exact parsed/post-write parity. The current files parse 180/240
+  records and both 327-key salary populations have exact projection parity.
+  Team remains provenance-only for salary modeling;
   the only reviewed unresolved-team fallbacks are Stefon Diggs and Deebo Samuel
   Sr., both requiring `team_conflict=1` under
   `v2_nullable_team_conflict_v1`.

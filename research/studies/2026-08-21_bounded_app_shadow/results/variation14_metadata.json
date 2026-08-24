@@ -1,0 +1,58 @@
+{
+  "all_gates_pass": false,
+  "comparison": "production simulate_history_only_branch with budget_reinvestment=False versus True",
+  "gates": {
+    "completed_roster_legality": true,
+    "completion_not_materially_worse": true,
+    "decisive_recommendations_stable": false,
+    "pass_path_budget_reinvestment": true
+  },
+  "paired_inputs": [
+    "evidence seed",
+    "hidden auction tape",
+    "managed-value block",
+    "compiled completion plan"
+  ],
+  "scenarios": {
+    "early_brown_tuten_gibbs": {
+      "candidate": "Jahmyr Gibbs",
+      "candidate_price": 110,
+      "fixed_salaries": {
+        "Bhayshul Tuten": 11.0,
+        "Chase Brown": 34.0
+      },
+      "stage": "early"
+    },
+    "late_cap_squeeze_pitts": {
+      "candidate": "Kyle Pitts",
+      "candidate_price": 11,
+      "fixed_salaries": {
+        "Bhayshul Tuten": 11.0,
+        "Bijan Robinson": 105.0,
+        "Brock Purdy": 3.0,
+        "Chase Brown": 34.0,
+        "Jahmyr Gibbs": 110.0,
+        "KC Concepcion": 4.0,
+        "Makai Lemon": 7.0
+      },
+      "stage": "late_cap_squeeze"
+    },
+    "middle_balanced_bowers": {
+      "candidate": "Brock Bowers",
+      "candidate_price": 51,
+      "fixed_salaries": {
+        "Bhayshul Tuten": 11.0,
+        "Brock Purdy": 3.0,
+        "Chase Brown": 34.0,
+        "Jahmyr Gibbs": 110.0,
+        "KC Concepcion": 4.0,
+        "Makai Lemon": 7.0
+      },
+      "stage": "middle"
+    }
+  },
+  "stable_required_roster_solver": true,
+  "variations": [
+    14
+  ]
+}

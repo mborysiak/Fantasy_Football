@@ -1,0 +1,27 @@
+{
+  "arms": [
+    "bounded_replan"
+  ],
+  "bounded_candidate_limit": 24,
+  "bounded_outgoing_limit": 8,
+  "bounded_swap_limit": 3,
+  "candidate": "Bijan Robinson",
+  "candidate_price": 105,
+  "compiled_plan_key": "no_pierce_pool",
+  "fixed_salaries": {
+    "Bhayshul Tuten": 11.0,
+    "Chase Brown": 34.0,
+    "Jahmyr Gibbs": 110.0
+  },
+  "personal_exclusions": [],
+  "pool_exclusions": [
+    "Alec Pierce"
+  ],
+  "production_code_changed": false,
+  "slack_floor": 5.0,
+  "slack_trigger": "max(slack_floor, open_slots)",
+  "stable_required_roster_solver": false,
+  "variations": [
+    14
+  ]
+}

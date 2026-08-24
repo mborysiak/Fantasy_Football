@@ -1,0 +1,4 @@
+scenario,stage,candidate,variation,recommendation_baseline,recommendation_bounded,gain_baseline,gain_bounded,lcb80_baseline,lcb80_bounded
+early_brown_tuten_gibbs,early,Jahmyr Gibbs,14,TARGET,WATCH,18.997053514827382,0.6571534872055053,12.702864537628944,-4.813414953597223
+late_cap_squeeze_pitts,late_cap_squeeze,Kyle Pitts,14,PASS,PASS,-5.606174638777069,-7.197956594553861,-10.212607062909,-12.106656851365742
+middle_balanced_bowers,middle,Brock Bowers,14,TARGET,TARGET,21.124378164609276,4.4290434916814165,16.471611498559714,0.3047805986443519

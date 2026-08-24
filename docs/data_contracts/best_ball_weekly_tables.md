@@ -226,11 +226,9 @@ source database.
 
 The approved 2026 production cycle adds an independently scored NFFC V2,
 handoff, weekly-template, and Snake-app path. NFFC production eligibility is
-the union of the core projection population and the first 363 canonical NFFC
-ADP rows after filtering to QB/RB/WR/TE. The three extra 2026 candidates backfill
-the reviewed protected-market exclusions for season-ending Ricky Pearsall and
-unprojected market-only Khalil Herbert and Haynes King, so the selected surface
-still covers all 360 draft slots. Every projection and weekly-map row still
+the union of the core projection population and enough canonical NFFC ADP rows
+after filtering to QB/RB/WR/TE to cover all 360 draft slots after reviewed
+protected-market exclusions. Every projection and weekly-map row still
 requires a canonical `player_key`. The `TK` and `TDSP` rows remain in
 `Avg_ADPs` as audited draft entities but do not enter the model population,
 template pools, or Snake player pool.
@@ -278,7 +276,7 @@ failed all three promotion gates. This NFFC-only decision does not change the
 separately governed DK or beta historical-center contracts.
 
 The live NFFC build contains 1,509 historical templates from 2021-2025, all
-with 17 populated weeks, and a 383-player current map.
+with 17 populated weeks, and a 385-player current map.
 
 This is not a complete NFFC contest implementation. The Snake NFFC selector is
 an offense-only 3RR mode; it does not project or draft K/DST and does not cover
@@ -296,8 +294,9 @@ and modeled from its own `Projection_V2_nv.sqlite3` database and cannot reuse or
 relabel beta weekly rows.
 
 NV eligibility is the union of the core projection population, the first 180
-canonical ETR overall ranks, and any governed NV keepers. The 2026 keeper slice
-is explicitly empty until `keepers_2026_nv.csv` is supplied. NV uses a 16-week
+canonical ETR overall ranks, and all governed NV keepers. The active 2026
+keeper slice contains 16 unique canonical keys and is a required hash-bound
+refresh input. NV uses a 16-week
 horizon, 2008-forward donor history, exact
 `v2_nv_scoring_matched_preseason` context, and
 `nv_scored_expert_consensus` as the authoritative center for context-available
@@ -307,21 +306,24 @@ context retain an audit-only preseason fallback and are donor-ineligible.
 The production gate requires at least 300 NV projection rows, including
 40 QB/75 RB/105 WR/38 TE, at least 180 complete auction-market rows, exact
 projection/weekly/salary key parity, 80 donors per player, and a fully populated
-16-week map. This section describes the registered candidate contract; it does
-not claim that an NV database has been promoted until a complete staged refresh,
-app smoke, review, and explicit promotion succeed.
+16-week map. The active promoted surface has 324 projections, weekly maps, and
+salary rows and passed the complete staged refresh, app smoke, review, and
+explicit-promotion gates.
 
-## Live Pre-NV 2026 Population and Context Contract
+## Current Live 2026 Population and Context Contract
 
 The current production population is selected before weekly context and donor
 construction:
 
-- DK contains 350 players: 56 QB, 100 RB, 143 WR, and 51 TE. The governed
+- DK contains 343 players: 51 QB, 101 RB, 140 WR, and 51 TE. The governed
   eligibility audit preserves every reviewed core, market-tail, and exclusion
   decision.
-- Beta contains 328 players: 50 QB, 95 RB, 133 WR, and 50 TE. It is the union
+- NFFC contains 385 players: 59 QB, 110 RB, 156 WR, and 60 TE.
+- Beta contains 324 players: 50 QB, 94 RB, 130 WR, and 50 TE. It is the union
   of the core population, top-180 ETR overall-rank population, and all governed
   keepers.
+- NV contains 324 players with the same position counts as beta and an
+  independently scored V2/weekly lineage.
 
 Current and following-season centers come from the locked league-specific V2
 shadows. Legacy current/next values are retained only for audit. DK donor
@@ -344,17 +346,18 @@ eligibility rule.
 for every league build, including governed exclusions and non-selected rows.
 
 Every live player requires a canonical `player_key` before context joins and
-receives exactly 80 historical donors. DK uses exact canonical ADP for 342
-players and a governed fallback for eight; beta uses exact canonical ADP for
-237 players and a governed fallback for 91. No row uses a generic default or
-review route. Tetairoa McMillan and Amon-Ra St. Brown retain their governed
-canonical identities.
+receives exactly 80 historical donors. The August 23 release has zero generic
+ADP defaults, high-impact unresolved rows, or review routes. Fresh providers
+omit Jayden Higgins' current projection center while DK/NFFC ADP retains him
+inside protected depth; he remains in market and eligibility audits but is
+explicitly excluded from DK/NFFC handoff under
+`market_only_without_current_projection_center`, without a legacy fill.
 
-The beta-context correction was promoted by governed refresh
-`20260803T040708Z_2075ac47`. All release gates, the 1,000/1,000 reserve trial,
+The current four-league surface was promoted by governed refresh
+`20260823T162821Z_0490d19d`. All release gates, the 1,000/1,000 reserve trial,
 and both app smokes passed; post-promotion hashes match the manifest, all three
-live Simulation copies pass SQLite integrity, and the Snake/Auction content
-parity checks pass.
+live Simulation copies pass SQLite integrity, and Snake/Auction content parity
+checks pass.
 
 Team aliases are normalized only while calculating position-room features:
 `LA`/`LAR` and `ARZ`/`ARI` share their corresponding room. Outward player/team

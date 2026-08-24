@@ -703,6 +703,9 @@ def test_reviewed_dk_exclusion_policy_is_exact_and_versioned():
             "season_ending_pcl_injury_adp_lag_without_current_"
             "projection_center"
         ),
+        "b5862397-0d45-5560-8aa7-44b046621b96": (
+            "market_only_without_current_projection_center"
+        ),
         "3f0b675d-ef58-5606-8f9e-73bc2a9b4118": (
             "market_only_without_current_projection_center"
         ),
@@ -726,7 +729,7 @@ def test_reviewed_dk_exclusion_policy_is_exact_and_versioned():
         ),
     }
     nffc_exclusions = GOVERNED_PRODUCTION_EXCLUSIONS_BY_YEAR[2026]["nffc"]
-    assert len(nffc_exclusions) == 10
+    assert len(nffc_exclusions) == 11
     assert set(nffc_exclusions.values()) == {
         "market_only_without_current_projection_center",
         (
@@ -740,6 +743,9 @@ def test_reviewed_dk_exclusion_policy_is_exact_and_versioned():
         "season_ending_pcl_injury_adp_lag_without_current_"
         "projection_center"
     )
+    assert nffc_exclusions[
+        "b5862397-0d45-5560-8aa7-44b046621b96"
+    ] == "market_only_without_current_projection_center"
     assert "c5e3e9a4-cc91-5fc7-83f6-2367cbd3793b" not in nffc_exclusions
     assert "86efb1f0-e04a-5f4d-b8cb-048353f1d3f5" not in nffc_exclusions
     assert "06b12c47-18b2-51ac-ba66-64de763baac2" in nffc_exclusions

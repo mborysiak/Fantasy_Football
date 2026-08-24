@@ -14,11 +14,9 @@ script reads `FF_KEEPERS_FILE` when provided and otherwise requires
 `Data/OtherData/Keepers/keepers_<year>_<league>.csv` with `player` and
 `keeper_salary` columns. A missing file, blank player, or non-numeric salary
 fails the build so a future season cannot silently inherit 2026 keepers.
-The registered 2026 NV refresh is the sole exception: its isolated subprocess
-sets `FF_ALLOW_EMPTY_KEEPERS=1`, so an absent `keepers_2026_nv.csv` publishes an
-explicit empty NV slice. If that file is added later, the same pipeline reads
-and validates it without a code change. Beta remains fail-closed on a missing
-keeper file.
+The 2026 Beta and NV keeper files are both required, immutable refresh inputs.
+The runner snapshots each file by size and SHA-256 and rejects a missing or
+changed file before promotion.
 
 | Column | Type | Meaning |
 | --- | --- | --- |
@@ -44,7 +42,7 @@ cycle. The 2026 contract is:
 | 2025 beta | `Data/OtherData/Salaries/salaries_2025_beta.csv` | 200 |
 | 2025 nv | `Data/OtherData/Salaries/salaries_2025_nv.csv` | 160 |
 | 2026 beta | `Data/OtherData/Salaries/salaries_2026_beta.csv` | Variable; terminal record must be `$0` |
-| 2026 nv | `Data/OtherData/Salaries/salaries_2026_nv.csv` | 200 |
+| 2026 nv | `Data/OtherData/Salaries/salaries_2026_nv.csv` | Variable; terminal record must be `$0` |
 
 Each file is a one-column vertical ESPN stream. A `$` token starts one record;
 the following fields must contain a non-negative whole-dollar salary, a valid
@@ -52,9 +50,9 @@ player label, an optional governed injury status, a governed ESPN team alias
 immediately before one recognized position, and any remaining projection
 fields. Secondary real-life position labels such as `WR, CB` are accepted.
 Player-name length is not part of the contract. The frozen 2025 exports retain
-exact counts. The active 2026 beta export is refreshed throughout the preseason
-and is therefore variable-length: it must parse completely and uniquely and its
-last record must have a `$0` ESPN salary. Players outside that copied ESPN pool
+exact counts. The active 2026 beta and NV exports are refreshed throughout the
+preseason and are therefore variable-length: each must parse completely and
+uniquely and its last record must have a `$0` ESPN salary. Players outside that copied ESPN pool
 remain in the projection-defined salary population and receive model estimates
 subject to the existing `$1` output floor and market-budget normalization.
 
@@ -75,8 +73,8 @@ slice. Post-write row and unique-player counts must equal the parsed source
 count even when the active source has no fixed count.
 
 The production-refresh snapshot records file size and SHA-256 for all four
-salary exports and the current beta keeper file. Resume and promotion reject
-any post-snapshot change.
+salary exports and both current keeper files. Resume and promotion reject any
+post-snapshot change.
 
 ## `Salaries_Pred` Calibration
 
@@ -316,19 +314,21 @@ from a centered matched weekly donor; current QB donor p90 standard deviation
 was 9.35 times the historical projection-residual value. The centered donor p90
 remains available as a diagnostic, not a salary-model input.
 
-The current 2026 beta `Salaries_Pred` slice is keyed to exactly the 328-player
-production population. It contains 326 direct `ProjOnly` rows plus governed V2
-fallbacks for Stefon Diggs and Deebo Samuel. All 14 keepers have canonical
-keys. After keeper commitments, the highest 142 non-keeper point salaries total
-exactly the `$3,071` available market budget.
+The current 2026 beta `Salaries_Pred` slice is keyed to exactly the 324-player
+production population. All 324 rows use the governed `model_inputs_projonly`
+population route, and all 14 keepers have canonical keys. Tucker Kraft is kept
+at `$11`; Puka Nacua is available in the non-keeper pool. After keeper
+commitments totaling `$441`, the highest 142 non-keeper point salaries total
+exactly the `$3,135` available market budget.
 
 The registered NV build uses the same v6 feature and additive-calibration
 method against the independent `Projection_V2_nv.sqlite3` population. It
 writes `league='nvpred'`, requires exact key parity with the NV production
-projection/weekly map, uses a 12-team `$298` offense-only cap, and currently
-has zero keepers. NV does not borrow beta predictions or its calibrated
-selection-premium surface; the app treats a missing NV premium as zero.
-The first staged NV salary proof produced 326 unique 2026 player keys with
+projection/weekly map and uses a 12-team `$298` offense-only cap. The 16 NV
+keepers commit `$453`, leaving 140 market slots and `$3,123`. NV does not
+borrow beta predictions or its calibrated selection-premium surface; the app
+treats a missing NV premium as zero.
+The active NV salary surface contains 324 unique 2026 player keys with
 zero missing or extra keys versus the NV final projection surface.
 
 The V2 fallback remains fail-closed for unique `player_key`, QB/RB/WR/TE
@@ -368,6 +368,19 @@ roster, and a `$298` cap after K/DEF. The app reads `League_Keepers` for the sel
 `league`, pre-fills keeper costs, and removes unowned keepers from the auction
 candidate pool. Keeper rows are excluded from auction-pace calculations because
 their inflation is already represented in `Salaries_Pred`.
+
+After a league draft is complete, run
+`Scripts/Modeling/publish_actual_salaries.py --year <year> --league <league>`
+to publish a deterministic `<league>_actual` slice in `Salaries_Pred`. The
+publisher resolves `Actual_Salaries` through the governed V2 identity tables,
+retains exactly the 156 drafted offensive players, restores canonical display
+labels and player keys, and writes zero salary residuals with
+`min_score = max_score = salary`. The Auction app exposes this slice through
+`Use Actual Salaries`, restricts hindsight optimization to that drafted pool,
+uses recorded keeper prices, skips remaining-market salary rescaling, and
+disables the optimizer-selection reserve. Predicted salaries remain the
+default. Random variation can still change modeled weekly outcomes, so
+variation 0 is the baseline hindsight view.
 
 For each ILP iteration, the app calculates remaining league money and slots from
 all keeper commitments plus entered non-keeper auction results. It then rescales
@@ -439,9 +452,10 @@ The default-off `Use Selection Reserve` control starts every active reserve at
 zero. Enabling it applies the persisted reserve for an immediate comparison;
 the control never modifies the premium table.
 
-The 2026 v6 refresh completed 1,000/1,000 premium-free Target rosters and
-published 314 non-keeper rows. Its expected 13-player roster reserve is
-`$8.5598`. Historical calibrator rows remain on the validated v5 surface while
+The current 2026 v6 refresh completed 1,000/1,000 premium-free Target rosters
+and published 310 non-keeper rows. Its expected 13-player roster reserve is
+approximately `$9.10`, and the largest applied player reserve is `$3.6562`.
+Historical calibrator rows remain on the validated v5 surface while
 the current seed uses v6; this transfer is explicitly labeled
 `historical_v5_selection_surface_to_current_v6_v1`. On common current players,
 v5/v6 point salaries have correlation `0.99957` and MAE `$0.274`, supporting

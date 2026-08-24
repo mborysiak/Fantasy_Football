@@ -1,0 +1,20 @@
+{
+  "league": "dk",
+  "v2_database": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Databases\\Projection_V2.sqlite3",
+  "max_template_season": 2025,
+  "expanded_target_counts": {
+    "QB": 48,
+    "RB": 90,
+    "WR": 120,
+    "TE": 48
+  },
+  "target_rows": 2647,
+  "prediction_rows": 7941,
+  "method_count": 3,
+  "baseline_method": "production",
+  "log_adp_feature": "match_log_adp_scaled",
+  "log_adp_weight": 0.5,
+  "log_adp_cap": 300.0,
+  "runtime_seconds": 39.99053690000437,
+  "production_changed": false
+}
