@@ -1,0 +1,40 @@
+{
+  "active_target_keepers_removed": [
+    "Bhayshul Tuten",
+    "Chase Brown"
+  ],
+  "already_nonkeepers": [
+    "Colston Loveland",
+    "Luther Burden III"
+  ],
+  "available_budget": 3180.0,
+  "available_slots": 144,
+  "baseline_keeper_count": 14,
+  "baseline_keeper_spend": 441.0,
+  "counterfactual_keeper_count": 12,
+  "counterfactual_keeper_sha256": "2a0692e170a93ba3d97f55d15ece2d90f20fc6f3ccf10418dbc58e387e17a715",
+  "counterfactual_keeper_spend": 396.0,
+  "key_parity": true,
+  "league": "beta",
+  "live_input_sha256": {
+    "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Databases\\Model_Inputs.sqlite3": "e9be160839a020a3e4f0e4917a7524e76487c66f859d5f4c039d9b2748de611e",
+    "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Databases\\Projection_V2_beta.sqlite3": "5d1a0a25d4bd8b7320ac975863af32f3ae59d93e306fdb751466f16b3b8e6a49",
+    "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Databases\\Season_Stats_New.sqlite3": "af289ba166a20736168048a16d5a3ed64c718d7ff9ad378ddfe2e82eae97e2f8",
+    "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Databases\\Simulation.sqlite3": "a8aa8d095b00a84d7451b9c846a664d9dcd1f5a34bb89dfe2e5c6f4a82d9c1ca",
+    "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Databases\\Validations.sqlite3": "d5586dc9d5364f804a2fb55ec1952323a3943f756087f6034b7a3354df85aae2",
+    "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\OtherData\\Keepers\\keepers_2026_beta.csv": "89bb63c457d8d8452b390328b0f02f568368e1b1b8e2528022255a528e2e139f"
+  },
+  "live_inputs_unchanged": true,
+  "projection_population": 324,
+  "run_at_utc": "2026-08-26T19:11:39.291548+00:00",
+  "salary_method_version": "current_locked_spec_v6_v2_population_11f",
+  "salary_population": 324,
+  "target_players": [
+    "Chase Brown",
+    "Bhayshul Tuten",
+    "Luther Burden III",
+    "Colston Loveland"
+  ],
+  "top_nonkeeper_salary_total": 3180.0,
+  "year": 2026
+}

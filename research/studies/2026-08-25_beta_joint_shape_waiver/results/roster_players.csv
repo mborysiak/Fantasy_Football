@@ -1,0 +1,209 @@
+block,arm,player,pos,forecast_cost
+0,current_additive,Bhayshul Tuten,RB,11.0
+0,current_additive,Chase Brown,RB,34.0
+0,current_additive,Christian Watson,WR,20.22033085243067
+0,current_additive,D'Andre Swift,RB,35.359861081450696
+0,current_additive,Dallas Goedert,TE,4.0776166742139
+0,current_additive,De'Von Achane,RB,87.18237430793174
+0,current_additive,Harold Fannin Jr.,TE,12.4032342552793
+0,current_additive,Jacory Croskey-Merritt,RB,12.990149753142749
+0,current_additive,Jameson Williams,WR,26.93789533766329
+0,current_additive,Jayden Daniels,QB,14.682398603234608
+0,current_additive,Jordan Addison,WR,8.249879969376885
+0,current_additive,Jordan Mason,RB,12.94791471147251
+0,current_additive,Marvin Harrison Jr.,WR,17.79195712994919
+0,joint_one_swap,Bhayshul Tuten,RB,11.0
+0,joint_one_swap,Chase Brown,RB,34.0
+0,joint_one_swap,Christian Watson,WR,20.22033085243067
+0,joint_one_swap,D'Andre Swift,RB,35.359861081450696
+0,joint_one_swap,De'Von Achane,RB,87.18237430793174
+0,joint_one_swap,Harold Fannin Jr.,TE,12.4032342552793
+0,joint_one_swap,Jacory Croskey-Merritt,RB,12.990149753142749
+0,joint_one_swap,Jameson Williams,WR,26.93789533766329
+0,joint_one_swap,Jayden Daniels,QB,14.682398603234608
+0,joint_one_swap,Jordan Addison,WR,8.249879969376885
+0,joint_one_swap,Jordan Mason,RB,12.94791471147251
+0,joint_one_swap,Marvin Harrison Jr.,WR,17.79195712994919
+0,joint_one_swap,Rashid Shaheed,WR,2.698124504369251
+0,fixed_shape_additive,Bhayshul Tuten,RB,11.0
+0,fixed_shape_additive,Brian Thomas Jr.,WR,14.633261441570827
+0,fixed_shape_additive,Chase Brown,RB,34.0
+0,fixed_shape_additive,Christian Watson,WR,20.22033085243067
+0,fixed_shape_additive,D'Andre Swift,RB,35.359861081450696
+0,fixed_shape_additive,De'Von Achane,RB,87.18237430793174
+0,fixed_shape_additive,Harold Fannin Jr.,TE,12.4032342552793
+0,fixed_shape_additive,Jacory Croskey-Merritt,RB,12.990149753142749
+0,fixed_shape_additive,Jordan Addison,WR,8.249879969376885
+0,fixed_shape_additive,Jordan Mason,RB,12.94791471147251
+0,fixed_shape_additive,Luther Burden III,WR,26.39236289712984
+0,fixed_shape_additive,Marvin Harrison Jr.,WR,17.79195712994919
+0,fixed_shape_additive,Patrick Mahomes,QB,4.5847671465032835
+0,waiver_plus_1_5_additive,Antonio Williams,WR,2.0
+0,waiver_plus_1_5_additive,Bhayshul Tuten,RB,11.0
+0,waiver_plus_1_5_additive,Chase Brown,RB,34.0
+0,waiver_plus_1_5_additive,Christian Watson,WR,20.22033085243067
+0,waiver_plus_1_5_additive,D'Andre Swift,RB,35.359861081450696
+0,waiver_plus_1_5_additive,Dallas Goedert,TE,4.0776166742139
+0,waiver_plus_1_5_additive,De'Von Achane,RB,87.18237430793174
+0,waiver_plus_1_5_additive,Denzel Boston,WR,2.93525074638788
+0,waiver_plus_1_5_additive,Harold Fannin Jr.,TE,12.4032342552793
+0,waiver_plus_1_5_additive,Jayden Daniels,QB,14.682398603234608
+0,waiver_plus_1_5_additive,Jordan Mason,RB,12.94791471147251
+0,waiver_plus_1_5_additive,Josh Jacobs,RB,57.89372835409602
+0,waiver_plus_1_5_additive,Rashid Shaheed,WR,2.698124504369251
+1,current_additive,Aaron Jones,RB,8.289398161946343
+1,current_additive,Alec Pierce,WR,11.782730629036607
+1,current_additive,Bhayshul Tuten,RB,11.0
+1,current_additive,Chase Brown,RB,34.0
+1,current_additive,Christian Watson,WR,20.22033085243067
+1,current_additive,D'Andre Swift,RB,35.359861081450696
+1,current_additive,DK Metcalf,WR,15.337136054222073
+1,current_additive,Dak Prescott,QB,8.256350653556261
+1,current_additive,Dalton Kincaid,TE,4.285161113102349
+1,current_additive,Harold Fannin Jr.,TE,12.4032342552793
+1,current_additive,J.K. Dobbins,RB,15.526293912496934
+1,current_additive,Jahmyr Gibbs,RB,110.85515978235745
+1,current_additive,Quentin Johnston,WR,10.046884457541045
+1,joint_one_swap,Aaron Jones,RB,8.289398161946343
+1,joint_one_swap,Alec Pierce,WR,11.782730629036607
+1,joint_one_swap,Bhayshul Tuten,RB,11.0
+1,joint_one_swap,Chase Brown,RB,34.0
+1,joint_one_swap,Christian Watson,WR,20.22033085243067
+1,joint_one_swap,D'Andre Swift,RB,35.359861081450696
+1,joint_one_swap,DK Metcalf,WR,15.337136054222073
+1,joint_one_swap,Dak Prescott,QB,8.256350653556261
+1,joint_one_swap,Dalton Kincaid,TE,4.285161113102349
+1,joint_one_swap,Harold Fannin Jr.,TE,12.4032342552793
+1,joint_one_swap,J.K. Dobbins,RB,15.526293912496934
+1,joint_one_swap,Jahmyr Gibbs,RB,110.85515978235745
+1,joint_one_swap,Quentin Johnston,WR,10.046884457541045
+1,fixed_shape_additive,Aaron Jones,RB,8.289398161946343
+1,fixed_shape_additive,Alec Pierce,WR,11.782730629036607
+1,fixed_shape_additive,Bhayshul Tuten,RB,11.0
+1,fixed_shape_additive,Chase Brown,RB,34.0
+1,fixed_shape_additive,Christian Watson,WR,20.22033085243067
+1,fixed_shape_additive,Harold Fannin Jr.,TE,12.4032342552793
+1,fixed_shape_additive,J.K. Dobbins,RB,15.526293912496934
+1,fixed_shape_additive,Jahmyr Gibbs,RB,110.85515978235745
+1,fixed_shape_additive,Josh Allen,QB,37.55956432451797
+1,fixed_shape_additive,KC Concepcion,WR,5.731017092650105
+1,fixed_shape_additive,Marvin Harrison Jr.,WR,17.79195712994919
+1,fixed_shape_additive,Quentin Johnston,WR,10.046884457541045
+1,fixed_shape_additive,Tyler Allgeier,RB,2.652207374568107
+1,waiver_plus_1_5_additive,Alec Pierce,WR,11.782730629036607
+1,waiver_plus_1_5_additive,Bhayshul Tuten,RB,11.0
+1,waiver_plus_1_5_additive,Chase Brown,RB,34.0
+1,waiver_plus_1_5_additive,D'Andre Swift,RB,35.359861081450696
+1,waiver_plus_1_5_additive,Harold Fannin Jr.,TE,12.4032342552793
+1,waiver_plus_1_5_additive,J.K. Dobbins,RB,15.526293912496934
+1,waiver_plus_1_5_additive,Jahmyr Gibbs,RB,110.85515978235745
+1,waiver_plus_1_5_additive,Josh Allen,QB,37.55956432451797
+1,waiver_plus_1_5_additive,Omar Cooper Jr.,WR,2.0
+1,waiver_plus_1_5_additive,Quentin Johnston,WR,10.046884457541045
+1,waiver_plus_1_5_additive,Rashid Shaheed,WR,2.698124504369251
+1,waiver_plus_1_5_additive,Sam LaPorta,TE,11.736001726709125
+1,waiver_plus_1_5_additive,Tyler Allgeier,RB,2.652207374568107
+2,current_additive,Alec Pierce,WR,11.782730629036607
+2,current_additive,Amon-Ra St. Brown,WR,83.14372580228405
+2,current_additive,Bhayshul Tuten,RB,11.0
+2,current_additive,Brian Thomas Jr.,WR,14.633261441570827
+2,current_additive,Chase Brown,RB,34.0
+2,current_additive,Chuba Hubbard,RB,14.173762784521376
+2,current_additive,Dalton Kincaid,TE,4.285161113102349
+2,current_additive,Derrick Henry,RB,77.22172589450953
+2,current_additive,J.K. Dobbins,RB,15.526293912496934
+2,current_additive,Jaxson Dart,QB,6.497473733873624
+2,current_additive,Jaylen Warren,RB,20.535516097958986
+2,current_additive,Juwan Johnson,TE,2.0
+2,current_additive,Rashid Shaheed,WR,2.698124504369251
+2,joint_one_swap,Alec Pierce,WR,11.782730629036607
+2,joint_one_swap,Amon-Ra St. Brown,WR,83.14372580228405
+2,joint_one_swap,Bhayshul Tuten,RB,11.0
+2,joint_one_swap,Brian Thomas Jr.,WR,14.633261441570827
+2,joint_one_swap,Chase Brown,RB,34.0
+2,joint_one_swap,Dalton Kincaid,TE,4.285161113102349
+2,joint_one_swap,Derrick Henry,RB,77.22172589450953
+2,joint_one_swap,J.K. Dobbins,RB,15.526293912496934
+2,joint_one_swap,Jaxson Dart,QB,6.497473733873624
+2,joint_one_swap,Jaylen Warren,RB,20.535516097958986
+2,joint_one_swap,Juwan Johnson,TE,2.0
+2,joint_one_swap,Makai Lemon,WR,9.561771364790127
+2,joint_one_swap,Rashid Shaheed,WR,2.698124504369251
+2,fixed_shape_additive,Alec Pierce,WR,11.782730629036607
+2,fixed_shape_additive,Amon-Ra St. Brown,WR,83.14372580228405
+2,fixed_shape_additive,Bhayshul Tuten,RB,11.0
+2,fixed_shape_additive,Brian Thomas Jr.,WR,14.633261441570827
+2,fixed_shape_additive,Chase Brown,RB,34.0
+2,fixed_shape_additive,Chris Godwin Jr.,WR,9.09018361249662
+2,fixed_shape_additive,Dalton Kincaid,TE,4.285161113102349
+2,fixed_shape_additive,Derrick Henry,RB,77.22172589450953
+2,fixed_shape_additive,J.K. Dobbins,RB,15.526293912496934
+2,fixed_shape_additive,Jaxson Dart,QB,6.497473733873624
+2,fixed_shape_additive,Jaylen Warren,RB,20.535516097958986
+2,fixed_shape_additive,Matthew Golden,WR,7.249527425049757
+2,fixed_shape_additive,Rashid Shaheed,WR,2.698124504369251
+2,waiver_plus_1_5_additive,Amon-Ra St. Brown,WR,83.14372580228405
+2,waiver_plus_1_5_additive,Bhayshul Tuten,RB,11.0
+2,waiver_plus_1_5_additive,Brenton Strange,TE,2.0
+2,waiver_plus_1_5_additive,Brian Thomas Jr.,WR,14.633261441570827
+2,waiver_plus_1_5_additive,Chase Brown,RB,34.0
+2,waiver_plus_1_5_additive,Chris Godwin Jr.,WR,9.09018361249662
+2,waiver_plus_1_5_additive,Chuba Hubbard,RB,14.173762784521376
+2,waiver_plus_1_5_additive,Derrick Henry,RB,77.22172589450953
+2,waiver_plus_1_5_additive,J.K. Dobbins,RB,15.526293912496934
+2,waiver_plus_1_5_additive,Jaxson Dart,QB,6.497473733873624
+2,waiver_plus_1_5_additive,Jaylen Warren,RB,20.535516097958986
+2,waiver_plus_1_5_additive,Matthew Golden,WR,7.249527425049757
+2,waiver_plus_1_5_additive,Rashid Shaheed,WR,2.698124504369251
+3,current_additive,Alec Pierce,WR,11.782730629036607
+3,current_additive,Bhayshul Tuten,RB,11.0
+3,current_additive,Bijan Robinson,RB,109.31713703754961
+3,current_additive,Chase Brown,RB,34.0
+3,current_additive,Harold Fannin Jr.,TE,12.4032342552793
+3,current_additive,J.K. Dobbins,RB,15.526293912496934
+3,current_additive,Jaxson Dart,QB,6.497473733873624
+3,current_additive,Jayden Reed,WR,8.334916890161463
+3,current_additive,Jaylen Warren,RB,20.535516097958986
+3,current_additive,Jordan Mason,RB,12.94791471147251
+3,current_additive,Makai Lemon,WR,9.561771364790127
+3,current_additive,Michael Wilson,WR,11.8042782643424
+3,current_additive,Tee Higgins,WR,34.22420391918479
+3,joint_one_swap,Bhayshul Tuten,RB,11.0
+3,joint_one_swap,Bijan Robinson,RB,109.31713703754961
+3,joint_one_swap,Chase Brown,RB,34.0
+3,joint_one_swap,Harold Fannin Jr.,TE,12.4032342552793
+3,joint_one_swap,J.K. Dobbins,RB,15.526293912496934
+3,joint_one_swap,Jaxson Dart,QB,6.497473733873624
+3,joint_one_swap,Jayden Reed,WR,8.334916890161463
+3,joint_one_swap,Jaylen Warren,RB,20.535516097958986
+3,joint_one_swap,Jordan Mason,RB,12.94791471147251
+3,joint_one_swap,Josh Downs,WR,7.5949986133218275
+3,joint_one_swap,Makai Lemon,WR,9.561771364790127
+3,joint_one_swap,Michael Wilson,WR,11.8042782643424
+3,joint_one_swap,Tee Higgins,WR,34.22420391918479
+3,fixed_shape_additive,Alec Pierce,WR,11.782730629036607
+3,fixed_shape_additive,Bhayshul Tuten,RB,11.0
+3,fixed_shape_additive,Bijan Robinson,RB,109.31713703754961
+3,fixed_shape_additive,Chase Brown,RB,34.0
+3,fixed_shape_additive,Harold Fannin Jr.,TE,12.4032342552793
+3,fixed_shape_additive,J.K. Dobbins,RB,15.526293912496934
+3,fixed_shape_additive,Jaxson Dart,QB,6.497473733873624
+3,fixed_shape_additive,Jayden Reed,WR,8.334916890161463
+3,fixed_shape_additive,Jaylen Warren,RB,20.535516097958986
+3,fixed_shape_additive,Jordan Mason,RB,12.94791471147251
+3,fixed_shape_additive,Makai Lemon,WR,9.561771364790127
+3,fixed_shape_additive,Michael Wilson,WR,11.8042782643424
+3,fixed_shape_additive,Tee Higgins,WR,34.22420391918479
+3,waiver_plus_1_5_additive,Alec Pierce,WR,11.782730629036607
+3,waiver_plus_1_5_additive,Bhayshul Tuten,RB,11.0
+3,waiver_plus_1_5_additive,Bijan Robinson,RB,109.31713703754961
+3,waiver_plus_1_5_additive,Chase Brown,RB,34.0
+3,waiver_plus_1_5_additive,Harold Fannin Jr.,TE,12.4032342552793
+3,waiver_plus_1_5_additive,J.K. Dobbins,RB,15.526293912496934
+3,waiver_plus_1_5_additive,Jaxson Dart,QB,6.497473733873624
+3,waiver_plus_1_5_additive,Jayden Reed,WR,8.334916890161463
+3,waiver_plus_1_5_additive,Jaylen Warren,RB,20.535516097958986
+3,waiver_plus_1_5_additive,Jordan Mason,RB,12.94791471147251
+3,waiver_plus_1_5_additive,Makai Lemon,WR,9.561771364790127
+3,waiver_plus_1_5_additive,Michael Wilson,WR,11.8042782643424
+3,waiver_plus_1_5_additive,Tee Higgins,WR,34.22420391918479

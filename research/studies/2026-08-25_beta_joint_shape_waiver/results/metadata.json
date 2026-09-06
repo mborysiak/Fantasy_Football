@@ -1,0 +1,107 @@
+{
+  "year": 2026,
+  "league": "beta",
+  "fixed_salaries": {
+    "Chase Brown": 34.0,
+    "Bhayshul Tuten": 11.0
+  },
+  "lineup_require": {
+    "QB": 1,
+    "RB": 2,
+    "WR": 2,
+    "TE": 1,
+    "FLEX": 2
+  },
+  "current_position_min": {
+    "QB": 1,
+    "RB": 4,
+    "WR": 4,
+    "TE": 1
+  },
+  "current_position_max": {
+    "QB": 1,
+    "RB": 6,
+    "WR": 6,
+    "TE": 2
+  },
+  "fixed_shape_min": {
+    "QB": 1,
+    "RB": 5,
+    "WR": 5,
+    "TE": 1
+  },
+  "fixed_shape_max": {
+    "QB": 1,
+    "RB": 6,
+    "WR": 6,
+    "TE": 1
+  },
+  "current_waivers": {
+    "QB": 13.5,
+    "RB": 6.2,
+    "WR": 6.9,
+    "TE": 6.3
+  },
+  "raised_waivers": {
+    "QB": 15.0,
+    "RB": 7.7,
+    "WR": 8.4,
+    "TE": 7.8
+  },
+  "keeper_market": {
+    "salary_source": "predicted",
+    "keeper_count": 14,
+    "keeper_spend": 441.0,
+    "keeper_players": [
+      "Bhayshul Tuten",
+      "Cam Skattebo",
+      "Chase Brown",
+      "Christian McCaffrey",
+      "Garrett Wilson",
+      "George Pickens",
+      "James Cook",
+      "Javonte Williams",
+      "Jaxon Smith-Njigba",
+      "Mike Evans",
+      "Nico Collins",
+      "Quinshon Judkins",
+      "Travis Etienne",
+      "Tucker Kraft"
+    ],
+    "owned_keeper_players": [
+      "Bhayshul Tuten",
+      "Chase Brown"
+    ],
+    "unavailable_keeper_players": [
+      "Cam Skattebo",
+      "Christian McCaffrey",
+      "Garrett Wilson",
+      "George Pickens",
+      "James Cook",
+      "Javonte Williams",
+      "Jaxon Smith-Njigba",
+      "Mike Evans",
+      "Nico Collins",
+      "Quinshon Judkins",
+      "Travis Etienne",
+      "Tucker Kraft"
+    ]
+  },
+  "remaining_market_budget": 3135.0,
+  "remaining_market_slots": 142,
+  "pool_summary": {
+    "draft_pool_players_before_filter": 324,
+    "draft_pool_players_after_filter": 200,
+    "draft_pool_players_excluded": 124,
+    "draft_pool_rookie_exceptions": 8,
+    "draft_pool_players_before_keeper_filter": 200,
+    "active_keeper_players_excluded": 12,
+    "draft_pool_players_after_keeper_filter": 188
+  },
+  "construction_seconds": 0.14189340000120865,
+  "blocks": 4,
+  "construction_contexts_per_block": 32,
+  "validation_contexts_per_block": 64,
+  "timing_repeats": 1,
+  "seed": 20260825
+}

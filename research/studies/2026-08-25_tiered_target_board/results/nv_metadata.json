@@ -1,0 +1,42 @@
+{
+  "league": "nv",
+  "calculation_version": 16,
+  "seed": 20260825,
+  "owned": {
+    "Drake Maye": 18.0,
+    "De'Von Achane": 47.0
+  },
+  "unavailable_keepers": [
+    "Brock Bowers",
+    "Caleb Williams",
+    "Chase Brown",
+    "DeVonta Smith",
+    "Javonte Williams",
+    "Jaxon Smith-Njigba",
+    "Jaxson Dart",
+    "Joe Burrow",
+    "Lamar Jackson",
+    "Omarion Hampton",
+    "Patrick Mahomes",
+    "Quinshon Judkins",
+    "Travis Etienne",
+    "Tucker Kraft"
+  ],
+  "remaining_market_budget": 3123.0,
+  "remaining_market_slots": 140,
+  "waiver_baselines": {
+    "QB": 11.5,
+    "RB": 6.5,
+    "WR": 7.1,
+    "TE": 6.6
+  },
+  "plan_count": 4,
+  "bucket_count": 11,
+  "structure_runtime_seconds": 0.10186560000147438,
+  "pool_summary": {
+    "draft_pool_players_before_filter": 310,
+    "draft_pool_players_after_filter": 190,
+    "draft_pool_players_excluded": 120,
+    "draft_pool_rookie_exceptions": 8
+  }
+}

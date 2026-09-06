@@ -1,0 +1,74 @@
+{
+  "source": "predicted",
+  "blocks": 4,
+  "block_indices": [
+    3
+  ],
+  "construction_contexts_per_block": 32,
+  "paths_per_block": 32,
+  "validation_contexts_per_block": 64,
+  "timing_repeats": 1,
+  "seed": 20260824,
+  "pool_summary": {
+    "draft_pool_players_before_filter": 324,
+    "draft_pool_players_after_filter": 204,
+    "draft_pool_players_excluded": 120,
+    "draft_pool_rookie_exceptions": 8,
+    "draft_pool_players_before_keeper_filter": 204,
+    "active_keeper_players_excluded": 14,
+    "draft_pool_players_after_keeper_filter": 190
+  },
+  "keeper_market": {
+    "salary_source": "predicted",
+    "keeper_count": 16,
+    "keeper_spend": 453.0,
+    "keeper_players": [
+      "Brock Bowers",
+      "Caleb Williams",
+      "Chase Brown",
+      "De'Von Achane",
+      "DeVonta Smith",
+      "Drake Maye",
+      "Javonte Williams",
+      "Jaxon Smith-Njigba",
+      "Jaxson Dart",
+      "Joe Burrow",
+      "Lamar Jackson",
+      "Omarion Hampton",
+      "Patrick Mahomes",
+      "Quinshon Judkins",
+      "Travis Etienne",
+      "Tucker Kraft"
+    ],
+    "owned_keeper_players": [
+      "De'Von Achane",
+      "Drake Maye"
+    ],
+    "unavailable_keeper_players": [
+      "Brock Bowers",
+      "Caleb Williams",
+      "Chase Brown",
+      "DeVonta Smith",
+      "Javonte Williams",
+      "Jaxon Smith-Njigba",
+      "Jaxson Dart",
+      "Joe Burrow",
+      "Lamar Jackson",
+      "Omarion Hampton",
+      "Patrick Mahomes",
+      "Quinshon Judkins",
+      "Travis Etienne",
+      "Tucker Kraft"
+    ]
+  },
+  "remaining_market_budget": 3123.0,
+  "remaining_market_slots": 140,
+  "waiver_baselines": {
+    "QB": 11.5,
+    "RB": 6.5,
+    "WR": 7.1,
+    "TE": 6.6
+  },
+  "construction_seconds": 0.14100999996298924,
+  "state_players": 190
+}

@@ -39,7 +39,10 @@ from Scripts.V2.production_handoff import (
     V2_DATABASES,
     validate_avg_adp_publication,
 )
-from Scripts.V2.production_cycle import get_production_cycle
+from Scripts.V2.production_cycle import (
+    get_historical_replay_template_contract,
+    get_production_cycle,
+)
 from Scripts.V2.template_identity import attach_v2_player_keys
 
 
@@ -62,7 +65,15 @@ TEMPLATE_SEASON_MIN_BY_LEAGUE = {
     "nffc": 2021,
     "nv": 2008,
 }
-_PRODUCTION_CYCLE = get_production_cycle(YEAR)
+HISTORICAL_REPLAY_BUILD = os.getenv(
+    "FF_HISTORICAL_AUCTION_REPLAY",
+    "0",
+).strip().lower() in {"1", "true", "yes"}
+_PRODUCTION_CYCLE = (
+    get_historical_replay_template_contract(YEAR)
+    if HISTORICAL_REPLAY_BUILD
+    else get_production_cycle(YEAR)
+)
 WEEK_COUNT_BY_LEAGUE.update(_PRODUCTION_CYCLE.weekly_horizons)
 TEMPLATE_SEASON_MIN_BY_LEAGUE.update(
     _PRODUCTION_CYCLE.template_min_seasons
@@ -94,6 +105,11 @@ MAX_PLAUSIBLE_TEMPLATE_EXPERIENCE = 25
 # preventing them from becoming generic football-performance templates.
 TEMPLATE_OUTCOME_EXCLUSIONS = {
     ("Le'Veon Bell", "RB", 2018): "contract_holdout",
+    # The archived 2009 source marks Vick as having played eight weeks but has
+    # no scored active week; its managed-QB team trajectory therefore cannot
+    # be normalized by a player conditional PPG.  Retain the row for audit but
+    # never sample it as a transferable player template.
+    ("Michael Vick", "QB", 2009): "zero_active_managed_qb_profile",
 }
 
 # Name-only historical sources contain a small number of overlapping NFL
@@ -205,6 +221,23 @@ GOVERNED_V2_TEMPLATE_CENTER_POSITION_MISMATCHES = {
         "RB",
         "WR",
     ): "canonical_hybrid_role_shift:ty_montgomery",
+}
+GOVERNED_CURRENT_PLAYER_POSITION_MISMATCHES = {
+    (
+        "e36034a5-fc78-5b29-90e0-66619310bb0b",
+        "WR",
+        "DB",
+    ): "two_way_player_fantasy_role:travis_hunter",
+    (
+        "2f3a5f36-ad51-527b-8fdc-ca0a5e431ad6",
+        "RB",
+        "WR",
+    ): "historical_fantasy_role:ty_montgomery",
+    (
+        "877cadec-3157-5007-9ed6-10243e581135",
+        "TE",
+        "RB",
+    ): "historical_fantasy_role:connor_heyward",
 }
 
 LOW_ACTIVE_GAME_THRESHOLD = 2
@@ -942,8 +975,59 @@ def add_projection_buckets(df, value_col, group_cols, pct_col="projection_rank_p
     return df
 
 
+def model_input_projection_table_year():
+    """Resolve the nearest complete preseason projection-table vintage.
+
+    The archived Model_Inputs database begins with the 2023 table family even
+    though those tables retain causal rows for the 2022 season.  Historical
+    replay may use that nearest later table as a container while still
+    filtering every row to the requested season/donor cutoff.  Live builds
+    continue to require the exact production-year table family.
+    """
+
+    try:
+        for pos in POSITIONS:
+            dm.read(
+                f"SELECT * FROM {pos}_{YEAR}_ProjOnly LIMIT 0",
+                "Model_Inputs",
+            )
+        return int(YEAR)
+    except Exception as exact_error:
+        if not HISTORICAL_REPLAY_BUILD:
+            raise ValueError(
+                f"Model_Inputs lacks the complete {YEAR} ProjOnly table "
+                "family."
+            ) from exact_error
+    tables = dm.read(
+        "SELECT name FROM sqlite_master WHERE type='table'",
+        "Model_Inputs",
+    )
+    if "name" not in tables:
+        raise ValueError(
+            "Model_Inputs table inventory did not return a name column."
+        )
+    names = set(tables.name.astype(str))
+    candidate_years = sorted({
+        int(match.group(1))
+        for name in names
+        for match in [re.fullmatch(r"QB_(\d{4})_ProjOnly", name)]
+        if match and int(match.group(1)) >= int(YEAR)
+    })
+    for candidate_year in candidate_years:
+        required = {
+            f"{pos}_{candidate_year}_ProjOnly" for pos in POSITIONS
+        }
+        if required.issubset(names):
+            return candidate_year
+    raise ValueError(
+        f"Historical replay has no complete ProjOnly table family at or "
+        f"after {YEAR}."
+    )
+
+
 def projection_select_cols(pos, year_alias, total_alias=None, avg_pick_alias=None):
-    table = f"{pos}_{YEAR}_ProjOnly"
+    table_year = model_input_projection_table_year()
+    table = f"{pos}_{table_year}_ProjOnly"
     available_cols = set(dm.read(f"SELECT * FROM {table} LIMIT 0", "Model_Inputs").columns)
 
     cols = [
@@ -1491,7 +1575,44 @@ def keep_not_current_prediction_slice(df):
 
 
 def keep_not_current_bucket_slice(df):
-    return ~rows_matching(df, {"version": LEAGUE})
+    return ~rows_matching(
+        df,
+        {
+            "version": LEAGUE,
+        },
+    )
+
+
+def keep_not_historical_pool_slice(df):
+    return ~rows_matching(
+        df,
+        {
+            "pool_year": YEAR,
+            "pool_version": LEAGUE,
+            "pool_dataset": PRED_VERSION,
+        },
+    )
+
+
+def keep_not_historical_prediction_slice(df):
+    return ~rows_matching(
+        df,
+        {
+            "year": YEAR,
+            "version": LEAGUE,
+            "dataset": PRED_VERSION,
+        },
+    )
+
+
+def keep_not_historical_bucket_slice(df):
+    return ~rows_matching(
+        df,
+        {
+            "year": YEAR,
+            "version": LEAGUE,
+        },
+    )
 
 
 def write_best_ball_tables(
@@ -1503,17 +1624,73 @@ def write_best_ball_tables(
     player_pool_audit,
     bucket_audit,
     adp_audit,
+    historical_replay=False,
 ):
+    if historical_replay:
+        template_namespace = f"{LEAGUE}_{YEAR}_replay"
+        templates = templates.copy()
+        templates["league"] = template_namespace
+        template_audit = template_audit.copy()
+        template_audit["league"] = template_namespace
+        pool_members = pool_members.copy()
+        pool_members["template_league"] = template_namespace
+
+        pool_keep = keep_not_historical_pool_slice
+        prediction_keep = keep_not_historical_prediction_slice
+        bucket_keep = keep_not_historical_bucket_slice
+    else:
+        pool_keep = keep_not_current_pool_slice
+        prediction_keep = keep_not_current_prediction_slice
+        bucket_keep = keep_not_current_bucket_slice
+
     table_writes = [
-        (TEMPLATE_TABLE, templates, keep_not_current_league),
-        (POOL_TABLE, pool_members, keep_not_current_pool_slice),
-        (POOL_SUMMARY_TABLE, pool_summary, keep_not_current_prediction_slice),
-        (PLAYER_MAP_TABLE, player_map, keep_not_current_prediction_slice),
-        (TEMPLATE_AUDIT_TABLE, template_audit, keep_not_current_league),
-        (PLAYER_POOL_AUDIT_TABLE, player_pool_audit, keep_not_current_prediction_slice),
-        (BUCKET_AUDIT_TABLE, bucket_audit, keep_not_current_bucket_slice),
-        (ADP_AUDIT_TABLE, adp_audit, keep_not_current_prediction_slice),
+        (POOL_TABLE, pool_members, pool_keep),
+        (POOL_SUMMARY_TABLE, pool_summary, prediction_keep),
+        (PLAYER_MAP_TABLE, player_map, prediction_keep),
+        (PLAYER_POOL_AUDIT_TABLE, player_pool_audit, prediction_keep),
+        (BUCKET_AUDIT_TABLE, bucket_audit, bucket_keep),
+        (ADP_AUDIT_TABLE, adp_audit, prediction_keep),
     ]
+    if historical_replay:
+        def keep_not_historical_template_namespace(existing):
+            return ~rows_matching(
+                existing,
+                {"league": template_namespace},
+            )
+
+        table_writes = [
+            (
+                TEMPLATE_TABLE,
+                templates,
+                keep_not_historical_template_namespace,
+            ),
+            *table_writes[:3],
+            (
+                TEMPLATE_AUDIT_TABLE,
+                template_audit,
+                keep_not_historical_template_namespace,
+            ),
+            *table_writes[3:],
+        ]
+        receipt = {
+            "template_namespace": template_namespace,
+            "target_year": int(YEAR),
+            "max_donor_season": int(
+                pd.to_numeric(templates.season).max()
+            ),
+            "donor_rows": int(len(templates)),
+        }
+        print(
+            "Historical replay published isolated donor templates: "
+            + json.dumps(receipt, sort_keys=True)
+        )
+    else:
+        table_writes = [
+            (TEMPLATE_TABLE, templates, keep_not_current_league),
+            *table_writes[:3],
+            (TEMPLATE_AUDIT_TABLE, template_audit, keep_not_current_league),
+            *table_writes[3:],
+        ]
 
     tables = {
         table_name: replace_table_slice(
@@ -1605,14 +1782,28 @@ def validate_existing_v2_player_keys(
         != validation["position"]
     )
     if position_mismatch.any():
-        preview = validation.loc[
+        mismatch_rows = validation.loc[
             position_mismatch,
             ["player_key", position_column, "position"],
-        ].head(10)
-        raise ValueError(
-            "Current production player positions disagree with V2 identity: "
-            f"{preview.to_dict('records')}"
+        ]
+        mismatch_keys = {
+            (
+                str(row.player_key),
+                str(getattr(row, position_column)).upper(),
+                str(row.position).upper(),
+            )
+            for row in mismatch_rows.itertuples(index=False)
+        }
+        unsupported = sorted(
+            mismatch_keys.difference(
+                GOVERNED_CURRENT_PLAYER_POSITION_MISMATCHES
+            )
         )
+        if unsupported:
+            raise ValueError(
+                "Current production player positions disagree with V2 "
+                f"identity: {unsupported[:10]}"
+            )
     if "player_key_match_method" not in output.columns:
         output["player_key_match_method"] = "production_handoff_player_key"
     else:
@@ -2807,12 +2998,13 @@ def load_historical_projection_context(
         )
     proj = pd.DataFrame()
 
+    table_year = model_input_projection_table_year()
     for pos in POSITIONS:
         select_cols = projection_select_cols(pos, year_alias="season")
         df_pos = dm.read(
             f"""
             SELECT {", ".join(select_cols)}
-            FROM {pos}_{YEAR}_ProjOnly
+            FROM {pos}_{table_year}_ProjOnly
             WHERE pos='{pos}'
                   AND year BETWEEN {TEMPLATE_SEASON_MIN} AND {max_template_season}
             """,
@@ -2857,6 +3049,14 @@ def load_historical_projection_context(
         v2_database=v2_database,
     )
     if use_scoring_context:
+        # Older archived ProjOnly table families do not carry every component
+        # and uncertainty column introduced later.  Establish the same neutral
+        # optional-field contract before the V2 scoring context overwrites the
+        # rows for which governed scored inputs are available.
+        proj = add_projection_component_cols(proj)
+        for column in PROJECTION_UNCERTAINTY_SOURCE_COLS:
+            if column not in proj:
+                proj[column] = np.nan
         proj = apply_v2_scored_projection_context(
             proj,
             v2_database=v2_database,
@@ -3705,7 +3905,7 @@ def build_weekly_templates(proj, weekly, league=None):
         )
         | (managed_profile_totals > max_allowed_profile)
         | (max_managed_magnitude > max_allowed_profile)
-    )
+    ) & templates["template_eligible"].eq(1).to_numpy()
     if invalid_managed.any():
         preview = templates.loc[
             invalid_managed,
@@ -4355,12 +4555,14 @@ def validate_weekly_template_audits(player_pool_audit, template_audit=None):
         ).dropna()
         if observed_seasons.empty:
             raise ValueError("Weekly template audit contains no valid seasons")
-        min_observed_season = int(observed_seasons.min())
-        max_observed_season = int(observed_seasons.max())
+        observed_template_keys = {
+            (row.player, row.pos, int(row.season))
+            for row in template_audit.itertuples(index=False)
+        }
         expected_exclusions = {
             key: reason
             for key, reason in TEMPLATE_OUTCOME_EXCLUSIONS.items()
-            if min_observed_season <= key[2] <= max_observed_season
+            if key in observed_template_keys
         }
         governed_beta_unavailable_reason = (
             "scoring_context_unavailable:"
@@ -4502,6 +4704,7 @@ def load_current_player_context(v2_database=None):
     v2_database = resolve_v2_database(v2_database)
     current_context = pd.DataFrame()
 
+    table_year = model_input_projection_table_year()
     for pos in POSITIONS:
         select_cols = projection_select_cols(
             pos,
@@ -4512,7 +4715,7 @@ def load_current_player_context(v2_database=None):
         df_pos = dm.read(
             f"""
             SELECT {", ".join(select_cols)}
-            FROM {pos}_{YEAR}_ProjOnly
+            FROM {pos}_{table_year}_ProjOnly
             WHERE pos='{pos}'
                   AND year={YEAR}
             """,
@@ -4857,6 +5060,7 @@ def load_v2_current_player_context(
         "team_qb1_ppg",
     }
     optional_columns = {
+        "expert_rank_median",
         "consensus_room_share",
         "consensus_room_gap_to_next",
         "consensus_room_hhi",
@@ -5091,6 +5295,7 @@ def load_v2_current_player_context(
             "run_id": "projection_context_run_id",
             "expert_points_median": "current_avg_proj_points",
             "adp_median": "feature_adp_median",
+            "expert_rank_median": "feature_expert_rank_median",
         }
     )
     fallback["player_key"] = fallback["player_key"].astype("string")
@@ -5131,6 +5336,12 @@ def load_v2_current_player_context(
         fallback["feature_adp_median"],
         errors="coerce",
     )
+    if "feature_expert_rank_median" not in fallback:
+        fallback["feature_expert_rank_median"] = np.nan
+    fallback["feature_expert_rank_median"] = pd.to_numeric(
+        fallback["feature_expert_rank_median"],
+        errors="coerce",
+    )
     fallback["published_adp_avg_pick"] = pd.to_numeric(
         fallback["published_adp_avg_pick"],
         errors="coerce",
@@ -5138,15 +5349,21 @@ def load_v2_current_player_context(
     if LEAGUE in AUCTION_ETR_LEAGUES:
         fallback["adp_avg_pick"] = fallback[
             "feature_adp_median"
-        ].combine_first(fallback["published_adp_avg_pick"])
+        ].combine_first(
+            fallback["published_adp_avg_pick"]
+        ).combine_first(
+            fallback["feature_expert_rank_median"]
+        )
         fallback["current_adp_source"] = np.select(
             [
                 fallback["feature_adp_median"].notna(),
                 fallback["published_adp_avg_pick"].notna(),
+                fallback["feature_expert_rank_median"].notna(),
             ],
             [
                 "v2_canonical_adp_family_consensus",
                 "etr_rank_last_resort",
+                "v2_preseason_expert_rank_fallback",
             ],
             default="missing",
         )
@@ -5678,6 +5895,25 @@ def build_player_map_base(
         selected_player_keys=preds["player_key"],
         scoring_matched_context=scoring_matched_context,
     )
+    if HISTORICAL_REPLAY_BUILD:
+        # The staged replay projection is the roster-position authority.  A
+        # small governed historical-role set differs from the current identity
+        # spine; key the causal V2 context to that published role so it remains
+        # usable without changing the player's point center.
+        replay_positions = preds[["player_key", "pos"]].rename(
+            columns={"pos": "replay_pos"}
+        )
+        fallback_context = fallback_context.merge(
+            replay_positions,
+            on="player_key",
+            how="left",
+            validate="one_to_one",
+        )
+        fallback_context["pos"] = fallback_context.replay_pos.where(
+            fallback_context.replay_pos.notna(),
+            fallback_context.pos,
+        )
+        fallback_context = fallback_context.drop(columns="replay_pos")
     player_map = attach_current_context_by_player_key(
         preds,
         current_context,
@@ -6996,6 +7232,15 @@ def parse_args(argv=None):
         action="store_true",
         help="Do not synchronize generated tables to application databases.",
     )
+    parser.add_argument(
+        "--historical-replay",
+        action="store_true",
+        help=(
+            "Build a registered historical replay player map without replacing "
+            "the shared production donor-template table. Requires "
+            "FF_HISTORICAL_AUCTION_REPLAY=1 and a staged database."
+        ),
+    )
     return parser.parse_args(argv)
 
 
@@ -7004,10 +7249,26 @@ def main(
     simulation_db=None,
     v2_database=None,
     sync_apps=True,
+    historical_replay=False,
 ):
+    if bool(historical_replay) != HISTORICAL_REPLAY_BUILD:
+        raise ValueError(
+            "Historical replay mode must agree with "
+            "FF_HISTORICAL_AUCTION_REPLAY."
+        )
     active_league = set_active_league(LEAGUE if league is None else league)
+    if historical_replay and active_league not in _PRODUCTION_CYCLE.leagues:
+        raise ValueError(
+            f"Historical replay {YEAR} does not register league "
+            f"{active_league!r}."
+        )
     if simulation_db is not None:
         set_simulation_db(simulation_db)
+    if historical_replay and SIMULATION_DB_PATH == DEFAULT_SIMULATION_DB_PATH:
+        raise ValueError(
+            "Historical replay weekly builds require a staged Simulation "
+            "database and cannot write the live model database directly."
+        )
     if SIMULATION_DB_PATH != DEFAULT_SIMULATION_DB_PATH and sync_apps:
         raise ValueError(
             "A custom simulation database requires sync_apps=False "
@@ -7097,6 +7358,7 @@ def main(
         player_pool_audit,
         bucket_audit,
         adp_audit,
+        historical_replay=historical_replay,
     )
 
     if sync_apps:
@@ -7322,6 +7584,7 @@ if __name__ == "__main__":
         simulation_db=args.simulation_db,
         v2_database=args.v2_db,
         sync_apps=not args.no_app_sync,
+        historical_replay=args.historical_replay,
     )
 
 #%%

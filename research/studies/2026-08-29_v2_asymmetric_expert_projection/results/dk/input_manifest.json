@@ -1,0 +1,26 @@
+{
+  "bootstrap_iterations": 2000,
+  "database": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Databases\\Projection_V2.sqlite3",
+  "database_sha256": "56E0D46C885F3498A52A6FB2C267F8A40E53CA195F35A6A43257D8B95822F342",
+  "feature_run_id": "milestone_3_20260828T220116Z_117cfe38",
+  "feature_spec": {
+    "configured_points_complete_required": true,
+    "fraction_denominator": "max(abs(provider_ppg_median), 1.0)",
+    "incumbent_provider_count_control": "projection_provider_count",
+    "minimum_providers": 3,
+    "primary_point_variant": "max_minus_median_fraction",
+    "primary_tail_variant": "tail_bullish",
+    "primary_template_method": "bull_add_w050",
+    "provider_value": "provider_points_per_team_game",
+    "source_table": "player_season_projection_values"
+  },
+  "incumbent_reproduction_max_abs_delta": 1.0658141036401503e-14,
+  "league": "dk",
+  "lock_version": "v2_conditional_ppg_2026_candidate_v1",
+  "locked_created_at_utc": "2026-08-28T22:12:15+00:00",
+  "model_run_id": "v2_locked_final_dk_20260828T220817Z_cdd32491",
+  "runtime_seconds": 166.1641832999885,
+  "scoring_hash": "ffd5380565fe3f79beadf882313f7071e869807a3b684be52ca0f35394cf5f70",
+  "template_bootstrap_iterations": 2000,
+  "templates_skipped": false
+}

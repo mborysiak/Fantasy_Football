@@ -709,9 +709,6 @@ def test_reviewed_dk_exclusion_policy_is_exact_and_versioned():
         "3f0b675d-ef58-5606-8f9e-73bc2a9b4118": (
             "market_only_without_current_projection_center"
         ),
-        "677b8fa5-8879-5913-8a35-9a71859ab8a3": (
-            "market_only_without_current_projection_center"
-        ),
         "7ae33581-c9ae-51b6-a8d5-fe24f3e5615a": (
             "market_only_without_current_projection_center"
         ),
@@ -724,12 +721,9 @@ def test_reviewed_dk_exclusion_policy_is_exact_and_versioned():
         "380d2c7d-99ef-5ddc-a057-fab93f1480ba": (
             "market_only_without_current_projection_center"
         ),
-        "ffc8d08e-a9dd-51af-af68-8b032b066512": (
-            "market_only_without_current_projection_center"
-        ),
     }
     nffc_exclusions = GOVERNED_PRODUCTION_EXCLUSIONS_BY_YEAR[2026]["nffc"]
-    assert len(nffc_exclusions) == 11
+    assert len(nffc_exclusions) == 10
     assert set(nffc_exclusions.values()) == {
         "market_only_without_current_projection_center",
         (
@@ -754,8 +748,9 @@ def test_reviewed_dk_exclusion_policy_is_exact_and_versioned():
     assert {
         "0fa72b32-393b-5f55-bb48-0f21f5283baf",
         "49dce437-30ec-5752-9739-75ed09f72042",
-        "862eb067-7abb-5156-9cf1-33c3ad11333c",
+        "54c9ddab-abf4-5e3a-9ded-da4265515065",
     }.issubset(nffc_exclusions)
+    assert "862eb067-7abb-5156-9cf1-33c3ad11333c" not in nffc_exclusions
     assert "89aacaaa-acba-5185-83b3-7b68130c4465" not in nffc_exclusions
     assert GOVERNED_PRODUCTION_EXCLUSIONS_BY_YEAR[2026]["beta"] == {}
     assert GOVERNED_PRODUCTION_EXCLUSIONS_BY_YEAR[2026]["nv"] == {}

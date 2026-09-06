@@ -1,0 +1,87 @@
+{
+  "actual_weekly_coverage": {
+    "draft_pool_players": 140,
+    "players_with_appearances": 128,
+    "weekly_rows": 1553
+  },
+  "blocks": 8,
+  "candidate_starts_per_mode_block": 24,
+  "churn_waivers": {
+    "QB": 16.2,
+    "RB": 9.0,
+    "TE": 7.5,
+    "WR": 9.0
+  },
+  "construction_contexts_per_block": 32,
+  "contexts_per_candidate_start": 8,
+  "current_waivers": {
+    "QB": 16.2,
+    "RB": 7.2,
+    "TE": 7.5,
+    "WR": 6.5
+  },
+  "keeper_market": {
+    "keeper_count": 15,
+    "keeper_players": [
+      "Brian Thomas Jr.",
+      "Brock Bowers",
+      "Bucky Irving",
+      "Chase Brown",
+      "Christian McCaffrey",
+      "Chuba Hubbard",
+      "Courtland Sutton",
+      "Davante Adams",
+      "Derrick Henry",
+      "Jaxon Smith-Njigba",
+      "Jerry Jeudy",
+      "Kyren Williams",
+      "Ladd McConkey",
+      "Nico Collins",
+      "Stefon Diggs"
+    ],
+    "keeper_spend": 407.0,
+    "owned_keeper_players": [],
+    "salary_source": "actual",
+    "unavailable_keeper_players": [
+      "Brian Thomas Jr.",
+      "Brock Bowers",
+      "Bucky Irving",
+      "Chase Brown",
+      "Christian McCaffrey",
+      "Chuba Hubbard",
+      "Courtland Sutton",
+      "Davante Adams",
+      "Derrick Henry",
+      "Jaxon Smith-Njigba",
+      "Jerry Jeudy",
+      "Kyren Williams",
+      "Ladd McConkey",
+      "Nico Collins",
+      "Stefon Diggs"
+    ]
+  },
+  "league": "beta",
+  "mean_noninferiority_frac": 0.0025,
+  "pool_summary": {
+    "after_keeper_filter": 140,
+    "before_keeper_filter": 155,
+    "draft_pool_players_after_filter": 155,
+    "draft_pool_players_before_filter": 156,
+    "draft_pool_players_excluded": 1,
+    "draft_pool_rookie_exceptions": 3
+  },
+  "production_changed": false,
+  "runtime_seconds": 6.6420212000084575,
+  "salary_source": "actual",
+  "seed": 20260827,
+  "simulation_database": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\research\\studies\\2026-08-26_auction_2025_historical_replay\\staging\\databases\\Simulation.sqlite3",
+  "tail_residual_strike": 5.0,
+  "tail_thresholds": {
+    "QB": 122.79,
+    "RB": 121.22,
+    "TE": 79.62000000000002,
+    "WR": 102.26000000000002
+  },
+  "validation_contexts_per_block": 128,
+  "year": 2025
+}

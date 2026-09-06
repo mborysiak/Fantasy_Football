@@ -9,6 +9,7 @@ from Scripts.V2.contracts import configured_scoring, scoring_hash
 from Scripts.V2.production_cycle import (
     DEFAULT_PRODUCTION_YEAR,
     PRODUCTION_LEAGUES,
+    get_historical_replay_template_contract,
     get_production_cycle,
 )
 
@@ -147,6 +148,31 @@ def test_cycle_rejects_invalid_nffc_source_feed_boundary(monkeypatch):
 def test_unregistered_year_fails_closed():
     with pytest.raises(ValueError, match="not an approved production cycle"):
         get_production_cycle(2027)
+
+
+def test_2025_historical_template_contract_is_not_a_production_cycle():
+    replay = get_historical_replay_template_contract(2025)
+
+    assert replay.status == "historical_replay_only"
+    assert replay.target_year == 2025
+    assert replay.leagues == ("beta",)
+    assert replay.weekly_horizons == {"beta": 16}
+    assert replay.template_min_seasons == {"beta": 2008}
+    assert replay.template_center_policies == {
+        "beta": (
+            "legacy_validated_oos",
+            "beta_scored_expert_fallback",
+        )
+    }
+    assert len(replay.contract_sha256()) == 64
+
+    with pytest.raises(ValueError, match="not an approved production cycle"):
+        get_production_cycle(2025)
+
+
+def test_unregistered_historical_replay_fails_closed():
+    with pytest.raises(ValueError, match="no historical replay template contract"):
+        get_historical_replay_template_contract(2021)
 
 
 def test_unknown_scoring_league_does_not_fall_back_to_nffc():

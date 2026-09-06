@@ -1,0 +1,36 @@
+{
+  "calculation_version": 15,
+  "screen_joint_swaps": 0,
+  "confirm_joint_swaps": 0,
+  "owned_salaries": {
+    "Chase Brown": 34.0,
+    "Bhayshul Tuten": 11.0,
+    "Jordyn Tyson": 7.0,
+    "Jonah Coleman": 1.0
+  },
+  "unavailable_keepers": [
+    "Cam Skattebo",
+    "Christian McCaffrey",
+    "Garrett Wilson",
+    "George Pickens",
+    "James Cook",
+    "Javonte Williams",
+    "Jaxon Smith-Njigba",
+    "Mike Evans",
+    "Nico Collins",
+    "Quinshon Judkins",
+    "Travis Etienne",
+    "Tucker Kraft"
+  ],
+  "remaining_market_budget": 3127.0,
+  "remaining_market_slots": 140,
+  "waiver_baselines": {
+    "QB": 13.5,
+    "RB": 6.2,
+    "WR": 6.9,
+    "TE": 6.3
+  },
+  "evidence_seed": 2194109288,
+  "compute_budget": 320,
+  "seed_variation": 0
+}

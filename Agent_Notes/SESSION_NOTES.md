@@ -1,6 +1,6 @@
 # Session Notes Landing
 
-Last updated: 2026-08-24
+Last updated: 2026-09-05
 
 ## Project Objective
 
@@ -10,6 +10,205 @@ template tables consumed by downstream draft apps.
 
 ## Current Focus
 
+- Retired the display-only paired-breakout surface from production. Source,
+  Auction, and Snake Simulation databases now contain 26 tables at about
+  80.64/80.64/80.62 MiB; every retained table matches its pre-change snapshot.
+  Manifest schema 8 removes the build/validation requirement and clears inherited
+  breakout tables during staged compaction/app preparation. The Auction explorer
+  is removed; optional research generation requires a separate output database.
+  Expert/stat inputs remain tracked, Model_Inputs/Validations remain untracked
+  with local files retained, and recoverable snapshots are under
+  `Data/Production_Refresh_Backups/20260906_breakout_retirement/`. See
+  `docs/runbooks/database_storage.md` and `Session_Notes/2026-09.md`.
+- The completed 2026 Beta auction is published for hindsight review. The raw
+  result has 180 unique players totaling `$3,581`, including 15 realized
+  keepers at `$608`; the canonical `beta_actual` app pool has all 156 drafted
+  offensive players totaling `$3,541`. Actual mode now takes keeper membership
+  from the result slice, preserving result-only Jayden Daniels `$11`, and skips
+  the inapplicable predicted selection-premium join. Josh Jacobs' exact `$26`
+  price remains in hindsight data but his 2026 player-season is excluded from
+  future salary-model fitting because suspension risk created an approximately
+  `$31` non-market discount. Source/app slices match exactly, 42 focused model
+  tests and all 120 Auction tests pass, and the rendered Actual view has 15
+  keepers with zero exceptions.
+- A staged 2026 Beta keeper/salary refresh is live. Bhayshul Tuten `$11`
+  replaces Nico Collins, Quinshon Judkins is `$30`, and Omarion Hampton is
+  `$67`; the 14 contracts total `$597`. The locked v6 salary model publishes
+  323 keyed rows and reconciles 142 open slots exactly to `$2,979`. A fresh
+  keeper-aware reserve completed 1,000/1,000 trials, publishes 309 non-keeper
+  premiums, and has an expected roster reserve of `$8.8068`. The paired
+  breakout map was republished so Tuten is a keeper and Collins is available;
+  salary, reserve, source/app/Snake parity, SQLite, focused model tests, the
+  119-test Auction suite, and live app smokes all pass. Rollbacks and receipts
+  are under
+  `Data/Production_Refresh_Backups/20260829_beta_tuten_hampton_judkins_salary_refresh/`.
+- A read-only DK/beta rolling study rejects generic provider
+  `max - median` PPG as a production point, tail, or template feature. The
+  normalized primary worsens +3/+5 residual calibration in both leagues and
+  misses point/template replication. Raw absolute gap improves pooled RMSE by
+  roughly `0.0055` in both but is unstable in recent seasons and concentrated
+  in a post-slice QB result; high-gap quartiles actually have lower +3/+5 hit
+  rates. Production is unchanged. Durable study:
+  `research/studies/2026-08-29_v2_asymmetric_expert_projection/`.
+- A prespecified follow-up also rejects a large-denominator stabilized bullish
+  fraction, `(max - median) / sqrt(median^2 + 5^2)`. It improves pooled
+  controlled point RMSE by `0.00317/0.00409` DK/beta but worsens recent RMSE,
+  is nonworse at only two of four positions, and has crossing clustered
+  intervals. +3/+5 Brier and AUC worsen in both leagues, weekly-template gates
+  fail, and the highest stabilized-gap quartile still has lower +3/+5 rates
+  than the lowest. Production is unchanged. Durable study:
+  `research/studies/2026-08-29_v2_stabilized_bull_gap/`.
+- Governed schema-7 refresh `20260828T215922Z_c9cd883e` is live from stage
+  `Data/Production_Refresh_Stages/20260828_beta_keeper_refresh_v4/`. All 31
+  build/validation/app steps completed before explicit promotion. The release
+  publishes 341 DK, 383 NFFC, 323 beta, and 323 NV projections; Beta has 14
+  keepers spending `$597`, leaving 142 slots and `$2,979`, and its latest
+  reserve seed completed 1,000/1,000 trials with 309 premiums. Paired-breakout generation is
+  now a governed refresh step, both oversized app artifacts are verified as Git
+  LFS paths, and Auction/Snake smokes passed with zero errors or exceptions.
+  Durable pre-refresh copies are under
+  `Data/Production_Refresh_Backups/20260828T215922Z_c9cd883e/`.
+- A review-only paired breakout surface now joins each historical player's
+  season-N managed weekly path to the same player's N+1 appearance and
+  conditional production. Matching uses causal preseason projection, canonical
+  ADP, experience, role/room context, signed uncapped N+1 growth, and a small
+  separate appearance term; salary is excluded. All 1,167 current four-league
+  RB/WR/TE rows receive 80 donors, including diagnostic keeper rows that the
+  Auction UI hides by default. The source and Auction copies have exact parity
+  at 11,867 templates, 93,360 pool rows, 1,167 player rows, and four audits.
+  The Streamlit explorer ranks late-market players and exposes paired donors;
+  it does not change optimizer scoring. Durable study:
+  `research/studies/2026-08-27_paired_breakout_templates/`.
+- A frozen 2022-2024 Beta multi-origin replay now tests the same exact-mean,
+  pure expected-excess, and standardized 50/50 mean-plus-excess policies from
+  the 2025 study. All three isolated artifacts use prior-year projection,
+  salary, and donor cutoffs; actual auction prices define the hindsight cost
+  surface, and actual weeks load only after every annual roster is selected.
+  Pure excess loses actual score by `5.88/48.84/64.33` in 2022/23/24; 50/50
+  gains `25.99` in 2022 but loses `59.56/83.23`. Both also lose independent
+  holdout mean and P90 in all three origins. Combined with the post-hoc positive
+  2025 result, keep expected excess diagnostic and leave production unchanged.
+  Durable study:
+  `research/studies/2026-08-27_auction_excess_multi_origin/`.
+- A follow-up 2025 Beta power-win replay fixes the promising best-available
+  waiver proxy and scores 130-131 candidates per block on win probability,
+  expected winning margin, and blended power-win utility. The waiver control is
+  also the exact mean frontier in all eight blocks, so paired-LCB arms at 0.5%
+  and 1.0% correctly retain it. Exploratory direct optimization changes three
+  blocks but reverses independently: win/power loses `3.08` mean and `2.25`
+  P90, while direct excess loses `4.23` mean. Unguarded pure and standardized
+  50/50 objectives make the reversal larger: pure win loses `25.78` mean and
+  `3.185` win-probability points; 50/50 win loses `7.67` mean and `1.087`
+  points. Production is unchanged; keep the tail metrics diagnostic pending
+  dense local swaps and larger/cross-fitted, multi-origin validation. Durable study:
+  `research/studies/2026-08-27_auction_power_win_objective/`.
+- An isolated 2025 Beta actual-salary replay compares current managed-score
+  construction with a best-available RB/WR waiver proxy, a 0.25%-mean-guarded
+  championship tie-break, and both changes. The combined arm raises paired
+  churn-scored EV `32.32` points (LCB80 `+28.92`) and actual 2025 score `69.81`,
+  but raises dead-zone RB count from `0.75` to `0.88` and matches waiver-only in
+  seven of eight blocks. The championship tie-break alone is directionally safe
+  but modest. Production is unchanged; next test roster-marginal needle-mover
+  value over accessible waiver replacement rather than youth or absolute q90
+  residual production. Durable study:
+  `research/studies/2026-08-27_auction_championship_waiver_objective/`.
+- A one-command isolated 2025 Beta Auction replay now builds a staged
+  `Simulation.sqlite3` without touching or syncing the live 2026 database. It
+  publishes 309 rolling-origin projection/salary players, all 156 drafted
+  offensive actual prices, the exact 15-keeper/`$407` historical context, 238
+  keyed preseason ETR ranks, and 4,993 weekly donor profiles capped at 2024.
+  Predicted- and actual-salary app smokes and 69 focused tests pass. This is a
+  current-method replay with model specification selected as of 2026, not a
+  pristine historical method holdout. Durable study:
+  `research/studies/2026-08-26_auction_2025_historical_replay/`.
+- A matched beta second-keeper roster tournament fixes Chase Brown at `$34`
+  and separately fixes Tuten, Burden, or Loveland at `$11`, while leaving the
+  other two draftable at governed counterfactual market prices. All three arms
+  complete 192/192 shared hidden-auction paths and use 24,576 paired holdout
+  score cells. Brown/Tuten leads Brown/Loveland `+3.08` and Brown/Burden
+  `+8.68` managed-season points, with positive relative results in 7/8 and 6/8
+  construction blocks. Tuten's `$19.31` modeled discount lets the policy spend
+  about `$6` more at WR and `$3` more at TE than Loveland on average despite
+  spending about `$6.5` less at RB. Prefer Tuten for current-season roster EV,
+  but treat Loveland as close rather than dominated; no separate next-year
+  option bonus is included. Durable study:
+  `research/studies/2026-08-26_beta_keeper_roster_tournament/`.
+- An isolated 2026 beta salary rebuild treats Chase Brown, Bhayshul Tuten,
+  Luther Burden III, and Colston Loveland as non-keepers while leaving the
+  other 12 active keepers fixed. Brown models at `$72.17` versus his `$34`
+  contract; Tuten models at `$30.31` versus `$11`; Burden and Loveland remain
+  near `$25.25/$27.03`. The counterfactual top-144 non-keeper market reconciles
+  exactly to `$3,180`, all 324 salary keys match production beta projections,
+  and production/app inputs are unchanged. Salary-only surplus ranks the `$11`
+  choices Tuten (`+$19.31`), Loveland (`+$16.03`), then Burden (`+$14.25`);
+  paired full-roster keeper scenarios remain the decision test for positional
+  opportunity cost. Durable study:
+  `research/studies/2026-08-26_beta_nonkeeper_salary_counterfactual/`.
+- Tiered Sequential targeting is now App v21 on local Auction `main`. It retains
+  the completed market-price Buy rosters already scored for the four highest
+  positive confirmed LCB anchors, groups every uncertain auction outcome into
+  semantic position-spend/shape families, and presents each leading family as
+  an expensive-to-cheap target table. Family headers report managed-season EV,
+  roster-EV P10-P90, and delta versus all captured high-LCB completions without
+  another solve or scoring pass. V21 replaces raw position-budget emphasis with
+  open-slot median and P10-P90 budgets while retaining the full min/max envelope.
+  It also audits cap-scaled `<$40` and `<$50` total-roster WR spend, including
+  fixed/acquired players, and reports share, within-family EV delta versus the
+  higher-spend paths, and average total RB count. The audit is diagnostic only:
+  no WR floor or joint solve was added. Commit `0ae0c02` contains the v21 update;
+  all 106 tests, exact one-versus-four-worker parity, and two-batch accumulation
+  pass. A budget-120 four-worker run took `7.922s`, with structure aggregation
+  at `0.120s`. The main app is visually verified and healthy on port 8502; all
+  modified/generated SQLite files remain untouched and no push was performed.
+  The marginal tier cards are removed; one central conditional completion per
+  anchor remains available as supporting detail. Add Evidence concatenates
+  fresh Buy outcomes and rebuilds the families. The earlier eight-block
+  Brown/Tuten beta replay surfaces Josh Allen `$37` (`+16.95` LCB80), Bijan
+  `$106` (`+13.17`), Gibbs `$110` (`+6.41`), and Jonathan Taylor `$96` (`+3.39`)
+  across 384 Buy outcomes; all 96 Allen outcomes occupy the Premium-QB family.
+  Durable study:
+  `research/studies/2026-08-25_lcb_aligned_structures/`.
+- A Brown/Tuten/Tyson/Coleman beta peer audit finds no Shaheed-specific data
+  bug. The comp explorer's signed residual averages omit side probabilities and
+  production centers every donor pool: Shaheed has a 43.2% positive-residual
+  share versus Coker's 38.1% and produces slightly more 10+/15+ weeks and
+  points over waiver despite lower PPG and fewer games. Across nine matched
+  confirmation roots, Shaheed/Coker/Doubs average LCB80 is
+  `+10.68/+5.88/+3.35`, but Coker wins one root and Doubs two. Holding the other
+  12 roster spots fixed, Doubs beats Shaheed by only `+2.17` mean while Coker
+  trails `-1.70`. The larger board signal is a whole-roster Buy-versus-Pass
+  recourse effect: Shaheed Pass plans never directly substitute Coker or Doubs
+  in the four default blocks. No production change; consider equal-confirmation
+  peer or fixed-roster substitution diagnostics. Durable study:
+  `research/studies/2026-08-25_shaheed_peer_audit/`.
+- A keeper-correct beta construction sensitivity starts from Chase Brown `$34`
+  and Bhayshul Tuten `$11`, excludes the other 12 active keepers, and reuses
+  four paired construction/holdout blocks. Relative to the current additive
+  solver, one exact shared-opportunity swap is accepted in three blocks and
+  changes average QB/RB/WR/TE shape from `1/6.00/4.25/1.75` to
+  `1/5.75/4.75/1.50`; common-holdout mean is effectively flat (`-0.97`) while
+  p10 rises `+12.33`. A hard QB1/TE1 plus RB/WR 5/6 or 6/5 shape loses
+  `4.94` mean and `1.10` p10, while constructing with every waiver baseline
+  raised `1.5` loses `10.34` mean and `0.49` p10 under the unchanged scoring
+  authority. App v15 therefore disables joint refinement in both screen and
+  confirmation while retaining current beta settings; treat the joint result
+  as p10/diversification research rather than a live mean promotion. Durable
+  study: `research/studies/2026-08-25_beta_joint_shape_waiver/`.
+- Sequential App v15 keeps both the 64-player discovery screen and 18-player
+  confirmation stage additive; the exact full-bank swap remains callable only
+  for research. The keeper-correct Maye/Achane NV replay excludes
+  all 14 opposing keepers; predicted organic mean/p10 improves
+  `+7.38`/`+7.84` and actual hindsight improves `+5.96`/`+8.21`, with no
+  completion loss. Exact confirmation-only fresh boards run in `9.24s`
+  predicted and `7.58s` actual versus `6.72s`/`4.84s` additive and
+  `20.08s`/`17.58s` exact in both stages. A utilization/add-one shortlist
+  matched plan quality and protected locked fliers, but was not materially
+  faster than exact confirmation and changed four actual-board calls, including
+  Gibbs `$111` from PASS to TARGET; it remains research-only. Turning joint
+  refinement off restores the additive timing baseline, avoids retaining the
+  large construction banks, and advances the calculation/cache version so v14
+  results cannot be reused. The 56 focused Sequential tests pass. Durable study:
+  `research/studies/2026-08-24_sequential_shared_opportunity/`.
 - Auction League Settings now defaults to predicted salaries and offers a
   governed `Use Actual Salaries` hindsight toggle when completed results have
   been published. The active 2026 NV actual slice contains exactly 156 drafted
@@ -17,19 +216,17 @@ template tables consumed by downstream draft apps.
   salary rescaling/selection reserve are disabled, and variation 0 is the
   baseline weekly-outcome view. Source/app slice parity, 92 App tests, a
   one-trial managed optimizer run, and the rendered UI smoke pass.
-- Full governed refresh `20260823T162821Z_0490d19d` is live from the August 23
-  source pulls. All 30 build/validation/app steps completed before explicit
-  promotion. The release publishes 343 DK, 385 NFFC, 324 beta, and 324 NV
-  projections with exact weekly-map parity, 80 donors/player, and horizons
-  16/17/16/16. Each league has 787 current and 787 next-season shadow rows;
-  all locked comparison gates beat their baselines. Beta/NV salary surfaces
-  have 324 keyed rows each. Beta retains 14 keepers spending `$441` with
-  `$3,135` across 142 market slots; NV retains 16 spending `$453` with `$3,123`
-  across 140. The beta reserve seed completed 1,000/1,000 trials and published
-  310 premiums. Both candidate and live hashes, SQLite integrity/foreign-key
-  checks, source/app parity, and Auction/Snake smokes pass. Durable rollbacks
-  and the release report are under
-  `Data/Production_Refresh_Backups/20260823T162821Z_0490d19d/`.
+- Full governed refresh `20260826T212331Z_dbd5cac4` is live from the August 26
+  source pulls and revised beta keeper file. All 30 build/validation/app steps
+  completed before explicit promotion. The release publishes 348 DK, 382
+  NFFC, 324 beta, and 324 NV projections with exact weekly-map parity. Beta
+  now has 13 keepers spending `$383`, leaving 143 market slots and `$3,193`;
+  NV remains at 16 keepers spending `$453`, 140 slots, and `$3,123`. The beta
+  reserve seed completed 1,000/1,000 trials and published 311 premiums. Staged
+  and live model/Auction/Snake artifacts match exactly; SQLite integrity,
+  handoff idempotence, source/app parity, and all app smokes pass. The release
+  report is under
+  `Data/Production_Refresh_Stages/20260826_keeper_projection_refresh_v4/`.
 - Fresh projection providers no longer supply a current expert center for
   Jayden Higgins, although DK/NFFC market feeds still rank him inside protected
   depth. The handoff therefore retains his market/audit evidence but does not
@@ -37,8 +234,9 @@ template tables consumed by downstream draft apps.
   reviewed reason `market_only_without_current_projection_center`; the fresh
   production release omits him from all four league surfaces. The exclusion
   map compiles and all 37 handoff tests pass.
-- Bounded same-position salary reinvestment is now the
-  Fantasy_Football_App Sequential default (cache version 13). Four paired
+- Bounded same-position salary reinvestment remains the
+  Fantasy_Football_App Sequential default (introduced in cache version 13;
+  current cache version 14). Four paired
   evidence variations across prespecified early, middle, and late-cap states
   pass legality, completion, budget-use, and accumulated anchor-stability
   gates; unused salary falls by `$11.57` on Buy and `$24.81` on Pass paths.
@@ -57,7 +255,7 @@ template tables consumed by downstream draft apps.
   `research/studies/2026-08-21_sequential_runtime_optimization/`. A follow-up
   incremental ordinary-refresh challenger preserved exact paths but was
   rejected and reverted: fresh early-state processes were 84% slower, while
-  middle/late states were flat-to-slower. App v13 remains active.
+  middle/late states were flat-to-slower, so that challenger remains rejected.
 - Reconstructed the current beta Bijan decision after Gibbs `$110`, Chase
   Brown `$34`, and Bhayshul Tuten `$11`. At Bijan `$105`, eight production
   evidence variations all return TARGET with mean Buy-minus-Pass `+22.54`

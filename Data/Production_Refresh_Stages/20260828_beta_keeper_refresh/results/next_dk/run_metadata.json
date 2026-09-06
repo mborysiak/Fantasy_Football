@@ -1,0 +1,40 @@
+{
+  "run_id": "v2_next_year_dk_20260828T193828Z_8a64df5a",
+  "target_version": "v2_next_year_expert_residual_v1",
+  "league": "dk",
+  "feature_run_id": "milestone_3_20260828T190225Z_6beb7335",
+  "validation_origins": [
+    2017,
+    2018,
+    2019,
+    2020,
+    2021,
+    2022,
+    2023,
+    2024
+  ],
+  "prediction_origins": [
+    2011,
+    2012,
+    2013,
+    2014,
+    2015,
+    2016,
+    2017,
+    2018,
+    2019,
+    2020,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025,
+    2026
+  ],
+  "training_origin_embargo": 1,
+  "primary_residual_method": "next_residual_primary_blend",
+  "primary_participation_method": "next_participation_lightgbm",
+  "runtime_seconds": 115.72821390000172,
+  "parameter_cache_hits": 0,
+  "parameter_cache_entries": 5
+}

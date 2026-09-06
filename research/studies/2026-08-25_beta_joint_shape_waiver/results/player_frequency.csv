@@ -1,0 +1,137 @@
+arm,player,pos,blocks_selected,selection_rate
+current_additive,Aaron Jones,RB,1,0.25
+current_additive,Alec Pierce,WR,3,0.75
+current_additive,Amon-Ra St. Brown,WR,1,0.25
+current_additive,Bhayshul Tuten,RB,4,1.0
+current_additive,Bijan Robinson,RB,1,0.25
+current_additive,Brian Thomas Jr.,WR,1,0.25
+current_additive,Chase Brown,RB,4,1.0
+current_additive,Christian Watson,WR,2,0.5
+current_additive,Chuba Hubbard,RB,1,0.25
+current_additive,D'Andre Swift,RB,2,0.5
+current_additive,DK Metcalf,WR,1,0.25
+current_additive,Dak Prescott,QB,1,0.25
+current_additive,Dallas Goedert,TE,1,0.25
+current_additive,Dalton Kincaid,TE,2,0.5
+current_additive,De'Von Achane,RB,1,0.25
+current_additive,Derrick Henry,RB,1,0.25
+current_additive,Harold Fannin Jr.,TE,3,0.75
+current_additive,J.K. Dobbins,RB,3,0.75
+current_additive,Jacory Croskey-Merritt,RB,1,0.25
+current_additive,Jahmyr Gibbs,RB,1,0.25
+current_additive,Jameson Williams,WR,1,0.25
+current_additive,Jaxson Dart,QB,2,0.5
+current_additive,Jayden Daniels,QB,1,0.25
+current_additive,Jayden Reed,WR,1,0.25
+current_additive,Jaylen Warren,RB,2,0.5
+current_additive,Jordan Addison,WR,1,0.25
+current_additive,Jordan Mason,RB,2,0.5
+current_additive,Juwan Johnson,TE,1,0.25
+current_additive,Makai Lemon,WR,1,0.25
+current_additive,Marvin Harrison Jr.,WR,1,0.25
+current_additive,Michael Wilson,WR,1,0.25
+current_additive,Quentin Johnston,WR,1,0.25
+current_additive,Rashid Shaheed,WR,1,0.25
+current_additive,Tee Higgins,WR,1,0.25
+fixed_shape_additive,Aaron Jones,RB,1,0.25
+fixed_shape_additive,Alec Pierce,WR,3,0.75
+fixed_shape_additive,Amon-Ra St. Brown,WR,1,0.25
+fixed_shape_additive,Bhayshul Tuten,RB,4,1.0
+fixed_shape_additive,Bijan Robinson,RB,1,0.25
+fixed_shape_additive,Brian Thomas Jr.,WR,2,0.5
+fixed_shape_additive,Chase Brown,RB,4,1.0
+fixed_shape_additive,Chris Godwin Jr.,WR,1,0.25
+fixed_shape_additive,Christian Watson,WR,2,0.5
+fixed_shape_additive,D'Andre Swift,RB,1,0.25
+fixed_shape_additive,Dalton Kincaid,TE,1,0.25
+fixed_shape_additive,De'Von Achane,RB,1,0.25
+fixed_shape_additive,Derrick Henry,RB,1,0.25
+fixed_shape_additive,Harold Fannin Jr.,TE,3,0.75
+fixed_shape_additive,J.K. Dobbins,RB,3,0.75
+fixed_shape_additive,Jacory Croskey-Merritt,RB,1,0.25
+fixed_shape_additive,Jahmyr Gibbs,RB,1,0.25
+fixed_shape_additive,Jaxson Dart,QB,2,0.5
+fixed_shape_additive,Jayden Reed,WR,1,0.25
+fixed_shape_additive,Jaylen Warren,RB,2,0.5
+fixed_shape_additive,Jordan Addison,WR,1,0.25
+fixed_shape_additive,Jordan Mason,RB,2,0.5
+fixed_shape_additive,Josh Allen,QB,1,0.25
+fixed_shape_additive,KC Concepcion,WR,1,0.25
+fixed_shape_additive,Luther Burden III,WR,1,0.25
+fixed_shape_additive,Makai Lemon,WR,1,0.25
+fixed_shape_additive,Marvin Harrison Jr.,WR,2,0.5
+fixed_shape_additive,Matthew Golden,WR,1,0.25
+fixed_shape_additive,Michael Wilson,WR,1,0.25
+fixed_shape_additive,Patrick Mahomes,QB,1,0.25
+fixed_shape_additive,Quentin Johnston,WR,1,0.25
+fixed_shape_additive,Rashid Shaheed,WR,1,0.25
+fixed_shape_additive,Tee Higgins,WR,1,0.25
+fixed_shape_additive,Tyler Allgeier,RB,1,0.25
+joint_one_swap,Aaron Jones,RB,1,0.25
+joint_one_swap,Alec Pierce,WR,2,0.5
+joint_one_swap,Amon-Ra St. Brown,WR,1,0.25
+joint_one_swap,Bhayshul Tuten,RB,4,1.0
+joint_one_swap,Bijan Robinson,RB,1,0.25
+joint_one_swap,Brian Thomas Jr.,WR,1,0.25
+joint_one_swap,Chase Brown,RB,4,1.0
+joint_one_swap,Christian Watson,WR,2,0.5
+joint_one_swap,D'Andre Swift,RB,2,0.5
+joint_one_swap,DK Metcalf,WR,1,0.25
+joint_one_swap,Dak Prescott,QB,1,0.25
+joint_one_swap,Dalton Kincaid,TE,2,0.5
+joint_one_swap,De'Von Achane,RB,1,0.25
+joint_one_swap,Derrick Henry,RB,1,0.25
+joint_one_swap,Harold Fannin Jr.,TE,3,0.75
+joint_one_swap,J.K. Dobbins,RB,3,0.75
+joint_one_swap,Jacory Croskey-Merritt,RB,1,0.25
+joint_one_swap,Jahmyr Gibbs,RB,1,0.25
+joint_one_swap,Jameson Williams,WR,1,0.25
+joint_one_swap,Jaxson Dart,QB,2,0.5
+joint_one_swap,Jayden Daniels,QB,1,0.25
+joint_one_swap,Jayden Reed,WR,1,0.25
+joint_one_swap,Jaylen Warren,RB,2,0.5
+joint_one_swap,Jordan Addison,WR,1,0.25
+joint_one_swap,Jordan Mason,RB,2,0.5
+joint_one_swap,Josh Downs,WR,1,0.25
+joint_one_swap,Juwan Johnson,TE,1,0.25
+joint_one_swap,Makai Lemon,WR,2,0.5
+joint_one_swap,Marvin Harrison Jr.,WR,1,0.25
+joint_one_swap,Michael Wilson,WR,1,0.25
+joint_one_swap,Quentin Johnston,WR,1,0.25
+joint_one_swap,Rashid Shaheed,WR,2,0.5
+joint_one_swap,Tee Higgins,WR,1,0.25
+waiver_plus_1_5_additive,Alec Pierce,WR,2,0.5
+waiver_plus_1_5_additive,Amon-Ra St. Brown,WR,1,0.25
+waiver_plus_1_5_additive,Antonio Williams,WR,1,0.25
+waiver_plus_1_5_additive,Bhayshul Tuten,RB,4,1.0
+waiver_plus_1_5_additive,Bijan Robinson,RB,1,0.25
+waiver_plus_1_5_additive,Brenton Strange,TE,1,0.25
+waiver_plus_1_5_additive,Brian Thomas Jr.,WR,1,0.25
+waiver_plus_1_5_additive,Chase Brown,RB,4,1.0
+waiver_plus_1_5_additive,Chris Godwin Jr.,WR,1,0.25
+waiver_plus_1_5_additive,Christian Watson,WR,1,0.25
+waiver_plus_1_5_additive,Chuba Hubbard,RB,1,0.25
+waiver_plus_1_5_additive,D'Andre Swift,RB,2,0.5
+waiver_plus_1_5_additive,Dallas Goedert,TE,1,0.25
+waiver_plus_1_5_additive,De'Von Achane,RB,1,0.25
+waiver_plus_1_5_additive,Denzel Boston,WR,1,0.25
+waiver_plus_1_5_additive,Derrick Henry,RB,1,0.25
+waiver_plus_1_5_additive,Harold Fannin Jr.,TE,3,0.75
+waiver_plus_1_5_additive,J.K. Dobbins,RB,3,0.75
+waiver_plus_1_5_additive,Jahmyr Gibbs,RB,1,0.25
+waiver_plus_1_5_additive,Jaxson Dart,QB,2,0.5
+waiver_plus_1_5_additive,Jayden Daniels,QB,1,0.25
+waiver_plus_1_5_additive,Jayden Reed,WR,1,0.25
+waiver_plus_1_5_additive,Jaylen Warren,RB,2,0.5
+waiver_plus_1_5_additive,Jordan Mason,RB,2,0.5
+waiver_plus_1_5_additive,Josh Allen,QB,1,0.25
+waiver_plus_1_5_additive,Josh Jacobs,RB,1,0.25
+waiver_plus_1_5_additive,Makai Lemon,WR,1,0.25
+waiver_plus_1_5_additive,Matthew Golden,WR,1,0.25
+waiver_plus_1_5_additive,Michael Wilson,WR,1,0.25
+waiver_plus_1_5_additive,Omar Cooper Jr.,WR,1,0.25
+waiver_plus_1_5_additive,Quentin Johnston,WR,1,0.25
+waiver_plus_1_5_additive,Rashid Shaheed,WR,3,0.75
+waiver_plus_1_5_additive,Sam LaPorta,TE,1,0.25
+waiver_plus_1_5_additive,Tee Higgins,WR,1,0.25
+waiver_plus_1_5_additive,Tyler Allgeier,RB,1,0.25

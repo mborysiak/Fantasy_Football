@@ -1,0 +1,43 @@
+{
+  "blend_weights": {
+    "conditional_ppg_lasso": 0.3333333333333333,
+    "conditional_ppg_lightgbm": 0.3333333333333333,
+    "conditional_ppg_random_forest": 0.3333333333333333
+  },
+  "feature_run_id": "milestone_3_20260826T202240Z_f45fd05b",
+  "inner_validation_start": 2013,
+  "lock_version": "v2_conditional_ppg_2026_candidate_beta_v1",
+  "model_run_id": "v2_locked_final_beta_20260826T202939Z_2f0e82ba",
+  "output_database": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh\\databases\\Projection_V2_beta.sqlite3",
+  "participation_feature_hash": "182d37335cc030902ee87e2ecc01649fcbf78cdace067fc30f3e3d114c61d19d",
+  "primary_feature_hash": "f76c6e42c480dc26ddd6ba73f75c43715bbcb484565603a799f6cd7adc9014c9",
+  "random_seed": 1234,
+  "scoring_objective": "beta",
+  "tables": {
+    "locked_2026_shadow_predictions": 785,
+    "locked_calibration_bins": 130,
+    "locked_candidate_runs": 1,
+    "locked_candidate_specifications": 14,
+    "locked_model_comparisons": 5,
+    "locked_parameter_cache_receipts": 7,
+    "locked_residual_interval_summary": 17,
+    "locked_residual_intervals": 3622,
+    "locked_router_decisions": 40,
+    "locked_selected_hyperparameters": 70,
+    "locked_template_handoff": 8903,
+    "locked_template_handoff_audit": 46,
+    "locked_whole_season_predictions": 59671,
+    "locked_whole_season_scores": 1000
+  },
+  "validation_seasons": [
+    2017,
+    2018,
+    2019,
+    2020,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025
+  ]
+}

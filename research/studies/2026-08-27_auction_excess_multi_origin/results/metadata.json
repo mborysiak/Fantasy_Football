@@ -1,0 +1,52 @@
+{
+  "actual_weekly_coverage": {
+    "2022": {
+      "draft_pool_players": 126,
+      "players_with_appearances": 122,
+      "weekly_rows": 1490
+    },
+    "2023": {
+      "draft_pool_players": 128,
+      "players_with_appearances": 122,
+      "weekly_rows": 1541
+    },
+    "2024": {
+      "draft_pool_players": 135,
+      "players_with_appearances": 129,
+      "weekly_rows": 1614
+    }
+  },
+  "blocks_per_year": 8,
+  "candidate_start_budget": 128,
+  "construction_contexts_per_block": 64,
+  "frozen_objective_rules": {
+    "excess_half_mean": "0.5 standardized construction mean + 0.5 standardized expected positive winning margin",
+    "excess_pure": "maximum construction-bank expected positive winning margin",
+    "mean_frontier": "maximum construction-bank managed-season mean"
+  },
+  "frozen_rules_version": "2026-08-27_pre_multi_origin_excess_v1",
+  "league": "beta",
+  "model_spec_asof_year": 2026,
+  "origin_seeds": {
+    "2022": 20260828,
+    "2023": 20270828,
+    "2024": 20280828
+  },
+  "production_changed": false,
+  "run_completed_at_utc": "2026-08-28T01:39:50.498073+00:00",
+  "runtime_seconds": 75.87372309999773,
+  "salary_source": "actual",
+  "seed": 20260828,
+  "simulation_databases": {
+    "2022": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\research\\studies\\2026-08-27_auction_excess_multi_origin\\staging\\2022\\databases\\Simulation.sqlite3",
+    "2023": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\research\\studies\\2026-08-27_auction_excess_multi_origin\\staging\\2023\\databases\\Simulation.sqlite3",
+    "2024": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\research\\studies\\2026-08-27_auction_excess_multi_origin\\staging\\2024\\databases\\Simulation.sqlite3"
+  },
+  "target_outcomes_loaded_after_all_policy_selection": true,
+  "validation_contexts_per_block": 256,
+  "years": [
+    2022,
+    2023,
+    2024
+  ]
+}

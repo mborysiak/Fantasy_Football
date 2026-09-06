@@ -177,8 +177,8 @@ Omitting `--through` on the next resume continues through `app_smoke`.
 the manifest's model options; only `--app-timeout` is treated as a retry-time
 override. Start a new refresh if any snapshotted live database, external weekly
 input, governed salary export, keeper file, or fingerprinted pipeline/app
-source file changed. Manifest schema 6 is current and retains immutable
-Model_Inputs retry bases; any non-6 stage manifest fails closed and must be
+source file changed. Manifest schema 8 is current and retains immutable
+Model_Inputs retry bases; any non-8 stage manifest fails closed and must be
 rebuilt rather than resumed.
 
 Every production refresh runs a fresh 1,000-trial Auction selection seed.
@@ -311,15 +311,17 @@ app_smoke
   into staged Simulation, then reruns and hashes all eight governed tables to
   prove idempotence.
 - `weekly_*` builds DK, NFFC, beta, and NV weekly templates/pools with app sync
-  disabled; `template_audit_*` validates all four handoffs.
+  disabled. `template_audit_*` validates all four weekly handoffs. The retired
+  paired-breakout display is research-only and is not part of this pipeline.
 - `salary` first parses all governed salary files and atomically repairs only
   their staged `Salaries` slices without changing the table schema or indexes.
   It logs `GOVERNED_SALARY_REPAIR_RECEIPT`, then writes independent staged
   beta/NV keeper, salary, and salary-validation slices.
 - `selection_premium` writes a fresh beta reserve surface plus its seed and
   calibrator.
-- `compact_simulation` runs SQLite `VACUUM` on the staged source
-  `Simulation.sqlite3` after every data-writing step and before release
+- `compact_simulation` removes only the four retired `Breakout_Paired_*`
+  tables inherited from old source snapshots, then runs SQLite `VACUUM` on
+  staged `Simulation.sqlite3` after every data-writing step and before release
   validation or app-copy preparation. It requires integrity/foreign-key checks
   to pass and the final freelist count to be zero, and records before/after
   file and page usage plus reclaimed bytes in the refresh manifest.
@@ -401,7 +403,9 @@ exactly these 20 source-owned tables, including schemas and explicit indexes:
   `Salaries`, `Salaries_Pred`, `League_Keepers`,
   `Salary_Selection_Premium`
 
-Every Auction table outside that registry is preserved from the app snapshot.
+Auction preparation first removes the four retired `Breakout_Paired_*` tables
+from inherited app snapshots. Every other Auction table outside the generated
+registry is preserved from the app snapshot.
 The current app-owned set is `Actual_Salaries`, `Final_Predictions`,
 `Injuries`, `Injuries_Source`, `Model_Predictions`, and
 `Model_Predictions_Resid`. If the live Auction database changes after snapshot,
@@ -519,9 +523,11 @@ Before preparing app candidates, validation requires:
 `prepare_apps` then runs `VACUUM` on both the Auction and Snake candidate
 databases and validates their table content. The manifest records before/after
 file and page usage plus reclaimed bytes for all three artifacts. All three
-must have an empty SQLite freelist after compaction; the app candidates must
-also remain at or below GitHub's 100 MiB blob limit;
-an oversized artifact fails staging before app smoke or promotion. Compaction
+must have an empty SQLite freelist after compaction. An app candidate must
+either remain at or below GitHub's 100 MiB regular-blob limit or have its exact
+destination path verified as Git LFS-tracked with `git-lfs` available;
+an oversized ordinary Git blob fails staging before app smoke or promotion.
+Compaction
 changes only the physical SQLite layout: Auction app-owned/generated-table
 parity and full Snake table/content parity are checked afterward.
 `app_smoke` launches each Streamlit app against its explicit candidate database

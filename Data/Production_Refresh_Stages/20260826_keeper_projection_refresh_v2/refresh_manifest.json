@@ -1,0 +1,1849 @@
+{
+  "baseline": {
+    "auction_app": {
+      "foreign_keys": "ok",
+      "integrity": "ok",
+      "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football_App\\app\\Simulation.sqlite3",
+      "sha256": "dd358783549e18edba960ba6b7b5ce978bf744ad634566e5a432a1b9f710eb90",
+      "size_bytes": 84676608
+    },
+    "model_inputs": {
+      "foreign_keys": "ok",
+      "integrity": "ok",
+      "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Databases\\Model_Inputs.sqlite3",
+      "sha256": "e9be160839a020a3e4f0e4917a7524e76487c66f859d5f4c039d9b2748de611e",
+      "size_bytes": 335413248
+    },
+    "model_inputs_next": {
+      "foreign_keys": "ok",
+      "integrity": "ok",
+      "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Databases\\Model_Inputs_next.sqlite3",
+      "sha256": "1dd4e1c5ee763d4145b0e7437aa0b0c5898c757e4043587c409a6074f5dc3499",
+      "size_bytes": 85508096
+    },
+    "parameter_cache": {
+      "foreign_keys": "ok",
+      "integrity": "ok",
+      "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Databases\\V2_Parameter_Cache.sqlite3",
+      "sha256": "db5e48d9636e99fd5b8907291a7cb78bb7a35050cc056c0076e23003be12b179",
+      "size_bytes": 299008
+    },
+    "simulation": {
+      "foreign_keys": "ok",
+      "integrity": "ok",
+      "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Databases\\Simulation.sqlite3",
+      "sha256": "a8aa8d095b00a84d7451b9c846a664d9dcd1f5a34bb89dfe2e5c6f4a82d9c1ca",
+      "size_bytes": 84709376
+    },
+    "snake_app": {
+      "foreign_keys": "ok",
+      "integrity": "ok",
+      "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football_Snake\\app\\Simulation.sqlite3",
+      "sha256": "6d113b145d20cb7f140ae47b3b1d41e5d0b0dbb5d61e705e0ad4887163c85fed",
+      "size_bytes": 84676608
+    },
+    "source": {
+      "foreign_keys": "ok",
+      "integrity": "ok",
+      "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Databases\\Season_Stats_New.sqlite3",
+      "sha256": "cef8d4f1bcc5aab986271c8a355f55cfc31ee00853b8de833d0af9c44553ec6a",
+      "size_bytes": 58961920
+    },
+    "v2_beta": {
+      "foreign_keys": "ok",
+      "integrity": "ok",
+      "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Databases\\Projection_V2_beta.sqlite3",
+      "sha256": "5d1a0a25d4bd8b7320ac975863af32f3ae59d93e306fdb751466f16b3b8e6a49",
+      "size_bytes": 148971520
+    },
+    "v2_dk": {
+      "foreign_keys": "ok",
+      "integrity": "ok",
+      "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Databases\\Projection_V2.sqlite3",
+      "sha256": "a209fbe9d441a27bdac372dcb7cdbf327ce2b703bd1b25e8b460c205bd5cafc7",
+      "size_bytes": 150052864
+    },
+    "v2_nffc": {
+      "foreign_keys": "ok",
+      "integrity": "ok",
+      "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Databases\\Projection_V2_nffc.sqlite3",
+      "sha256": "c71a11fa7ba1fcd0a493fde0571d6a8bcee576d4d0e1bd8c6d34f0ddccc985d3",
+      "size_bytes": 147161088
+    },
+    "v2_nv": {
+      "foreign_keys": "ok",
+      "integrity": "ok",
+      "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Databases\\Projection_V2_nv.sqlite3",
+      "sha256": "df3263bcd731efd6da65463a1a1f4de004dad3f5b08b377b61e15df7bd18d2eb",
+      "size_bytes": 144506880
+    },
+    "validations": {
+      "foreign_keys": "ok",
+      "integrity": "ok",
+      "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Databases\\Validations.sqlite3",
+      "sha256": "d5586dc9d5364f804a2fb55ec1952323a3943f756087f6034b7a3354df85aae2",
+      "size_bytes": 28958720
+    }
+  },
+  "code_fingerprint": {
+    "file_count": 105,
+    "files": {
+      "auction_app/ffapp.py": {
+        "sha256": "20fd9d58ae76fcd01b6f2dfd69eca2fd4295edf4ba10ba2bfb7a380757f1e1b6",
+        "size_bytes": 161078
+      },
+      "auction_app/zSequential_Target.py": {
+        "sha256": "90432f739cd1116ff24ac14afcfa7f9aeb3ab55aad6fe4735ce5eeff43ca4b53",
+        "size_bytes": 270647
+      },
+      "auction_app/zSim_Helper.py": {
+        "sha256": "4b926b0073807d341dd4ddd97e9b2e84c321606be3f60ddd9a4ea1efbc268e57",
+        "size_bytes": 329829
+      },
+      "auction_app/zTemplate_Explorer.py": {
+        "sha256": "1e879e46725a069b2d389ff4cb9f252686663f4ddd0abd6c3ca7f5adec1c99bc",
+        "size_bytes": 12085
+      },
+      "cycle_2026_locked_study/analyze_calibration.py": {
+        "sha256": "618c3f94734d0ac3ee68c70f16c082c628d43e088dc98590400775f62d7bac19",
+        "size_bytes": 8524
+      },
+      "cycle_2026_locked_study/audit_template_handoff.py": {
+        "sha256": "4210c59e401dafce84b068f43078a9e41e169a0f1ea1e9ef898fcfb2d5f95543",
+        "size_bytes": 11227
+      },
+      "cycle_2026_locked_study/run_validation.py": {
+        "sha256": "fe3f6d68b8cc0913755fe28ee3744b54df2dab9f4a769d98b9632b917e2906c7",
+        "size_bytes": 63302
+      },
+      "cycle_2026_next_study/run_template_validation.py": {
+        "sha256": "aab264083d072dae364762c5ef5463193a33afbb096dd6053f73b5f0332dc952",
+        "size_bytes": 13461
+      },
+      "cycle_2026_next_study/run_validation.py": {
+        "sha256": "b1cb623675af808e2f76a0676188fc72d6a32e8b6d452500f670810a36b70e05",
+        "size_bytes": 50671
+      },
+      "ff_package/__init__.py": {
+        "sha256": "83a2fc6a4db7a8a363a09852bcaea45838efc1948ba9f41d16c6a2c174f8c662",
+        "size_bytes": 114
+      },
+      "ff_package/data_clean.py": {
+        "sha256": "58a115e2e406df28d29ab83d5f42a4a1635da0870ea1e00224ba84ff6a961dee",
+        "size_bytes": 4510
+      },
+      "ff_package/db_operations.py": {
+        "sha256": "b0a5f0d4dab07e977e94f93642d0aefb5d7834d6be7320110a4744acddb61334",
+        "size_bytes": 4846
+      },
+      "ff_package/general.py": {
+        "sha256": "11ae02d1b0d201e62239c7e0c3e11350780e269ce5ddf386c4e2593f6da95a16",
+        "size_bytes": 874
+      },
+      "ff_package/modeling/__init__.py": {
+        "sha256": "5c2fe0f01216430e9d0a3d8f0df031f8a06c2ca871a981924371fb2d656cfae3",
+        "size_bytes": 112
+      },
+      "ff_package/modeling/archived.py": {
+        "sha256": "081e5f97fa564603d091122260538cf0b8c76763c9608fb3ea33d4a4537bd73d",
+        "size_bytes": 5729
+      },
+      "ff_package/modeling/data_setup.py": {
+        "sha256": "f2f5b20b5460b2a41a1d0c767eb291b8422a5dbd86806a887391b05f60fb9a1b",
+        "size_bytes": 2330
+      },
+      "ff_package/modeling/pipe_setup.py": {
+        "sha256": "a53ff3055cc69b8216ef9a6266d7eeff61070dfcbebaa1a3198a8155de7d0fb4",
+        "size_bytes": 12138
+      },
+      "ff_package/modeling/run_models.py": {
+        "sha256": "23725b4f7ede35c2ac90b2ac4dc1bdd9c30dd8e4e7990de037ecc526c00bb592",
+        "size_bytes": 17012
+      },
+      "ff_package/modeling/test.py": {
+        "sha256": "2f0e228816d317a93b39ee2b8e46f7dc97042655eb82aa733cee511a4a8e43ff",
+        "size_bytes": 1489
+      },
+      "main_scripts/Archived/Simulation/Archive/Rework_Sim.py": {
+        "sha256": "5c158c7c66a181b77708137943aff99d98a588c8b85471c5bdb0b0990fd9eee4",
+        "size_bytes": 8521
+      },
+      "main_scripts/Archived/Simulation/Archive/RunSimulationSnake.py": {
+        "sha256": "76b868a54034efaf2073be96e9460341a803675a5e3ffe5ed14e69bb9d910853",
+        "size_bytes": 16760
+      },
+      "main_scripts/Archived/Simulation/Archive/expected_pts_test.py": {
+        "sha256": "70cb9b1b9f1b43df8e87a73306c6c96c84a857dc37f4a8d74e5a5a534a04acef",
+        "size_bytes": 2373
+      },
+      "main_scripts/Archived/Simulation/Archive/zSim_Helper.py": {
+        "sha256": "ed4a1c51026c8f56b943202c969dcacdf13f93613153f6a082856c9fbc5fb1b4",
+        "size_bytes": 29569
+      },
+      "main_scripts/Archived/Simulation/Archive/zSim_Helper_Snake.py": {
+        "sha256": "adce72e6d14caa26e99533e8cd9dfc63bb926cc91ecac853938c0b947db8aa2e",
+        "size_bytes": 31552
+      },
+      "main_scripts/Archived/Simulation/RunSimulation.py": {
+        "sha256": "18163dd673e242897da23ffa5925b2d23a942349fa666d1e5ec03f1ebd360379",
+        "size_bytes": 27521
+      },
+      "main_scripts/Archived/Simulation/zSim_Helper.py": {
+        "sha256": "8e66dc1427fdc59ef1f67fd5d27014fe24bdf0d1dfecd88ed73d8e859b6099cf",
+        "size_bytes": 12885
+      },
+      "main_scripts/Data_Generation/1_Update_Projections.py": {
+        "sha256": "cf06992cabac37ae2efe840a77f7c5e672eabc5ad8dbe41ac73de53ffa19c313",
+        "size_bytes": 43294
+      },
+      "main_scripts/Data_Generation/1a_PFF_Stats.py": {
+        "sha256": "feead8bbc790ae62a4739b36b760d0dff4ff2dd1678b19f81da0501a4b9c329b",
+        "size_bytes": 1763
+      },
+      "main_scripts/Data_Generation/2_Update_Stats.py": {
+        "sha256": "d24639df9baea8ff36f880f97c801823126f9a71cffd2ae1ce507495977daf97",
+        "size_bytes": 11736
+      },
+      "main_scripts/Data_Generation/3_Update_Rookies.py": {
+        "sha256": "486d8ae245b0a838ee2c2b99332fc522ce96e9f31684fce49cdd1c9bc8a1321b",
+        "size_bytes": 22842
+      },
+      "main_scripts/Data_Generation/3a_Update_Rookies_PHoward.py": {
+        "sha256": "8fdcf0f5a28cd40e7fa3aafcf92c2a2fb3481eea6df7ac5c9be965e58f7948b7",
+        "size_bytes": 10975
+      },
+      "main_scripts/Data_Generation/4_Data_Compile.py": {
+        "sha256": "a4d76aec32a0c239efe8baf272759b3bbaac8570722a10194b33ceffdf00bedb",
+        "size_bytes": 61288
+      },
+      "main_scripts/Data_Generation/Archive/1_Update_Player_Data.py": {
+        "sha256": "90b6990a70849666b602b8beba06cf94a4fd95adec8ceb3a6d6ec277ad39b75d",
+        "size_bytes": 27304
+      },
+      "main_scripts/Data_Generation/Archive/2_Update_Team_Stats.py": {
+        "sha256": "3e737a3130fb1046b7d96a60c44170521601f2ac573e654e9bd36f1d70de3eb1",
+        "size_bytes": 19546
+      },
+      "main_scripts/Data_Generation/Archive/3_Update_Football_Outsiders.py": {
+        "sha256": "737ccabc168979860b2dc379a324247136774affb963d37e996b9e7abfa17c07",
+        "size_bytes": 4753
+      },
+      "main_scripts/Data_Generation/Archive/4a_Update_Rookies_Spaceman.py": {
+        "sha256": "1d483d73a09ce4c8fe51129a90f6377a7859e5b8c834b84fd2194bc89c8a576f",
+        "size_bytes": 11168
+      },
+      "main_scripts/Data_Generation/Archive/5_Salaries_Injuries.py": {
+        "sha256": "5cdf5dc81306dbae6040b4e5baadd2d78bfd7ff28a792711a5ef15f3af115bcc",
+        "size_bytes": 16185
+      },
+      "main_scripts/Data_Generation/Archive/5_Update_ADP_Only.py": {
+        "sha256": "ce9b52574c6dc047685e34a74d80d6b799aa09cb56725e4b870eb2de921b4777",
+        "size_bytes": 7437
+      },
+      "main_scripts/Data_Generation/Archive/6_Compile_Player_Input.py": {
+        "sha256": "73de9575ef1b115320d73ba9525d6a9be7f13d9f2232d786b06ee48c9b6e953b",
+        "size_bytes": 25281
+      },
+      "main_scripts/Data_Generation/Archive/Snake_ADP.py": {
+        "sha256": "7994477b1d449983896b3b6fbbf856c2588c94d85b580f189f3bb0880c43b45a",
+        "size_bytes": 4876
+      },
+      "main_scripts/Data_Generation/Archive/zData_Functions.py": {
+        "sha256": "90cc6d8ccef06358ace7722cf6e4da8f32ea820e8f74ae838701fad809152140",
+        "size_bytes": 4903
+      },
+      "main_scripts/Data_Generation/adp_rank_ingest.py": {
+        "sha256": "8e50a20e74047063c2aab305a8c92e5767082a1d5a6085744775080f71d5609e",
+        "size_bytes": 7086
+      },
+      "main_scripts/Data_Generation/fantasypoints_projection_csv.py": {
+        "sha256": "b233295159299bd9c465869a5b8dfb7d0e201d70cd1860a7ba1df43e2ee0700d",
+        "size_bytes": 6396
+      },
+      "main_scripts/Data_Generation/fantasypros_projection_csv.py": {
+        "sha256": "51b0ec4fb6deb9cdad8b79c817d5a2d492027fa270bac34e24b7960af4bfa33c",
+        "size_bytes": 6053
+      },
+      "main_scripts/Data_Generation/ftn_projection_csv.py": {
+        "sha256": "04d68ebd44d494788f0a7999d51999c460daa73f980fe51d757b310ccf737716",
+        "size_bytes": 4822
+      },
+      "main_scripts/Data_Generation/zData_Functions.py": {
+        "sha256": "8641da11e040bddac1dd100dd6ccfd2beae4917fefabedb0e9ee3d730a8f57ee",
+        "size_bytes": 5982
+      },
+      "main_scripts/Modeling/Archive/2_RunAll.py": {
+        "sha256": "9ccab21f7ac9a6b528c268e7b74bb5e11170edcdd4cd289417ca8fd4903e694e",
+        "size_bytes": 13716
+      },
+      "main_scripts/Modeling/Archive/Bayes_Model_Opt copy.py": {
+        "sha256": "7c42f3cd9c276a56b82a02695954842ab7a75961d17a7702abbb40f1e4817b50",
+        "size_bytes": 18934
+      },
+      "main_scripts/Modeling/Archive/Bayes_Model_Opt.py": {
+        "sha256": "a5797174e38b2f4a257100484fb4205d50dd99d474c9bfdb541d54027823872a",
+        "size_bytes": 42812
+      },
+      "main_scripts/Modeling/Archive/ComponentModels.py": {
+        "sha256": "c1316718d3c4a8085cde7f4faa9e9fd13cf11f765d3d3308ff4fd4bde0e5b978",
+        "size_bytes": 2408
+      },
+      "main_scripts/Modeling/Archive/Ensemble_Models.py": {
+        "sha256": "6ba3fbac222c4ef33f9a910b5f2b62d8183dbeeee6a857ee1efb0914bcbae16d",
+        "size_bytes": 47305
+      },
+      "main_scripts/Modeling/Archive/Model_Backfill.py": {
+        "sha256": "6b4418f2a4361fb1630d2ef7e936f3d56cb46275f97d572e0253b6d3737cf2df",
+        "size_bytes": 14268
+      },
+      "main_scripts/Modeling/Archive/Rookie_Model.py": {
+        "sha256": "45c8fbd72c0c28be620784d7631ad8281a54ec157e5f781e8f09a01ea2f2e03c",
+        "size_bytes": 18218
+      },
+      "main_scripts/Modeling/Archive/Rookie_Stack_Model.py": {
+        "sha256": "6e904d0b7147c837b2622bb4bc55949f1bd5191b82b841a1c456a39dfdcbdd58",
+        "size_bytes": 15667
+      },
+      "main_scripts/Modeling/Archive/RunAll.py": {
+        "sha256": "6ef8a30e3d64f7b248967b60e66c347ab1d9b43ed532ab49df8d07c7665f70aa",
+        "size_bytes": 13715
+      },
+      "main_scripts/Modeling/create_snake_nffc_preview.py": {
+        "sha256": "917bcc5a9fd2852fc978b43ef7ae63de217fed40a6eea2b5ca487c3a06182a0a",
+        "size_bytes": 13097
+      },
+      "main_scripts/Modeling/publish_actual_salaries.py": {
+        "sha256": "d5f90c81de07aa6699570892bd43ed2d3964128e21c61ad1b7c21cd4505d6c3d",
+        "size_bytes": 9029
+      },
+      "main_scripts/Modeling/s1_Stacking_Model.py": {
+        "sha256": "671d654cce290f777931e0a7ecf49c9038e8de387ff00ae11d1ba07b4fce9afb",
+        "size_bytes": 46381
+      },
+      "main_scripts/Modeling/s2_RunAll.py": {
+        "sha256": "9ed004bc8093e70ec9a146f2277f4c68c96311675a504e3859664b3087dba108",
+        "size_bytes": 11900
+      },
+      "main_scripts/Modeling/s3_Model_Ensemble.py": {
+        "sha256": "670437e909b4b68abdd75cabedba8b7e3a964cd891fa02a64d2ac40abf414c7a",
+        "size_bytes": 23332
+      },
+      "main_scripts/Modeling/s4_Best_Ball_Weekly.py": {
+        "sha256": "b13f19cf315b4119c82c545e85dcdb2ee996405739f2bd1f46a1e5289deeb7f0",
+        "size_bytes": 260605
+      },
+      "main_scripts/Modeling/s4_Salaries_Injuries.py": {
+        "sha256": "584cc34a21f87f25a73792b1a54cf7a4af36b39a48f7f29ed693639808d481e0",
+        "size_bytes": 110141
+      },
+      "main_scripts/Modeling/s4b_Snake_Draft_VOR.py": {
+        "sha256": "c6fca0d44b03f804d9e1bf0b772465004b1717a4dbcd846086438520855e8686",
+        "size_bytes": 7581
+      },
+      "main_scripts/Modeling/s5_Auction_Selection_Premium.py": {
+        "sha256": "3aefdff7abf79771b98aa936a0375e0eaa2a971522a05e447eecfb43093cddf1",
+        "size_bytes": 33827
+      },
+      "main_scripts/Modeling/salary_source_parser.py": {
+        "sha256": "06c08ef2c8425230727e2de7fdbe34368094f036d079d0e0f6081e51881ab6e6",
+        "size_bytes": 30261
+      },
+      "main_scripts/Modeling/zFix_Standard_Dev.py": {
+        "sha256": "ee4faf4fd6c1b907e08a69f4451a118947634682f53a830b562e02da7caca6eb",
+        "size_bytes": 4031
+      },
+      "main_scripts/Modeling/zHelper_Functions.py": {
+        "sha256": "4fc193b2eb0d73206f8a09a8fe6aeab8a908caface27fa6f57224e5977568a4c",
+        "size_bytes": 54836
+      },
+      "main_scripts/Modeling/zModel_Functions.py": {
+        "sha256": "ea69187e846318f019993d852b447181ede22bde7bf9450eef10dff9a020401d",
+        "size_bytes": 8798
+      },
+      "main_scripts/Modeling/zProjection_Validation.py": {
+        "sha256": "a725a7165bcf4e198f654c75aca98ef531583b2eb7a532ede0747bd94bae6fe6",
+        "size_bytes": 17553
+      },
+      "main_scripts/V2/__init__.py": {
+        "sha256": "2092456d75c0af45d866f2dea41e1cdd7a4b39ca3773172230a2a4eb056c8657",
+        "size_bytes": 56
+      },
+      "main_scripts/V2/adp_policy.py": {
+        "sha256": "0d003cd3d1d4a4e4ee01ff10ad3ae5698b62d077386fea4b16bab86dc8ec5692",
+        "size_bytes": 21270
+      },
+      "main_scripts/V2/app_smoke.py": {
+        "sha256": "55c33d8ace70296b49b9afa1fed1d039e5969a8cc3fea36aa2ed7cf9286d94e1",
+        "size_bytes": 6213
+      },
+      "main_scripts/V2/backfill_weekly_template_player_keys.py": {
+        "sha256": "d8fcfbee2cc81a87d96cd88770246635dfabf0666b80f0b47fdf6cf651f5adbe",
+        "size_bytes": 3124
+      },
+      "main_scripts/V2/build_feature_mart.py": {
+        "sha256": "f16e9bd7784b25f7f5a3471cca520479a3893cdc76a73df96699b3c5461ee0a0",
+        "size_bytes": 60647
+      },
+      "main_scripts/V2/build_feature_sources.py": {
+        "sha256": "da64d1d2a207c7a1ef72618bab43e9a283a5a64fb30a20d49cbf75fd73250e02",
+        "size_bytes": 35362
+      },
+      "main_scripts/V2/build_milestone_1.py": {
+        "sha256": "a1351fb2a5d3c593a12f5d681b83d22b8c9ce52ff4e01990dbc0378feaea9b0b",
+        "size_bytes": 7190
+      },
+      "main_scripts/V2/build_milestone_2.py": {
+        "sha256": "88ef2e32653d68dbfbe57748d7e97dc34170c31825447a693e456abd5e0a9bff",
+        "size_bytes": 11400
+      },
+      "main_scripts/V2/build_milestone_3.py": {
+        "sha256": "6dd55130c556273e0dd60acc9ec121f6918382ef4f84b8f852232fa11b4b6db5",
+        "size_bytes": 21319
+      },
+      "main_scripts/V2/build_milestone_4.py": {
+        "sha256": "6adfd4dde1954b695b07cb736d916bd3bade2e071c19cae8eb2a80ecaadc1234",
+        "size_bytes": 20389
+      },
+      "main_scripts/V2/build_player_identity.py": {
+        "sha256": "bb6001599a5e2c72f59106346cc731964cf4be9d4baa4e5a11fdece487ada0f0",
+        "size_bytes": 37723
+      },
+      "main_scripts/V2/build_player_outcomes.py": {
+        "sha256": "fad10f38f3a0fa37be5d37e2b7c1137381e95df290c62964cb865d31d9b8fe76",
+        "size_bytes": 15526
+      },
+      "main_scripts/V2/build_projection_spine.py": {
+        "sha256": "5b1bcdcfc173a1fd596f1b56b47fbaa764cc98d1a6528f5759078baec13005db",
+        "size_bytes": 18094
+      },
+      "main_scripts/V2/config.py": {
+        "sha256": "5d5f9ec7f5729b5778281c6489fce658d60c4f871404dd6d81f620f8f6d62d20",
+        "size_bytes": 21181
+      },
+      "main_scripts/V2/contracts.py": {
+        "sha256": "b97a021b3dd6de1e80c38bd4b9157b6a0f15a07e28cec12c5c0aa179d7bec087",
+        "size_bytes": 39966
+      },
+      "main_scripts/V2/locked_candidates.py": {
+        "sha256": "1cec063c909d48fa574fc5e3d91bc9a8ea14a88a2986fcbe4616128f0f37f60a",
+        "size_bytes": 11788
+      },
+      "main_scripts/V2/modeling.py": {
+        "sha256": "63fad1c1beae205b7df0173397f14ba4cf474ee0182b3bf3d441910c6ae11fa1",
+        "size_bytes": 39037
+      },
+      "main_scripts/V2/native_runtime.py": {
+        "sha256": "b517aeadbd92544a16a937f880beaf17657f1e65146353e43c1f7a5f29d1f3e4",
+        "size_bytes": 4865
+      },
+      "main_scripts/V2/next_year.py": {
+        "sha256": "67383edf85422949b45653604958d9100aa60ed5fe6e8fabdbf34575c203d7f3",
+        "size_bytes": 11503
+      },
+      "main_scripts/V2/parameter_cache.py": {
+        "sha256": "86e33b313d00e3b6bc827b9e3b0e506a2159832fafc7498deba8826b2c628bcc",
+        "size_bytes": 15166
+      },
+      "main_scripts/V2/production_cycle.py": {
+        "sha256": "d60e5d2bd995c742fc342c5bd5feea98dd0fe586abff213b977fe97506e80d58",
+        "size_bytes": 12318
+      },
+      "main_scripts/V2/production_handoff.py": {
+        "sha256": "aa676e10522796bcbf303f58729f5f5ef2277c92475a8d697487b0981f8d92b3",
+        "size_bytes": 126023
+      },
+      "main_scripts/V2/refresh_dk_adp.py": {
+        "sha256": "8ea7e72fbaea42683f7df98888aca2981dd812b873c0efefbf011f5465bcc7d8",
+        "size_bytes": 23697
+      },
+      "main_scripts/V2/refresh_production.py": {
+        "sha256": "4e5edec9a350ad27a295e8765bba6e4e3b3e91d92f06d9f6c3d5386a0da0e03f",
+        "size_bytes": 156455
+      },
+      "main_scripts/V2/release_change_report.py": {
+        "sha256": "b36fff221b964f0d290effb6136acd0e03cbf916774f5f859e1d97a59a7a689c",
+        "size_bytes": 26020
+      },
+      "main_scripts/V2/template_identity.py": {
+        "sha256": "32d51a8996d235b2b1063cfa6fbd90fdf22db622e07d793c370ffec9091cbb0f",
+        "size_bytes": 10741
+      },
+      "main_scripts/config.py": {
+        "sha256": "e2c794260e7383dd2f8a8807d21bf94622812d78925c78e6f3e79c24cbcc62d9",
+        "size_bytes": 7956
+      },
+      "scikit_model_package/__init__.py": {
+        "sha256": "99dafe82015fca50886f23b240431c18c4b33d8fe6e6d3f2db19998de453ed32",
+        "size_bytes": 133
+      },
+      "scikit_model_package/data_setup.py": {
+        "sha256": "0944f0174dd391d7a7253a6adfdbac1f4335cd21ad138c2de2bd90c57e1821ab",
+        "size_bytes": 2662
+      },
+      "scikit_model_package/pipe_setup.py": {
+        "sha256": "46e659e500b0ca4bd68045bcbb6ef0d48b9c85fd9078d550d3521b8d6385213e",
+        "size_bytes": 23644
+      },
+      "scikit_model_package/prob_dist.py": {
+        "sha256": "dc867d02bce5adc48134b9767d13317e06e8634800522c3062e6e961abb3b271",
+        "size_bytes": 23663
+      },
+      "scikit_model_package/run_models.py": {
+        "sha256": "3867521001f595bcb675635424a949d1a7514e0c9a9098ca010cb074eb4355dd",
+        "size_bytes": 64217
+      },
+      "scikit_model_package/zModel_Functions.py": {
+        "sha256": "816fe0a05aa617f6b75b6a92f3dce5355d6357112157f9105526aace1d9976c8",
+        "size_bytes": 8805
+      },
+      "snake_app/simulation_worker.py": {
+        "sha256": "97bbb75da140156634191eb74e04b1c6c8ec3a89721393717caf7adf57e665cd",
+        "size_bytes": 12704
+      },
+      "snake_app/snake_draft_app.py": {
+        "sha256": "e9e26739d4e52984487eec265d242bc7cc5bdd43a384e54a3eeb126a6f96795d",
+        "size_bytes": 115287
+      },
+      "snake_app/zSim_Helper.py": {
+        "sha256": "1e98a3be5b39738d55f661ebf41ce0aad8b92105cdb8524ad6e113122ea8bd17",
+        "size_bytes": 240386
+      }
+    },
+    "sha256": "c6407416a601dfe584424bdd4b168fb5459ca8d7d48faad1e8789d402e970370"
+  },
+  "created_at_utc": "2026-08-26T20:39:59.549907+00:00",
+  "external_inputs": {
+    "files": {
+      "current_auction_salaries_beta": {
+        "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\OtherData\\Salaries\\salaries_2026_beta.csv",
+        "sha256": "fb2f07c5214d3cf7e9f1c47e6a820ffee5832d4f14ab5d41489e00301b8e1734",
+        "size_bytes": 19792
+      },
+      "current_auction_salaries_nv": {
+        "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\OtherData\\Salaries\\salaries_2026_nv.csv",
+        "sha256": "38b2c5cc4989211982db560b4902c9a0a75cbcae0a542abebad52036e9f2adf5",
+        "size_bytes": 21501
+      },
+      "current_beta_keepers": {
+        "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\OtherData\\Keepers\\keepers_2026_beta.csv",
+        "sha256": "8023bec527863d892cfbb9887cea2f43b657381fcca31fc3b8b3a206138f05ec",
+        "size_bytes": 242
+      },
+      "current_nv_keepers": {
+        "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\OtherData\\Keepers\\keepers_2026_nv.csv",
+        "sha256": "c9bc2e6e3a688febd7f2780c05fe7dadf9534ae3291382e201bce5c5db57a1bb",
+        "size_bytes": 297
+      },
+      "historical_auction_salaries_2025_beta": {
+        "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\OtherData\\Salaries\\salaries_2025_beta.csv",
+        "sha256": "a8d818bd694b79b5ce406f439c825bdf3ca867f4973ffcde0cdca30711c45ec4",
+        "size_bytes": 17973
+      },
+      "historical_auction_salaries_2025_nv": {
+        "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\OtherData\\Salaries\\salaries_2025_nv.csv",
+        "sha256": "cc5e5a2e01645acafea97117e02e9942c3eeab2c773f54e084fc985cd2614fe4",
+        "size_bytes": 14595
+      },
+      "selection_bootstrap_candidates": {
+        "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-16_salary_v5_replay\\results\\selected_residuals_v5\\candidate_diagnostic.csv",
+        "sha256": "34e5eb9625360f7aec9af8494aaf2206f8cc38334c24b06b3da3202b27a0a49e",
+        "size_bytes": 395077
+      },
+      "selection_bootstrap_rosters": {
+        "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-16_optimizer_selection_surcharge\\results\\roster_trials.csv",
+        "sha256": "93904eb9058737231486b5ef72855a39950eeb628a0af2a89788ac3d28da4744",
+        "size_bytes": 1571316
+      }
+    },
+    "sqlite": {
+      "weekly_history": {
+        "foreign_keys": "ok",
+        "integrity": "ok",
+        "path": "C:\\Users\\borys\\GitHub\\Daily_Fantasy_Data\\Databases\\FastR_Beta.sqlite3",
+        "sha256": "255627586c23a9395992a71ee06f7729d3a40b04ac5a84798a26b67a3432b368",
+        "size_bytes": 82165760
+      }
+    }
+  },
+  "options": {
+    "app_python": "C:\\Users\\borys\\AppData\\Local\\Programs\\Python\\Python312\\python.exe",
+    "app_timeout": 90,
+    "dataset": "final_ensemble",
+    "max_workers": 6,
+    "production_leagues": [
+      "dk",
+      "nffc",
+      "beta",
+      "nv"
+    ],
+    "python": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\.venv_ff_312\\Scripts\\python.exe",
+    "selection_trials": 1000,
+    "selection_workers": 8,
+    "year": 2026
+  },
+  "paths": {
+    "app_artifacts": {
+      "auction": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\app_artifacts\\Auction_Simulation.sqlite3",
+      "snake": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\app_artifacts\\Snake_Simulation.sqlite3"
+    },
+    "app_bases": {
+      "auction": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\app_bases\\Auction_Simulation.sqlite3",
+      "snake": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\app_bases\\Snake_Simulation.sqlite3"
+    },
+    "live": {
+      "auction_app": "C:\\Users\\borys\\GitHub\\Fantasy_Football_App\\app\\Simulation.sqlite3",
+      "model_inputs": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Databases\\Model_Inputs.sqlite3",
+      "model_inputs_next": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Databases\\Model_Inputs_next.sqlite3",
+      "parameter_cache": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Databases\\V2_Parameter_Cache.sqlite3",
+      "simulation": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Databases\\Simulation.sqlite3",
+      "snake_app": "C:\\Users\\borys\\GitHub\\Fantasy_Football_Snake\\app\\Simulation.sqlite3",
+      "source": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Databases\\Season_Stats_New.sqlite3",
+      "v2_beta": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Databases\\Projection_V2_beta.sqlite3",
+      "v2_dk": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Databases\\Projection_V2.sqlite3",
+      "v2_nffc": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Databases\\Projection_V2_nffc.sqlite3",
+      "v2_nv": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Databases\\Projection_V2_nv.sqlite3",
+      "validations": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Databases\\Validations.sqlite3"
+    },
+    "model_input_bases": {
+      "model_inputs": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\model_input_bases\\Model_Inputs.sqlite3",
+      "model_inputs_next": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\model_input_bases\\Model_Inputs_next.sqlite3"
+    },
+    "staged": {
+      "model_inputs": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\databases\\Model_Inputs.sqlite3",
+      "model_inputs_next": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\databases\\Model_Inputs_next.sqlite3",
+      "parameter_cache": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\databases\\V2_Parameter_Cache.sqlite3",
+      "simulation": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\databases\\Simulation.sqlite3",
+      "source": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\databases\\Season_Stats_New.sqlite3",
+      "v2_beta": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\databases\\Projection_V2_beta.sqlite3",
+      "v2_dk": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\databases\\Projection_V2.sqlite3",
+      "v2_nffc": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\databases\\Projection_V2_nffc.sqlite3",
+      "v2_nv": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\databases\\Projection_V2_nv.sqlite3",
+      "validations": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\databases\\Validations.sqlite3"
+    }
+  },
+  "production_cycle": {
+    "contract_sha256": "db4259df4e9e1a74c75e91889d08615e639e0d6ef154634070812612951c4173",
+    "current_season": 2026,
+    "current_shadow_table": "locked_2026_shadow_predictions",
+    "leagues": [
+      "dk",
+      "nffc",
+      "beta",
+      "nv"
+    ],
+    "locked_runner": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-29_v2_locked_final_validation\\run_validation.py",
+    "locked_versions": {
+      "beta": "v2_conditional_ppg_2026_candidate_beta_v1",
+      "dk": "v2_conditional_ppg_2026_candidate_v1",
+      "nffc": "v2_conditional_ppg_2026_candidate_nffc_v1",
+      "nv": "v2_conditional_ppg_2026_candidate_nv_v1"
+    },
+    "model_input_position_minimums": {
+      "QB": 40,
+      "RB": 75,
+      "TE": 35,
+      "WR": 100
+    },
+    "next_season": 2027,
+    "next_shadow_table": "next_year_2027_shadow_predictions",
+    "next_target_version": "v2_next_year_expert_residual_v1",
+    "next_year_runner": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-29_v2_next_year_residual\\run_validation.py",
+    "nffc_source_feed_minimums": {
+      "nffc_best_ball_25s50s": 400,
+      "nffc_best_ball_overall": 400
+    },
+    "nffc_source_feed_pick_boundaries": {
+      "nffc_best_ball_25s50s": 360,
+      "nffc_best_ball_overall": 360
+    },
+    "production_population_minimums": {
+      "beta": 300,
+      "dk": 300,
+      "nffc": 360,
+      "nv": 300
+    },
+    "production_position_minimums": {
+      "beta": {
+        "QB": 40,
+        "RB": 75,
+        "TE": 38,
+        "WR": 105
+      },
+      "dk": {
+        "QB": 40,
+        "RB": 75,
+        "TE": 38,
+        "WR": 105
+      },
+      "nffc": {
+        "QB": 50,
+        "RB": 100,
+        "TE": 50,
+        "WR": 130
+      },
+      "nv": {
+        "QB": 40,
+        "RB": 75,
+        "TE": 38,
+        "WR": 105
+      }
+    },
+    "source_market_minimums": {
+      "dk": 300,
+      "etr": 180,
+      "nffc": 360
+    },
+    "status": "approved",
+    "template_audit_runner": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-29_v2_locked_final_validation\\audit_template_handoff.py",
+    "template_center_policies": {
+      "beta": [
+        "legacy_validated_oos",
+        "beta_scored_expert_fallback"
+      ],
+      "dk": [
+        "legacy_validated_oos",
+        "preseason_projection_fallback"
+      ],
+      "nffc": [
+        "nffc_scored_expert_consensus"
+      ],
+      "nv": [
+        "nv_scored_expert_consensus",
+        "preseason_projection_fallback"
+      ]
+    },
+    "template_context_sources": {
+      "beta": "v2_beta_scoring_matched_preseason",
+      "nffc": "v2_nffc_scoring_matched_preseason",
+      "nv": "v2_nv_scoring_matched_preseason"
+    },
+    "template_min_seasons": {
+      "beta": 2008,
+      "dk": 2008,
+      "nffc": 2021,
+      "nv": 2008
+    },
+    "weekly_horizons": {
+      "beta": 16,
+      "dk": 16,
+      "nffc": 17,
+      "nv": 16
+    }
+  },
+  "promotion": {
+    "status": "not_requested"
+  },
+  "repo_root": "C:\\Users\\borys\\GitHub\\Fantasy_Football",
+  "run_id": "20260826T203959Z_b2def7d6",
+  "schema_version": 6,
+  "stage_dir": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2",
+  "steps": {
+    "app_smoke": {
+      "status": "pending"
+    },
+    "compact_simulation": {
+      "status": "pending"
+    },
+    "handoff": {
+      "attempts": [
+        {
+          "attempt": 1,
+          "completed_at_utc": "2026-08-26T21:01:17.670280+00:00",
+          "failure_class": "windows_access_violation",
+          "outcome": "retryable_native_failure",
+          "return_code": 3221225477,
+          "started_at_utc": "2026-08-26T21:01:15.646322+00:00",
+          "will_retry": true
+        },
+        {
+          "attempt": 2,
+          "completed_at_utc": "2026-08-26T21:01:21.800261+00:00",
+          "outcome": "failed",
+          "return_code": 1,
+          "started_at_utc": "2026-08-26T21:01:17.670280+00:00",
+          "will_retry": false
+        }
+      ],
+      "error": "CalledProcessError: Command '['C:\\\\Users\\\\borys\\\\GitHub\\\\Fantasy_Football\\\\.venv_ff_312\\\\Scripts\\\\python.exe', '-m', 'Scripts.V2.production_handoff', '--simulation-db', 'C:\\\\Users\\\\borys\\\\GitHub\\\\Fantasy_Football\\\\Data\\\\Production_Refresh_Stages\\\\20260826_keeper_projection_refresh_v2\\\\databases\\\\Simulation.sqlite3', '--model-inputs-db', 'C:\\\\Users\\\\borys\\\\GitHub\\\\Fantasy_Football\\\\Data\\\\Production_Refresh_Stages\\\\20260826_keeper_projection_refresh_v2\\\\databases\\\\Model_Inputs.sqlite3', '--market-source-db', 'C:\\\\Users\\\\borys\\\\GitHub\\\\Fantasy_Football\\\\Data\\\\Production_Refresh_Stages\\\\20260826_keeper_projection_refresh_v2\\\\databases\\\\Season_Stats_New.sqlite3', '--dk-v2-db', 'C:\\\\Users\\\\borys\\\\GitHub\\\\Fantasy_Football\\\\Data\\\\Production_Refresh_Stages\\\\20260826_keeper_projection_refresh_v2\\\\databases\\\\Projection_V2.sqlite3', '--nffc-v2-db', 'C:\\\\Users\\\\borys\\\\GitHub\\\\Fantasy_Football\\\\Data\\\\Production_Refresh_Stages\\\\20260826_keeper_projection_refresh_v2\\\\databases\\\\Projection_V2_nffc.sqlite3', '--beta-v2-db', 'C:\\\\Users\\\\borys\\\\GitHub\\\\Fantasy_Football\\\\Data\\\\Production_Refresh_Stages\\\\20260826_keeper_projection_refresh_v2\\\\databases\\\\Projection_V2_beta.sqlite3', '--nv-v2-db', 'C:\\\\Users\\\\borys\\\\GitHub\\\\Fantasy_Football\\\\Data\\\\Production_Refresh_Stages\\\\20260826_keeper_projection_refresh_v2\\\\databases\\\\Projection_V2_nv.sqlite3', '--year', '2026', '--dataset', 'final_ensemble']' returned non-zero exit status 1.",
+      "failed_at_utc": "2026-08-26T21:01:21.800261+00:00",
+      "log": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\logs\\handoff.log",
+      "started_at_utc": "2026-08-26T21:01:15.635891+00:00",
+      "status": "failed",
+      "traceback": "Traceback (most recent call last):\n  File \"C:\\Users\\borys\\GitHub\\Fantasy_Football\\Scripts\\V2\\refresh_production.py\", line 4050, in run_pipeline\n    result = execute_step(step, manifest)\n             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\borys\\GitHub\\Fantasy_Football\\Scripts\\V2\\refresh_production.py\", line 3621, in execute_step\n    return step_handoff(manifest)\n           ^^^^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\borys\\GitHub\\Fantasy_Football\\Scripts\\V2\\refresh_production.py\", line 1397, in step_handoff\n    first = run_logged_command(\n            ^^^^^^^^^^^^^^^^^^^\n  File \"C:\\Users\\borys\\GitHub\\Fantasy_Football\\Scripts\\V2\\refresh_production.py\", line 1049, in run_logged_command\n    raise error\nsubprocess.CalledProcessError: Command '['C:\\\\Users\\\\borys\\\\GitHub\\\\Fantasy_Football\\\\.venv_ff_312\\\\Scripts\\\\python.exe', '-m', 'Scripts.V2.production_handoff', '--simulation-db', 'C:\\\\Users\\\\borys\\\\GitHub\\\\Fantasy_Football\\\\Data\\\\Production_Refresh_Stages\\\\20260826_keeper_projection_refresh_v2\\\\databases\\\\Simulation.sqlite3', '--model-inputs-db', 'C:\\\\Users\\\\borys\\\\GitHub\\\\Fantasy_Football\\\\Data\\\\Production_Refresh_Stages\\\\20260826_keeper_projection_refresh_v2\\\\databases\\\\Model_Inputs.sqlite3', '--market-source-db', 'C:\\\\Users\\\\borys\\\\GitHub\\\\Fantasy_Football\\\\Data\\\\Production_Refresh_Stages\\\\20260826_keeper_projection_refresh_v2\\\\databases\\\\Season_Stats_New.sqlite3', '--dk-v2-db', 'C:\\\\Users\\\\borys\\\\GitHub\\\\Fantasy_Football\\\\Data\\\\Production_Refresh_Stages\\\\20260826_keeper_projection_refresh_v2\\\\databases\\\\Projection_V2.sqlite3', '--nffc-v2-db', 'C:\\\\Users\\\\borys\\\\GitHub\\\\Fantasy_Football\\\\Data\\\\Production_Refresh_Stages\\\\20260826_keeper_projection_refresh_v2\\\\databases\\\\Projection_V2_nffc.sqlite3', '--beta-v2-db', 'C:\\\\Users\\\\borys\\\\GitHub\\\\Fantasy_Football\\\\Data\\\\Production_Refresh_Stages\\\\20260826_keeper_projection_refresh_v2\\\\databases\\\\Projection_V2_beta.sqlite3', '--nv-v2-db', 'C:\\\\Users\\\\borys\\\\GitHub\\\\Fantasy_Football\\\\Data\\\\Production_Refresh_Stages\\\\20260826_keeper_projection_refresh_v2\\\\databases\\\\Projection_V2_nv.sqlite3', '--year', '2026', '--dataset', 'final_ensemble']' returned non-zero exit status 1.\n"
+    },
+    "keepers": {
+      "completed_at_utc": "2026-08-26T21:01:15.635891+00:00",
+      "result": {
+        "beta": {
+          "attempts": [
+            {
+              "attempt": 1,
+              "completed_at_utc": "2026-08-26T21:01:13.642814+00:00",
+              "outcome": "completed",
+              "return_code": 0,
+              "started_at_utc": "2026-08-26T21:01:11.596155+00:00",
+              "will_retry": false
+            }
+          ],
+          "command": [
+            "C:\\Users\\borys\\GitHub\\Fantasy_Football\\.venv_ff_312\\Scripts\\python.exe",
+            "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Scripts\\Modeling\\s4_Salaries_Injuries.py"
+          ],
+          "completed_at_utc": "2026-08-26T21:01:13.642814+00:00",
+          "log": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\logs\\keepers_beta.log",
+          "started_at_utc": "2026-08-26T21:01:11.596155+00:00"
+        },
+        "nv": {
+          "attempts": [
+            {
+              "attempt": 1,
+              "completed_at_utc": "2026-08-26T21:01:15.635891+00:00",
+              "outcome": "completed",
+              "return_code": 0,
+              "started_at_utc": "2026-08-26T21:01:13.643816+00:00",
+              "will_retry": false
+            }
+          ],
+          "command": [
+            "C:\\Users\\borys\\GitHub\\Fantasy_Football\\.venv_ff_312\\Scripts\\python.exe",
+            "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Scripts\\Modeling\\s4_Salaries_Injuries.py"
+          ],
+          "completed_at_utc": "2026-08-26T21:01:15.635891+00:00",
+          "log": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\logs\\keepers_nv.log",
+          "started_at_utc": "2026-08-26T21:01:13.642814+00:00"
+        }
+      },
+      "started_at_utc": "2026-08-26T21:01:11.591364+00:00",
+      "status": "completed"
+    },
+    "locked_beta": {
+      "completed_at_utc": "2026-08-26T20:53:01.565019+00:00",
+      "result": {
+        "attempts": [
+          {
+            "attempt": 1,
+            "completed_at_utc": "2026-08-26T20:53:01.564020+00:00",
+            "outcome": "completed",
+            "return_code": 0,
+            "started_at_utc": "2026-08-26T20:52:10.597291+00:00",
+            "will_retry": false
+          }
+        ],
+        "command": [
+          "C:\\Users\\borys\\GitHub\\Fantasy_Football\\.venv_ff_312\\Scripts\\python.exe",
+          "C:\\Users\\borys\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-29_v2_locked_final_validation\\run_validation.py",
+          "--league",
+          "beta",
+          "--output-db",
+          "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\databases\\Projection_V2_beta.sqlite3",
+          "--results-dir",
+          "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\results\\locked_beta",
+          "--parameter-cache-db",
+          "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\databases\\V2_Parameter_Cache.sqlite3"
+        ],
+        "completed_at_utc": "2026-08-26T20:53:01.564020+00:00",
+        "log": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\logs\\locked_beta.log",
+        "started_at_utc": "2026-08-26T20:52:10.597291+00:00"
+      },
+      "started_at_utc": "2026-08-26T20:52:10.597291+00:00",
+      "status": "completed"
+    },
+    "locked_dk": {
+      "completed_at_utc": "2026-08-26T20:51:19.598114+00:00",
+      "result": {
+        "attempts": [
+          {
+            "attempt": 1,
+            "completed_at_utc": "2026-08-26T20:51:19.598114+00:00",
+            "outcome": "completed",
+            "return_code": 0,
+            "started_at_utc": "2026-08-26T20:50:27.300540+00:00",
+            "will_retry": false
+          }
+        ],
+        "command": [
+          "C:\\Users\\borys\\GitHub\\Fantasy_Football\\.venv_ff_312\\Scripts\\python.exe",
+          "C:\\Users\\borys\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-29_v2_locked_final_validation\\run_validation.py",
+          "--league",
+          "dk",
+          "--output-db",
+          "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\databases\\Projection_V2.sqlite3",
+          "--results-dir",
+          "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\results\\locked_dk",
+          "--parameter-cache-db",
+          "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\databases\\V2_Parameter_Cache.sqlite3"
+        ],
+        "completed_at_utc": "2026-08-26T20:51:19.598114+00:00",
+        "log": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\logs\\locked_dk.log",
+        "started_at_utc": "2026-08-26T20:50:27.300540+00:00"
+      },
+      "started_at_utc": "2026-08-26T20:50:27.283465+00:00",
+      "status": "completed"
+    },
+    "locked_nffc": {
+      "completed_at_utc": "2026-08-26T20:52:10.597291+00:00",
+      "result": {
+        "attempts": [
+          {
+            "attempt": 1,
+            "completed_at_utc": "2026-08-26T20:52:10.597291+00:00",
+            "outcome": "completed",
+            "return_code": 0,
+            "started_at_utc": "2026-08-26T20:51:19.598114+00:00",
+            "will_retry": false
+          }
+        ],
+        "command": [
+          "C:\\Users\\borys\\GitHub\\Fantasy_Football\\.venv_ff_312\\Scripts\\python.exe",
+          "C:\\Users\\borys\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-29_v2_locked_final_validation\\run_validation.py",
+          "--league",
+          "nffc",
+          "--output-db",
+          "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\databases\\Projection_V2_nffc.sqlite3",
+          "--results-dir",
+          "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\results\\locked_nffc",
+          "--parameter-cache-db",
+          "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\databases\\V2_Parameter_Cache.sqlite3"
+        ],
+        "completed_at_utc": "2026-08-26T20:52:10.597291+00:00",
+        "log": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\logs\\locked_nffc.log",
+        "started_at_utc": "2026-08-26T20:51:19.598114+00:00"
+      },
+      "started_at_utc": "2026-08-26T20:51:19.598114+00:00",
+      "status": "completed"
+    },
+    "locked_nv": {
+      "completed_at_utc": "2026-08-26T20:53:54.203543+00:00",
+      "result": {
+        "attempts": [
+          {
+            "attempt": 1,
+            "completed_at_utc": "2026-08-26T20:53:54.203543+00:00",
+            "outcome": "completed",
+            "return_code": 0,
+            "started_at_utc": "2026-08-26T20:53:01.573128+00:00",
+            "will_retry": false
+          }
+        ],
+        "command": [
+          "C:\\Users\\borys\\GitHub\\Fantasy_Football\\.venv_ff_312\\Scripts\\python.exe",
+          "C:\\Users\\borys\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-29_v2_locked_final_validation\\run_validation.py",
+          "--league",
+          "nv",
+          "--output-db",
+          "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\databases\\Projection_V2_nv.sqlite3",
+          "--results-dir",
+          "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\results\\locked_nv",
+          "--parameter-cache-db",
+          "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\databases\\V2_Parameter_Cache.sqlite3"
+        ],
+        "completed_at_utc": "2026-08-26T20:53:54.203543+00:00",
+        "log": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\logs\\locked_nv.log",
+        "started_at_utc": "2026-08-26T20:53:01.571625+00:00"
+      },
+      "started_at_utc": "2026-08-26T20:53:01.567019+00:00",
+      "status": "completed"
+    },
+    "model_inputs": {
+      "completed_at_utc": "2026-08-26T20:40:45.271109+00:00",
+      "result": {
+        "attempts": [
+          {
+            "attempt": 1,
+            "completed_at_utc": "2026-08-26T20:40:45.242404+00:00",
+            "outcome": "completed",
+            "preparation": {
+              "restored": {
+                "model_inputs": {
+                  "source": {
+                    "foreign_keys": "ok",
+                    "integrity": "ok",
+                    "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\model_input_bases\\Model_Inputs.sqlite3",
+                    "sha256": "301a902584fa69beee37e8bc02d0a4b25f631d4bba066ee8f9df23c39078b166",
+                    "size_bytes": 335413248
+                  },
+                  "staged": {
+                    "foreign_keys": "ok",
+                    "integrity": "ok",
+                    "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\databases\\Model_Inputs.sqlite3",
+                    "sha256": "301a902584fa69beee37e8bc02d0a4b25f631d4bba066ee8f9df23c39078b166",
+                    "size_bytes": 335413248
+                  }
+                },
+                "model_inputs_next": {
+                  "source": {
+                    "foreign_keys": "ok",
+                    "integrity": "ok",
+                    "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\model_input_bases\\Model_Inputs_next.sqlite3",
+                    "sha256": "b62c3539e0b0cefa7d7a772907268c673d2ddab0599825d17d00c8cc6e9e3fb3",
+                    "size_bytes": 85508096
+                  },
+                  "staged": {
+                    "foreign_keys": "ok",
+                    "integrity": "ok",
+                    "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\databases\\Model_Inputs_next.sqlite3",
+                    "sha256": "b62c3539e0b0cefa7d7a772907268c673d2ddab0599825d17d00c8cc6e9e3fb3",
+                    "size_bytes": 85508096
+                  }
+                }
+              },
+              "retry_bases": {
+                "model_inputs": {
+                  "foreign_keys": "ok",
+                  "integrity": "ok",
+                  "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\model_input_bases\\Model_Inputs.sqlite3",
+                  "sha256": "301a902584fa69beee37e8bc02d0a4b25f631d4bba066ee8f9df23c39078b166",
+                  "size_bytes": 335413248
+                },
+                "model_inputs_next": {
+                  "foreign_keys": "ok",
+                  "integrity": "ok",
+                  "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\model_input_bases\\Model_Inputs_next.sqlite3",
+                  "sha256": "b62c3539e0b0cefa7d7a772907268c673d2ddab0599825d17d00c8cc6e9e3fb3",
+                  "size_bytes": 85508096
+                }
+              }
+            },
+            "return_code": 0,
+            "started_at_utc": "2026-08-26T20:40:18.485190+00:00",
+            "will_retry": false
+          }
+        ],
+        "command": [
+          "C:\\Users\\borys\\GitHub\\Fantasy_Football\\.venv_ff_312\\Scripts\\python.exe",
+          "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Scripts\\Data_Generation\\4_Data_Compile.py"
+        ],
+        "completed_at_utc": "2026-08-26T20:40:45.242404+00:00",
+        "log": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\logs\\model_inputs.log",
+        "started_at_utc": "2026-08-26T20:40:18.485190+00:00"
+      },
+      "started_at_utc": "2026-08-26T20:40:18.485190+00:00",
+      "status": "completed"
+    },
+    "next_beta": {
+      "completed_at_utc": "2026-08-26T20:59:40.615784+00:00",
+      "result": {
+        "attempts": [
+          {
+            "attempt": 1,
+            "completed_at_utc": "2026-08-26T20:59:40.615784+00:00",
+            "outcome": "completed",
+            "return_code": 0,
+            "started_at_utc": "2026-08-26T20:58:08.828053+00:00",
+            "will_retry": false
+          }
+        ],
+        "command": [
+          "C:\\Users\\borys\\GitHub\\Fantasy_Football\\.venv_ff_312\\Scripts\\python.exe",
+          "C:\\Users\\borys\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-29_v2_next_year_residual\\run_validation.py",
+          "--league",
+          "beta",
+          "--output-db",
+          "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\databases\\Projection_V2_beta.sqlite3",
+          "--results-dir",
+          "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\results\\next_beta",
+          "--parameter-cache-db",
+          "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\databases\\V2_Parameter_Cache.sqlite3"
+        ],
+        "completed_at_utc": "2026-08-26T20:59:40.615784+00:00",
+        "log": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\logs\\next_beta.log",
+        "started_at_utc": "2026-08-26T20:58:08.828053+00:00"
+      },
+      "started_at_utc": "2026-08-26T20:58:08.828053+00:00",
+      "status": "completed"
+    },
+    "next_dk": {
+      "completed_at_utc": "2026-08-26T20:56:12.037744+00:00",
+      "result": {
+        "attempts": [
+          {
+            "attempt": 1,
+            "completed_at_utc": "2026-08-26T20:55:27.740004+00:00",
+            "failure_class": "windows_heap_corruption",
+            "outcome": "retryable_native_failure",
+            "return_code": 3221226356,
+            "started_at_utc": "2026-08-26T20:53:54.203543+00:00",
+            "will_retry": true
+          },
+          {
+            "attempt": 2,
+            "completed_at_utc": "2026-08-26T20:55:49.742329+00:00",
+            "failure_class": "windows_heap_corruption",
+            "outcome": "retryable_native_failure",
+            "return_code": 3221226356,
+            "started_at_utc": "2026-08-26T20:55:27.740004+00:00",
+            "will_retry": true
+          },
+          {
+            "attempt": 3,
+            "completed_at_utc": "2026-08-26T20:56:12.037744+00:00",
+            "outcome": "completed",
+            "return_code": 0,
+            "started_at_utc": "2026-08-26T20:55:49.742329+00:00",
+            "will_retry": false
+          }
+        ],
+        "command": [
+          "C:\\Users\\borys\\GitHub\\Fantasy_Football\\.venv_ff_312\\Scripts\\python.exe",
+          "C:\\Users\\borys\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-29_v2_next_year_residual\\run_validation.py",
+          "--league",
+          "dk",
+          "--output-db",
+          "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\databases\\Projection_V2.sqlite3",
+          "--results-dir",
+          "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\results\\next_dk",
+          "--parameter-cache-db",
+          "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\databases\\V2_Parameter_Cache.sqlite3"
+        ],
+        "completed_at_utc": "2026-08-26T20:56:12.037744+00:00",
+        "log": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\logs\\next_dk.log",
+        "started_at_utc": "2026-08-26T20:53:54.203543+00:00"
+      },
+      "started_at_utc": "2026-08-26T20:53:54.203543+00:00",
+      "status": "completed"
+    },
+    "next_nffc": {
+      "completed_at_utc": "2026-08-26T20:58:08.828053+00:00",
+      "result": {
+        "attempts": [
+          {
+            "attempt": 1,
+            "completed_at_utc": "2026-08-26T20:57:46.683317+00:00",
+            "failure_class": "windows_heap_corruption",
+            "outcome": "retryable_native_failure",
+            "return_code": 3221226356,
+            "started_at_utc": "2026-08-26T20:56:12.052455+00:00",
+            "will_retry": true
+          },
+          {
+            "attempt": 2,
+            "completed_at_utc": "2026-08-26T20:58:08.828053+00:00",
+            "outcome": "completed",
+            "return_code": 0,
+            "started_at_utc": "2026-08-26T20:57:46.683317+00:00",
+            "will_retry": false
+          }
+        ],
+        "command": [
+          "C:\\Users\\borys\\GitHub\\Fantasy_Football\\.venv_ff_312\\Scripts\\python.exe",
+          "C:\\Users\\borys\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-29_v2_next_year_residual\\run_validation.py",
+          "--league",
+          "nffc",
+          "--output-db",
+          "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\databases\\Projection_V2_nffc.sqlite3",
+          "--results-dir",
+          "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\results\\next_nffc",
+          "--parameter-cache-db",
+          "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\databases\\V2_Parameter_Cache.sqlite3"
+        ],
+        "completed_at_utc": "2026-08-26T20:58:08.828053+00:00",
+        "log": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\logs\\next_nffc.log",
+        "started_at_utc": "2026-08-26T20:56:12.052455+00:00"
+      },
+      "started_at_utc": "2026-08-26T20:56:12.037744+00:00",
+      "status": "completed"
+    },
+    "next_nv": {
+      "completed_at_utc": "2026-08-26T21:01:11.580401+00:00",
+      "result": {
+        "attempts": [
+          {
+            "attempt": 1,
+            "completed_at_utc": "2026-08-26T21:01:11.580401+00:00",
+            "outcome": "completed",
+            "return_code": 0,
+            "started_at_utc": "2026-08-26T20:59:40.631182+00:00",
+            "will_retry": false
+          }
+        ],
+        "command": [
+          "C:\\Users\\borys\\GitHub\\Fantasy_Football\\.venv_ff_312\\Scripts\\python.exe",
+          "C:\\Users\\borys\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-29_v2_next_year_residual\\run_validation.py",
+          "--league",
+          "nv",
+          "--output-db",
+          "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\databases\\Projection_V2_nv.sqlite3",
+          "--results-dir",
+          "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\results\\next_nv",
+          "--parameter-cache-db",
+          "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\databases\\V2_Parameter_Cache.sqlite3"
+        ],
+        "completed_at_utc": "2026-08-26T21:01:11.580401+00:00",
+        "log": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\logs\\next_nv.log",
+        "started_at_utc": "2026-08-26T20:59:40.631182+00:00"
+      },
+      "started_at_utc": "2026-08-26T20:59:40.615784+00:00",
+      "status": "completed"
+    },
+    "prepare_apps": {
+      "status": "pending"
+    },
+    "salary": {
+      "status": "pending"
+    },
+    "selection_premium": {
+      "status": "pending"
+    },
+    "snapshot": {
+      "completed_at_utc": "2026-08-26T20:40:18.485190+00:00",
+      "result": {
+        "database_count": 12,
+        "external_inputs": {
+          "files": {
+            "current_auction_salaries_beta": {
+              "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\OtherData\\Salaries\\salaries_2026_beta.csv",
+              "sha256": "fb2f07c5214d3cf7e9f1c47e6a820ffee5832d4f14ab5d41489e00301b8e1734",
+              "size_bytes": 19792
+            },
+            "current_auction_salaries_nv": {
+              "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\OtherData\\Salaries\\salaries_2026_nv.csv",
+              "sha256": "38b2c5cc4989211982db560b4902c9a0a75cbcae0a542abebad52036e9f2adf5",
+              "size_bytes": 21501
+            },
+            "current_beta_keepers": {
+              "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\OtherData\\Keepers\\keepers_2026_beta.csv",
+              "sha256": "8023bec527863d892cfbb9887cea2f43b657381fcca31fc3b8b3a206138f05ec",
+              "size_bytes": 242
+            },
+            "current_nv_keepers": {
+              "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\OtherData\\Keepers\\keepers_2026_nv.csv",
+              "sha256": "c9bc2e6e3a688febd7f2780c05fe7dadf9534ae3291382e201bce5c5db57a1bb",
+              "size_bytes": 297
+            },
+            "historical_auction_salaries_2025_beta": {
+              "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\OtherData\\Salaries\\salaries_2025_beta.csv",
+              "sha256": "a8d818bd694b79b5ce406f439c825bdf3ca867f4973ffcde0cdca30711c45ec4",
+              "size_bytes": 17973
+            },
+            "historical_auction_salaries_2025_nv": {
+              "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\OtherData\\Salaries\\salaries_2025_nv.csv",
+              "sha256": "cc5e5a2e01645acafea97117e02e9942c3eeab2c773f54e084fc985cd2614fe4",
+              "size_bytes": 14595
+            },
+            "selection_bootstrap_candidates": {
+              "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-16_salary_v5_replay\\results\\selected_residuals_v5\\candidate_diagnostic.csv",
+              "sha256": "34e5eb9625360f7aec9af8494aaf2206f8cc38334c24b06b3da3202b27a0a49e",
+              "size_bytes": 395077
+            },
+            "selection_bootstrap_rosters": {
+              "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\research\\studies\\2026-07-16_optimizer_selection_surcharge\\results\\roster_trials.csv",
+              "sha256": "93904eb9058737231486b5ef72855a39950eeb628a0af2a89788ac3d28da4744",
+              "size_bytes": 1571316
+            }
+          },
+          "sqlite": {
+            "weekly_history": {
+              "foreign_keys": "ok",
+              "integrity": "ok",
+              "path": "C:\\Users\\borys\\GitHub\\Daily_Fantasy_Data\\Databases\\FastR_Beta.sqlite3",
+              "sha256": "255627586c23a9395992a71ee06f7729d3a40b04ac5a84798a26b67a3432b368",
+              "size_bytes": 82165760
+            }
+          }
+        },
+        "model_input_bases": {
+          "model_inputs": {
+            "foreign_keys": "ok",
+            "integrity": "ok",
+            "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\model_input_bases\\Model_Inputs.sqlite3",
+            "sha256": "301a902584fa69beee37e8bc02d0a4b25f631d4bba066ee8f9df23c39078b166",
+            "size_bytes": 335413248
+          },
+          "model_inputs_next": {
+            "foreign_keys": "ok",
+            "integrity": "ok",
+            "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\model_input_bases\\Model_Inputs_next.sqlite3",
+            "sha256": "b62c3539e0b0cefa7d7a772907268c673d2ddab0599825d17d00c8cc6e9e3fb3",
+            "size_bytes": 85508096
+          }
+        },
+        "receipts": {
+          "auction_app": {
+            "source": {
+              "foreign_keys": "ok",
+              "integrity": "ok",
+              "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football_App\\app\\Simulation.sqlite3",
+              "sha256": "dd358783549e18edba960ba6b7b5ce978bf744ad634566e5a432a1b9f710eb90",
+              "size_bytes": 84676608
+            },
+            "staged": {
+              "foreign_keys": "ok",
+              "integrity": "ok",
+              "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\app_bases\\Auction_Simulation.sqlite3",
+              "sha256": "57ee7e22d6e676e368d0c6bbe946aeb9883385e622d5b7af2292a12ac01acbac",
+              "size_bytes": 84676608
+            }
+          },
+          "model_inputs": {
+            "retry_base": {
+              "foreign_keys": "ok",
+              "integrity": "ok",
+              "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\model_input_bases\\Model_Inputs.sqlite3",
+              "sha256": "301a902584fa69beee37e8bc02d0a4b25f631d4bba066ee8f9df23c39078b166",
+              "size_bytes": 335413248
+            },
+            "source": {
+              "foreign_keys": "ok",
+              "integrity": "ok",
+              "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Databases\\Model_Inputs.sqlite3",
+              "sha256": "e9be160839a020a3e4f0e4917a7524e76487c66f859d5f4c039d9b2748de611e",
+              "size_bytes": 335413248
+            },
+            "staged": {
+              "foreign_keys": "ok",
+              "integrity": "ok",
+              "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\databases\\Model_Inputs.sqlite3",
+              "sha256": "301a902584fa69beee37e8bc02d0a4b25f631d4bba066ee8f9df23c39078b166",
+              "size_bytes": 335413248
+            }
+          },
+          "model_inputs_next": {
+            "retry_base": {
+              "foreign_keys": "ok",
+              "integrity": "ok",
+              "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\model_input_bases\\Model_Inputs_next.sqlite3",
+              "sha256": "b62c3539e0b0cefa7d7a772907268c673d2ddab0599825d17d00c8cc6e9e3fb3",
+              "size_bytes": 85508096
+            },
+            "source": {
+              "foreign_keys": "ok",
+              "integrity": "ok",
+              "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Databases\\Model_Inputs_next.sqlite3",
+              "sha256": "1dd4e1c5ee763d4145b0e7437aa0b0c5898c757e4043587c409a6074f5dc3499",
+              "size_bytes": 85508096
+            },
+            "staged": {
+              "foreign_keys": "ok",
+              "integrity": "ok",
+              "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\databases\\Model_Inputs_next.sqlite3",
+              "sha256": "b62c3539e0b0cefa7d7a772907268c673d2ddab0599825d17d00c8cc6e9e3fb3",
+              "size_bytes": 85508096
+            }
+          },
+          "parameter_cache": {
+            "source": {
+              "foreign_keys": "ok",
+              "integrity": "ok",
+              "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Databases\\V2_Parameter_Cache.sqlite3",
+              "sha256": "db5e48d9636e99fd5b8907291a7cb78bb7a35050cc056c0076e23003be12b179",
+              "size_bytes": 299008
+            },
+            "staged": {
+              "foreign_keys": "ok",
+              "integrity": "ok",
+              "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\databases\\V2_Parameter_Cache.sqlite3",
+              "sha256": "a84fc05266dcf4ad39978915a50240df07d4f3941928e7c2db88629455db22cb",
+              "size_bytes": 299008
+            }
+          },
+          "simulation": {
+            "source": {
+              "foreign_keys": "ok",
+              "integrity": "ok",
+              "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Databases\\Simulation.sqlite3",
+              "sha256": "a8aa8d095b00a84d7451b9c846a664d9dcd1f5a34bb89dfe2e5c6f4a82d9c1ca",
+              "size_bytes": 84709376
+            },
+            "staged": {
+              "foreign_keys": "ok",
+              "integrity": "ok",
+              "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\databases\\Simulation.sqlite3",
+              "sha256": "ac6305cc36aca877a4a705a2e3cac0b7affd450a17c1ed2a6decfbdb61670b2b",
+              "size_bytes": 84709376
+            }
+          },
+          "snake_app": {
+            "source": {
+              "foreign_keys": "ok",
+              "integrity": "ok",
+              "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football_Snake\\app\\Simulation.sqlite3",
+              "sha256": "6d113b145d20cb7f140ae47b3b1d41e5d0b0dbb5d61e705e0ad4887163c85fed",
+              "size_bytes": 84676608
+            },
+            "staged": {
+              "foreign_keys": "ok",
+              "integrity": "ok",
+              "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\app_bases\\Snake_Simulation.sqlite3",
+              "sha256": "c66e2b255658234f4a5c3ad88f5e346e13ddb7784c4070f48d8e48cc4ce0e995",
+              "size_bytes": 84676608
+            }
+          },
+          "source": {
+            "source": {
+              "foreign_keys": "ok",
+              "integrity": "ok",
+              "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Databases\\Season_Stats_New.sqlite3",
+              "sha256": "cef8d4f1bcc5aab986271c8a355f55cfc31ee00853b8de833d0af9c44553ec6a",
+              "size_bytes": 58961920
+            },
+            "staged": {
+              "foreign_keys": "ok",
+              "integrity": "ok",
+              "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\databases\\Season_Stats_New.sqlite3",
+              "sha256": "7fbdfa1db60dce0326d393ebe4d7afd2680871edf0cbf36e4a96120d0bcb92b2",
+              "size_bytes": 58961920
+            }
+          },
+          "v2_beta": {
+            "source": {
+              "foreign_keys": "ok",
+              "integrity": "ok",
+              "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Databases\\Projection_V2_beta.sqlite3",
+              "sha256": "5d1a0a25d4bd8b7320ac975863af32f3ae59d93e306fdb751466f16b3b8e6a49",
+              "size_bytes": 148971520
+            },
+            "staged": {
+              "foreign_keys": "ok",
+              "integrity": "ok",
+              "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\databases\\Projection_V2_beta.sqlite3",
+              "sha256": "c97fd8a009d315fa80977cd109b4d9c02fbaeb077be850aec1e07f452fe84e84",
+              "size_bytes": 148971520
+            }
+          },
+          "v2_dk": {
+            "source": {
+              "foreign_keys": "ok",
+              "integrity": "ok",
+              "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Databases\\Projection_V2.sqlite3",
+              "sha256": "a209fbe9d441a27bdac372dcb7cdbf327ce2b703bd1b25e8b460c205bd5cafc7",
+              "size_bytes": 150052864
+            },
+            "staged": {
+              "foreign_keys": "ok",
+              "integrity": "ok",
+              "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\databases\\Projection_V2.sqlite3",
+              "sha256": "024b7f232c444dd2af2f2914b808052e82701149d24329e5f494c91c4b251a2c",
+              "size_bytes": 150052864
+            }
+          },
+          "v2_nffc": {
+            "source": {
+              "foreign_keys": "ok",
+              "integrity": "ok",
+              "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Databases\\Projection_V2_nffc.sqlite3",
+              "sha256": "c71a11fa7ba1fcd0a493fde0571d6a8bcee576d4d0e1bd8c6d34f0ddccc985d3",
+              "size_bytes": 147161088
+            },
+            "staged": {
+              "foreign_keys": "ok",
+              "integrity": "ok",
+              "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\databases\\Projection_V2_nffc.sqlite3",
+              "sha256": "acc008a5dec7811020f7e90b6615d64c0be90793293d1bbd574fba82710d74e2",
+              "size_bytes": 147161088
+            }
+          },
+          "v2_nv": {
+            "source": {
+              "foreign_keys": "ok",
+              "integrity": "ok",
+              "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Databases\\Projection_V2_nv.sqlite3",
+              "sha256": "df3263bcd731efd6da65463a1a1f4de004dad3f5b08b377b61e15df7bd18d2eb",
+              "size_bytes": 144506880
+            },
+            "staged": {
+              "foreign_keys": "ok",
+              "integrity": "ok",
+              "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\databases\\Projection_V2_nv.sqlite3",
+              "sha256": "2d6256169c2e93ab7395e9a99b3794b6b056e4bd542c516d0e4739ba7ec2be1e",
+              "size_bytes": 144506880
+            }
+          },
+          "validations": {
+            "source": {
+              "foreign_keys": "ok",
+              "integrity": "ok",
+              "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Databases\\Validations.sqlite3",
+              "sha256": "d5586dc9d5364f804a2fb55ec1952323a3943f756087f6034b7a3354df85aae2",
+              "size_bytes": 28958720
+            },
+            "staged": {
+              "foreign_keys": "ok",
+              "integrity": "ok",
+              "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\databases\\Validations.sqlite3",
+              "sha256": "a38d01cf0fc94ced8737f2c9f26e92bb0b5a558c7884a03c8949a371b01e5b7a",
+              "size_bytes": 28958720
+            }
+          }
+        },
+        "source_market_counts": {
+          "adp_policy_sha256": "fc6a2219b9fcca1bdb44764919c788530d00dccc88161b201d72964c46795140",
+          "adp_policy_version": "canonical_market_adp_family_v2",
+          "dk": 462,
+          "etr": 244,
+          "nffc": 535,
+          "nffc_feed_counts": {
+            "nffc_best_ball_25s50s": 510,
+            "nffc_best_ball_overall": 535
+          },
+          "nffc_feed_pick_boundaries": {
+            "nffc_best_ball_25s50s": 360,
+            "nffc_best_ball_overall": 360
+          },
+          "nffc_pair_agreement": {
+            "common_top_pick_rows": 244,
+            "median_abs_gap": 4.020000000000003,
+            "spearman": 0.9866374236397654
+          }
+        }
+      },
+      "started_at_utc": "2026-08-26T20:40:02.688620+00:00",
+      "status": "completed"
+    },
+    "template_audit_beta": {
+      "status": "pending"
+    },
+    "template_audit_dk": {
+      "status": "pending"
+    },
+    "template_audit_nffc": {
+      "status": "pending"
+    },
+    "template_audit_nv": {
+      "status": "pending"
+    },
+    "v2_beta": {
+      "completed_at_utc": "2026-08-26T20:48:18.490764+00:00",
+      "result": {
+        "feature_mart": {
+          "attempts": [
+            {
+              "attempt": 1,
+              "completed_at_utc": "2026-08-26T20:48:18.490764+00:00",
+              "outcome": "completed",
+              "return_code": 0,
+              "started_at_utc": "2026-08-26T20:47:10.192921+00:00",
+              "will_retry": false
+            }
+          ],
+          "command": [
+            "C:\\Users\\borys\\GitHub\\Fantasy_Football\\.venv_ff_312\\Scripts\\python.exe",
+            "-m",
+            "Scripts.V2.build_milestone_3",
+            "--source-db",
+            "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\databases\\Season_Stats_New.sqlite3",
+            "--output-db",
+            "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\databases\\Projection_V2_beta.sqlite3",
+            "--league",
+            "beta",
+            "--completed-through",
+            "2025",
+            "--projection-through",
+            "2026",
+            "--max-workers",
+            "6",
+            "--reuse-foundation"
+          ],
+          "completed_at_utc": "2026-08-26T20:48:18.490764+00:00",
+          "log": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\logs\\v2_beta.log",
+          "started_at_utc": "2026-08-26T20:47:10.192921+00:00"
+        },
+        "foundation": {
+          "attempts": [
+            {
+              "attempt": 1,
+              "completed_at_utc": "2026-08-26T20:47:10.192921+00:00",
+              "outcome": "completed",
+              "return_code": 0,
+              "started_at_utc": "2026-08-26T20:46:30.414758+00:00",
+              "will_retry": false
+            }
+          ],
+          "command": [
+            "C:\\Users\\borys\\GitHub\\Fantasy_Football\\.venv_ff_312\\Scripts\\python.exe",
+            "-m",
+            "Scripts.V2.build_milestone_2",
+            "--source-db",
+            "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\databases\\Season_Stats_New.sqlite3",
+            "--output-db",
+            "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\databases\\Projection_V2_beta.sqlite3",
+            "--league",
+            "beta",
+            "--completed-through",
+            "2025",
+            "--projection-through",
+            "2026",
+            "--max-workers",
+            "6"
+          ],
+          "completed_at_utc": "2026-08-26T20:47:10.192921+00:00",
+          "log": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\logs\\v2_beta_foundation.log",
+          "started_at_utc": "2026-08-26T20:46:30.414758+00:00"
+        },
+        "process_isolation": "milestone_2_then_milestone_3_reuse"
+      },
+      "started_at_utc": "2026-08-26T20:46:30.409757+00:00",
+      "status": "completed"
+    },
+    "v2_dk": {
+      "completed_at_utc": "2026-08-26T20:43:24.307882+00:00",
+      "result": {
+        "feature_mart": {
+          "attempts": [
+            {
+              "attempt": 1,
+              "completed_at_utc": "2026-08-26T20:42:15.122770+00:00",
+              "failure_class": "windows_stack_buffer_overrun",
+              "outcome": "retryable_native_failure",
+              "return_code": 3221226505,
+              "started_at_utc": "2026-08-26T20:41:25.480524+00:00",
+              "will_retry": true
+            },
+            {
+              "attempt": 2,
+              "completed_at_utc": "2026-08-26T20:43:24.307882+00:00",
+              "outcome": "completed",
+              "return_code": 0,
+              "started_at_utc": "2026-08-26T20:42:15.122770+00:00",
+              "will_retry": false
+            }
+          ],
+          "command": [
+            "C:\\Users\\borys\\GitHub\\Fantasy_Football\\.venv_ff_312\\Scripts\\python.exe",
+            "-m",
+            "Scripts.V2.build_milestone_3",
+            "--source-db",
+            "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\databases\\Season_Stats_New.sqlite3",
+            "--output-db",
+            "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\databases\\Projection_V2.sqlite3",
+            "--league",
+            "dk",
+            "--completed-through",
+            "2025",
+            "--projection-through",
+            "2026",
+            "--max-workers",
+            "6",
+            "--reuse-foundation"
+          ],
+          "completed_at_utc": "2026-08-26T20:43:24.307882+00:00",
+          "log": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\logs\\v2_dk.log",
+          "started_at_utc": "2026-08-26T20:41:25.480524+00:00"
+        },
+        "foundation": {
+          "attempts": [
+            {
+              "attempt": 1,
+              "completed_at_utc": "2026-08-26T20:41:25.480524+00:00",
+              "outcome": "completed",
+              "return_code": 0,
+              "started_at_utc": "2026-08-26T20:40:45.275776+00:00",
+              "will_retry": false
+            }
+          ],
+          "command": [
+            "C:\\Users\\borys\\GitHub\\Fantasy_Football\\.venv_ff_312\\Scripts\\python.exe",
+            "-m",
+            "Scripts.V2.build_milestone_2",
+            "--source-db",
+            "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\databases\\Season_Stats_New.sqlite3",
+            "--output-db",
+            "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\databases\\Projection_V2.sqlite3",
+            "--league",
+            "dk",
+            "--completed-through",
+            "2025",
+            "--projection-through",
+            "2026",
+            "--max-workers",
+            "6"
+          ],
+          "completed_at_utc": "2026-08-26T20:41:25.480524+00:00",
+          "log": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\logs\\v2_dk_foundation.log",
+          "started_at_utc": "2026-08-26T20:40:45.275776+00:00"
+        },
+        "process_isolation": "milestone_2_then_milestone_3_reuse"
+      },
+      "started_at_utc": "2026-08-26T20:40:45.275776+00:00",
+      "status": "completed"
+    },
+    "v2_nffc": {
+      "completed_at_utc": "2026-08-26T20:45:27.444969+00:00",
+      "result": {
+        "feature_mart": {
+          "attempts": [
+            {
+              "attempt": 1,
+              "completed_at_utc": "2026-08-26T20:45:27.444969+00:00",
+              "outcome": "completed",
+              "return_code": 0,
+              "started_at_utc": "2026-08-26T20:44:18.182223+00:00",
+              "will_retry": false
+            }
+          ],
+          "command": [
+            "C:\\Users\\borys\\GitHub\\Fantasy_Football\\.venv_ff_312\\Scripts\\python.exe",
+            "-m",
+            "Scripts.V2.build_milestone_3",
+            "--source-db",
+            "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\databases\\Season_Stats_New.sqlite3",
+            "--output-db",
+            "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\databases\\Projection_V2_nffc.sqlite3",
+            "--league",
+            "nffc",
+            "--completed-through",
+            "2025",
+            "--projection-through",
+            "2026",
+            "--max-workers",
+            "6",
+            "--reuse-foundation"
+          ],
+          "completed_at_utc": "2026-08-26T20:45:27.444969+00:00",
+          "log": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\logs\\v2_nffc.log",
+          "started_at_utc": "2026-08-26T20:44:18.182223+00:00"
+        },
+        "foundation": {
+          "attempts": [
+            {
+              "attempt": 1,
+              "completed_at_utc": "2026-08-26T20:43:25.893311+00:00",
+              "failure_class": "windows_access_violation",
+              "outcome": "retryable_native_failure",
+              "return_code": 3221225477,
+              "started_at_utc": "2026-08-26T20:43:24.324016+00:00",
+              "will_retry": true
+            },
+            {
+              "attempt": 2,
+              "completed_at_utc": "2026-08-26T20:43:37.960932+00:00",
+              "failure_class": "windows_access_violation",
+              "outcome": "retryable_native_failure",
+              "return_code": 3221225477,
+              "started_at_utc": "2026-08-26T20:43:25.893311+00:00",
+              "will_retry": true
+            },
+            {
+              "attempt": 3,
+              "completed_at_utc": "2026-08-26T20:44:18.182223+00:00",
+              "outcome": "completed",
+              "return_code": 0,
+              "started_at_utc": "2026-08-26T20:43:37.960932+00:00",
+              "will_retry": false
+            }
+          ],
+          "command": [
+            "C:\\Users\\borys\\GitHub\\Fantasy_Football\\.venv_ff_312\\Scripts\\python.exe",
+            "-m",
+            "Scripts.V2.build_milestone_2",
+            "--source-db",
+            "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\databases\\Season_Stats_New.sqlite3",
+            "--output-db",
+            "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\databases\\Projection_V2_nffc.sqlite3",
+            "--league",
+            "nffc",
+            "--completed-through",
+            "2025",
+            "--projection-through",
+            "2026",
+            "--max-workers",
+            "6"
+          ],
+          "completed_at_utc": "2026-08-26T20:44:18.182223+00:00",
+          "log": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\logs\\v2_nffc_foundation.log",
+          "started_at_utc": "2026-08-26T20:43:24.324016+00:00"
+        },
+        "process_isolation": "milestone_2_then_milestone_3_reuse"
+      },
+      "started_at_utc": "2026-08-26T20:43:24.307882+00:00",
+      "status": "completed"
+    },
+    "v2_nv": {
+      "completed_at_utc": "2026-08-26T20:50:27.283465+00:00",
+      "result": {
+        "feature_mart": {
+          "attempts": [
+            {
+              "attempt": 1,
+              "completed_at_utc": "2026-08-26T20:49:18.714920+00:00",
+              "failure_class": "windows_access_violation",
+              "outcome": "retryable_native_failure",
+              "return_code": 3221225477,
+              "started_at_utc": "2026-08-26T20:48:57.630925+00:00",
+              "will_retry": true
+            },
+            {
+              "attempt": 2,
+              "completed_at_utc": "2026-08-26T20:50:27.283465+00:00",
+              "outcome": "completed",
+              "return_code": 0,
+              "started_at_utc": "2026-08-26T20:49:18.714920+00:00",
+              "will_retry": false
+            }
+          ],
+          "command": [
+            "C:\\Users\\borys\\GitHub\\Fantasy_Football\\.venv_ff_312\\Scripts\\python.exe",
+            "-m",
+            "Scripts.V2.build_milestone_3",
+            "--source-db",
+            "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\databases\\Season_Stats_New.sqlite3",
+            "--output-db",
+            "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\databases\\Projection_V2_nv.sqlite3",
+            "--league",
+            "nv",
+            "--completed-through",
+            "2025",
+            "--projection-through",
+            "2026",
+            "--max-workers",
+            "6",
+            "--reuse-foundation"
+          ],
+          "completed_at_utc": "2026-08-26T20:50:27.283465+00:00",
+          "log": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\logs\\v2_nv.log",
+          "started_at_utc": "2026-08-26T20:48:57.630925+00:00"
+        },
+        "foundation": {
+          "attempts": [
+            {
+              "attempt": 1,
+              "completed_at_utc": "2026-08-26T20:48:57.630925+00:00",
+              "outcome": "completed",
+              "return_code": 0,
+              "started_at_utc": "2026-08-26T20:48:18.497764+00:00",
+              "will_retry": false
+            }
+          ],
+          "command": [
+            "C:\\Users\\borys\\GitHub\\Fantasy_Football\\.venv_ff_312\\Scripts\\python.exe",
+            "-m",
+            "Scripts.V2.build_milestone_2",
+            "--source-db",
+            "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\databases\\Season_Stats_New.sqlite3",
+            "--output-db",
+            "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\databases\\Projection_V2_nv.sqlite3",
+            "--league",
+            "nv",
+            "--completed-through",
+            "2025",
+            "--projection-through",
+            "2026",
+            "--max-workers",
+            "6"
+          ],
+          "completed_at_utc": "2026-08-26T20:48:57.630925+00:00",
+          "log": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v2\\logs\\v2_nv_foundation.log",
+          "started_at_utc": "2026-08-26T20:48:18.497764+00:00"
+        },
+        "process_isolation": "milestone_2_then_milestone_3_reuse"
+      },
+      "started_at_utc": "2026-08-26T20:48:18.492765+00:00",
+      "status": "completed"
+    },
+    "validate": {
+      "status": "pending"
+    },
+    "weekly_beta": {
+      "status": "pending"
+    },
+    "weekly_dk": {
+      "status": "pending"
+    },
+    "weekly_nffc": {
+      "status": "pending"
+    },
+    "weekly_nv": {
+      "status": "pending"
+    }
+  },
+  "updated_at_utc": "2026-08-26T21:01:21.807782+00:00"
+}

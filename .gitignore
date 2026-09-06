@@ -146,28 +146,26 @@ Website/logs/microblog.log.6
 Website/logs/microblog.log.7
 Website/logs/microblog.log.8
 Website/logs/microblog.log.9
-Data/Databases/Model_Inputs.sqlite3
-Data/Databases/Model_Inputs.sqlite3
-Scripts/Modeling/optuna/weekly_train.sqlite3
-Data/Databases/Model_Inputs.sqlite3
-Scripts/Modeling/optuna/weekly_train.sqlite3
-Data/Databases/Model_Inputs.sqlite3
-Scripts/Modeling/optuna/weekly_train.sqlite3-journal
-Scripts/Modeling/optuna/weekly_train.sqlite3
-Data/Databases/Validations.sqlite3
-Data/Databases/Model_Inputs_next.sqlite3
-Data/Databases/Model_Inputs.sqlite3
-Data/Databases/Model_Inputs.sqlite3
-Data/Databases/Model_Inputs.sqlite3
-Data/Databases/Model_Inputs.sqlite3
+
+# Regenerable model databases. Keep Season_Stats*.sqlite3, Simulation.sqlite3,
+# and source downloads tracked; see docs/runbooks/database_storage.md.
+Data/Databases/Model_Inputs*.sqlite3*
+Data/Databases/Validations.sqlite3*
 Data/Databases/Projection_V2.sqlite3*
 Data/Databases/Projection_V2_*.sqlite3*
 Data/Databases/V2_Parameter_Cache.sqlite3*
 
+# SQLite transient files are not standalone backups.
+*.sqlite3-wal
+*.sqlite3-shm
+*.sqlite3-journal
+
 # Local cutover staging and recoverable database backups
 research/studies/*/staging/databases/
-research/studies/*/staging/*.sqlite3*
+# Include annual replay subfolders such as staging/2022/databases/.
+research/studies/*/staging/**/*.sqlite3*
 research/studies/*/staging/*.log
 research/studies/*/artifacts/local/
 research/studies/*/results/pre_promotion*/
 Data/Production_Refresh_Backups/
+Data/Production_Refresh_Stages/**/*.sqlite3*

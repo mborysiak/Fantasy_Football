@@ -3,7 +3,8 @@
 The manual boundary remains ``Scripts/Data_Generation/1_Update_Projections.py``.
 Once that notebook has populated ``Season_Stats_New.sqlite3``, this command
 rebuilds the canonical inputs, all registered locked V2 scoring objectives, weekly
-templates, auction salaries/reserve inputs, and staged app databases.
+templates, auction salaries/reserve inputs, and staged app
+databases.
 
 By default nothing live is replaced.  Pass ``--promote`` only after the staged
 release and both app smoke tests complete successfully.
@@ -81,7 +82,7 @@ DEFAULT_SELECTION_TRIALS = 1000
 DEFAULT_SELECTION_WORKERS = max(1, min(8, os.cpu_count() or 1))
 DEFAULT_APP_TIMEOUT = 90
 GITHUB_BLOB_LIMIT_BYTES = 100 * 1024 * 1024
-MANIFEST_SCHEMA_VERSION = 6
+MANIFEST_SCHEMA_VERSION = 8
 NATIVE_THREAD_ENVIRONMENT_VARIABLES = (
     "OMP_NUM_THREADS",
     "OPENBLAS_NUM_THREADS",
@@ -254,6 +255,12 @@ WEEKLY_TABLES = (
     "Best_Ball_Weekly_Player_Pool_Audit",
     "Best_Ball_Weekly_Bucket_Audit",
     "Best_Ball_ADP_Audit",
+)
+RETIRED_BREAKOUT_TABLES = (
+    "Breakout_Paired_Templates",
+    "Breakout_Paired_Template_Pools",
+    "Breakout_Paired_Player_Map",
+    "Breakout_Paired_Template_Audit",
 )
 SALARY_TABLES = (
     "Salaries",
@@ -484,6 +491,39 @@ def sqlite_page_usage(path: Path) -> dict[str, int]:
     }
 
 
+def retire_breakout_tables(path: Path) -> dict[str, int]:
+    """Remove only the retired diagnostic tables from a backed-up stage."""
+
+    path = Path(path).resolve()
+    validate_sqlite(path)
+    removed: dict[str, int] = {}
+    with closing(sqlite3.connect(path)) as connection:
+        connection.execute("BEGIN IMMEDIATE")
+        try:
+            for table in RETIRED_BREAKOUT_TABLES:
+                exists = connection.execute(
+                    "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",
+                    (table,),
+                ).fetchone()
+                if exists:
+                    removed[table] = int(connection.execute(
+                        f'SELECT COUNT(*) FROM "{table}"'
+                    ).fetchone()[0])
+                    connection.execute(f'DROP TABLE "{table}"')
+            connection.commit()
+        except Exception:
+            connection.rollback()
+            raise
+    validate_sqlite(path)
+    return removed
+
+
+def require_no_retired_breakout_tables(path: Path) -> None:
+    remaining = sorted(set(database_tables(path)) & set(RETIRED_BREAKOUT_TABLES))
+    if remaining:
+        raise ValueError(f"Retired breakout tables remain in {path}: {remaining}")
+
+
 def vacuum_sqlite(path: Path) -> dict[str, Any]:
     """Compact a staged SQLite artifact and retain an auditable receipt."""
 
@@ -513,21 +553,89 @@ def validate_app_artifact_size(
     *,
     app: str,
     limit_bytes: int = GITHUB_BLOB_LIMIT_BYTES,
+    lfs_tracking: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
-    """Fail before promotion when an app database exceeds GitHub's blob cap."""
+    """Require a regular-size Git blob or verified Git LFS tracking."""
 
     path = Path(path).resolve()
     size_bytes = int(path.stat().st_size)
-    if size_bytes > int(limit_bytes):
+    regular_blob_within_limit = size_bytes <= int(limit_bytes)
+    lfs_tracked = bool((lfs_tracking or {}).get("tracked"))
+    if not regular_blob_within_limit and not lfs_tracked:
         raise ValueError(
             f"{app} app database is {size_bytes:,} bytes after VACUUM; "
-            f"GitHub's configured blob limit is {int(limit_bytes):,} bytes"
+            f"GitHub's configured regular-blob limit is "
+            f"{int(limit_bytes):,} bytes and the destination is not tracked "
+            "by Git LFS"
         )
     return {
         "path": str(path),
         "size_bytes": size_bytes,
         "limit_bytes": int(limit_bytes),
+        "regular_blob_within_limit": regular_blob_within_limit,
+        "git_lfs_tracked": lfs_tracked,
+        "storage_mode": "git_lfs" if lfs_tracked else "regular_git_blob",
+        "lfs_tracking": dict(lfs_tracking or {}),
         "within_limit": True,
+    }
+
+
+def git_lfs_tracking(path: Path, repository_root: Path) -> dict[str, Any]:
+    """Return auditable Git LFS attribute state for one app artifact."""
+
+    path = Path(path).resolve()
+    repository_root = Path(repository_root).resolve()
+    try:
+        relative_path = path.relative_to(repository_root)
+    except ValueError as error:
+        raise ValueError(
+            f"App artifact {path} is outside repository {repository_root}"
+        ) from error
+    command = [
+        "git",
+        "-c",
+        f"safe.directory={repository_root.as_posix()}",
+        "-C",
+        str(repository_root),
+        "check-attr",
+        "filter",
+        "--",
+        relative_path.as_posix(),
+    ]
+    completed = subprocess.run(
+        command,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if completed.returncode:
+        raise RuntimeError(
+            f"Unable to inspect Git LFS tracking for {path}: "
+            f"{completed.stderr.strip()}"
+        )
+    output = completed.stdout.strip()
+    tracked = output.endswith(": filter: lfs")
+    lfs_version = None
+    if tracked:
+        version = subprocess.run(
+            ["git", "lfs", "version"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if version.returncode:
+            raise RuntimeError(
+                f"{path} declares Git LFS but git-lfs is unavailable: "
+                f"{version.stderr.strip()}"
+            )
+        lfs_version = version.stdout.strip()
+    return {
+        "path": str(path),
+        "repository_root": str(repository_root),
+        "relative_path": relative_path.as_posix(),
+        "attribute_output": output,
+        "tracked": tracked,
+        "git_lfs_version": lfs_version,
     }
 
 
@@ -1551,9 +1659,11 @@ def step_compact_simulation(manifest: dict[str, Any]) -> dict[str, Any]:
     """VACUUM the staged source Simulation database before release gates."""
 
     simulation = _resolved_paths(manifest)["staged"]["simulation"]
+    retired_tables = retire_breakout_tables(simulation)
     compaction = vacuum_sqlite(simulation)
     return {
         "database": "simulation",
+        "retired_tables": retired_tables,
         "compaction": compaction,
         "integrity": compaction["after"]["integrity"],
         "foreign_keys": compaction["after"]["foreign_keys"],
@@ -2582,9 +2692,14 @@ def _validate_simulation(
     selection_trials: int,
 ) -> dict[str, Any]:
     cycle = get_production_cycle(year)
+    require_no_retired_breakout_tables(path)
     _require_tables(
         path,
-        (*GOVERNED_HANDOFF_TABLES, *WEEKLY_TABLES, *SALARY_TABLES),
+        (
+            *GOVERNED_HANDOFF_TABLES,
+            *WEEKLY_TABLES,
+            *SALARY_TABLES,
+        ),
     )
     results: dict[str, Any] = {}
     with sqlite3.connect(path) as connection:
@@ -3458,9 +3573,24 @@ def synchronize_sqlite_tables(
 
 def step_prepare_apps(manifest: dict[str, Any]) -> dict[str, Any]:
     paths = _resolved_paths(manifest)
+    live_paths = paths.get("live", {})
+    auction_live = live_paths.get("auction_app")
+    snake_live = live_paths.get("snake_app")
+    auction_lfs_tracking = (
+        git_lfs_tracking(auction_live, Path(auction_live).parent.parent)
+        if auction_live is not None
+        else {"tracked": False, "inspection": "live path unavailable"}
+    )
+    snake_lfs_tracking = (
+        git_lfs_tracking(snake_live, Path(snake_live).parent.parent)
+        if snake_live is not None
+        else {"tracked": False, "inspection": "live path unavailable"}
+    )
+    require_no_retired_breakout_tables(paths["staged"]["simulation"])
     auction_owned_tables = sorted(
         set(database_tables(paths["app_bases"]["auction"]))
         - set(GENERATED_AUCTION_TABLES)
+        - set(RETIRED_BREAKOUT_TABLES)
     )
     auction_owned_before = table_digests(
         paths["app_bases"]["auction"],
@@ -3469,6 +3599,9 @@ def step_prepare_apps(manifest: dict[str, Any]) -> dict[str, Any]:
     auction_receipt = sqlite_backup(
         paths["app_bases"]["auction"],
         paths["app_artifacts"]["auction"],
+    )
+    retired_auction_tables = retire_breakout_tables(
+        paths["app_artifacts"]["auction"]
     )
     auction_counts = synchronize_sqlite_tables(
         paths["staged"]["simulation"],
@@ -3481,6 +3614,7 @@ def step_prepare_apps(manifest: dict[str, Any]) -> dict[str, Any]:
     auction_size_gate = validate_app_artifact_size(
         paths["app_artifacts"]["auction"],
         app="auction",
+        lfs_tracking=auction_lfs_tracking,
     )
     auction_owned_after = table_digests(
         paths["app_artifacts"]["auction"],
@@ -3520,6 +3654,7 @@ def step_prepare_apps(manifest: dict[str, Any]) -> dict[str, Any]:
     snake_size_gate = validate_app_artifact_size(
         paths["app_artifacts"]["snake"],
         app="snake",
+        lfs_tracking=snake_lfs_tracking,
     )
     simulation_tables = database_tables(paths["staged"]["simulation"])
     snake_tables = database_tables(paths["app_artifacts"]["snake"])
@@ -3537,6 +3672,7 @@ def step_prepare_apps(manifest: dict[str, Any]) -> dict[str, Any]:
         "auction": {
             "copy": auction_receipt,
             "generated_table_counts": auction_counts,
+            "retired_tables": retired_auction_tables,
             "app_owned_table_count": len(auction_owned_tables),
             "app_owned_tables_unchanged": True,
             "generated_tables_match_staging": True,

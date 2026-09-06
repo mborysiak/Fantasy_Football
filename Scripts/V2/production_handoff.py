@@ -201,9 +201,6 @@ GOVERNED_PRODUCTION_EXCLUSIONS_BY_YEAR: Mapping[
             "3f0b675d-ef58-5606-8f9e-73bc2a9b4118": (
                 "market_only_without_current_projection_center"
             ),
-            "677b8fa5-8879-5913-8a35-9a71859ab8a3": (
-                "market_only_without_current_projection_center"
-            ),
             "7ae33581-c9ae-51b6-a8d5-fe24f3e5615a": (
                 "market_only_without_current_projection_center"
             ),
@@ -214,9 +211,6 @@ GOVERNED_PRODUCTION_EXCLUSIONS_BY_YEAR: Mapping[
                 "market_only_without_current_projection_center"
             ),
             "380d2c7d-99ef-5ddc-a057-fab93f1480ba": (
-                "market_only_without_current_projection_center"
-            ),
-            "ffc8d08e-a9dd-51af-af68-8b032b066512": (
                 "market_only_without_current_projection_center"
             ),
         },
@@ -234,9 +228,6 @@ GOVERNED_PRODUCTION_EXCLUSIONS_BY_YEAR: Mapping[
             "0fa72b32-393b-5f55-bb48-0f21f5283baf": (
                 "market_only_without_current_projection_center"
             ),
-            "0c370254-2acd-5345-a009-d0744ed3affe": (
-                "market_only_without_current_projection_center"
-            ),
             "31c3fcf7-3f74-524e-8b8f-67177f592742": (
                 "market_only_without_current_projection_center"
             ),
@@ -246,10 +237,10 @@ GOVERNED_PRODUCTION_EXCLUSIONS_BY_YEAR: Mapping[
             "49dce437-30ec-5752-9739-75ed09f72042": (
                 "market_only_without_current_projection_center"
             ),
-            "7ae33581-c9ae-51b6-a8d5-fe24f3e5615a": (
+            "54c9ddab-abf4-5e3a-9ded-da4265515065": (
                 "market_only_without_current_projection_center"
             ),
-            "862eb067-7abb-5156-9cf1-33c3ad11333c": (
+            "7ae33581-c9ae-51b6-a8d5-fe24f3e5615a": (
                 "market_only_without_current_projection_center"
             ),
             "f973b1c8-3470-57f5-bc68-42e35a830411": (

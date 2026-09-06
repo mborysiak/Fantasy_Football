@@ -148,7 +148,8 @@ def test_release_plan_covers_every_downstream_surface():
     assert len(set(refresh.GENERATED_AUCTION_TABLES)) == 20
     assert "V2_Projection_Legacy_Backup" in refresh.GENERATED_AUCTION_TABLES
     assert "Salary_Selection_Premium" in refresh.GENERATED_AUCTION_TABLES
-    assert refresh.MANIFEST_SCHEMA_VERSION == 6
+    assert not set(refresh.RETIRED_BREAKOUT_TABLES) & set(refresh.GENERATED_AUCTION_TABLES)
+    assert refresh.MANIFEST_SCHEMA_VERSION == 8
     assert refresh.DATABASE_FILES["parameter_cache"] == (
         "V2_Parameter_Cache.sqlite3"
     )
@@ -231,6 +232,9 @@ def test_compact_simulation_vacuums_staged_source_and_records_receipt(
             [(index, b"x" * 8192) for index in range(200)],
         )
         connection.execute("DELETE FROM values_table WHERE value > 0")
+        for table in refresh.RETIRED_BREAKOUT_TABLES:
+            connection.execute(f'CREATE TABLE "{table}" (payload BLOB)')
+            connection.execute(f'INSERT INTO "{table}" VALUES (?)', (b"r" * 8192,))
         connection.commit()
     before_digest = refresh.stable_table_digest(simulation, "values_table")
     monkeypatch.setattr(
@@ -249,6 +253,10 @@ def test_compact_simulation_vacuums_staged_source_and_records_receipt(
     assert result["final_state"] == result["compaction"]["after"]
     assert refresh.stable_table_digest(simulation, "values_table") == before_digest
 
+    assert result["retired_tables"] == {t: 1 for t in refresh.RETIRED_BREAKOUT_TABLES}
+    assert refresh.database_tables(simulation) == ["values_table"]
+    assert refresh.retire_breakout_tables(simulation) == {}
+
 
 def test_app_artifact_size_gate_rejects_oversized_database(tmp_path):
     database = tmp_path / "oversized.sqlite3"
@@ -266,6 +274,8 @@ def test_app_artifact_size_gate_rejects_oversized_database(tmp_path):
         limit_bytes=database.stat().st_size,
     )
     assert accepted["within_limit"] is True
+    assert accepted["regular_blob_within_limit"] is True
+    assert accepted["storage_mode"] == "regular_git_blob"
 
     with pytest.raises(ValueError, match="after VACUUM"):
         refresh.validate_app_artifact_size(
@@ -273,6 +283,21 @@ def test_app_artifact_size_gate_rejects_oversized_database(tmp_path):
             app="snake",
             limit_bytes=database.stat().st_size - 1,
         )
+
+    lfs_accepted = refresh.validate_app_artifact_size(
+        database,
+        app="snake",
+        limit_bytes=database.stat().st_size - 1,
+        lfs_tracking={
+            "tracked": True,
+            "relative_path": "app/Simulation.sqlite3",
+            "git_lfs_version": "git-lfs/test",
+        },
+    )
+    assert lfs_accepted["within_limit"] is True
+    assert lfs_accepted["regular_blob_within_limit"] is False
+    assert lfs_accepted["git_lfs_tracked"] is True
+    assert lfs_accepted["storage_mode"] == "git_lfs"
 
 
 def test_prepare_apps_vacuums_both_candidates(tmp_path, monkeypatch):
@@ -295,6 +320,8 @@ def test_prepare_apps_vacuums_both_candidates(tmp_path, monkeypatch):
         [
             "CREATE TABLE generated (value INTEGER, payload BLOB)",
             "INSERT INTO generated VALUES (999, X'01')",
+            'CREATE TABLE Breakout_Paired_Template_Pools (value TEXT)',
+            'INSERT INTO Breakout_Paired_Template_Pools VALUES ("old diagnostic")',
             "CREATE TABLE app_owned (value TEXT)",
             "INSERT INTO app_owned VALUES ('preserve')",
         ],
@@ -325,6 +352,11 @@ def test_prepare_apps_vacuums_both_candidates(tmp_path, monkeypatch):
         auction_artifact,
         ["app_owned"],
     )
+
+    assert result["auction"]["retired_tables"] == {"Breakout_Paired_Template_Pools": 1}
+    assert result["auction"]["app_owned_table_count"] == 1
+    assert "Breakout_Paired_Template_Pools" not in refresh.database_tables(auction_artifact)
+    assert "Breakout_Paired_Template_Pools" in refresh.database_tables(auction_base)
 
 
 def test_source_market_gate_returns_each_governed_nffc_feed(tmp_path):
@@ -2042,3 +2074,9 @@ def test_promote_requires_the_complete_staged_plan():
                 "--promote",
             ]
         )
+
+def test_release_rejects_reintroduced_breakout_tables(tmp_path):
+    database = tmp_path / "Simulation.sqlite3"
+    _database(database, ["CREATE TABLE Breakout_Paired_Player_Map (value TEXT)"])
+    with pytest.raises(ValueError, match="Retired breakout tables remain"):
+        refresh._validate_simulation(database, year=2026, dataset="final_ensemble", selection_trials=1000)

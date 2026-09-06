@@ -1,0 +1,31 @@
+{
+  "actual_2025_status": "descriptive_post_hoc",
+  "actual_weekly_coverage": {
+    "draft_pool_players": 140,
+    "players_with_appearances": 128,
+    "weekly_rows": 1553
+  },
+  "blocks": 8,
+  "candidate_start_budget": 128,
+  "construction_contexts_per_block": 64,
+  "dominant_margin": 50.0,
+  "league": "beta",
+  "margin_scale": 25.0,
+  "opponents": 11,
+  "power_alpha": 0.25,
+  "primary_guardrail": 0.005,
+  "production_changed": false,
+  "runtime_seconds": 26.447712299996056,
+  "salary_source": "actual",
+  "seed": 20260828,
+  "sensitivity_guardrail": 0.01,
+  "unique_candidate_rosters": 1047,
+  "validation_contexts_per_block": 256,
+  "waivers": {
+    "QB": 16.2,
+    "RB": 9.0,
+    "TE": 7.5,
+    "WR": 9.0
+  },
+  "year": 2025
+}

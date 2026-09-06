@@ -1,0 +1,753 @@
+{
+  "baseline_simulation": {
+    "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Databases\\Simulation.sqlite3",
+    "sha256": "a8aa8d095b00a84d7451b9c846a664d9dcd1f5a34bb89dfe2e5c6f4a82d9c1ca",
+    "size_bytes": 84709376
+  },
+  "candidate_simulation": {
+    "path": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Production_Refresh_Stages\\20260826_keeper_projection_refresh_v4\\databases\\Simulation.sqlite3",
+    "sha256": "c15a5270ae946d2bbcb2a064020a41e7db837d266dce9136057a9c299b765300",
+    "size_bytes": 84815872
+  },
+  "dataset": "final_ensemble",
+  "generated_at_utc": "2026-08-26T22:08:07.833125+00:00",
+  "leagues": [
+    "dk",
+    "nffc",
+    "beta",
+    "nv"
+  ],
+  "population": {
+    "added_count": 18,
+    "by_league": [
+      {
+        "added_count": 13,
+        "common_count": 335,
+        "dropped_count": 8,
+        "league": "dk",
+        "new_count": 348,
+        "old_count": 343
+      },
+      {
+        "added_count": 5,
+        "common_count": 377,
+        "dropped_count": 8,
+        "league": "nffc",
+        "new_count": 382,
+        "old_count": 385
+      },
+      {
+        "added_count": 0,
+        "common_count": 324,
+        "dropped_count": 0,
+        "league": "beta",
+        "new_count": 324,
+        "old_count": 324
+      },
+      {
+        "added_count": 0,
+        "common_count": 324,
+        "dropped_count": 0,
+        "league": "nv",
+        "new_count": 324,
+        "old_count": 324
+      }
+    ],
+    "changes": [
+      {
+        "league": "dk",
+        "player": "Gardner Minshew",
+        "player_key": "e3640a49-e4df-5e1d-a699-7c70108146cc",
+        "pos": "QB",
+        "projection_ppg": 14.161378437878653,
+        "status": "added"
+      },
+      {
+        "league": "dk",
+        "player": "Tommy DeVito",
+        "player_key": "36574684-e541-548a-8211-87f865b7cb40",
+        "pos": "QB",
+        "projection_ppg": 14.099638947804218,
+        "status": "added"
+      },
+      {
+        "league": "dk",
+        "player": "Bam Knight",
+        "player_key": "77a88cea-dc92-5d67-8833-d0f7e2ef25d7",
+        "pos": "RB",
+        "projection_ppg": 4.774999886732637,
+        "status": "added"
+      },
+      {
+        "league": "dk",
+        "player": "Devin Neal",
+        "player_key": "6c290e3c-12bd-594c-97ef-001b19bca16a",
+        "pos": "RB",
+        "projection_ppg": 4.257409207638591,
+        "status": "added"
+      },
+      {
+        "league": "dk",
+        "player": "Jam Miller",
+        "player_key": "54c11099-366b-54c6-aaf2-d2e3091d7b5d",
+        "pos": "RB",
+        "projection_ppg": 4.303613487572794,
+        "status": "added"
+      },
+      {
+        "league": "dk",
+        "player": "Malik Davis",
+        "player_key": "a8da1d81-582a-5a09-be1b-39653fd739a0",
+        "pos": "RB",
+        "projection_ppg": 4.905403250402299,
+        "status": "added"
+      },
+      {
+        "league": "dk",
+        "player": "Efton Chism III",
+        "player_key": "0ac6cc9c-394d-5566-bf3c-d84bcdabaa10",
+        "pos": "WR",
+        "projection_ppg": 5.292839879519845,
+        "status": "added"
+      },
+      {
+        "league": "dk",
+        "player": "Jacob Cowing",
+        "player_key": "d756b81b-46dd-500c-8819-40916788e6fd",
+        "pos": "WR",
+        "projection_ppg": 4.563607471370471,
+        "status": "added"
+      },
+      {
+        "league": "dk",
+        "player": "Jalen Brooks",
+        "player_key": "feafc016-8c00-5d21-a5e3-770f92ff1714",
+        "pos": "WR",
+        "projection_ppg": 3.8681422564505366,
+        "status": "added"
+      },
+      {
+        "league": "dk",
+        "player": "Kevin Coleman Jr.",
+        "player_key": "cec3e8c3-e26f-517b-be6b-2859e87221ac",
+        "pos": "WR",
+        "projection_ppg": 4.397457787766249,
+        "status": "added"
+      },
+      {
+        "league": "dk",
+        "player": "Kyle Williams",
+        "player_key": "6b29b830-4d95-5211-8add-69d72ec6fb08",
+        "pos": "WR",
+        "projection_ppg": 4.857986678214943,
+        "status": "added"
+      },
+      {
+        "league": "dk",
+        "player": "Nick Westbrook-Ikhine",
+        "player_key": "692ed3f1-329a-55fe-8573-5c1dcc933ee5",
+        "pos": "WR",
+        "projection_ppg": 3.6016142414652212,
+        "status": "added"
+      },
+      {
+        "league": "dk",
+        "player": "Skyy Moore",
+        "player_key": "507c9477-886c-5087-9499-7df4bd676624",
+        "pos": "WR",
+        "projection_ppg": 3.618890701270626,
+        "status": "added"
+      },
+      {
+        "league": "nffc",
+        "player": "Dare Ogunbowale",
+        "player_key": "fcecb1c3-9ff7-58de-9f94-926e8a029396",
+        "pos": "RB",
+        "projection_ppg": 3.826102073288066,
+        "status": "added"
+      },
+      {
+        "league": "nffc",
+        "player": "Dylan Laube",
+        "player_key": "080dc486-47f0-511e-a876-388d5a4817c2",
+        "pos": "RB",
+        "projection_ppg": 4.176498208015065,
+        "status": "added"
+      },
+      {
+        "league": "nffc",
+        "player": "Jaydn Ott",
+        "player_key": "862eb067-7abb-5156-9cf1-33c3ad11333c",
+        "pos": "RB",
+        "projection_ppg": 4.851561127638355,
+        "status": "added"
+      },
+      {
+        "league": "nffc",
+        "player": "Josh Williams",
+        "player_key": "5d2a04ed-b38e-58ee-913b-0c1094918de7",
+        "pos": "RB",
+        "projection_ppg": 4.165153014987794,
+        "status": "added"
+      },
+      {
+        "league": "nffc",
+        "player": "Demarcus Robinson",
+        "player_key": "80070e8c-0dae-55b3-801f-2ba52b4bb6cd",
+        "pos": "WR",
+        "projection_ppg": 4.356202586741789,
+        "status": "added"
+      },
+      {
+        "league": "dk",
+        "player": "AJ Dillon",
+        "player_key": "c6f2468f-cee8-50a7-8f6d-a391e883055a",
+        "pos": "RB",
+        "projection_ppg": 4.434173690795505,
+        "status": "dropped"
+      },
+      {
+        "league": "dk",
+        "player": "Jerome Ford",
+        "player_key": "d3b5fd11-b421-5bc0-a249-aa9d312aaa76",
+        "pos": "RB",
+        "projection_ppg": 4.885220131991452,
+        "status": "dropped"
+      },
+      {
+        "league": "dk",
+        "player": "Sione Vaki",
+        "player_key": "86bce4ec-ccab-5909-bae0-b4d1f7878f63",
+        "pos": "RB",
+        "projection_ppg": 3.5212055795672246,
+        "status": "dropped"
+      },
+      {
+        "league": "dk",
+        "player": "Eli Stowers",
+        "player_key": "d5bb6fc0-d848-5b92-9507-ac2ecf75fd5c",
+        "pos": "TE",
+        "projection_ppg": 5.386209773826226,
+        "status": "dropped"
+      },
+      {
+        "league": "dk",
+        "player": "Darius Cooper",
+        "player_key": "fd1020a2-7720-5794-8bb2-eef4a5394a32",
+        "pos": "WR",
+        "projection_ppg": 4.020697451793842,
+        "status": "dropped"
+      },
+      {
+        "league": "dk",
+        "player": "Jimmy Horn Jr.",
+        "player_key": "580bbb23-7803-587c-bf86-4bf17ab07000",
+        "pos": "WR",
+        "projection_ppg": 3.975899652831074,
+        "status": "dropped"
+      },
+      {
+        "league": "dk",
+        "player": "John Metchie III",
+        "player_key": "4dc13d99-383e-5c98-ae60-366ec36841b7",
+        "pos": "WR",
+        "projection_ppg": 4.853210677572884,
+        "status": "dropped"
+      },
+      {
+        "league": "dk",
+        "player": "Luke McCaffrey",
+        "player_key": "bcdca427-ca54-552b-8c30-e321d850e9b7",
+        "pos": "WR",
+        "projection_ppg": 4.482470461957443,
+        "status": "dropped"
+      },
+      {
+        "league": "nffc",
+        "player": "Jarrett Stidham",
+        "player_key": "6ae72ad2-b94f-5a80-9815-ce7d7b67d98b",
+        "pos": "QB",
+        "projection_ppg": 17.566738612659616,
+        "status": "dropped"
+      },
+      {
+        "league": "nffc",
+        "player": "Jaleel McLaughlin",
+        "player_key": "dc646c86-7085-5235-aea4-836e38a990dd",
+        "pos": "RB",
+        "projection_ppg": 4.378302494821359,
+        "status": "dropped"
+      },
+      {
+        "league": "nffc",
+        "player": "Brock Wright",
+        "player_key": "926eb4a5-76b9-5300-9b33-d1158b3bc917",
+        "pos": "TE",
+        "projection_ppg": 4.945890468814077,
+        "status": "dropped"
+      },
+      {
+        "league": "nffc",
+        "player": "Barion Brown",
+        "player_key": "1ff9fc6b-fb9c-579c-8e02-1072792c4427",
+        "pos": "WR",
+        "projection_ppg": 4.423861577457123,
+        "status": "dropped"
+      },
+      {
+        "league": "nffc",
+        "player": "Chris Brazzell II",
+        "player_key": "66716a6f-266c-553a-90c5-f716aac7b801",
+        "pos": "WR",
+        "projection_ppg": 5.132680419306294,
+        "status": "dropped"
+      },
+      {
+        "league": "nffc",
+        "player": "Jalen Royals",
+        "player_key": "ba5d9692-01c7-56dc-b82c-998066f2f374",
+        "pos": "WR",
+        "projection_ppg": 4.170682328910394,
+        "status": "dropped"
+      },
+      {
+        "league": "nffc",
+        "player": "Jaylin Lane",
+        "player_key": "3a162382-6d7d-5f57-82fa-0dd84728407a",
+        "pos": "WR",
+        "projection_ppg": 3.87663561905673,
+        "status": "dropped"
+      },
+      {
+        "league": "nffc",
+        "player": "Theo Wease Jr.",
+        "player_key": "85505057-dc92-50e6-b9c1-4eb48eba7fca",
+        "pos": "WR",
+        "projection_ppg": 5.27073582595592,
+        "status": "dropped"
+      }
+    ],
+    "common_count": 1360,
+    "dropped_count": 16,
+    "new_count": 1378,
+    "old_count": 1376
+  },
+  "projections": {
+    "decreases": [
+      {
+        "league": "dk",
+        "new_projection_ppg": 4.064052641744218,
+        "old_projection_ppg": 5.293212697491273,
+        "player": "Roman Hemby",
+        "player_key": "a7be06c2-0f33-5ff3-bb5b-2aad16a268d8",
+        "pos": "RB",
+        "projection_delta_ppg": -1.2291600557470552
+      },
+      {
+        "league": "beta",
+        "new_projection_ppg": 4.345521491706898,
+        "old_projection_ppg": 5.460536147075019,
+        "player": "Xavier Hutchinson",
+        "player_key": "a0163b54-9746-56a6-951f-7dc7800e0b7e",
+        "pos": "WR",
+        "projection_delta_ppg": -1.115014655368121
+      },
+      {
+        "league": "nffc",
+        "new_projection_ppg": 5.274856156251044,
+        "old_projection_ppg": 6.372377890074702,
+        "player": "Xavier Hutchinson",
+        "player_key": "a0163b54-9746-56a6-951f-7dc7800e0b7e",
+        "pos": "WR",
+        "projection_delta_ppg": -1.0975217338236583
+      },
+      {
+        "league": "beta",
+        "new_projection_ppg": 11.240811857827397,
+        "old_projection_ppg": 12.256885160572638,
+        "player": "Tyson Bagent",
+        "player_key": "0e029f6b-b119-5b84-a31f-ff4b7c9e319e",
+        "pos": "QB",
+        "projection_delta_ppg": -1.0160733027452409
+      },
+      {
+        "league": "dk",
+        "new_projection_ppg": 5.379898719929863,
+        "old_projection_ppg": 6.394990179801968,
+        "player": "Xavier Hutchinson",
+        "player_key": "a0163b54-9746-56a6-951f-7dc7800e0b7e",
+        "pos": "WR",
+        "projection_delta_ppg": -1.0150914598721048
+      },
+      {
+        "league": "dk",
+        "new_projection_ppg": 6.552220666760587,
+        "old_projection_ppg": 7.528305283010446,
+        "player": "Jaylin Noel",
+        "player_key": "a1feaa71-a8f7-5a3f-9346-108bac317ca3",
+        "pos": "WR",
+        "projection_delta_ppg": -0.9760846162498584
+      },
+      {
+        "league": "nffc",
+        "new_projection_ppg": 7.177415939618079,
+        "old_projection_ppg": 8.132827253386958,
+        "player": "Tank Dell",
+        "player_key": "2f721bed-8e17-5b45-97ae-69c039387004",
+        "pos": "WR",
+        "projection_delta_ppg": -0.9554113137688791
+      },
+      {
+        "league": "nffc",
+        "new_projection_ppg": 6.555541367432103,
+        "old_projection_ppg": 7.393633668713698,
+        "player": "Jaylin Noel",
+        "player_key": "a1feaa71-a8f7-5a3f-9346-108bac317ca3",
+        "pos": "WR",
+        "projection_delta_ppg": -0.8380923012815948
+      },
+      {
+        "league": "nv",
+        "new_projection_ppg": 4.577393145561448,
+        "old_projection_ppg": 5.375103330267439,
+        "player": "Xavier Hutchinson",
+        "player_key": "a0163b54-9746-56a6-951f-7dc7800e0b7e",
+        "pos": "WR",
+        "projection_delta_ppg": -0.7977101847059913
+      },
+      {
+        "league": "nv",
+        "new_projection_ppg": 10.973920306097824,
+        "old_projection_ppg": 11.708943438532836,
+        "player": "Tua Tagovailoa",
+        "player_key": "abfaa351-4b53-5eaa-a304-9825243dc5cc",
+        "pos": "QB",
+        "projection_delta_ppg": -0.7350231324350123
+      }
+    ],
+    "increases": [
+      {
+        "league": "dk",
+        "new_projection_ppg": 7.024553625849134,
+        "old_projection_ppg": 5.7993467343847565,
+        "player": "Mike Washington Jr.",
+        "player_key": "0d7ac08b-8c65-5007-be21-41eeecf0bc38",
+        "pos": "RB",
+        "projection_delta_ppg": 1.225206891464378
+      },
+      {
+        "league": "beta",
+        "new_projection_ppg": 6.635166015276947,
+        "old_projection_ppg": 5.455669861786429,
+        "player": "Mike Washington Jr.",
+        "player_key": "0d7ac08b-8c65-5007-be21-41eeecf0bc38",
+        "pos": "RB",
+        "projection_delta_ppg": 1.1794961534905175
+      },
+      {
+        "league": "nv",
+        "new_projection_ppg": 6.664746603142773,
+        "old_projection_ppg": 5.501751372272661,
+        "player": "Mike Washington Jr.",
+        "player_key": "0d7ac08b-8c65-5007-be21-41eeecf0bc38",
+        "pos": "RB",
+        "projection_delta_ppg": 1.162995230870112
+      },
+      {
+        "league": "nffc",
+        "new_projection_ppg": 7.626122718411122,
+        "old_projection_ppg": 6.605374496124928,
+        "player": "Kayshon Boutte",
+        "player_key": "e46c3203-ffb0-56b9-9955-20082151e676",
+        "pos": "WR",
+        "projection_delta_ppg": 1.020748222286194
+      },
+      {
+        "league": "nffc",
+        "new_projection_ppg": 6.76133389299385,
+        "old_projection_ppg": 5.81261986018085,
+        "player": "Mike Washington Jr.",
+        "player_key": "0d7ac08b-8c65-5007-be21-41eeecf0bc38",
+        "pos": "RB",
+        "projection_delta_ppg": 0.9487140328130002
+      },
+      {
+        "league": "dk",
+        "new_projection_ppg": 7.727733434923807,
+        "old_projection_ppg": 6.793054723697409,
+        "player": "Kayshon Boutte",
+        "player_key": "e46c3203-ffb0-56b9-9955-20082151e676",
+        "pos": "WR",
+        "projection_delta_ppg": 0.9346787112263977
+      },
+      {
+        "league": "nv",
+        "new_projection_ppg": 6.612421903830779,
+        "old_projection_ppg": 5.76163282184294,
+        "player": "Kayshon Boutte",
+        "player_key": "e46c3203-ffb0-56b9-9955-20082151e676",
+        "pos": "WR",
+        "projection_delta_ppg": 0.8507890819878394
+      },
+      {
+        "league": "beta",
+        "new_projection_ppg": 6.528913182298553,
+        "old_projection_ppg": 5.715642765565032,
+        "player": "Kayshon Boutte",
+        "player_key": "e46c3203-ffb0-56b9-9955-20082151e676",
+        "pos": "WR",
+        "projection_delta_ppg": 0.8132704167335216
+      },
+      {
+        "league": "nv",
+        "new_projection_ppg": 7.786418521296606,
+        "old_projection_ppg": 7.068218171036144,
+        "player": "Woody Marks",
+        "player_key": "83d966f5-e6fc-5d52-a2fe-ff361de67e10",
+        "pos": "RB",
+        "projection_delta_ppg": 0.7182003502604619
+      },
+      {
+        "league": "nffc",
+        "new_projection_ppg": 6.547492725008456,
+        "old_projection_ppg": 5.907439442536344,
+        "player": "Malachi Fields",
+        "player_key": "0436eb8c-723b-502f-8cf4-571d04c42cd9",
+        "pos": "WR",
+        "projection_delta_ppg": 0.6400532824721124
+      }
+    ]
+  },
+  "report_version": "production_release_change_report_v1",
+  "retrospective": false,
+  "run_id": "20260826T212331Z_dbd5cac4",
+  "top_n": 10,
+  "weighted_template_residuals": {
+    "definition": "sum(template_sample_prob * active_ppg_resid) / sum(template_sample_prob)",
+    "negative": [
+      {
+        "donor_count": 80,
+        "league": "beta",
+        "new_projection_ppg": 13.175518041403143,
+        "new_weighted_template_residual": -9.301685580864728,
+        "old_weighted_template_residual": -9.555599508784011,
+        "player": "Jameis Winston",
+        "player_key": "beb784d7-8af2-5381-873e-2287a37d4f37",
+        "pos": "QB",
+        "weighted_template_residual_delta": 0.25391392791928347
+      },
+      {
+        "donor_count": 80,
+        "league": "dk",
+        "new_projection_ppg": 15.269831008881292,
+        "new_weighted_template_residual": -8.956198171427184,
+        "old_weighted_template_residual": -9.280911102226344,
+        "player": "Jameis Winston",
+        "player_key": "beb784d7-8af2-5381-873e-2287a37d4f37",
+        "pos": "QB",
+        "weighted_template_residual_delta": 0.3247129307991603
+      },
+      {
+        "donor_count": 80,
+        "league": "beta",
+        "new_projection_ppg": 13.32578871470171,
+        "new_weighted_template_residual": -8.859713628419943,
+        "old_weighted_template_residual": -8.81352818986375,
+        "player": "Justin Fields",
+        "player_key": "f9b1a774-f2ec-541c-870e-a4373e3cc9ca",
+        "pos": "QB",
+        "weighted_template_residual_delta": -0.0461854385561935
+      },
+      {
+        "donor_count": 80,
+        "league": "dk",
+        "new_projection_ppg": 15.453334593188828,
+        "new_weighted_template_residual": -8.803006611475526,
+        "old_weighted_template_residual": -9.113898175868654,
+        "player": "Justin Fields",
+        "player_key": "f9b1a774-f2ec-541c-870e-a4373e3cc9ca",
+        "pos": "QB",
+        "weighted_template_residual_delta": 0.3108915643931276
+      },
+      {
+        "donor_count": 80,
+        "league": "dk",
+        "new_projection_ppg": 15.799451475686531,
+        "new_weighted_template_residual": -8.641024318151512,
+        "old_weighted_template_residual": -8.608815764383067,
+        "player": "J.J. McCarthy",
+        "player_key": "df8422ce-da76-5999-80be-a47aead4fc59",
+        "pos": "QB",
+        "weighted_template_residual_delta": -0.032208553768445114
+      },
+      {
+        "donor_count": 80,
+        "league": "beta",
+        "new_projection_ppg": 13.817737429920234,
+        "new_weighted_template_residual": -8.553366408754846,
+        "old_weighted_template_residual": -8.573724281670495,
+        "player": "J.J. McCarthy",
+        "player_key": "df8422ce-da76-5999-80be-a47aead4fc59",
+        "pos": "QB",
+        "weighted_template_residual_delta": 0.020357872915649722
+      },
+      {
+        "donor_count": 80,
+        "league": "dk",
+        "new_projection_ppg": 14.396081475661548,
+        "new_weighted_template_residual": -8.530994491174717,
+        "old_weighted_template_residual": -8.601587478056805,
+        "player": "Kyle Allen",
+        "player_key": "35d5ce2f-914c-5098-8b03-22f5a120ba0c",
+        "pos": "QB",
+        "weighted_template_residual_delta": 0.07059298688208848
+      },
+      {
+        "donor_count": 80,
+        "league": "beta",
+        "new_projection_ppg": 13.057260979078576,
+        "new_weighted_template_residual": -8.402632476693531,
+        "old_weighted_template_residual": -8.509140440658031,
+        "player": "Mac Jones",
+        "player_key": "11092b99-31c6-504d-8390-0def87d4a8d5",
+        "pos": "QB",
+        "weighted_template_residual_delta": 0.10650796396449991
+      },
+      {
+        "donor_count": 80,
+        "league": "dk",
+        "new_projection_ppg": 14.875866048795594,
+        "new_weighted_template_residual": -8.040885240742204,
+        "old_weighted_template_residual": -8.023030031468371,
+        "player": "Mac Jones",
+        "player_key": "11092b99-31c6-504d-8390-0def87d4a8d5",
+        "pos": "QB",
+        "weighted_template_residual_delta": -0.017855209273832884
+      },
+      {
+        "donor_count": 80,
+        "league": "beta",
+        "new_projection_ppg": 12.578383472684942,
+        "new_weighted_template_residual": -8.022766897086987,
+        "old_weighted_template_residual": -7.64236032971261,
+        "player": "Davis Mills",
+        "player_key": "21abb04f-3faa-5349-a5e7-44ae9d017d41",
+        "pos": "QB",
+        "weighted_template_residual_delta": -0.3804065673743766
+      }
+    ],
+    "positive": [
+      {
+        "donor_count": 80,
+        "league": "nv",
+        "new_projection_ppg": 10.649424837965768,
+        "new_weighted_template_residual": 8.24947002998163,
+        "old_weighted_template_residual": 8.269810934789213,
+        "player": "Carson Beck",
+        "player_key": "736dfc1c-7430-55de-a789-0c02d7c10e60",
+        "pos": "QB",
+        "weighted_template_residual_delta": -0.02034090480758266
+      },
+      {
+        "donor_count": 80,
+        "league": "nv",
+        "new_projection_ppg": 10.838422296401939,
+        "new_weighted_template_residual": 8.057389282834725,
+        "old_weighted_template_residual": 8.00390387703574,
+        "player": "Quinn Ewers",
+        "player_key": "beb14663-23e4-58d0-9a94-53892d6a2884",
+        "pos": "QB",
+        "weighted_template_residual_delta": 0.05348540579898575
+      },
+      {
+        "donor_count": 80,
+        "league": "nv",
+        "new_projection_ppg": 9.71638849554319,
+        "new_weighted_template_residual": 8.041070176089455,
+        "old_weighted_template_residual": 8.063749100938654,
+        "player": "Cade Klubnik",
+        "player_key": "d314a164-66a8-5d44-b902-6f75546abc63",
+        "pos": "QB",
+        "weighted_template_residual_delta": -0.022678924849198978
+      },
+      {
+        "donor_count": 80,
+        "league": "nv",
+        "new_projection_ppg": 10.767234003564893,
+        "new_weighted_template_residual": 7.822757150145029,
+        "old_weighted_template_residual": 7.818095105269236,
+        "player": "Joe Milton III",
+        "player_key": "03b52b57-9d0c-5f61-8a0f-426cce0fc10f",
+        "pos": "QB",
+        "weighted_template_residual_delta": 0.00466204487579347
+      },
+      {
+        "donor_count": 80,
+        "league": "nv",
+        "new_projection_ppg": 9.927722725595912,
+        "new_weighted_template_residual": 7.754134735278572,
+        "old_weighted_template_residual": 7.755923583446856,
+        "player": "Will Howard",
+        "player_key": "ab838654-7269-5096-8383-8d4761716bba",
+        "pos": "QB",
+        "weighted_template_residual_delta": -0.001788848168284396
+      },
+      {
+        "donor_count": 80,
+        "league": "nv",
+        "new_projection_ppg": 10.746549652291959,
+        "new_weighted_template_residual": 7.537099620703681,
+        "old_weighted_template_residual": 7.4176947804909235,
+        "player": "Tyson Bagent",
+        "player_key": "0e029f6b-b119-5b84-a31f-ff4b7c9e319e",
+        "pos": "QB",
+        "weighted_template_residual_delta": 0.11940484021275743
+      },
+      {
+        "donor_count": 80,
+        "league": "nv",
+        "new_projection_ppg": 10.775431052608175,
+        "new_weighted_template_residual": 7.4558390533746115,
+        "old_weighted_template_residual": 7.547142368823248,
+        "player": "Riley Leonard",
+        "player_key": "cd23375c-f224-5388-bda7-06939896b396",
+        "pos": "QB",
+        "weighted_template_residual_delta": -0.0913033154486369
+      },
+      {
+        "donor_count": 80,
+        "league": "nv",
+        "new_projection_ppg": 11.490352225993952,
+        "new_weighted_template_residual": 7.3849844157324895,
+        "old_weighted_template_residual": 7.304545965310777,
+        "player": "Justin Fields",
+        "player_key": "f9b1a774-f2ec-541c-870e-a4373e3cc9ca",
+        "pos": "QB",
+        "weighted_template_residual_delta": 0.08043845042171238
+      },
+      {
+        "donor_count": 80,
+        "league": "nv",
+        "new_projection_ppg": 10.370625865171192,
+        "new_weighted_template_residual": 7.28168320300973,
+        "old_weighted_template_residual": 7.282119521703042,
+        "player": "Kenny Pickett",
+        "player_key": "dbddf1a9-f4f2-58d9-b145-32dd70ec0394",
+        "pos": "QB",
+        "weighted_template_residual_delta": -0.00043631869331228756
+      },
+      {
+        "donor_count": 80,
+        "league": "nv",
+        "new_projection_ppg": 10.39302642421138,
+        "new_weighted_template_residual": 7.079132409856644,
+        "old_weighted_template_residual": 7.031035506102706,
+        "player": "Tyrod Taylor",
+        "player_key": "74a040f9-d7fa-5d7f-b1db-635f481002ea",
+        "pos": "QB",
+        "weighted_template_residual_delta": 0.04809690375393849
+      }
+    ]
+  },
+  "year": 2026
+}

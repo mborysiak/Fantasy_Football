@@ -1,0 +1,36 @@
+{
+  "point": {
+    "controlled_at_least_3_positions_nonworse": false,
+    "controlled_at_least_6_season_wins": false,
+    "controlled_player_interval_upper_nonpositive": false,
+    "controlled_pooled_improvement_at_least_0_001": true,
+    "controlled_recent_nonworse": false,
+    "controlled_season_interval_upper_nonpositive": false,
+    "production_pooled_nonworse": true,
+    "production_recent_nonworse": false
+  },
+  "point_all_pass": false,
+  "tail": {
+    "plus3_auc_nonworse": false,
+    "plus3_brier_improves": false,
+    "plus3_recent_brier_nonworse": false,
+    "plus3_season_interval_upper_nonpositive": false,
+    "plus5_auc_nonworse": false,
+    "plus5_brier_improves": false,
+    "plus5_recent_brier_nonworse": false,
+    "plus5_season_interval_upper_nonpositive": false
+  },
+  "tail_all_pass": false,
+  "template": {
+    "full_contribution_crps_nonworse": false,
+    "full_impact_auc_nonworse": false,
+    "full_impact_brier_improves": false,
+    "full_played_crps_within_0_25_percent": true,
+    "full_plus5_auc_nonworse": true,
+    "full_plus5_brier_improves": false,
+    "full_ppg_crps_nonworse": true,
+    "recent_impact_brier_nonworse": false,
+    "recent_plus5_brier_nonworse": true
+  },
+  "template_all_pass": false
+}

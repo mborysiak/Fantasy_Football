@@ -1,6 +1,6 @@
 # Best-Ball Weekly Tables Contract
 
-Last updated: 2026-08-13
+Last updated: 2026-09-05
 
 ## Owner
 
@@ -108,6 +108,25 @@ Important columns:
 - `Best_Ball_Weekly_Player_Pool_Audit`: current-player pool quality checks.
 - `Best_Ball_Weekly_Bucket_Audit`: current vs historical bucket comparability.
 - `Best_Ball_ADP_Audit`: current-player ADP availability/join review.
+
+## Retired Paired Breakout Research Tables
+
+As of 2026-09-05, the four `Breakout_Paired_*` tables are absent from the
+production source, Auction, and Snake databases. They powered only the retired
+Auction breakout explorer and never changed projections, salaries, weekly
+scoring, roster optimization, or bids. All `Best_Ball_Weekly_*` tables above
+remain in the production contract.
+
+Manifest schema 8 no longer builds or validates the paired-breakout surface.
+Source compaction removes inherited retired tables, release validation rejects
+their reintroduction, and Auction preparation removes inherited copies instead
+of treating them as app-owned data. Snake still receives the full remaining
+source database.
+
+`Scripts/Modeling/build_paired_breakout_templates.py` remains a research builder:
+`--simulation-db` is read-only and `--output-db` is required and must name a
+separate research artifact. App sync is no longer supported. See
+`docs/runbooks/database_storage.md` for retention and recovery details.
 
 ## League-Scoring Boundary
 

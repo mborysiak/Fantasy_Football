@@ -1594,6 +1594,7 @@ def remove_outliers(salaries):
                     ['Ronald Jones', 2020], #fournette came
                     ['Derrius Guice', 2019], #injured
                     ['Brian Robinson', 2022], #shot
+                    ['Josh Jacobs', 2026], #suspension risk depressed auction price
                   #  ['Jonathan Taylor', 2023] # pup / holdout
                     ]
     for p, y in outlier_list:

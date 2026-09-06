@@ -1,0 +1,38 @@
+{
+  "source_db": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Databases\\Simulation.sqlite3",
+  "app_db": "C:\\Users\\borys\\GitHub\\Fantasy_Football_App\\app\\Simulation.sqlite3",
+  "table_counts": {
+    "Breakout_Paired_Templates": {
+      "source": 11867,
+      "app": 11867
+    },
+    "Breakout_Paired_Template_Pools": {
+      "source": 93360,
+      "app": 93360
+    },
+    "Breakout_Paired_Player_Map": {
+      "source": 1167,
+      "app": 1167
+    },
+    "Breakout_Paired_Template_Audit": {
+      "source": 4,
+      "app": 4
+    }
+  },
+  "exact_table_parity": {
+    "Breakout_Paired_Templates": true,
+    "Breakout_Paired_Template_Pools": true,
+    "Breakout_Paired_Player_Map": true,
+    "Breakout_Paired_Template_Audit": true
+  },
+  "source_integrity": [
+    "ok"
+  ],
+  "app_integrity": [
+    "ok"
+  ],
+  "all_probability_sums_one": true,
+  "all_pools_eighty": true,
+  "salary_match_feature_count": 0,
+  "invalid_appearance_rows": 0
+}

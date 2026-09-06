@@ -1,0 +1,35 @@
+{
+  "bootstrap_iterations": 2000,
+  "database": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\Data\\Databases\\Projection_V2.sqlite3",
+  "database_sha256": "56E0D46C885F3498A52A6FB2C267F8A40E53CA195F35A6A43257D8B95822F342",
+  "feature_run_id": "milestone_3_20260828T220116Z_117cfe38",
+  "feature_spec": {
+    "configured_points_complete_required": true,
+    "incumbent_provider_count_control": "projection_provider_count",
+    "minimum_providers": 3,
+    "primary_formula": "bull_gap / sqrt(abs(provider_ppg_median)^2 + 5^2)",
+    "primary_point_variant": "smooth_k5",
+    "primary_tail_variant": "tail_smooth_k5",
+    "primary_template_method": "smooth_k5_add_w050",
+    "provider_value": "provider_points_per_team_game",
+    "sensitivities": [
+      "raw_gap",
+      "smooth_k3",
+      "smooth_k8",
+      "hard_floor_k5",
+      "additive_k5"
+    ],
+    "sensitivity_promotion_eligible": false,
+    "source_table": "player_season_projection_values"
+  },
+  "incumbent_reproduction_max_abs_delta": 1.0658141036401503e-14,
+  "league": "dk",
+  "lock_version": "v2_conditional_ppg_2026_candidate_v1",
+  "locked_created_at_utc": "2026-08-28T22:12:15+00:00",
+  "model_run_id": "v2_locked_final_dk_20260828T220817Z_cdd32491",
+  "parent_study": "C:\\Users\\borys\\GitHub\\Fantasy_Football\\research\\studies\\2026-08-29_v2_asymmetric_expert_projection\\run_study.py",
+  "runtime_seconds": 386.4121101000346,
+  "scoring_hash": "ffd5380565fe3f79beadf882313f7071e869807a3b684be52ca0f35394cf5f70",
+  "template_bootstrap_iterations": 2000,
+  "templates_skipped": false
+}

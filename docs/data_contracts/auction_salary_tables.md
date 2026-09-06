@@ -29,7 +29,8 @@ changed file before promotion.
 The primary key is `(year, league, player)`. All keepers in the active league
 must be present before rebuilding salary predictions because the same input
 drives keeper inflation and position-specific keeper-value features. The active
-2026 beta slice has 14 keepers, all with canonical keys; a unique
+2026 beta preseason slice has 14 keepers spending `$597`, all with canonical
+keys; a unique
 `(year, league, player_key)` index prevents identity duplication.
 
 ## Governed Salary Source Ingestion
@@ -314,12 +315,11 @@ from a centered matched weekly donor; current QB donor p90 standard deviation
 was 9.35 times the historical projection-residual value. The centered donor p90
 remains available as a diagnostic, not a salary-model input.
 
-The current 2026 beta `Salaries_Pred` slice is keyed to exactly the 324-player
-production population. All 324 rows use the governed `model_inputs_projonly`
-population route, and all 14 keepers have canonical keys. Tucker Kraft is kept
-at `$11`; Puka Nacua is available in the non-keeper pool. After keeper
-commitments totaling `$441`, the highest 142 non-keeper point salaries total
-exactly the `$3,135` available market budget.
+The current 2026 beta `Salaries_Pred` slice is keyed to exactly the 323-player
+production population. All 323 rows use the governed `model_inputs_projonly`
+population route, and all 14 keepers have canonical keys. After keeper
+commitments totaling `$597`, the highest 142 non-keeper point salaries total
+exactly the `$2,979` available market budget.
 
 The registered NV build uses the same v6 feature and additive-calibration
 method against the independent `Projection_V2_nv.sqlite3` population. It
@@ -381,6 +381,93 @@ uses recorded keeper prices, skips remaining-market salary rescaling, and
 disables the optimizer-selection reserve. Predicted salaries remain the
 default. Random variation can still change modeled weekly outcomes, so
 variation 0 is the baseline hindsight view.
+
+When the app database contains the completed `Actual_Salaries` slice, Actual
+mode also takes keeper membership from that result table rather than assuming
+the preseason `League_Keepers` membership remained unchanged. This preserves
+late keeper additions while leaving the predicted-salary context tied to the
+preseason keeper input. Older actual slices without app-side result rows fall
+back to `League_Keepers` and retain the recorded-price overlay.
+
+The completed 2026 Beta result contains 180 unique players totaling `$3,581`:
+156 QB/RB/WR/TE rows totaling `$3,541` and 24 K/DST rows totaling `$40`.
+Fifteen rows are marked as keepers and total `$608`; Jayden Daniels at `$11`
+is the result-only keeper absent from the 14-player preseason input. The
+published `beta_actual` app slice keeps the exact 156-player offensive pool,
+and the app-side actual result slice makes all 15 realized keepers unavailable
+to the auction pool by default.
+
+Josh Jacobs' `$26` result is retained exactly for Actual mode but is excluded
+from salary-model fitting by the governed player-season outlier list in
+`s4_Salaries_Injuries.py`. His approximately `$31` discount to the locked
+pre-draft point salary reflects suspension risk rather than an ordinary market
+clearing observation and therefore must not shift 2027+ comparable-player
+salary estimates.
+
+### Isolated 2022-2025 Beta Historical Replays
+
+`Scripts/Modeling/build_historical_auction_replay.py` builds app-compatible
+2022-2025 Beta review surfaces without registering those years as production cycles and
+without writing the live model or app databases. Its default artifact is
+`research/studies/2026-08-26_auction_2025_historical_replay/staging/databases/Simulation.sqlite3`.
+The builder copies every database it consumes into that ignored staging
+directory, publishes the historical slices, builds weekly maps with
+`FF_HISTORICAL_AUCTION_REPLAY=1`, and never performs app synchronization. The
+reviewed invocation is:
+
+```powershell
+.\.venv_ff_312\Scripts\python.exe `
+  Scripts/Modeling/build_historical_auction_replay.py `
+  --year 2025 --league beta --replace-stage
+```
+
+Reviewed replay contracts also cover 2022-2024. Their primary projection and
+salary surfaces are trained and calibrated only through the prior year, with
+the same 2026 model-specification caveat. Five drafted offensive players absent
+from the corresponding validation surfaces—Trey Lance (2022), Anthony
+Richardson and Rashaad Penny (2023), and Jonathon Brooks and MarShawn Lloyd
+(2024)—use only their target-year V2 multi-provider preseason point center.
+They receive no predicted salary fallback; the research runs use the published
+actual auction-price slice.
+
+No saved ETR board exists for 2022-2024. Those isolated stages publish a
+labeled, deterministic eligibility order from target-year V2 preseason
+`adp_median`, then preseason `expert_rank_median`; remaining unranked fringe
+players are placed last using their preseason projection rank. Weekly donors
+are capped at 2021, 2022, and 2023 respectively. These fallback ranks are
+replay-only and are not copied into the live 2026 database.
+
+This is a **current-method rolling-origin replay**, not a fresh 2025 method
+holdout. The 305 primary projection and salary rows use data and residual
+calibration only through 2024, while their model specification is recorded as
+of 2026. Four additional players have both a saved 2025 preseason projection
+and saved predicted salary but are absent from the current-method population:
+Austin Ekeler, James Conner, Najee Harris, and Roschon Johnson. The fallback
+rule takes the complete saved projection/salary intersection before looking at
+draft results, so the added population is not chosen from the realized roster.
+The combined 309-player curve receives one additive floor-constrained shift and
+retains the exact `$3,169` open-market budget across 141 slots.
+
+The app-facing actual-price slice contains all 156 drafted offensive slots from
+the 179-row raw auction result; K/DEF rows remain outside the offensive app.
+All 15 keepers and their `$407` commitment are preserved. The saved 238-player
+ETR board is canonically keyed and receives 2025 V2 position authority and
+derived position ranks. Players beyond that saved rank depth use the governed
+model-context ADP fallback.
+
+Historical weekly donors are capped at 2024 and written under
+`league='beta_2025_replay'`. Pool rows retain `pool_version='beta'` and point to
+that replay-only namespace through `template_league`, allowing the 2025 and
+2026 maps to coexist in the isolated database without sharing incompatible
+donor centers. Next-year keeper discovery and the salary-selection premium are
+disabled because no causal 2025 next-year/premium publication exists. These
+choices and all row counts, cutoffs, hashes, fallback players, and salary
+normalization totals are persisted in `Auction_Historical_Replay_Context`.
+
+To review the artifact in `Fantasy_Football_App`, point
+`AUCTION_SIMULATION_DB` at the staged absolute path and set
+`FF_CURRENT_SEASON=2025`. The normal year/salary selectors then expose both
+predicted and actual 2025 Beta contexts.
 
 For each ILP iteration, the app calculates remaining league money and slots from
 all keeper commitments plus entered non-keeper auction results. It then rescales
@@ -453,8 +540,8 @@ zero. Enabling it applies the persisted reserve for an immediate comparison;
 the control never modifies the premium table.
 
 The current 2026 v6 refresh completed 1,000/1,000 premium-free Target rosters
-and published 310 non-keeper rows. Its expected 13-player roster reserve is
-approximately `$9.10`, and the largest applied player reserve is `$3.6562`.
+and published 309 non-keeper rows. Its expected 13-player roster reserve is
+approximately `$8.8068`, and the largest applied player reserve is `$4.0781`.
 Historical calibrator rows remain on the validated v5 surface while
 the current seed uses v6; this transfer is explicitly labeled
 `historical_v5_selection_surface_to_current_v6_v1`. On common current players,

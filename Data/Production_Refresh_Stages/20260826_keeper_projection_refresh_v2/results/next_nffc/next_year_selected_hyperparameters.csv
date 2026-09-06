@@ -1,0 +1,81 @@
+candidate_id,forecast_origin,latest_usable_inner_origin,model_name,parameters_json,selection_end_origin,selection_metric,selection_score,selection_seasons,selection_source,selection_start_origin
+1,2011,2009,next_residual_lasso,"{""alpha"": 0.03}",,rmse,,0,fixed_default_insufficient_prior,
+1,2012,2010,next_residual_lasso,"{""alpha"": 0.03}",,rmse,,0,fixed_default_insufficient_prior,
+1,2013,2011,next_residual_lasso,"{""alpha"": 0.03}",,rmse,,0,fixed_default_insufficient_prior,
+1,2014,2012,next_residual_lasso,"{""alpha"": 0.03}",2012.0,rmse,,1,fixed_default_insufficient_prior,2012.0
+1,2015,2013,next_residual_lasso,"{""alpha"": 0.03}",2013.0,rmse,,2,fixed_default_insufficient_prior,2012.0
+1,2016,2014,next_residual_lasso,"{""alpha"": 0.03}",2014.0,rmse,4.597569435919457,3,strict_prior_season_mean,2012.0
+1,2017,2015,next_residual_lasso,"{""alpha"": 0.03}",2015.0,rmse,4.442233038072962,4,strict_prior_season_mean,2012.0
+1,2018,2016,next_residual_lasso,"{""alpha"": 0.03}",2016.0,rmse,4.374569504236671,5,strict_prior_season_mean,2012.0
+1,2019,2017,next_residual_lasso,"{""alpha"": 0.03}",2017.0,rmse,4.369632654163455,6,strict_prior_season_mean,2012.0
+1,2020,2018,next_residual_lasso,"{""alpha"": 0.03}",2018.0,rmse,4.334475220397002,7,strict_prior_season_mean,2012.0
+1,2021,2019,next_residual_lasso,"{""alpha"": 0.03}",2019.0,rmse,4.3187866426221575,8,strict_prior_season_mean,2012.0
+1,2022,2020,next_residual_lasso,"{""alpha"": 0.03}",2020.0,rmse,4.274289334032843,9,strict_prior_season_mean,2012.0
+1,2023,2021,next_residual_lasso,"{""alpha"": 0.03}",2021.0,rmse,4.231546272906742,10,strict_prior_season_mean,2012.0
+1,2024,2022,next_residual_lasso,"{""alpha"": 0.03}",2022.0,rmse,4.225878631234139,11,strict_prior_season_mean,2012.0
+1,2025,2023,next_residual_lasso,"{""alpha"": 0.03}",2023.0,rmse,4.206665717361649,12,strict_prior_season_mean,2012.0
+1,2026,2024,next_residual_lasso,"{""alpha"": 0.03}",2024.0,rmse,4.156786898180703,13,strict_prior_season_mean,2012.0
+0,2011,2009,next_residual_random_forest,"{""max_depth"": 6, ""max_features"": 0.5, ""min_samples_leaf"": 15, ""n_estimators"": 250}",,rmse,,0,fixed_default_insufficient_prior,
+0,2012,2010,next_residual_random_forest,"{""max_depth"": 6, ""max_features"": 0.5, ""min_samples_leaf"": 15, ""n_estimators"": 250}",,rmse,,0,fixed_default_insufficient_prior,
+0,2013,2011,next_residual_random_forest,"{""max_depth"": 6, ""max_features"": 0.5, ""min_samples_leaf"": 15, ""n_estimators"": 250}",,rmse,,0,fixed_default_insufficient_prior,
+0,2014,2012,next_residual_random_forest,"{""max_depth"": 6, ""max_features"": 0.5, ""min_samples_leaf"": 15, ""n_estimators"": 250}",2012.0,rmse,,1,fixed_default_insufficient_prior,2012.0
+0,2015,2013,next_residual_random_forest,"{""max_depth"": 6, ""max_features"": 0.5, ""min_samples_leaf"": 15, ""n_estimators"": 250}",2013.0,rmse,,2,fixed_default_insufficient_prior,2012.0
+1,2016,2014,next_residual_random_forest,"{""max_depth"": 6, ""max_features"": 0.75, ""min_samples_leaf"": 5, ""n_estimators"": 250}",2014.0,rmse,4.633031551989724,3,strict_prior_season_mean,2012.0
+1,2017,2015,next_residual_random_forest,"{""max_depth"": 6, ""max_features"": 0.75, ""min_samples_leaf"": 5, ""n_estimators"": 250}",2015.0,rmse,4.4735827817192195,4,strict_prior_season_mean,2012.0
+1,2018,2016,next_residual_random_forest,"{""max_depth"": 6, ""max_features"": 0.75, ""min_samples_leaf"": 5, ""n_estimators"": 250}",2016.0,rmse,4.384817592095164,5,strict_prior_season_mean,2012.0
+1,2019,2017,next_residual_random_forest,"{""max_depth"": 6, ""max_features"": 0.75, ""min_samples_leaf"": 5, ""n_estimators"": 250}",2017.0,rmse,4.375146205399676,6,strict_prior_season_mean,2012.0
+1,2020,2018,next_residual_random_forest,"{""max_depth"": 6, ""max_features"": 0.75, ""min_samples_leaf"": 5, ""n_estimators"": 250}",2018.0,rmse,4.339933473318139,7,strict_prior_season_mean,2012.0
+1,2021,2019,next_residual_random_forest,"{""max_depth"": 6, ""max_features"": 0.75, ""min_samples_leaf"": 5, ""n_estimators"": 250}",2019.0,rmse,4.3214600771533425,8,strict_prior_season_mean,2012.0
+1,2022,2020,next_residual_random_forest,"{""max_depth"": 6, ""max_features"": 0.75, ""min_samples_leaf"": 5, ""n_estimators"": 250}",2020.0,rmse,4.272402107284515,9,strict_prior_season_mean,2012.0
+0,2023,2021,next_residual_random_forest,"{""max_depth"": 6, ""max_features"": 0.5, ""min_samples_leaf"": 15, ""n_estimators"": 250}",2021.0,rmse,4.228633894240586,10,strict_prior_season_mean,2012.0
+1,2024,2022,next_residual_random_forest,"{""max_depth"": 6, ""max_features"": 0.75, ""min_samples_leaf"": 5, ""n_estimators"": 250}",2022.0,rmse,4.216351728404066,11,strict_prior_season_mean,2012.0
+1,2025,2023,next_residual_random_forest,"{""max_depth"": 6, ""max_features"": 0.75, ""min_samples_leaf"": 5, ""n_estimators"": 250}",2023.0,rmse,4.190284495947881,12,strict_prior_season_mean,2012.0
+1,2026,2024,next_residual_random_forest,"{""max_depth"": 6, ""max_features"": 0.75, ""min_samples_leaf"": 5, ""n_estimators"": 250}",2024.0,rmse,4.138303574522355,13,strict_prior_season_mean,2012.0
+0,2011,2009,next_residual_lightgbm,"{""learning_rate"": 0.03, ""max_depth"": 3, ""min_child_samples"": 40, ""n_estimators"": 100, ""num_leaves"": 7, ""reg_lambda"": 5.0}",,rmse,,0,fixed_default_insufficient_prior,
+0,2012,2010,next_residual_lightgbm,"{""learning_rate"": 0.03, ""max_depth"": 3, ""min_child_samples"": 40, ""n_estimators"": 100, ""num_leaves"": 7, ""reg_lambda"": 5.0}",,rmse,,0,fixed_default_insufficient_prior,
+0,2013,2011,next_residual_lightgbm,"{""learning_rate"": 0.03, ""max_depth"": 3, ""min_child_samples"": 40, ""n_estimators"": 100, ""num_leaves"": 7, ""reg_lambda"": 5.0}",,rmse,,0,fixed_default_insufficient_prior,
+0,2014,2012,next_residual_lightgbm,"{""learning_rate"": 0.03, ""max_depth"": 3, ""min_child_samples"": 40, ""n_estimators"": 100, ""num_leaves"": 7, ""reg_lambda"": 5.0}",2012.0,rmse,,1,fixed_default_insufficient_prior,2012.0
+0,2015,2013,next_residual_lightgbm,"{""learning_rate"": 0.03, ""max_depth"": 3, ""min_child_samples"": 40, ""n_estimators"": 100, ""num_leaves"": 7, ""reg_lambda"": 5.0}",2013.0,rmse,,2,fixed_default_insufficient_prior,2012.0
+0,2016,2014,next_residual_lightgbm,"{""learning_rate"": 0.03, ""max_depth"": 3, ""min_child_samples"": 40, ""n_estimators"": 100, ""num_leaves"": 7, ""reg_lambda"": 5.0}",2014.0,rmse,4.736226819571547,3,strict_prior_season_mean,2012.0
+0,2017,2015,next_residual_lightgbm,"{""learning_rate"": 0.03, ""max_depth"": 3, ""min_child_samples"": 40, ""n_estimators"": 100, ""num_leaves"": 7, ""reg_lambda"": 5.0}",2015.0,rmse,4.597424921816093,4,strict_prior_season_mean,2012.0
+0,2018,2016,next_residual_lightgbm,"{""learning_rate"": 0.03, ""max_depth"": 3, ""min_child_samples"": 40, ""n_estimators"": 100, ""num_leaves"": 7, ""reg_lambda"": 5.0}",2016.0,rmse,4.479924931949862,5,strict_prior_season_mean,2012.0
+3,2019,2017,next_residual_lightgbm,"{""learning_rate"": 0.05, ""max_depth"": 3, ""min_child_samples"": 40, ""n_estimators"": 100, ""num_leaves"": 15, ""reg_lambda"": 5.0}",2017.0,rmse,4.457809787918635,6,strict_prior_season_mean,2012.0
+3,2020,2018,next_residual_lightgbm,"{""learning_rate"": 0.05, ""max_depth"": 3, ""min_child_samples"": 40, ""n_estimators"": 100, ""num_leaves"": 15, ""reg_lambda"": 5.0}",2018.0,rmse,4.408104137304379,7,strict_prior_season_mean,2012.0
+3,2021,2019,next_residual_lightgbm,"{""learning_rate"": 0.05, ""max_depth"": 3, ""min_child_samples"": 40, ""n_estimators"": 100, ""num_leaves"": 15, ""reg_lambda"": 5.0}",2019.0,rmse,4.37557736910987,8,strict_prior_season_mean,2012.0
+0,2022,2020,next_residual_lightgbm,"{""learning_rate"": 0.03, ""max_depth"": 3, ""min_child_samples"": 40, ""n_estimators"": 100, ""num_leaves"": 7, ""reg_lambda"": 5.0}",2020.0,rmse,4.3178216149386675,9,strict_prior_season_mean,2012.0
+0,2023,2021,next_residual_lightgbm,"{""learning_rate"": 0.03, ""max_depth"": 3, ""min_child_samples"": 40, ""n_estimators"": 100, ""num_leaves"": 7, ""reg_lambda"": 5.0}",2021.0,rmse,4.2641061713758,10,strict_prior_season_mean,2012.0
+3,2024,2022,next_residual_lightgbm,"{""learning_rate"": 0.05, ""max_depth"": 3, ""min_child_samples"": 40, ""n_estimators"": 100, ""num_leaves"": 15, ""reg_lambda"": 5.0}",2022.0,rmse,4.251622624347741,11,strict_prior_season_mean,2012.0
+3,2025,2023,next_residual_lightgbm,"{""learning_rate"": 0.05, ""max_depth"": 3, ""min_child_samples"": 40, ""n_estimators"": 100, ""num_leaves"": 15, ""reg_lambda"": 5.0}",2023.0,rmse,4.224117664012019,12,strict_prior_season_mean,2012.0
+3,2026,2024,next_residual_lightgbm,"{""learning_rate"": 0.05, ""max_depth"": 3, ""min_child_samples"": 40, ""n_estimators"": 100, ""num_leaves"": 15, ""reg_lambda"": 5.0}",2024.0,rmse,4.170989088959899,13,strict_prior_season_mean,2012.0
+1,2011,2009,next_participation_logistic,"{""C"": 1.0}",,brier,,0,fixed_default_insufficient_prior,
+1,2012,2010,next_participation_logistic,"{""C"": 1.0}",,brier,,0,fixed_default_insufficient_prior,
+1,2013,2011,next_participation_logistic,"{""C"": 1.0}",,brier,,0,fixed_default_insufficient_prior,
+1,2014,2012,next_participation_logistic,"{""C"": 1.0}",2012.0,brier,,1,fixed_default_insufficient_prior,2012.0
+1,2015,2013,next_participation_logistic,"{""C"": 1.0}",2013.0,brier,,2,fixed_default_insufficient_prior,2012.0
+0,2016,2014,next_participation_logistic,"{""C"": 0.1}",2014.0,brier,0.18304278594538337,3,strict_prior_season_mean,2012.0
+0,2017,2015,next_participation_logistic,"{""C"": 0.1}",2015.0,brier,0.18649458570590266,4,strict_prior_season_mean,2012.0
+0,2018,2016,next_participation_logistic,"{""C"": 0.1}",2016.0,brier,0.18840248941547472,5,strict_prior_season_mean,2012.0
+0,2019,2017,next_participation_logistic,"{""C"": 0.1}",2017.0,brier,0.18922719019573941,6,strict_prior_season_mean,2012.0
+0,2020,2018,next_participation_logistic,"{""C"": 0.1}",2018.0,brier,0.1883343115189481,7,strict_prior_season_mean,2012.0
+0,2021,2019,next_participation_logistic,"{""C"": 0.1}",2019.0,brier,0.185509712403164,8,strict_prior_season_mean,2012.0
+0,2022,2020,next_participation_logistic,"{""C"": 0.1}",2020.0,brier,0.18424294424081744,9,strict_prior_season_mean,2012.0
+0,2023,2021,next_participation_logistic,"{""C"": 0.1}",2021.0,brier,0.18264634978268685,10,strict_prior_season_mean,2012.0
+0,2024,2022,next_participation_logistic,"{""C"": 0.1}",2022.0,brier,0.18046139745405568,11,strict_prior_season_mean,2012.0
+0,2025,2023,next_participation_logistic,"{""C"": 0.1}",2023.0,brier,0.17905834460952919,12,strict_prior_season_mean,2012.0
+0,2026,2024,next_participation_logistic,"{""C"": 0.1}",2024.0,brier,0.1788422273929285,13,strict_prior_season_mean,2012.0
+0,2011,2009,next_participation_lightgbm,"{""learning_rate"": 0.03, ""max_depth"": 3, ""min_child_samples"": 40, ""n_estimators"": 100, ""num_leaves"": 7, ""reg_lambda"": 5.0}",,brier,,0,fixed_default_insufficient_prior,
+0,2012,2010,next_participation_lightgbm,"{""learning_rate"": 0.03, ""max_depth"": 3, ""min_child_samples"": 40, ""n_estimators"": 100, ""num_leaves"": 7, ""reg_lambda"": 5.0}",,brier,,0,fixed_default_insufficient_prior,
+0,2013,2011,next_participation_lightgbm,"{""learning_rate"": 0.03, ""max_depth"": 3, ""min_child_samples"": 40, ""n_estimators"": 100, ""num_leaves"": 7, ""reg_lambda"": 5.0}",,brier,,0,fixed_default_insufficient_prior,
+0,2014,2012,next_participation_lightgbm,"{""learning_rate"": 0.03, ""max_depth"": 3, ""min_child_samples"": 40, ""n_estimators"": 100, ""num_leaves"": 7, ""reg_lambda"": 5.0}",2012.0,brier,,1,fixed_default_insufficient_prior,2012.0
+0,2015,2013,next_participation_lightgbm,"{""learning_rate"": 0.03, ""max_depth"": 3, ""min_child_samples"": 40, ""n_estimators"": 100, ""num_leaves"": 7, ""reg_lambda"": 5.0}",2013.0,brier,,2,fixed_default_insufficient_prior,2012.0
+2,2016,2014,next_participation_lightgbm,"{""learning_rate"": 0.05, ""max_depth"": 4, ""min_child_samples"": 20, ""n_estimators"": 200, ""num_leaves"": 7, ""reg_lambda"": 5.0}",2014.0,brier,0.17537124890899528,3,strict_prior_season_mean,2012.0
+2,2017,2015,next_participation_lightgbm,"{""learning_rate"": 0.05, ""max_depth"": 4, ""min_child_samples"": 20, ""n_estimators"": 200, ""num_leaves"": 7, ""reg_lambda"": 5.0}",2015.0,brier,0.18308459204762884,4,strict_prior_season_mean,2012.0
+2,2018,2016,next_participation_lightgbm,"{""learning_rate"": 0.05, ""max_depth"": 4, ""min_child_samples"": 20, ""n_estimators"": 200, ""num_leaves"": 7, ""reg_lambda"": 5.0}",2016.0,brier,0.18431285032254424,5,strict_prior_season_mean,2012.0
+2,2019,2017,next_participation_lightgbm,"{""learning_rate"": 0.05, ""max_depth"": 4, ""min_child_samples"": 20, ""n_estimators"": 200, ""num_leaves"": 7, ""reg_lambda"": 5.0}",2017.0,brier,0.18002269319943667,6,strict_prior_season_mean,2012.0
+2,2020,2018,next_participation_lightgbm,"{""learning_rate"": 0.05, ""max_depth"": 4, ""min_child_samples"": 20, ""n_estimators"": 200, ""num_leaves"": 7, ""reg_lambda"": 5.0}",2018.0,brier,0.17697752625290136,7,strict_prior_season_mean,2012.0
+2,2021,2019,next_participation_lightgbm,"{""learning_rate"": 0.05, ""max_depth"": 4, ""min_child_samples"": 20, ""n_estimators"": 200, ""num_leaves"": 7, ""reg_lambda"": 5.0}",2019.0,brier,0.17393765975058006,8,strict_prior_season_mean,2012.0
+2,2022,2020,next_participation_lightgbm,"{""learning_rate"": 0.05, ""max_depth"": 4, ""min_child_samples"": 20, ""n_estimators"": 200, ""num_leaves"": 7, ""reg_lambda"": 5.0}",2020.0,brier,0.1733235213179854,9,strict_prior_season_mean,2012.0
+2,2023,2021,next_participation_lightgbm,"{""learning_rate"": 0.05, ""max_depth"": 4, ""min_child_samples"": 20, ""n_estimators"": 200, ""num_leaves"": 7, ""reg_lambda"": 5.0}",2021.0,brier,0.17248561229140363,10,strict_prior_season_mean,2012.0
+2,2024,2022,next_participation_lightgbm,"{""learning_rate"": 0.05, ""max_depth"": 4, ""min_child_samples"": 20, ""n_estimators"": 200, ""num_leaves"": 7, ""reg_lambda"": 5.0}",2022.0,brier,0.1706541523378138,11,strict_prior_season_mean,2012.0
+2,2025,2023,next_participation_lightgbm,"{""learning_rate"": 0.05, ""max_depth"": 4, ""min_child_samples"": 20, ""n_estimators"": 200, ""num_leaves"": 7, ""reg_lambda"": 5.0}",2023.0,brier,0.1695923254661219,12,strict_prior_season_mean,2012.0
+2,2026,2024,next_participation_lightgbm,"{""learning_rate"": 0.05, ""max_depth"": 4, ""min_child_samples"": 20, ""n_estimators"": 200, ""num_leaves"": 7, ""reg_lambda"": 5.0}",2024.0,brier,0.16989548528354084,13,strict_prior_season_mean,2012.0

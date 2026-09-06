@@ -14,6 +14,121 @@ reproducible bundles.
   data contract/runbook.
 
 ## Current Study Types
+- Stabilized asymmetric expert projection disagreement. A prespecified
+  football-scale denominator tests `(max - median) / sqrt(median^2 + 5^2)`
+  on the same locked DK/beta point, strictly-prior +3/+5 tail, and 1,620-target
+  weekly-template surfaces. The stabilizer removes the small-denominator
+  explosion but still fails all promotion paths: recent point RMSE and
+  clustered uncertainty do not hold, every tail Brier/AUC comparison worsens,
+  and template behavior does not replicate. The highest stabilized-gap
+  quartile retains lower +3/+5 rates than the lowest quartile. Smooth `k=3`
+  and `k=8`, hard-floor, additive, and raw-gap sensitivities do not rescue the
+  result. Keep all forms out of production. See
+  `studies/2026-08-29_v2_stabilized_bull_gap/`.
+- Asymmetric expert projection disagreement. A read-only DK/beta rolling study
+  tests provider `max - median` PPG as a point feature, strictly-prior +3/+5
+  residual classifier input, and weekly-template match dimension. The
+  prespecified normalized bullish gap fails every cross-league path: recent
+  point RMSE and upper-tail Brier worsen, and template +5/impact behavior does
+  not replicate. The raw absolute gap improves pooled RMSE by about `0.0055`
+  in both leagues but has crossing cluster intervals, weak season/position
+  breadth, and a post-slice QB concentration. High-gap quartiles have lower,
+  not higher, +3/+5 residual rates. Keep all variants out of production; only
+  a separately prespecified projection-floor-controlled raw QB interaction is
+  a defensible follow-up. See
+  `studies/2026-08-29_v2_asymmetric_expert_projection/`.
+- Auction expected-excess multi-origin replay. Frozen 2022-2024 Beta stages
+  reproduce the 2025 exact-mean, pure expected-excess, and standardized 50/50
+  mean-plus-excess policies using actual auction costs and donors ending at the
+  prior season. Every annual roster is selected before target outcomes load.
+  Pure excess loses actual score in all three new origins and 50/50 wins only
+  2022; both lose independent holdout mean and P90 throughout. Including the
+  previously inspected positive 2025 result, actual deltas average `-7.20`
+  pure and `-13.97` 50/50. Keep the current tail objective diagnostic and leave
+  production unchanged. See
+  `studies/2026-08-27_auction_excess_multi_origin/`.
+- Auction power-win objective replay. Holding the promising 2025 Beta
+  best-available waiver proxy fixed, eight paired blocks score 130-131 broad
+  candidate rosters on win probability, expected positive winning margin, and
+  a blended power-win utility. The additive waiver roster is also the exact
+  mean frontier in every block, and paired-LCB selection retains it under both
+  0.5% and 1.0% mean guardrails. Exploratory direct 1.0% optimization changes
+  three blocks but reverses independently: win/power loses `3.08` mean,
+  `2.25` P90, `0.091` points of win proxy, and `0.121` expected margin; direct
+  excess loses `4.23` mean and `0.237` margin. Removing the guardrail or using
+  a standardized 50/50 mean-plus-tail objective makes the reversal larger:
+  pure win loses `25.78` mean and `3.185` win-probability points, while 50/50
+  win loses `7.67` mean and `1.087` win-probability points. Keep the waiver
+  proxy promising but tail utilities diagnostic until a denser local frontier
+  and larger or cross-fitted construction banks replicate across origins. See
+  `studies/2026-08-27_auction_power_win_objective/`.
+- Auction championship/waiver objective replay. On the isolated 2025 Beta
+  actual-salary surface, eight paired blocks compare the current managed-score
+  policy, a best-available RB/WR waiver proxy, a 0.25%-guarded championship
+  tie-break, and both changes together. The combined arm improves churn-scored
+  holdout EV by `32.32` points (LCB80 `+28.92`), championship proxy by `5.75`
+  points (LCB80 `+5.05`), and actual 2025 managed score by `69.81`, but raises
+  dead-zone RB count from `0.75` to `0.88` and mostly reproduces the waiver-only
+  rosters. Keep production unchanged; next define upside as roster-marginal
+  value over an accessible waiver replacement rather than absolute residual
+  production or youth. See
+  `studies/2026-08-27_auction_championship_waiver_objective/`.
+- Beta second-keeper roster tournament. With Chase Brown fixed at `$34`, three
+  matched hidden-auction arms keep Bhayshul Tuten, Luther Burden III, or Colston
+  Loveland at `$11`; the other two remain draftable at counterfactual market
+  prices. Across 192 completed paths and 24,576 paired scoring cells per arm,
+  Brown/Tuten leads Brown/Loveland by `3.08` managed-season points and
+  Brown/Burden by `8.68`, winning seven and six of eight construction blocks.
+  Tuten's larger discount shifts average spend from RB into WR/TE without a
+  completion or roster-legality penalty. This is a modest current-season
+  preference, not a separate next-year keeper-option valuation. See
+  `studies/2026-08-26_beta_keeper_roster_tournament/`.
+- Beta keeper salary counterfactual. An isolated governed 2026 beta salary
+  rebuild removes Chase Brown and Bhayshul Tuten from the active keeper file;
+  Luther Burden III and Colston Loveland were already non-keepers. Brown/Tuten
+  model at `$72.17/$30.31` versus `$34/$11` contracts, while Burden/Loveland
+  remain near `$25.25/$27.03`. The 12 remaining keepers spend `$396`, the top
+  144 non-keepers reconcile exactly to the `$3,180` open-market budget, all 324
+  salary keys match the projection population, and live inputs are unchanged.
+  See `studies/2026-08-26_beta_nonkeeper_salary_counterfactual/`.
+- LCB-aligned Sequential roster structures. Experimental App v19 retains the
+  completed market-price Buy rosters already scored for the four highest
+  positive confirmed LCB anchors, groups all hidden-auction outcomes into
+  position-spend/shape families, and shows one central completion per anchor.
+  The eight-block Brown/Tuten replay surfaces Allen/Bijan/Gibbs/Taylor across
+  384 outcomes; all 96 Allen outcomes are Premium-QB builds. No additional
+  roster solve is introduced. Production App v15 remains unchanged. See
+  `studies/2026-08-25_lcb_aligned_structures/`.
+- Tiered Sequential structure presentation. Experimental App v16 solves four
+  current unforced optimal plans and collapses their open targets into
+  complete-link within-position salary/PPG buckets. Selected preferences and
+  nearby alternatives are displayed separately; buckets supported by fewer
+  than half the plans are collapsed. The beta and NV structure solves add
+  `0.112s` and `0.102s`, and the NV audit separates Josh Allen at `$72` from
+  the `$7-$13` QB bucket. This is a descriptive current-plan summary, not a
+  conditional tree or causal group-miss estimate. This presentation was
+  superseded in the experimental worktree by v19 LCB-aligned structures;
+  production App v15 remains unchanged. See
+  `studies/2026-08-25_tiered_target_board/`.
+- Sequential cheap-WR peer audit. In the displayed Brown/Tuten/Tyson/Coleman
+  beta state, Shaheed's donor pool is more volatile and has a higher positive-
+  residual probability than Coker's despite lower PPG and fewer games. Across
+  nine equal-confirmation roots, Shaheed/Coker/Doubs average LCB80 is
+  `+10.68/+5.88/+3.35`, but the winner reverses in three roots. Fixed-roster
+  substitution makes Doubs only `+2.17` and Coker `-1.70` versus Shaheed; the
+  larger Target signal comes from whole-roster recourse, and no Shaheed Pass
+  plan directly substitutes either peer. Keep production unchanged and treat
+  confirmed-versus-discovery peers as an evidence boundary. See
+  `studies/2026-08-25_shaheed_peer_audit/`.
+- Beta joint-opportunity, fixed-shape, and waiver sensitivity. A keeper-correct
+  four-block replay starts with Chase Brown `$34` and Bhayshul Tuten `$11` and
+  scores all arms on paired current-waiver holdouts. One exact swap is
+  mean-neutral (`-0.97`) but raises p10 `+12.33`, mainly replacing TE2/RB6 with
+  WR5. A forced QB1/TE1 and RB/WR 5/6 or 6/5 shape loses `4.94` mean, while a
+  blanket waiver `+1.5` loses `10.34` mean and does not remove the six-RB
+  tendency. Keep current beta settings and treat joint refinement as a
+  confirmation-stage downside sensitivity. See
+  `studies/2026-08-25_beta_joint_shape_waiver/`.
 - Normalized expert-rank promotion decision. The final test reselects the full
   locked Lasso/RandomForest/LightGBM grids at every origin after adding only
   the scoring-specific normalized rank feature. DK improves pooled/recent

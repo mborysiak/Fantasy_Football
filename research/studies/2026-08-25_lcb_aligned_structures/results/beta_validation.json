@@ -1,0 +1,554 @@
+{
+  "calculation_version": 19,
+  "budget": 320,
+  "batches": 2,
+  "workers": 4,
+  "batch_runtime_seconds": [
+    14.652659999999742,
+    30.982507000000624
+  ],
+  "post_change_structure_aggregation_benchmark_seconds": 0.0807,
+  "evidence_blocks": 8,
+  "structure_source": "sequential_buy_rollouts",
+  "conditional_outcomes": 384,
+  "targets": [
+    {
+      "Player": "Josh Allen",
+      "MarketPrice": 37,
+      "LCB80": 16.945633499654388,
+      "Gain": 20.878422041734062,
+      "Rollouts": 96
+    },
+    {
+      "Player": "Bijan Robinson",
+      "MarketPrice": 106,
+      "LCB80": 13.165816868148276,
+      "Gain": 17.094503680864968,
+      "Rollouts": 96
+    },
+    {
+      "Player": "Jahmyr Gibbs",
+      "MarketPrice": 110,
+      "LCB80": 6.406883140862543,
+      "Gain": 12.181461532910664,
+      "Rollouts": 96
+    },
+    {
+      "Player": "Jonathan Taylor",
+      "MarketPrice": 96,
+      "LCB80": 3.3933996927503864,
+      "Gain": 7.780682245890299,
+      "Rollouts": 96
+    }
+  ],
+  "families": [
+    {
+      "Name": "RB-heavy build",
+      "SupportCount": 252,
+      "Support": "252/384",
+      "Flow": "Premium RB \u2192 Mid RB \u00d70-3 \u2192 Mid WR \u00d70-4 \u2192 Value RB \u00d70-3 \u2192 Value QB \u00d70-1 \u2192 Value WR \u00d70-4 \u2192 Value TE \u00d70-2",
+      "Shape": "1 QB / 3-4 RB / 4-6 WR / 1-2 TE",
+      "Budgets": "QB $2-21 \u00b7 RB $113-186 \u00b7 WR $23-95 \u00b7 TE $2-35",
+      "Spend": "$180-252",
+      "TypicalSpend": 231,
+      "Players": "Harold Fannin Jr. $8 (140/252); Jameson Williams $16 (128/252); Christian Watson $19 (109/252); George Kittle $2 (100/252)",
+      "Anchors": "Jahmyr Gibbs 89/96 \u00b7 Bijan Robinson 83/96 \u00b7 Jonathan Taylor 80/96",
+      "Family": 1
+    },
+    {
+      "Name": "Premium-QB build",
+      "SupportCount": 100,
+      "Support": "100/384",
+      "Flow": "Premium RB \u00d70-2 \u2192 Premium QB \u2192 Mid RB \u00d70-4 \u2192 Mid WR \u00d70-5 \u2192 Value RB \u00d70-4 \u2192 Value WR \u00d70-5 \u2192 Value TE \u00d70-2",
+      "Shape": "1 QB / 2-4 RB / 4-6 WR / 1-2 TE",
+      "Budgets": "QB $36-38 \u00b7 RB $16-152 \u00b7 WR $35-149 \u00b7 TE $2-60",
+      "Spend": "$122-253",
+      "TypicalSpend": 231,
+      "Players": "Josh Allen $36 (100/100); Jameson Williams $27 (50/100); Harold Fannin Jr. $7 (50/100); Christian Watson $19 (45/100)",
+      "Anchors": "Josh Allen 96/96 \u00b7 Jonathan Taylor 3/96 \u00b7 Bijan Robinson 1/96",
+      "Family": 2
+    },
+    {
+      "Name": "Double-premium-RB build",
+      "SupportCount": 27,
+      "Support": "27/384",
+      "Flow": "Premium RB \u00d72 \u2192 Mid WR \u00d70-2 \u2192 Value RB \u00d71-2 \u2192 Value WR \u00d72-4 \u2192 Value QB \u00d70-1 \u2192 Value TE \u00d71-2",
+      "Shape": "1 QB / 4 RB / 4-5 WR / 1-2 TE",
+      "Budgets": "QB $2-19 \u00b7 RB $154-190 \u00b7 WR $24-61 \u00b7 TE $2-24",
+      "Spend": "$216-248",
+      "TypicalSpend": 233,
+      "Players": "Kyren Williams $49 (20/27); Christian Watson $11 (14/27); Harold Fannin Jr. $11 (13/27); Alec Pierce $8 (13/27)",
+      "Anchors": "Bijan Robinson 12/96 \u00b7 Jonathan Taylor 9/96 \u00b7 Jahmyr Gibbs 6/96",
+      "Family": 3
+    },
+    {
+      "Name": "Balanced RB/WR build",
+      "SupportCount": 5,
+      "Support": "5/384",
+      "Flow": "Premium RB \u2192 Mid WR \u00d73-5 \u2192 Value WR \u00d70-3 \u2192 Value RB \u00d71-3 \u2192 Value TE \u00d71-2 \u2192 Value QB \u00d70-1",
+      "Shape": "1 QB / 2-4 RB / 5-6 WR / 1-2 TE",
+      "Budgets": "QB $2-20 \u00b7 RB $106-120 \u00b7 WR $84-105 \u00b7 TE $3-28",
+      "Spend": "$216-240",
+      "TypicalSpend": 234,
+      "Players": "Jonathan Taylor $96 (4/5); Jameson Williams $17 (4/5); Emeka Egbuka $38 (3/5); Harold Fannin Jr. $11 (3/5)",
+      "Anchors": "Jonathan Taylor 4/96 \u00b7 Jahmyr Gibbs 1/96",
+      "Family": 4
+    }
+  ],
+  "examples": [
+    {
+      "OpenSlots": 11,
+      "TargetSpend": 227,
+      "SalaryCap": 298,
+      "Players": [
+        {
+          "Player": "Derrick Henry",
+          "Pos": "RB",
+          "MarketPrice": 66,
+          "PPG": 15.563063371145352
+        },
+        {
+          "Player": "Josh Allen",
+          "Pos": "QB",
+          "MarketPrice": 37,
+          "PPG": 21.57132039827739
+        },
+        {
+          "Player": "Jameson Williams",
+          "Pos": "WR",
+          "MarketPrice": 26,
+          "PPG": 11.350168915371151
+        },
+        {
+          "Player": "TreVeyon Henderson",
+          "Pos": "RB",
+          "MarketPrice": 22,
+          "PPG": 11.066518495748836
+        },
+        {
+          "Player": "Luther Burden III",
+          "Pos": "WR",
+          "MarketPrice": 22,
+          "PPG": 10.835503455284472
+        },
+        {
+          "Player": "Christian Watson",
+          "Pos": "WR",
+          "MarketPrice": 17,
+          "PPG": 10.644692456765577
+        },
+        {
+          "Player": "Rico Dowdle",
+          "Pos": "RB",
+          "MarketPrice": 12,
+          "PPG": 10.11535850804979
+        },
+        {
+          "Player": "Harold Fannin Jr.",
+          "Pos": "TE",
+          "MarketPrice": 11,
+          "PPG": 9.39275931190915
+        },
+        {
+          "Player": "Michael Wilson",
+          "Pos": "WR",
+          "MarketPrice": 8,
+          "PPG": 9.149881482119644
+        },
+        {
+          "Player": "George Kittle",
+          "Pos": "TE",
+          "MarketPrice": 4,
+          "PPG": 8.890750405057032
+        },
+        {
+          "Player": "Zach Charbonnet",
+          "Pos": "RB",
+          "MarketPrice": 2,
+          "PPG": 7.706145979784687
+        }
+      ],
+      "Anchor": "Josh Allen",
+      "AnchorPrice": 37,
+      "AnchorLCB80": 16.945633499654388,
+      "Path": 1
+    },
+    {
+      "OpenSlots": 11,
+      "TargetSpend": 236,
+      "SalaryCap": 298,
+      "Players": [
+        {
+          "Player": "Bijan Robinson",
+          "Pos": "RB",
+          "MarketPrice": 106,
+          "PPG": 18.77275413518894
+        },
+        {
+          "Player": "D'Andre Swift",
+          "Pos": "RB",
+          "MarketPrice": 32,
+          "PPG": 11.897604890098116
+        },
+        {
+          "Player": "Jameson Williams",
+          "Pos": "WR",
+          "MarketPrice": 26,
+          "PPG": 11.350168915371151
+        },
+        {
+          "Player": "Carnell Tate",
+          "Pos": "WR",
+          "MarketPrice": 12,
+          "PPG": 10.007248167194712
+        },
+        {
+          "Player": "Rico Dowdle",
+          "Pos": "RB",
+          "MarketPrice": 11,
+          "PPG": 10.11535850804979
+        },
+        {
+          "Player": "DK Metcalf",
+          "Pos": "WR",
+          "MarketPrice": 11,
+          "PPG": 9.574647726339649
+        },
+        {
+          "Player": "Sam LaPorta",
+          "Pos": "TE",
+          "MarketPrice": 11,
+          "PPG": 8.861347055429274
+        },
+        {
+          "Player": "Jayden Daniels",
+          "Pos": "QB",
+          "MarketPrice": 10,
+          "PPG": 18.18858068048598
+        },
+        {
+          "Player": "Michael Pittman",
+          "Pos": "WR",
+          "MarketPrice": 8,
+          "PPG": 8.914147319371635
+        },
+        {
+          "Player": "Harold Fannin Jr.",
+          "Pos": "TE",
+          "MarketPrice": 5,
+          "PPG": 9.39275931190915
+        },
+        {
+          "Player": "Zach Charbonnet",
+          "Pos": "RB",
+          "MarketPrice": 4,
+          "PPG": 7.706145979784687
+        }
+      ],
+      "Anchor": "Bijan Robinson",
+      "AnchorPrice": 106,
+      "AnchorLCB80": 13.165816868148276,
+      "Path": 2
+    },
+    {
+      "OpenSlots": 11,
+      "TargetSpend": 216,
+      "SalaryCap": 298,
+      "Players": [
+        {
+          "Player": "Jahmyr Gibbs",
+          "Pos": "RB",
+          "MarketPrice": 110,
+          "PPG": 18.936177427962846
+        },
+        {
+          "Player": "Jameson Williams",
+          "Pos": "WR",
+          "MarketPrice": 26,
+          "PPG": 11.350168915371151
+        },
+        {
+          "Player": "Christian Watson",
+          "Pos": "WR",
+          "MarketPrice": 17,
+          "PPG": 10.644692456765577
+        },
+        {
+          "Player": "Rhamondre Stevenson",
+          "Pos": "RB",
+          "MarketPrice": 14,
+          "PPG": 10.480758104588075
+        },
+        {
+          "Player": "Jaylen Warren",
+          "Pos": "RB",
+          "MarketPrice": 13,
+          "PPG": 10.465072542123535
+        },
+        {
+          "Player": "Drake Maye",
+          "Pos": "QB",
+          "MarketPrice": 10,
+          "PPG": 18.767027331507705
+        },
+        {
+          "Player": "Kenny Gainwell",
+          "Pos": "RB",
+          "MarketPrice": 8,
+          "PPG": 8.846816701583052
+        },
+        {
+          "Player": "Harold Fannin Jr.",
+          "Pos": "TE",
+          "MarketPrice": 7,
+          "PPG": 9.39275931190915
+        },
+        {
+          "Player": "Dalton Kincaid",
+          "Pos": "TE",
+          "MarketPrice": 5,
+          "PPG": 8.324832972674406
+        },
+        {
+          "Player": "Chris Godwin Jr.",
+          "Pos": "WR",
+          "MarketPrice": 4,
+          "PPG": 9.03263889375343
+        },
+        {
+          "Player": "KC Concepcion",
+          "Pos": "WR",
+          "MarketPrice": 2,
+          "PPG": 8.436059634955795
+        }
+      ],
+      "Anchor": "Jahmyr Gibbs",
+      "AnchorPrice": 110,
+      "AnchorLCB80": 6.406883140862543,
+      "Path": 3
+    },
+    {
+      "OpenSlots": 11,
+      "TargetSpend": 225,
+      "SalaryCap": 298,
+      "Players": [
+        {
+          "Player": "Jonathan Taylor",
+          "Pos": "RB",
+          "MarketPrice": 96,
+          "PPG": 17.15065443752626
+        },
+        {
+          "Player": "Jameson Williams",
+          "Pos": "WR",
+          "MarketPrice": 26,
+          "PPG": 11.350168915371151
+        },
+        {
+          "Player": "Rhamondre Stevenson",
+          "Pos": "RB",
+          "MarketPrice": 23,
+          "PPG": 10.480758104588075
+        },
+        {
+          "Player": "Christian Watson",
+          "Pos": "WR",
+          "MarketPrice": 17,
+          "PPG": 10.644692456765577
+        },
+        {
+          "Player": "Brian Thomas Jr.",
+          "Pos": "WR",
+          "MarketPrice": 15,
+          "PPG": 9.60869425745143
+        },
+        {
+          "Player": "Harold Fannin Jr.",
+          "Pos": "TE",
+          "MarketPrice": 12,
+          "PPG": 9.39275931190915
+        },
+        {
+          "Player": "RJ Harvey",
+          "Pos": "RB",
+          "MarketPrice": 11,
+          "PPG": 9.543270928324661
+        },
+        {
+          "Player": "Dak Prescott",
+          "Pos": "QB",
+          "MarketPrice": 8,
+          "PPG": 18.10411481287279
+        },
+        {
+          "Player": "Jonathon Brooks",
+          "Pos": "RB",
+          "MarketPrice": 8,
+          "PPG": 9.470686004890622
+        },
+        {
+          "Player": "Makai Lemon",
+          "Pos": "WR",
+          "MarketPrice": 7,
+          "PPG": 8.869752939368377
+        },
+        {
+          "Player": "George Kittle",
+          "Pos": "TE",
+          "MarketPrice": 2,
+          "PPG": 8.890750405057032
+        }
+      ],
+      "Anchor": "Jonathan Taylor",
+      "AnchorPrice": 96,
+      "AnchorLCB80": 3.3933996927503864,
+      "Path": 4
+    }
+  ],
+  "confirmed_board": [
+    {
+      "Player": "Josh Allen",
+      "MarketPrice": 37,
+      "SequentialLCB80": 16.945633499654388,
+      "SequentialGain": 20.878422041734062,
+      "BlockPositiveRate": 100.0,
+      "Recommendation": "TARGET"
+    },
+    {
+      "Player": "Bijan Robinson",
+      "MarketPrice": 106,
+      "SequentialLCB80": 13.165816868148276,
+      "SequentialGain": 17.094503680864968,
+      "BlockPositiveRate": 75.0,
+      "Recommendation": "TARGET"
+    },
+    {
+      "Player": "Jahmyr Gibbs",
+      "MarketPrice": 110,
+      "SequentialLCB80": 6.406883140862543,
+      "SequentialGain": 12.181461532910664,
+      "BlockPositiveRate": 62.5,
+      "Recommendation": "TARGET"
+    },
+    {
+      "Player": "Jonathan Taylor",
+      "MarketPrice": 96,
+      "SequentialLCB80": 3.3933996927503864,
+      "SequentialGain": 7.780682245890299,
+      "BlockPositiveRate": 75.0,
+      "Recommendation": "TARGET"
+    },
+    {
+      "Player": "Josh Downs",
+      "MarketPrice": 7,
+      "SequentialLCB80": -0.2969623967891746,
+      "SequentialGain": 2.8115697376655815,
+      "BlockPositiveRate": 62.5,
+      "Recommendation": "WATCH"
+    },
+    {
+      "Player": "Luther Burden III",
+      "MarketPrice": 25,
+      "SequentialLCB80": -0.718634549382049,
+      "SequentialGain": 2.277226150035858,
+      "BlockPositiveRate": 62.5,
+      "Recommendation": "WATCH"
+    },
+    {
+      "Player": "Jonathon Brooks",
+      "MarketPrice": 15,
+      "SequentialLCB80": -0.7204787960624794,
+      "SequentialGain": 2.923557897408803,
+      "BlockPositiveRate": 50.0,
+      "Recommendation": "WATCH"
+    },
+    {
+      "Player": "Christian Watson",
+      "MarketPrice": 18,
+      "SequentialLCB80": -1.9409927698498517,
+      "SequentialGain": 1.0170964598655698,
+      "BlockPositiveRate": 75.0,
+      "Recommendation": "WATCH"
+    },
+    {
+      "Player": "D'Andre Swift",
+      "MarketPrice": 33,
+      "SequentialLCB80": -2.1267424696362918,
+      "SequentialGain": 1.1757240494092307,
+      "BlockPositiveRate": 62.5,
+      "Recommendation": "WATCH"
+    },
+    {
+      "Player": "Lamar Jackson",
+      "MarketPrice": 18,
+      "SequentialLCB80": -2.386286278099055,
+      "SequentialGain": 1.2931222464099072,
+      "BlockPositiveRate": 50.0,
+      "Recommendation": "WATCH"
+    },
+    {
+      "Player": "Derrick Henry",
+      "MarketPrice": 73,
+      "SequentialLCB80": -2.7729389095148003,
+      "SequentialGain": 2.4944020311037693,
+      "BlockPositiveRate": 37.5,
+      "Recommendation": "WATCH"
+    },
+    {
+      "Player": "Jadarian Price",
+      "MarketPrice": 28,
+      "SequentialLCB80": -3.108470843173742,
+      "SequentialGain": 0.133377571900686,
+      "BlockPositiveRate": 62.5,
+      "Recommendation": "WATCH"
+    },
+    {
+      "Player": "KC Concepcion",
+      "MarketPrice": 4,
+      "SequentialLCB80": -3.6192071062029796,
+      "SequentialGain": 0.24692658583323146,
+      "BlockPositiveRate": 50.0,
+      "Recommendation": "WATCH"
+    },
+    {
+      "Player": "Sam LaPorta",
+      "MarketPrice": 11,
+      "SequentialLCB80": -7.486623294947231,
+      "SequentialGain": -4.508240421613058,
+      "BlockPositiveRate": 37.5,
+      "Recommendation": "PASS"
+    },
+    {
+      "Player": "Rome Odunze",
+      "MarketPrice": 25,
+      "SequentialLCB80": -7.502410160715639,
+      "SequentialGain": -4.44243480761846,
+      "BlockPositiveRate": 12.5,
+      "Recommendation": "PASS"
+    },
+    {
+      "Player": "Makai Lemon",
+      "MarketPrice": 7,
+      "SequentialLCB80": -9.102025077166047,
+      "SequentialGain": -4.833801945050557,
+      "BlockPositiveRate": 37.5,
+      "Recommendation": "PASS"
+    },
+    {
+      "Player": "De'Von Achane",
+      "MarketPrice": 86,
+      "SequentialLCB80": -11.895786061496237,
+      "SequentialGain": -7.987252334753672,
+      "BlockPositiveRate": 25.0,
+      "Recommendation": "PASS"
+    },
+    {
+      "Player": "DJ Moore",
+      "MarketPrice": 26,
+      "SequentialLCB80": -15.892641107904012,
+      "SequentialGain": -13.319912830988565,
+      "BlockPositiveRate": 0.0,
+      "Recommendation": "PASS"
+    }
+  ]
+}

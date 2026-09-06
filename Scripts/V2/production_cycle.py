@@ -106,6 +106,50 @@ class ProductionCycle:
         return hashlib.sha256(payload).hexdigest()
 
 
+@dataclass(frozen=True)
+class HistoricalReplayTemplateContract:
+    """Narrow weekly-template contract for a causal historical app replay.
+
+    Historical replays are deliberately not production cycles: they do not
+    authorize model fitting, application promotion, or reuse of an annual
+    current/next validation runner.  They only allow the weekly matcher to
+    build a target-year player map from an already-published out-of-sample
+    projection slice while capping donor outcomes at ``target_year - 1``.
+    """
+
+    target_year: int
+    status: str
+    leagues: tuple[str, ...]
+    weekly_horizons: Mapping[str, int]
+    template_min_seasons: Mapping[str, int]
+    template_center_policies: Mapping[str, tuple[str, ...]]
+    template_context_sources: Mapping[str, str]
+
+    def receipt(self) -> dict[str, Any]:
+        return {
+            "target_year": self.target_year,
+            "status": self.status,
+            "leagues": list(self.leagues),
+            "weekly_horizons": dict(self.weekly_horizons),
+            "template_min_seasons": dict(self.template_min_seasons),
+            "template_center_policies": {
+                league: list(policies)
+                for league, policies in self.template_center_policies.items()
+            },
+            "template_context_sources": dict(
+                self.template_context_sources
+            ),
+        }
+
+    def contract_sha256(self) -> str:
+        payload = json.dumps(
+            self.receipt(),
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+        return hashlib.sha256(payload).hexdigest()
+
+
 _LOCKED_2026_STUDY = (
     REPO_ROOT
     / "research"
@@ -226,6 +270,86 @@ APPROVED_PRODUCTION_CYCLES: Mapping[int, ProductionCycle] = {
     ),
 }
 DEFAULT_PRODUCTION_YEAR = max(APPROVED_PRODUCTION_CYCLES)
+
+
+HISTORICAL_REPLAY_TEMPLATE_CONTRACTS: Mapping[
+    int,
+    HistoricalReplayTemplateContract,
+] = {
+    year: HistoricalReplayTemplateContract(
+        target_year=year,
+        status="historical_replay_only",
+        leagues=("beta",),
+        weekly_horizons={"beta": 16},
+        template_min_seasons={"beta": 2008},
+        template_center_policies={
+            "beta": (
+                "legacy_validated_oos",
+                "beta_scored_expert_fallback",
+            ),
+        },
+        template_context_sources={
+            "beta": "v2_beta_scoring_matched_preseason",
+        },
+    )
+    for year in (2022, 2023, 2024)
+} | {
+    2025: HistoricalReplayTemplateContract(
+        target_year=2025,
+        status="historical_replay_only",
+        leagues=("beta",),
+        weekly_horizons={"beta": 16},
+        template_min_seasons={"beta": 2008},
+        template_center_policies={
+            "beta": (
+                "legacy_validated_oos",
+                "beta_scored_expert_fallback",
+            ),
+        },
+        template_context_sources={
+            "beta": "v2_beta_scoring_matched_preseason",
+        },
+    ),
+}
+
+
+def get_historical_replay_template_contract(
+    year: int,
+) -> HistoricalReplayTemplateContract:
+    """Return a reviewed template-only replay contract or fail closed."""
+
+    try:
+        contract = HISTORICAL_REPLAY_TEMPLATE_CONTRACTS[int(year)]
+    except KeyError as error:
+        registered = ", ".join(
+            str(value)
+            for value in sorted(HISTORICAL_REPLAY_TEMPLATE_CONTRACTS)
+        )
+        raise ValueError(
+            f"Season {year} has no historical replay template contract. "
+            f"Registered seasons: {registered}."
+        ) from error
+    if contract.status != "historical_replay_only":
+        raise ValueError(
+            f"Season {year} historical replay contract has invalid "
+            f"status={contract.status!r}."
+        )
+    if not contract.leagues:
+        raise ValueError(
+            f"Season {year} historical replay contract has no leagues."
+        )
+    required_maps = (
+        contract.weekly_horizons,
+        contract.template_min_seasons,
+        contract.template_center_policies,
+        contract.template_context_sources,
+    )
+    if any(set(mapping) != set(contract.leagues) for mapping in required_maps):
+        raise ValueError(
+            f"Season {year} historical replay template maps do not match "
+            "their league registry."
+        )
+    return contract
 
 
 def get_production_cycle(year: int) -> ProductionCycle:

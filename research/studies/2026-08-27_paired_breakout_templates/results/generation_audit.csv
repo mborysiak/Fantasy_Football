@@ -1,0 +1,5 @@
+profile_version,league,year,dataset,current_target_rows,keeper_target_rows,pool_rows,min_pool_size,max_pool_size,min_probability_sum,max_probability_sum,week_count,salary_match_feature_count,weekly_donor_rows,paired_donor_rows,missing_forecast_rows,missing_outcome_rows,position_mismatch_rows,invalid_appearance_rows,min_origin_season,max_origin_season
+paired_breakout_v1,beta,2026,final_ensemble,274,13,21920,80,80,0.9999999999999999,1.0000000000000002,17,0,4591,3609,710,268,6,0,2011,2024
+paired_breakout_v1,dk,2026,final_ensemble,295,0,23600,80,80,0.9999999999999998,1.0000000000000002,17,0,4591,3609,710,268,6,0,2011,2024
+paired_breakout_v1,nffc,2026,final_ensemble,324,0,25920,80,80,0.9999999999999999,1.0000000000000002,17,0,1303,1040,0,261,2,0,2021,2024
+paired_breakout_v1,nv,2026,final_ensemble,274,10,21920,80,80,0.9999999999999998,1.0000000000000002,17,0,4591,3609,710,268,6,0,2011,2024
